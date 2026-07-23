@@ -99,6 +99,13 @@ the compound's subwords (the compound's nodes minus the marker), so a
 declared misfit like `had CANONIZES [did, have]` decodes verbatim and is not
 folded into the compound-word identity.
 
+**IDENTITY compound nodes.** An IDENTITY turn is decoded by the same rule:
+when it declares subword nodes (`Mary IDENTITY [M, ary]` at S1) the decoder
+applies compound catch-up so the kline is the compound grounding
+(`Mary:[COMPOUND_TOKEN, M, ary]`), which is the shape that decodes back into
+text and must be grounded. An IDENTITY with no declared nodes decodes to the
+ask shape `X:[]`.
+
 ```
 DecodedTurn:
   actor:  "T" | "K"
@@ -169,6 +176,19 @@ The real actors are drop-in substitutes that derive each turn:
   script steps in only for those driving moves.
 - **`RationalisingTrainee`** wraps the pure `Rationaliser` engine and exposes
   `drain_observations`.
+- **`RationalisingTrainer`** shares the engine with the trainee (it is
+  role-neutral) and **leads**. Its cogitation earns the trainer's speech acts
+  (canon/identity replies, ratifications) from its own state when it has
+  them; where it cannot (a CONNOTES gloss, an opening driving move) it
+  escalates to `synthesize` or falls back to the decoded table. A trainer
+  loaded with a **grounded prior** (a `RationaliserState` saved from a run as
+  a trainee against the supervisor) earns most replies from that state and
+  escalates far less — the prior is state, not a live oracle.
+- **State injection.** Every rationalising actor takes an optional
+  `RationaliserState` at construction (empty by default). A state snapshot
+  persists via `RationaliserState.save/load` (JSON); the driver's `--load`/
+  `--save` wire it to `data/dialogue/{stem}.json` by default. An actor loaded
+  with a prior leads from a populated model rather than an empty one.
 
 ### Matching & termination
 

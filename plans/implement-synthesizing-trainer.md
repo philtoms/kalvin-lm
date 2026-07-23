@@ -21,15 +21,17 @@ Three rules:
      Significance is pedagogical — S1 when K has grounded every node, else S2.
   2. **CONNOTES** — a single-node connotation: a teachable gloss (e.g.
      `a:[Det]`), emitted at S2.
-  3. **otherwise** — the signature has only a compound-word identity, only
-     DENOTES relations, or nothing: ratify the identity at S1 (`{sig: []}`).
+  3. **Compound identity** — the subword decomposition `{sig: [CT, x, y]}`:
+     the grounding that decodes back into text, supplied at S1.
+  4. **otherwise** — the signature has only DENOTES relations, or nothing:
+     ratify the identity at S1 (`{sig: []}`).
 
   A **DENOTES** is deliberately not supplied: it is a role-binding (e.g.
   `Mary:[Subject]`) that belongs to the S3 phase, where K proposes the binding
   and T ratifies it. Supplying it on the S4 ask would pre-empt K's proposal.
-  Compound-word identities (`{Mary: [CT, M, ary]}`) are `is_identity` and are
-  never supplied — their subwords are tokeniser artefacts, not pedagogical
-  structure.
+  (Earlier R2 ratifyied compound words as bare identities `{sig: []}`, treating
+  the subwords as tokeniser artefacts; that dropped the text-recoverable
+  grounding, so the compound shape is now supplied.)
 
 - **R3 — Reply to a non-identity proposal**: echo an exact compiled match
   verbatim (S1 for a relation — ratify; S2 for a canon — confirm); otherwise

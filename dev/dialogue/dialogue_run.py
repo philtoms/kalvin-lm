@@ -68,6 +68,7 @@ from training.dialogue.actors import (  # noqa: E402
     RationalisingTrainer,
     SynthesizingTrainer,
 )
+from training.dialogue.rationalise import RationaliserState  # noqa: E402
 
 _SIG_TO_BAND = {
     SIG_S1: "S1",
@@ -387,6 +388,23 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--load", metavar="PATH", default=None,
+        help=(
+            "Inject a saved RationaliserState into every rationalising actor "
+            "at construction (a grounded prior). Defaults to "
+            "data/dialogue/{script-stem}.json when a rationalising actor runs "
+            "and that file exists; --load '' disables the default lookup."
+        ),
+    )
+    parser.add_argument(
+        "--save", metavar="PATH", nargs="?", const="__default__", default=None,
+        help=(
+            "After the run, write each rationalising actor's final state "
+            "(a grounded prior for a later --load). With no path, defaults "
+            "to data/dialogue/{script-stem}.json. Omit the flag to skip saving."
+        ),
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help=(
@@ -439,6 +457,21 @@ def main(argv: list[str] | None = None) -> int:
             script.source, tokenizer=tok, signifier=sigf
         )
 
+    # --load: inject a saved RationaliserState (a grounded prior) into every
+    # rationalising actor. Default path is data/dialogue/{stem}.json when a
+    # rationalising actor runs and that file exists; ``--load ''`` disables
+    # the default lookup.
+    stem = Path(dialogue_path).stem
+    default_state_path = Path("data/dialogue") / f"{stem}.json"
+    load_path = None
+    if args.load is not None:
+        load_path = Path(args.load) if args.load else None
+    elif (rationalise_trainee or rationalise_trainer) and default_state_path.exists():
+        load_path = default_state_path
+    prior_state = RationaliserState.load(load_path) if load_path else None
+    if prior_state is not None:
+        print(f"  loaded grounded prior : {load_path}")
+
     if args.synthesize:
         trainer_factory = (
             lambda sink: SynthesizingTrainer(
@@ -448,13 +481,14 @@ def main(argv: list[str] | None = None) -> int:
     elif rationalise_trainer:
         trainer_factory = (
             lambda sink: RationalisingTrainer(
-                sigf, primaries, sink=sink, compiled=compiled, table=decoded
+                sigf, primaries, sink=sink, compiled=compiled, table=decoded,
+                state=prior_state,
             )
         )
     else:
         trainer_factory = lambda sink: ScriptTrainer(decoded, sink=sink)
     trainee_factory = (
-        (lambda sink: RationalisingTrainee(sigf, sink=sink))
+        (lambda sink: RationalisingTrainee(sigf, sink=sink, state=prior_state))
         if rationalise_trainee
         else (lambda sink: ScriptTrainee(decoded, sink=sink))
     )
@@ -540,6 +574,28 @@ def main(argv: list[str] | None = None) -> int:
                     print("    " + _render_scripted("T", "sup", v, sig_to_label))
             else:
                 print("\n(supervisor supplied nothing — full rationaliser load)")
+    # --save: write each rationalising actor's final state as a grounded
+    # prior for a later --load. Only when --save was passed. With no path,
+    # defaults to data/dialogue/{stem}.json.
+    if args.save is not None:
+        save_path = (
+            Path(args.save) if args.save != "__default__"
+            else default_state_path
+        )
+        savers = []
+        if isinstance(runner.trainer, (RationalisingTrainee, RationalisingTrainer)):
+            savers.append(("T", runner.trainer))
+        if isinstance(runner.trainee, (RationalisingTrainee, RationalisingTrainer)):
+            savers.append(("K", runner.trainee))
+        if len(savers) == 1:
+            savers[0][1]._state.save(save_path)  # noqa: SLF001
+            print(f"\n  saved grounded prior : {save_path} ({savers[0][0]})")
+        else:
+            # Both sides rationalising: disambiguate by role suffix.
+            for label, actor in savers:
+                p = save_path.with_name(f"{save_path.stem}.{label.lower()}.json")
+                actor._state.save(p)  # noqa: SLF001
+                print(f"\n  saved grounded prior : {p} ({label})")
     # Reaching here means no immediate divergence was raised. 
     return 0
 

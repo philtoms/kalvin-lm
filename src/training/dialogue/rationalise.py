@@ -17,8 +17,10 @@ model of what K has grounded.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kalvin.expand import (
@@ -53,6 +55,60 @@ class RationaliserState:
     grounded: dict[int, list[KLine]] = field(default_factory=dict)
     frame: dict[int, list[KLine]] = field(default_factory=dict)
     _dbg_step: int = 0
+
+    # -- persistence -------------------------------------------------
+    #
+    # State is plain ints (signature + node lists); ``dbg`` is debug-only and
+    # not part of the model, so it is dropped on save. A saved state is a
+    # **grounded prior**: an engine snapshot produced once (typically by
+    # bootstrapping an actor as a trainee against the supervisor) and injected
+    # into an actor at construction so it can lead from a populated model
+    # rather than from an empty one.
+
+    def to_dict(self) -> dict:
+        """A JSON-serialisable snapshot of the model (no ``dbg``)."""
+        def _kl(k: KLine) -> list[int]:
+            return [k.signature, list(k.nodes)]
+        return {
+            "work_list": [_kl(k) for k in self.work_list],
+            "grounded": {
+                str(sig): [_kl(k) for k in bucket]
+                for sig, bucket in self.grounded.items()
+            },
+            "frame": {
+                str(sig): [_kl(k) for k in bucket]
+                for sig, bucket in self.frame.items()
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> RationaliserState:
+        """Rebuild a state from :meth:`to_dict` output."""
+        def _kl(pair: list[int]) -> KLine:
+            sig, nodes = pair[0], pair[1]
+            return KLine(sig, list(nodes))
+        return cls(
+            work_list=[_kl(p) for p in data.get("work_list", [])],
+            grounded={
+                int(sig): [_kl(k) for k in bucket]
+                for sig, bucket in data.get("grounded", {}).items()
+            },
+            frame={
+                int(sig): [_kl(k) for k in bucket]
+                for sig, bucket in data.get("frame", {}).items()
+            },
+        )
+
+    def save(self, path: str | Path) -> None:
+        """Write the state snapshot to ``path`` (JSON). Creates parent dirs."""
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(self.to_dict()))
+
+    @classmethod
+    def load(cls, path: str | Path) -> RationaliserState:
+        """Load a state snapshot from ``path`` (JSON)."""
+        return cls.from_dict(json.loads(Path(path).read_text()))
 
 
 class Rationaliser:
@@ -92,6 +148,10 @@ class _Turn:
         self._signifier = signifier
         self._s12, self._s23, self._s34 = s12, s23, s34
         self.observations: list[KValue] = []
+        # The incoming queries this turn, in arrival order, retained so
+        # cogitation can reply to them. The engine always replies when it
+        # can support a reply from its own state; the actor filters per role.
+        self._incoming: list[KValue] = []
 
     # ── Routing ──────────────────────────────────────────────────────
 
@@ -108,6 +168,7 @@ class _Turn:
         - **S2/S3 (slow route)** — append to the work-list, then unpack an S2
           misfit's unrecognised nodes and signature as identity asks.
         """
+        self._incoming.append(query)
         if query.significance in (SIG_S1, SIG_S4):
             self._fast_route(query)
             return
@@ -121,6 +182,19 @@ class _Turn:
             self._state.work_list.append(KLine(kline.signature, [], kline.dbg))
 
     def _fast_route(self, query: KValue) -> None:
+        # An S1 identity reply grounds whenever its signature has been seen
+        # (framed as an ask, pending on the work-list, or already grounded) —
+        # not only when an ask-shape is currently framed. Identities are
+        # signature-only, and the ask may be emitted by this same turn's
+        # cogitation (route-all-then-cogitate ordering), so the work-list and
+        # grounded views matter as much as the frame.
+        if query.significance == SIG_S1 and is_identity(query.kline):
+            if not self._signature_seen(query.kline.signature):
+                return
+            self._unframe(query.kline)
+            self._pop_identity(query.kline.signature)
+            self._promote(query.kline)
+            return
         if not self._in_frame(query.kline):
             return
         self._unframe(query.kline)
@@ -128,6 +202,17 @@ class _Turn:
             self._pop_identity(query.kline.signature)
         else:
             self._promote(query.kline)
+
+    def _signature_seen(self, signature: int) -> bool:
+        """Has ``signature`` been seen — framed, pending on the work-list, or grounded?"""
+        if self._in_frame(KLine(signature, [])):
+            return True
+        if signature in self._state.grounded:
+            return True
+        return any(
+            entry.signature == signature and is_identity(entry)
+            for entry in self._state.work_list
+        )
 
     def _pop_identity(self, signature: int) -> None:
         """Drop the first pending identity ask for ``signature`` (T answered it)."""
@@ -148,6 +233,14 @@ class _Turn:
         Entries that match no path persist for a later turn.
         """
         batch: list[KValue] = []
+        # Reply pass — the engine always replies to an incoming query when it
+        # can support a reply from its own state: an S4 identity ask is
+        # answered with the asked signature's canon (S2, or S1 when every node
+        # is already grounded), and an S3 proposal is ratified at S1. These
+        # are emissions the actor filters per role (T answers/ratifies; K asks
+        # and proposes). Runs before the work-list pass so a supported reply
+        # takes precedence over re-deriving the query as a fresh ask.
+        batch.extend(self._replies())
         for idx in range(len(self._state.work_list) - 1, -1, -1):
             kline = self._state.work_list[idx]
 
@@ -183,6 +276,54 @@ class _Turn:
         """Emit ``{signature: []}`` at S4 and pop the entry."""
         del self._state.work_list[idx]
         return KValue(KLine(signature, []), SIG_S4)
+
+    # ── Replies (engine answers/ratifies from its own state) ────────
+
+    def _replies(self) -> list[KValue]:
+        """Emissions that answer the incoming queries from the engine's state.
+
+        Two reply families, both earned (no oracle):
+
+        - **S4 identity ask** ``{X: []}`` — answer with ``X``'s canon if the
+          engine knows it: S1 when every canon node is already grounded, else
+          S2 (some part still unknown). An asked signature with no known canon
+          is left for the work-list pass to (re-)emit as a fresh S4 ask.
+        - **S3 proposal** ``{X: [n]}`` — ratify it at S1. The engine supports
+          the pairing (K offered it; the reciprocal is now grounded).
+        """
+        replies: list[KValue] = []
+        for query in self._incoming:
+            if query.significance == SIG_S4:
+                reply = self._reply_identity_ask(query.kline.signature)
+                if reply is not None:
+                    replies.append(reply)
+            elif query.significance == SIG_S3:
+                replies.append(KValue(query.kline, SIG_S1))
+        return replies
+
+    def _reply_identity_ask(self, signature: int) -> KValue | None:
+        """Answer an S4 ask for ``signature`` from the engine's own state.
+
+        An identity ask is answered only when the engine has a genuine
+        grounding for the signature: a **canon** (teach its parts — S1 when
+        every node is grounded, else S2) or a **compound identity** (the
+        subword grounding that decodes back into text, at S1). A signature
+        merely seen (e.g. as a node) is not enough — its reply shape is the
+        author's to choose (a CONNOTES gloss, a pedagogical S2), so the ask
+        is left unanswered for the actor's other paths. Returns None when the
+        engine has no canon or compound for ``signature``.
+        """
+        # Canon — teach the parts.
+        nodes = self._canon_nodes(signature)
+        if nodes:
+            kline = KLine(signature, list(nodes))
+            sig = SIG_S1 if all(n in self._state.grounded for n in nodes) else SIG_S2
+            return KValue(kline, sig)
+        # Compound identity — the text-recoverable grounding.
+        for kline in self._state.grounded.get(signature, []):
+            if is_identity(kline) and kline.nodes:
+                return KValue(kline, SIG_S1)
+        return None
 
     # ── Grounding ────────────────────────────────────────────────────
 
@@ -270,19 +411,33 @@ class _Turn:
         return new_batch, self.observations
 
     def _in_frame(self, kline: KLine) -> bool:
-        """Is a framed kline structurally equal to ``kline`` (same signature, same structural significance)?"""
+        """Is ``kline`` already in play in the frame?
+
+        Identities are keyed by signature alone: an identity is one lexical
+        item with multiple shapes (the S4 ask ``X:[]`` and the S1 groundings
+        ``X:[X]``, ``X:[COMPOUND, x, y]``), and any shape recognises any
+        other — an S4 ask framed by K matches the S1 reply T sends back.
+        Non-identities match on structural significance, as before.
+        """
+        bucket = self._state.frame.get(kline.signature, [])
+        if is_identity(kline):
+            return any(is_identity(framed) for framed in bucket)
         target = structural_significance(kline, self._signifier)
         return any(
             structural_significance(framed, self._signifier) == target
-            for framed in self._state.frame.get(kline.signature, [])
+            for framed in bucket
         )
 
     def _is_framed(self, kline: KLine) -> bool:
-        """Is an isomorphic kline (same signature and nodes) in the frame?"""
-        return any(
-            existing.nodes == kline.nodes
-            for existing in self._state.frame.get(kline.signature, [])
-        )
+        """Is an isomorphic kline in the frame?
+
+        Identities match by signature (any shape); everything else by exact
+        nodes, as before.
+        """
+        bucket = self._state.frame.get(kline.signature, [])
+        if is_identity(kline):
+            return any(is_identity(existing) for existing in bucket)
+        return any(existing.nodes == kline.nodes for existing in bucket)
 
     def _frame(self, kline: KLine) -> None:
         self._state.frame.setdefault(kline.signature, []).append(kline)
@@ -291,10 +446,18 @@ class _Turn:
         bucket = self._state.frame.get(kline.signature)
         if not bucket:
             return
-        self._state.frame[kline.signature] = [
-            k for k in bucket if not (k.signature == kline.signature and k.nodes == kline.nodes)
-        ]
-        if not self._state.frame[kline.signature]:
+        if is_identity(kline):
+            # An identity reply consumes the framed ask (any shape): drop every
+            # identity entry under this signature.
+            kept = [k for k in bucket if not is_identity(k)]
+        else:
+            kept = [
+                k for k in bucket
+                if not (k.signature == kline.signature and k.nodes == kline.nodes)
+            ]
+        if kept:
+            self._state.frame[kline.signature] = kept
+        else:
             del self._state.frame[kline.signature]
 
     # ── S3 path: countersignature ────────────────────────────────────

@@ -314,10 +314,13 @@ class RationalisingTrainee(Actor):
     base emits a PASS.
     """
 
-    def __init__(self, signifier: KSignifier, sink: EventSink) -> None:
+    def __init__(
+        self, signifier: KSignifier, sink: EventSink,
+        *, state: RationaliserState | None = None,
+    ) -> None:
         super().__init__(role="K", sink=sink)
         self._engine = Rationaliser(signifier)
-        self._state = RationaliserState()
+        self._state = state if state is not None else RationaliserState()
         self._observations: list[KValue] = []
         # Signatures of proposals already emitted into the dialogue (by
         # ``(signature, nodes)`` key). The engine is free to re-derive an
@@ -343,6 +346,12 @@ class RationalisingTrainee(Actor):
         )
         self._observations.extend(observations)
         for proposal in batch:
+            # Role filter: K speaks in S3 (connote), S4 (identity ask), and
+            # the S2 similar-fit proposal. The engine now also emits S1
+            # ratifications and S2 canon replies (trainer speech acts) since
+            # it always replies; K suppresses those — they are T's to say.
+            if proposal.significance not in _TRAINEE_BANDS:
+                continue
             key = (proposal.kline.signature, tuple(proposal.kline.nodes))
             if key in self._emitted:
                 continue
@@ -370,6 +379,13 @@ class RationalisingTrainee(Actor):
 #: shares the trainee's cogitation engine, whose emissions may land in either
 #: side's bands — only an S1/S2 emission is something a trainer should say.
 _TRAINER_BANDS = frozenset({SIG_S1, SIG_S2})
+
+#: The significance bands a trainee speaks in — the mirror of
+#: :data:`_TRAINER_BANDS`. S3 (connote) and S4 (identity ask) are the
+#: trainee's speech acts. The engine always replies now (it emits S1/S2
+#: ratifications and canon replies too), so each actor filters its role's
+#: bands: the trainee suppresses trainer-band replies it doesn't make.
+_TRAINEE_BANDS = frozenset({SIG_S2, SIG_S3, SIG_S4})
 
 
 class RationalisingTrainer(Actor):
@@ -413,6 +429,7 @@ class RationalisingTrainer(Actor):
         *,
         compiled: Sequence[KValue] | None = None,
         table: Sequence[DecodedTurn] | None = None,
+        state: RationaliserState | None = None,
     ) -> None:
         if not primaries:
             raise ValueError("RationalisingTrainer needs at least one primary")
@@ -421,7 +438,7 @@ class RationalisingTrainer(Actor):
         self._primaries: tuple[KLine, ...] = tuple(primaries)
         self._primary_index = 0
         self._engine = Rationaliser(signifier)
-        self._state = RationaliserState()
+        self._state = state if state is not None else RationaliserState()
         self._observations: list[KValue] = []
         # Signatures of proposals already emitted into the dialogue (by
         # ``(signature, nodes)`` key). The engine is free to re-derive an

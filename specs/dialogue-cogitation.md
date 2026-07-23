@@ -35,10 +35,18 @@ this spec owns only the two paths and their boundaries.
 ## Behavioural Rules
 
 - **Dialogue vs grounding.** Cogitation produces two channels: a **batch**
-  of dialogue emissions (speech acts for T — S4 identity asks, S3 connotation
-  proposals, S2 similar-fit proposals) and **observations** of K's internal
-  S1 groundings (every kline K grounds). Grounding does not emit into the
-  dialogue; observations are surfaced for white-box verification.
+  of dialogue emissions (speech acts — S4 identity asks, S3 connotation
+  proposals, S2 similar-fit proposals, and replies: S1 ratifications and S2
+  canon/identity replies) and **observations** of K's internal S1 groundings
+  (every kline K grounds). Grounding that is not a reply is observed only;
+  observations are surfaced for white-box verification.
+- **Identities.** An identity is one lexical item with three shapes: the
+  **S4 ask** ``X:[]`` (unrecognised) and two **S1 groundings** —
+  self-referential ``X:[X]`` and compound ``X:[COMPOUND_TOKEN, x, y]``. The
+  compound shape is the grounding that decodes back into text, so it **must**
+  be grounded (not discarded) whenever it is encountered; its subwords are
+  how the item is reconstructed. All three shapes are the same identity —
+  the frame and grounding key them by signature alone, not by shape.
 - **Emission deduplication.** K never publishes the same proposal twice. The
   engine is **stateless about its own emissions** — it may re-derive a
   proposal on successive turns (an S2 misfit persists in the work-list until
@@ -53,10 +61,30 @@ this spec owns only the two paths and their boundaries.
   stamp — the same structural derivation as cogitation's dispatch. Routing
   does one thing per query: an **S4** pops the pending identity ask;
   **every other query (S1, S2, S3)** is appended to the work-list for
-  cogitation. An **S2** misfit additionally unpacks its unrecognised nodes
+  cogitation, except an **S1 identity reply** which grounds directly (see
+  Identities). An **S2** misfit additionally unpacks its unrecognised nodes
   and signature onto the work-list as identity placeholders. Routing emits
-  no dialogue batch and performs no grounding — promotion is a per-entry act
-  of cogitation, not a routing pre-pass.
+  no dialogue batch and performs no grounding other than the S1 identity
+  fast path — promotion of other entries is a per-entry act of cogitation,
+  not a routing pre-pass.
+- **S1 identity fast path.** An incoming S1 identity (a reply) grounds at S1
+  whenever its signature has been **seen** — framed as an ask, pending on
+  the work-list, or already grounded — not only when an ask-shape is
+  currently framed. This is required by the route-all-then-cogitate
+  ordering: the ask an S1 reply answers may be emitted by the same turn's
+  cogitation, after routing, so the frame alone is a stale view within the
+  turn. Grounding consumes the framed ask and the pending work-list identity
+  for that signature.
+- **Replies (role-neutral).** The engine replies to an incoming query from
+  its own state, in addition to its trainee-side proposals: an **S4 identity
+  ask** about ``X`` is answered with ``X``'s canon (S2, or S1 when every node
+  is grounded) or, failing a canon, ``X``'s compound identity at S1; an **S3
+  proposal** is ratified at S1. These are earned (no oracle): they read the
+  engine's grounded model only. The engine is role-neutral; the **actor**
+  filters its role's bands — the trainee keeps S2/S3/S4 and suppresses S1/S2
+  replies; the trainer keeps S1/S2 and suppresses S3/S4. An ask the engine
+  cannot answer from state (e.g. a CONNOTES gloss) is left for the actor's
+  other paths (escalation or scripted fallback).
 - **Cogitation.** Each work-list entry is resolved in one pass, LIFO. An
   entry that is **promotable** (a single-node relationship whose reciprocal
   is grounded) or **groundable** (an identity whose signature is grounded, or
@@ -92,6 +120,17 @@ this spec owns only the two paths and their boundaries.
   discarded — it persists and is re-tried on later turns. Only grounding
   (the entry's nodes becoming seen) or an operand's canon arriving makes it
   fire; until then it emits nothing.
+- **Frame (emission memory).** The frame records what the engine has put in
+  play, to deduplicate emissions and to match replies to asks. Identities are
+  keyed by signature alone — any shape recognises any other — so an S4 ask
+  the engine emitted matches the S1 reply it later receives. Non-identities
+  key on structural significance, as before.
+- **State injection.** A ``RationaliserState`` may be constructed empty or
+  loaded from a saved snapshot (a **grounded prior**), so an actor can lead
+  from a populated model rather than an empty one. A trainer loaded with a
+  prior earned by running as a trainee against the supervisor earns its
+  canon/identity replies from that state instead of escalating. The engine
+  itself is oracle-free either way: the prior is state, not a live oracle.
 
 ## Test Matrix
 

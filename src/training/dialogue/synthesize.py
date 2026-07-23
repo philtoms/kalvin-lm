@@ -80,14 +80,12 @@ def _opening(primary: KLine) -> KValue:
 #      (e.g. ``Mary:[Subject]``) that belongs to the S3 phase, where K
 #      proposes the binding and T ratifies it. Supplying it on the S4 ask
 #      would pre-empt K's proposal.
-#   3. otherwise — ``sig`` has only a compound-word identity (encoding
-#      artefact, not learnable structure), only DENOTES role-bindings, or
-#      nothing at all. T ratifies the identity at S1: ``{sig: []}`` at S1,
-#      signalling "this is a primitive you may ground".
-#
-# Compound-word identities (``{Mary: [CT, M, ary]}``) are ``is_identity`` and
-# are never supplied as decompositions — their subwords are tokeniser
-# artefacts, not pedagogical structure.
+#   3. otherwise — ``sig`` has only a compound-word identity, only DENOTES
+#      role-bindings, or nothing at all. A compound-word identity
+#      (``{sig: [CT, x, y]}``) is the grounding that decodes back into text,
+#      so it is supplied at S1 in preference to the bare identity. Failing
+#      that, T ratifies the identity at S1: ``{sig: []}`` at S1, signalling
+#      "this is a primitive you may ground".
 
 
 def _reply_identity(
@@ -111,7 +109,15 @@ def _reply_identity(
     if connotes is not None:
         return KValue(connotes, SIG_S2)
 
-    # 3. Ratify the identity at S1 (primitive K may ground).
+    # 3. Compound identity — the subword decomposition
+    #    ``{sig: [COMPOUND_TOKEN, x, y]}``. This is the grounding that decodes
+    #    back into text, so it must be supplied (not the bare identity) when
+    #    one is available. Ratified at S1.
+    compound = _first_compound(candidates, signifier)
+    if compound is not None:
+        return KValue(compound, SIG_S1)
+
+    # 4. Otherwise ratify the identity at S1 (a primitive K may ground).
     return KValue(KLine(signature, []), SIG_S1)
 
 
@@ -135,6 +141,22 @@ def _first_connotes(candidates: list[KLine]) -> KLine | None:
     for kline in candidates:
         op = kline.dbg.op if kline.dbg else None
         if op == "CONNOTES":
+            return kline
+    return None
+
+
+def _first_compound(
+    candidates: list[KLine], signifier: KSignifier
+) -> KLine | None:
+    """The first compound-word identity among ``candidates``, else None.
+
+    A compound identity ``{sig: [COMPOUND_TOKEN, x, y]}`` is the subword
+    decomposition of a single lexical item. It is the grounding that decodes
+    back into text, so the supervisor supplies it in preference to the bare
+    identity ratification whenever one is compiled.
+    """
+    for kline in candidates:
+        if is_identity(kline) and kline.nodes:
             return kline
     return None
 

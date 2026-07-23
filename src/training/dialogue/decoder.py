@@ -312,7 +312,23 @@ def _resolve_kline(
             raise DecodeError(
                 f"IDENTITY {signature!r}: label not found in compiled source"
             )
-        return KLine(kl.signature, [], dbg=kl.dbg)
+        # An identity has three shapes: the S4 ask ``X:[]`` (no nodes) and
+        # two S1 groundings — self-referential ``X:[X]`` and compound
+        # ``X:[COMPOUND_TOKEN, x, y]``. The compound shape MUST survive
+        # decoding: it is the form that decodes back into text. When the
+        # author declares subword nodes, resolve them and apply the same
+        # compound catch-up as CANONIZES (prepend COMPOUND_TOKEN) so the
+        # decoded kline is the compound identity the compiler would produce.
+        # No declared nodes → the ask shape ``X:[]``.
+        if not nodes:
+            return KLine(kl.signature, [], dbg=kl.dbg)
+        node_sigs = _resolve_node_signatures(nodes, resolved, op="IDENTITY")
+        compound = resolved.compound_by_label.get(signature)
+        if compound is not None and COMPOUND_TOKEN not in node_sigs:
+            subwords = [n for n in compound.nodes if n != COMPOUND_TOKEN]
+            if list(node_sigs) == subwords:
+                node_sigs = [COMPOUND_TOKEN, *node_sigs]
+        return KLine(kl.signature, node_sigs, dbg=kl.dbg)
 
     # Constructed relation: resolve node labels to canonical signatures and
     # rebuild the relation KLine.
