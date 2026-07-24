@@ -60,6 +60,7 @@ from training.dialogue import (  # noqa: E402
     decode,
     decode_events,
     load_script,
+    load_script_file,
     run,
 )
 from training.dialogue.decoder import primaries_from_source  # noqa: E402
@@ -421,9 +422,15 @@ def main(argv: list[str] | None = None) -> int:
     sigf = NLPSignifier()
 
     script = load_script(json.loads(Path(dialogue_path).read_text()))
+    # The run sequence: each prior is one run, then the target script's own
+    # turns are the final run. Each run is decoded independently with its
+    # own coverage set and close; the same rationaliser *state* persists
+    # across runs (a prior run's grounded knowledge feeds the next).
+    run_scripts = [load_script_file(p) for p in script.priors] + [script]
     decoded = decode(script, tokenizer=tok, signifier=sigf)
     expected_groundings = decode_events(script, tokenizer=tok, signifier=sigf)
-    # The compiled source's signature→label map.
+    # The compiled source's signature→label map (target script; shared source
+    # in the canonical case, so labels resolve for every run).
     sig_to_label = _sig_to_label(script, tokenizer=tok, signifier=sigf)
 
     # --divergence opts into fail-on-divergence; the default accepts
@@ -474,35 +481,58 @@ def main(argv: list[str] | None = None) -> int:
     if prior_state is not None:
         print(f"  loaded grounded prior : {load_path}")
 
-    if args.synthesize:
-        trainer_factory = (
-            lambda sink: SynthesizingTrainer(
-                compiled, sigf, primaries, sink=sink, table=decoded
+    # The actor factories are per-run (each run has its own decoded table and
+    # compiled source), but the rationaliser *state* is shared across the
+    # sequence — a prior run's grounded knowledge feeds the next. Table actors
+    # carry no state, so they are fresh per run.
+    shared_t_state = prior_state
+    shared_k_state = prior_state
+
+    def _trainer_factory(run_decoded, run_compiled):
+        if args.synthesize:
+            return lambda sink: SynthesizingTrainer(
+                run_compiled, sigf, primaries, sink=sink, table=run_decoded
             )
-        )
-    elif rationalise_trainer:
-        trainer_factory = (
-            lambda sink: RationalisingTrainer(
-                sigf, primaries, sink=sink, compiled=compiled, table=decoded,
-                state=prior_state,
+        if rationalise_trainer:
+            return lambda sink: RationalisingTrainer(
+                sigf, primaries, sink=sink, compiled=run_compiled,
+                table=run_decoded, state=shared_t_state,
             )
-        )
-    else:
-        trainer_factory = lambda sink: ScriptTrainer(decoded, sink=sink)
-    trainee_factory = (
-        (lambda sink: RationalisingTrainee(sigf, sink=sink, state=prior_state))
-        if rationalise_trainee
-        else (lambda sink: ScriptTrainee(decoded, sink=sink))
-    )
+        return lambda sink: ScriptTrainer(run_decoded, sink=sink)
+
+    def _trainee_factory(run_decoded):
+        if rationalise_trainee:
+            return lambda sink: RationalisingTrainee(
+                sigf, sink=sink, state=shared_k_state,
+            )
+        return lambda sink: ScriptTrainee(run_decoded, sink=sink)
+
+    # Drive the run sequence. Each run is decoded independently; results are
+    # aggregated for the trace and summary. The final run's expected groundings
+    # are verified (grounding assertions attach to their owning script).
+    per_run = []  # list of (script, decoded, expected, runner, res)
     try:
-        runner = run(
-            decoded,
-            trainer_factory,
-            trainee_factory,
-            expected_groundings=expected_groundings,
-            on_divergence=on_divergence,
-        )
-        res = runner.run()
+        for idx, run_script in enumerate(run_scripts):
+            is_final = idx == len(run_scripts) - 1
+            run_decoded = decode(run_script, tokenizer=tok, signifier=sigf)
+            run_expected = (
+                decode_events(run_script, tokenizer=tok, signifier=sigf)
+                if is_final else ()
+            )
+            run_compiled = None
+            if args.synthesize or rationalise_trainer:
+                run_compiled = compile_source(
+                    run_script.source, tokenizer=tok, signifier=sigf, dev=True
+                )
+            runner = run(
+                run_decoded,
+                _trainer_factory(run_decoded, run_compiled),
+                _trainee_factory(run_decoded),
+                expected_groundings=run_expected,
+                on_divergence=on_divergence,
+            )
+            res = runner.run()
+            per_run.append((run_script, run_decoded, run_expected, runner, res))
     except Divergence as exc:
         print(_render_divergence(exc, sig_to_label), file=sys.stderr)
         return 1
@@ -510,10 +540,17 @@ def main(argv: list[str] | None = None) -> int:
         print(_render_grounding_divergence(exc, sig_to_label), file=sys.stderr)
         return 1
 
-    print(
-        "Exchange (arrival order):\n"
-        + _trace(res.events, decoded, sig_to_label)
-    )
+    # The final run's runner/actors are the ones to inspect post-sequence.
+    runner = per_run[-1][3]
+    res = per_run[-1][4]
+
+    # Render each run's trace. A single-run script (no priors) prints as
+    # before; a multi-run sequence labels each run.
+    for idx, (_rs, rd, _re, _rr, rres) in enumerate(per_run):
+        header = "Exchange (arrival order):"
+        if len(per_run) > 1:
+            header = f"Run {idx + 1}/{len(per_run)} — {_rs.source.splitlines()[0] if _rs.source else ''}"
+        print(header + "\n" + _trace(rres.events, rd, sig_to_label))
     # The supervisor-load baseline: how often the rationalising trainer's
     # cogitation PASSed and it asked the supervisor. Surfaced on every run
     # (not just -v) so the trajectory is visible as the rationaliser takes on
@@ -525,27 +562,37 @@ def main(argv: list[str] | None = None) -> int:
             f"\n  supervisor escalations : {asks} asks, "
             f"{len(emissions)} emitted"
         )
+    # Aggregate stats across the run sequence.
+    total_events = sum(len(r.events) for _, _, _, _, r in per_run)
+    total_unmatched = sum(len(r.unmatched) for _, _, _, _, r in per_run)
+    total_uncovered = sum(len(r.uncovered) for _, _, _, _, r in per_run)
+    total_uncovered_groundings = sum(
+        len(r.uncovered_groundings) for _, _, _, _, r in per_run
+    )
     print(
-        f"\nDialogue session: {dialogue_path}\n"
-        f"  events received        : {len(res.events)}\n"
-        f"  unmatched emissions    : {len(res.unmatched)}\n"
-        f"  uncovered (displacement): {len(res.uncovered)}\n"
-        f"  uncovered groundings   : {len(res.uncovered_groundings)}"
+        f"\nDialogue session: {dialogue_path}"
+        + (f" ({len(per_run)} runs)" if len(per_run) > 1 else "")
+        + f"\n"
+        f"  events received        : {total_events}\n"
+        f"  unmatched emissions    : {total_unmatched}\n"
+        f"  uncovered (displacement): {total_uncovered}\n"
+        f"  uncovered groundings   : {total_uncovered_groundings}"
         + supervisor_line
     )
-    # When divergence is accepted (the default), surface any unmatched
-    # emissions / groundings so the actor's divergences are visible without
-    # a hard failure.
-    if res.unmatched:
+    all_unmatched = [ev for _, _, _, _, r in per_run for ev in r.unmatched]
+    if all_unmatched:
         print("\n  --- unmatched emissions (accepted divergence) ---")
-        for ev in res.unmatched:
+        for ev in all_unmatched:
             print(
                 "    "
                 + _scripted_form_event(ev, sig_to_label)
             )
-    if res.unmatched_groundings:
+    all_unmatched_groundings = [
+        gv for _, _, _, _, r in per_run for gv in r.unmatched_groundings
+    ]
+    if all_unmatched_groundings:
         print("\n  --- unmatched groundings (accepted divergence) ---")
-        for gv in res.unmatched_groundings:
+        for gv in all_unmatched_groundings:
             print("    " + _render_scripted("K", "ground", gv, sig_to_label))
     if args.verbose:
         # -v lists the grounded klines of every rationalising actor in play.

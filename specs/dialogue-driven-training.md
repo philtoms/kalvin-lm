@@ -70,6 +70,19 @@ is dropped at decode. A `close: true` turn marks the run's terminal content
 S1 groundings the runner verifies white-box (see §Grounding verification) —
 targeted assertions, not an exhaustive manifest.
 
+### Runs and priors
+
+The unit of execution is a **run**: one open → close span over the bus,
+driven against a single `turns` list. A script with `priors` is a **sequence
+of runs** — each prior is one run, then the script's own `turns` are the
+final run — driven against the **same actor instances** in order. A run is a
+*conceptual* boundary, not a stateful one: the T and K actors persist across
+runs, so a prior run's grounded state is already in the actors when the next
+run opens. A prior is therefore a previous run, not a special initialisation
+clause; `priors` is no longer merged into one table. Each run is decoded
+independently with its own coverage set and its own close; the runner drives
+the sequence, running each prior to its close before opening the next.
+
 ## Decode
 
 ```
@@ -83,6 +96,12 @@ declares (declared signature verbatim, nodes resolved to canonical signatures)
 and does not check that signature and nodes are consistent — an author may
 declare a deliberate misfit. Annotation-only turns are dropped; every label
 must resolve to a compiled entry (else a decode error).
+
+**No merging.** `priors` are not folded into `turns`. `decode(script)` returns
+the `DecodedTurn` list for the script's **own** run only; each prior is
+decoded separately (the sequencer decodes and runs each in turn). There is no
+`_collapse_to_single_close`: every run keeps its own `close` as its terminal
+content.
 
 **Compound catch-up.** A CANONIZES turn whose signature names a compound-word
 (a label with a compiled compound identity) is decoded with `COMPOUND_TOKEN`
@@ -126,8 +145,9 @@ The run is driven over the harness `MessageBus`:
   bridges each burst to one `Message` addressed to the other role.
 - The **runner is a coverage-tracking wildcard subscriber.** It updates its
   covered set on each emission and calls `bus.stop()` on a terminal condition.
-- A thin **driver** seeds the trainer (an `accept` with an empty burst) and
-  runs `bus.run()` on a dedicated thread.
+- A thin **driver** opens the run by submitting the first row to the
+  opposite role (see §Opening a run) and runs `bus.run()` on a dedicated
+  thread.
 
 An actor holds an `EventSink` and publishes a burst via `on_burst`. `accept`
 is fire-and-forget: it receives the incoming burst (empty = "you open") and
@@ -173,17 +193,19 @@ The real actors are drop-in substitutes that derive each turn:
   reactive — falls back to the decoded table for its **driving moves**: when K
   PASSes (no proposal to reply to) the table supplies the next T proposal (a
   close, the next script's opening). Synthesis drives every real exchange; the
-  script steps in only for those driving moves.
+  script steps in only for those driving moves. The trainer no longer opens a
+  run; the runner delivers the opening row to the opposite role.
 - **`RationalisingTrainee`** wraps the pure `Rationaliser` engine and exposes
   `drain_observations`.
 - **`RationalisingTrainer`** shares the engine with the trainee (it is
-  role-neutral) and **leads**. Its cogitation earns the trainer's speech acts
+  role-neutral). Its cogitation earns the trainer's speech acts
   (canon/identity replies, ratifications) from its own state when it has
-  them; where it cannot (a CONNOTES gloss, an opening driving move) it
+  them; where it cannot (a CONNOTES gloss, a driving move) it
   escalates to `synthesize` or falls back to the decoded table. A trainer
-  loaded with a **grounded prior** (a `RationaliserState` saved from a run as
-  a trainee against the supervisor) earns most replies from that state and
-  escalates far less — the prior is state, not a live oracle.
+  whose actor instance is carried over from a **prior run** (the same
+  instances persist across runs in a sequence) earns most replies from that
+  grounded state and escalates far less: the prior is state, not a live
+  oracle.
 - **Kline-level actor interventions.** The engine's significance is
   structural bookkeeping (a canon is S1 when every node is grounded). The
   trainer's *speech acts* follow a teaching protocol that differs, so the
@@ -196,26 +218,43 @@ The real actors are drop-in substitutes that derive each turn:
 - **State injection.** Every rationalising actor takes an optional
   `RationaliserState` at construction (empty by default). A state snapshot
   persists via `RationaliserState.save/load` (JSON); the driver's `--load`/
-  `--save` wire it to `data/dialogue/{stem}.json` by default. An actor loaded
-  with a prior leads from a populated model rather than an empty one.
+  `--save` wire it to `data/dialogue/{stem}.json` by default. An actor
+  initialised with a saved state reasons from a populated model rather than
+  an empty one. (Within a run *sequence* the same instances persist, so no
+  save/load is needed between runs; `--load`/`--save` are for file-based
+  handoff outside the sequencer.)
+
+### Opening a run
+
+The runner takes the first step. A run's **first row** is its opening:
+the runner submits it (wrapped as an event) **to the opposite role** — i.e.
+addressed to the role that is *not* the first row's role. For a run that
+opens on T (the common case), the runner seeds `Message(role=K,
+message=[<row 0 event>])`; K replies, and the exchange proceeds bus-driven.
+The opening row is recorded as the run's first coverage emission. No actor
+opens on its own: the actors' "empty-burst ⇒ emit my primary" branches are
+gone. The script leads through the runner; every turn after the opening is
+actor-driven.
 
 ### Matching & termination
 
 Each emission is matched against a **coverage budget** (a content key's
-multiplicity in the coverage rows) and the close, by `(role, kline,
-significance)` equality. Coverage is consumed first; the close terminates only
-once its own coverage copies are spent (so a close that recurs as coverage
-closes on its final occurrence, not its first):
+multiplicity in the non-close rows) and the close, by `(role, kline,
+significance)` equality. The close is excluded from the coverage budget. A
+run has three independent terminal conditions:
 
-- **In the budget with copies remaining** → consume one copy. Every budget
-  spent terminates only once the close has been delivered — coverage
-  exhaustion does not preempt an undelivered close (the close may be emitted
-  by either agent at any time, so the run defers to the close, with mutual
-  PASS as the backstop).
-- **Equals the close (budget exhausted for its key)** → terminate. A unique
-  close has no coverage copies, so terminates on first emission.
-- **In the script but budget exhausted, and not the close** → immediate
-  divergence (reason `"exhausted"`).
+- **Equals the close** → terminate. The close is unique terminal content
+  within a run; observing it (any agent, any time) ends the run at once.
+- **Coverage exhausted** → terminate. When every authored coverage copy has
+  been consumed the run ends, whether or not the close was emitted.
+  Close-vs-exhaustion is not a meaningful distinction (the runner is not a
+  judge).
+- **Mutual PASS** → terminate. A PASS from one role followed by a PASS from
+  the other is the stall backstop.
+
+- **In the budget with copies remaining** → consume one copy.
+- **In the budget but exhausted, and not the close** → immediate divergence
+  (reason `"exhausted"`).
 - **Present nowhere** → immediate divergence (reason `"unmatched"`).
 
 `on_divergence` governs what happens at a divergence. Under `"fail"` the
@@ -224,8 +263,9 @@ emission is recorded in `RunResult.unmatched` and the run **continues** to the
 next emission — a divergent emission consumes no coverage budget (it matched
 neither a coverage row nor the close), so accepting it lets the run collect
 further signal and report full displacement. The close may be emitted by any
-agent at any time; the script is **de-positional** (the first row carries no
-opening semantics, and anticipation/interjection are permitted and unflagged).
+agent at any time; anticipation and interjection are permitted and unflagged.
+(A run's *opening* is the one positional fact — the first row, delivered by
+the runner to the opposite role; everything after it is de-positional.)
 
 ### Grounding verification (white-box)
 
@@ -281,9 +321,10 @@ today's implementation choices as contract.
 The reference dialogue is "Mary had a little lamb" (`scripts/dialogue-mhall.json`,
 frozen for tests in `tests/_fixtures`). It is a **reference**, not a golden
 master: its turns are edited in step with the code and the rules (see
-§Purpose of dialogue work). A single depth-first cascade: the trainer opens
-with the primary at S2; the trainee requests each unknown operand at S4; the
-trainer supplies it; the trainee proposes role bindings at S3; the trainer
-ratifies each at S1; the trainee closes with the primary's S1 countersign.
+§Purpose of dialogue work). A single depth-first cascade: the runner opens
+by delivering the trainer's primary (S2) to the trainee; the trainee
+requests each unknown operand at S4; the trainer supplies it; the trainee
+proposes role bindings at S3; the trainer ratifies each at S1; the trainee
+closes with the primary's S1 countersign.
 Where one side's operands outnumber the other's, the residual is synthesised
 into a left-operand signature and connoted at S3 like any other pairing.

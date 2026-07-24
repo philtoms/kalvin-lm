@@ -266,6 +266,8 @@ class Runner:
         *,
         expected_groundings: Sequence[DecodedTurn] = (),
         on_divergence: str = "fail",
+        trainer: Actor | None = None,
+        trainee: Actor | None = None,
     ) -> None:
         if on_divergence not in ("fail", "accept"):
             raise ValueError(
@@ -305,22 +307,26 @@ class Runner:
         # from the other is terminal.
         self._last_pass_role: str | None = None
 
-        # Whether the close content has been emitted and terminated the run.
-        # Coverage exhaustion must not preempt an undelivered close — the
-        # close may be emitted by either agent at any time (the script is
-        # de-positional), so the run defers to the close (and to mutual PASS
-        # as a backstop) rather than stopping the moment every coverage copy
-        # is consumed.
-        self._close_delivered: bool = False
-
         # Grounding-divergence accumulations (accept-mode).
         self._unmatched_groundings: list[KValue] = []
 
         # Build the bus-wired sinks, construct the actors, and subscribe the
-        # actors' accept handlers + the wildcard coverage handler.
+        # actors' accept handlers + the wildcard coverage handler. Pre-built
+        # actors (run sequencing: the same instances persist across runs) are
+        # re-bound to this run's bus-wired sink instead of reconstructed.
         self._bus = MessageBus()
-        self._trainer = trainer_factory(_BusEventSink(self._bus, "K"))
-        self._trainee = trainee_factory(_BusEventSink(self._bus, "T"))
+        trainer_sink = _BusEventSink(self._bus, "K")
+        trainee_sink = _BusEventSink(self._bus, "T")
+        if trainer is not None:
+            trainer._bind_sink(trainer_sink)  # noqa: SLF001
+            self._trainer = trainer
+        else:
+            self._trainer = trainer_factory(trainer_sink)
+        if trainee is not None:
+            trainee._bind_sink(trainee_sink)  # noqa: SLF001
+            self._trainee = trainee
+        else:
+            self._trainee = trainee_factory(trainee_sink)
         if self._trainer.role == self._trainee.role:
             raise ValueError(
                 f"trainer and trainee must have different roles, got {self._trainer.role!r}"
@@ -332,13 +338,48 @@ class Runner:
         self._bus.subscribe(self._trainer.role, self._make_handler(self._trainer))
         self._bus.subscribe(self._trainee.role, self._make_handler(self._trainee))
 
+        # The opening: the run's opening same-role prefix (the maximal run of
+        # rows sharing the first row's role), delivered by the runner to the
+        # opposite role. The runner takes the first step; the actor playing the
+        # opening role never opens on its own (its cursor skips this prefix).
+        opener_role = decoded[0].role
+        opening_turns: list[DecodedTurn] = []
+        for t in decoded:
+            if t.role != opener_role:
+                break
+            opening_turns.append(t)
+        self._opening_events = [
+            RationaliseEvent(
+                kind="frame", query=t.value, proposal=t.value, role=t.role,
+            )
+            for t in opening_turns
+        ]
+        self._opening_recipient = (
+            self._trainee.role if opener_role == self._trainer.role
+            else self._trainer.role
+        )
+
     # -- the driver ---------------------------------------------------------
 
     def run(self) -> RunResult:
-        """Seed the trainer and run ``bus.run()`` on a dedicated thread until a
-        terminal condition."""
+        """Open the run and drive ``bus.run()`` on a dedicated thread until a
+        terminal condition.
+
+        The runner takes the first step: the opening row is delivered to the
+        opposite role as the seed. The wildcard handler records it as the
+        first coverage emission; the recipient reacts, and the exchange
+        proceeds bus-driven.
+        """
+        # The runner delivers the opening run (the same-role prefix) to the
+        # opposite role as the seed. Each opening row is a coverage emission
+        # observed by the wildcard; the recipient reacts, and the exchange
+        # proceeds bus-driven.
         self._bus.send(
-            Message(role=self._trainer.role, action=_ACCEPT_ACTION, message=[])
+            Message(
+                role=self._opening_recipient,
+                action=_ACCEPT_ACTION,
+                message=list(self._opening_events),
+            )
         )
         bus_thread = threading.Thread(target=self._bus.run, daemon=True)
         bus_thread.start()
@@ -358,23 +399,16 @@ class Runner:
     def _on_emission(self, msg: Message) -> None:
         """Wildcard handler: track coverage and divergence on every emission."""
         burst = msg.message
-        if not burst:
-            return  # the opening seed, not an emission
         for event in burst:
             self._observe(event)
             if self._closed:
                 return
-        # Entry exhaustion: every authored coverage copy has been consumed.
+        # Coverage exhaustion: every authored coverage copy has been consumed.
         # Checked at the burst boundary so an over-budget emission inside the
-        # burst is surfaced as divergence first. This must not preempt an
-        # undelivered close (see ``_close_delivered``): when a close is still
-        # outstanding the run continues so the close — or mutual PASS — can
-        # terminate it.
-        if (
-            not self._closed
-            and self._close_delivered
-            and self._consumed == self._coverage_budget
-        ):
+        # burst is surfaced as divergence first. A run has three independent
+        # terminal conditions (close observed, coverage exhausted, mutual
+        # PASS); any one ends it.
+        if not self._closed and self._consumed == self._coverage_budget:
             self._closed = True
             self._bus.stop()
 
@@ -402,9 +436,7 @@ class Runner:
         self._events.append(event)
         key = self._event_key(event)
 
-        # In the coverage set with copies remaining: consume one. (A close
-        # that recurs as coverage consumes its coverage copies first; the
-        # close terminates only once its budget is exhausted.) Budget
+        # In the coverage set with copies remaining: consume one. Budget
         # exhaustion is checked at the burst boundary by ``_on_emission``.
         budget = self._coverage_budget.get(key, 0)
         if self._consumed[key] < budget:
@@ -412,10 +444,10 @@ class Runner:
             self._last_coverage_event = event
             return
 
-        # The close content ends the run (any agent, any time) — once its
-        # coverage copies are consumed (a unique close has none, so fires now).
+        # The close content ends the run (any agent, any time). The close is
+        # excluded from the coverage budget, so a unique close fires here on
+        # first observation.
         if key == self._closing_key:
-            self._close_delivered = True
             self._closed = True
             self._bus.stop()
             return
@@ -598,18 +630,23 @@ def _placeholder_turn(k: ContentKey) -> DecodedTurn:
 
 def run(
     decoded: Sequence[DecodedTurn],
-    trainer_factory: ActorFactory,
-    trainee_factory: ActorFactory,
+    trainer_factory: ActorFactory | None,
+    trainee_factory: ActorFactory | None,
     *,
     expected_groundings: Sequence[DecodedTurn] = (),
     on_divergence: str = "fail",
+    trainer: Actor | None = None,
+    trainee: Actor | None = None,
 ) -> Runner:
     """Construct a :class:`Runner` for ``decoded``.
 
     ``trainer_factory`` / ``trainee_factory`` are callables ``(sink) -> Actor``:
     the runner builds the bus-wired sink and constructs each actor with it.
-    ``expected_groundings`` are the decoded ``events`` the runner verifies
-    white-box against K's grounding observations. The caller calls
+    Alternatively pass pre-built ``trainer`` / ``trainee`` instances (for run
+    sequencing: the same instances persist across runs and are re-bound to
+    each run's bus). ``expected_groundings`` are the decoded ``events`` the
+    runner verifies white-box against K's grounding observations. The caller
+    calls
     :meth:`Runner.run` to drive.
     """
     return Runner(
@@ -618,4 +655,6 @@ def run(
         trainee_factory,
         expected_groundings=expected_groundings,
         on_divergence=on_divergence,
+        trainer=trainer,
+        trainee=trainee,
     )

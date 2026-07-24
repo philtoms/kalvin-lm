@@ -52,6 +52,15 @@ class Actor:
         """The role this actor emits on its events (the routing key)."""
         return self._role
 
+    def _bind_sink(self, sink: EventSink) -> None:
+        """Re-bind the publish sink (for run sequencing).
+
+        A run sequence shares the same actor instances across runs; each run
+        owns its own bus, so the runner re-binds each shared actor's sink to
+        the new bus-wired sink before driving the run.
+        """
+        self._sink = sink
+
     def next_events(
         self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
@@ -76,11 +85,13 @@ class Actor:
 class _TableActor(Actor):
     """Default actor: answers each incoming event with its next row.
 
-    Holds the decoded table, a ``role`` label, and a cursor. On the opening
-    seed (an empty burst) it emits its opening contiguous same-role run. On a
-    reply burst of N events it emits one response row per incoming event.
-    Each response row's ``query`` is the corresponding incoming event's
-    ``proposal``; each seed row's ``query`` is its own turn.
+    Holds the decoded table, a ``role`` label, and a cursor. Reactive only:
+    it never opens (the runner delivers the opening row to the opposite
+    role). If this actor plays the opening role, its cursor starts past the
+    opening same-role prefix — those rows were delivered by the runner, so
+    the actor must not re-emit them. On a reply burst of N events it emits
+    one response row per incoming event; each response row's ``query`` is the
+    corresponding incoming event's ``proposal``.
     """
 
     def __init__(
@@ -93,27 +104,24 @@ class _TableActor(Actor):
     ) -> None:
         super().__init__(role=role, sink=sink)
         self._table: tuple[DecodedTurn, ...] = tuple(table)
-        self._cursor = -1
         self._kind = kind
+        # If this actor plays the opening role, skip the opening same-role
+        # prefix — the runner already delivered it to the opposite role.
+        # The recipient role starts at -1 and finds its first row naturally.
+        if table and table[0].role == role:
+            i = 0
+            while i < len(table) and table[i].role == role:
+                i += 1
+            self._cursor = i - 1
+        else:
+            self._cursor = -1
 
     def next_events(
         self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
-        if not incoming:
-            # Opening seed: emit the opening contiguous same-role run.
-            i = self._cursor + 1
-            while i < len(self._table) and self._table[i].role != self._role:
-                i += 1
-            start = i
-            while i < len(self._table) and self._table[i].role == self._role:
-                turn = self._table[i]
-                yield RationaliseEvent(
-                    kind=self._kind, query=turn.value, proposal=turn.value,
-                    role=self._role,
-                )
-                i += 1
-            self._cursor = i - 1 if i > start else self._cursor
-            return
+        assert incoming, (
+            "a table actor never opens; the runner delivers the opening row"
+        )
         # Reply: answer each incoming event with the next same-role row.
         for event in incoming:
             yield from self._emit_row(query=event.proposal)
@@ -155,12 +163,11 @@ class ScriptTrainee(_TableActor):
 class SynthesizingTrainer(Actor):
     """A trainer that synthesises each turn from the compiled script.
 
-    Drop-in for :class:`TableTrainer`. On the opening seed (an empty incoming
-    burst) it emits the current primary at S2 (R1) and advances, so a
-    multi-script file opens each script's own primary in turn. On a reply (a
-    non-empty burst) it delegates to :func:`synthesize` (R2/R3) once per
-    incoming event — a real trainee may emit a burst of several asks, and the
-    trainer answers each rather than only the last.
+    Drop-in for :class:`TableTrainer`. Reactive only — it never opens (the
+    runner delivers the opening row to K). On a reply burst it delegates to
+    :func:`synthesize` (R2/R3) once per incoming event — a real trainee may
+    emit a burst of several asks, and the trainer answers each rather than
+    only the last.
 
     The trainer keeps a lightweight view of what K has grounded: the set of
     signatures emitted at S1 in the dialogue (by either side). An S1 emission
@@ -170,12 +177,12 @@ class SynthesizingTrainer(Actor):
     **Scripted fallback.** A synthesizing trainer is reactive: it derives a
     reply from K's proposal. When K has no substantive proposal (it PASSed),
     the trainer has nothing to synthesise against — yet it may still owe the
-    dialogue a driving move (a close, the next script's opening) that has no
-    structural derivation from K's state. In that case the decoded ``table``
-    supplies the next T proposal: the earliest T coverage row not yet emitted.
-    This is a scoped exception to script-blindness — synthesis drives every
-    real exchange; the script steps in only for the trainer's driving moves.
-    Without a ``table`` the trainer PASSes back (the original behaviour).
+    dialogue a driving move (e.g. a close) that has no structural derivation
+    from K's state. In that case the decoded ``table`` supplies the next T
+    proposal: the earliest T coverage row not yet emitted. This is a scoped
+    exception to script-blindness — synthesis drives every real exchange; the
+    script steps in only for those driving moves. Without a ``table`` the
+    trainer PASSes back.
     """
 
     def __init__(
@@ -214,18 +221,9 @@ class SynthesizingTrainer(Actor):
             if event.proposal.significance == SIG_S1:
                 self._grounded.add(event.proposal.kline.signature)
                 self._grounded.update(event.proposal.kline.nodes)
-        if not incoming:
-            # R1 — open the current script's primary at S2, then advance.
-            primary = self._primaries[self._primary_index]
-            self._primary_index = min(
-                self._primary_index + 1, len(self._primaries) - 1
-            )
-            proposal = KValue(primary, SIG_S2)
-            self._mark_covered(proposal)
-            yield RationaliseEvent(
-                kind="frame", query=proposal, proposal=proposal, role="T"
-            )
-            return
+        assert incoming, (
+            "a trainer never opens; the runner delivers the opening row to K"
+        )
         # If K PASSed (no substantive proposal to synthesise against), fall
         # back to the scripted next T proposal — the trainer's driving move.
         if all(is_pass(e) for e in incoming):
@@ -481,25 +479,17 @@ class RationalisingTrainer(Actor):
                 self._grounded.add(event.proposal.kline.signature)
                 self._grounded.update(event.proposal.kline.nodes)
 
-        # Opening seed — the trainer leads. Emit the current primary at S2,
-        # advance, and seed the engine's work-list with the relationship that
-        # primary declares so cogitation can drive from it on later turns.
-        if not incoming:
-            primary = self._primaries[self._primary_index]
-            self._primary_index = min(
-                self._primary_index + 1, len(self._primaries) - 1
-            )
-            proposal = KValue(primary, SIG_S2)
-            self._seed_work_list(primary)
-            event = self._emit(proposal, query=proposal)
-            if event is not None:
-                yield event
-            return
-
-        # If K PASSed, the trainer owes a driving move (a close, the next
-        # script's opening) that has no supervisor derivation — the scripted
-        # fallback is the backstop. Without a table the trainer PASSes back
-        # (mutual PASS — terminal).
+        # The trainer never opens (the runner delivers the opening row to K).
+        # It is reactive: route + cogitate over K's replies, falling back to
+        # the scripted next T row when K PASSes (a driving move with no
+        # supervisor derivation), and escalating to the supervisor when
+        # cogitation has nothing to say.
+        assert incoming, (
+            "a trainer never opens; the runner delivers the opening row to K"
+        )
+        # If K PASSed, the trainer owes a driving move (e.g. a close) that has
+        # no supervisor derivation — the scripted fallback is the backstop.
+        # Without a table the trainer PASSes back (mutual PASS — terminal).
         if all(is_pass(e) for e in incoming):
             fallback = self._next_scripted_t()
             if fallback is not None:
@@ -607,19 +597,6 @@ class RationalisingTrainer(Actor):
         of the trainer's load — this is the baseline for that trajectory.
         """
         return self._supervisor_asks, list(self._supervisor_emissions)
-
-    # -- opening seed -------------------------------------------------------
-
-    def _seed_work_list(self, primary: KLine) -> None:
-        """Seed the engine's work-list with the relationship the primary declares.
-
-        A primary opens as a proposal: the trainer has *asserted* it, not
-        grounded it. Placing it on the work-list lets cogitation treat it as a
-        pending entry the trainee will be asked to recognise — mirroring how a
-        trainee's work-list accumulates incoming S2 proposals.
-        """
-        if primary not in self._state.work_list:
-            self._state.work_list.append(primary)
 
     # -- scripted fallback --------------------------------------------------
 

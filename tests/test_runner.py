@@ -1,18 +1,20 @@
 """Phase 3 — the Runner as a MessageBus subscriber.
 
-Spec: ``@specs/dialogue-driven-training.md`` DDT-5..DDT-22. The runner is a
-coverage-tracking wildcard subscriber over a ``MessageBus`` (the sink +
-relay), plus a driver that seeds the opening and runs the bus until the
-closing is seen (complete) or both actors pass consecutively (a stall:
-incomplete). Actors reply fire-and-forget via the bus; no synchronised
-alternation; anticipation and interjection are first-class.
+Spec: ``@specs/dialogue-driven-training.md``. The runner is a coverage-tracking
+wildcard subscriber over a ``MessageBus`` (the sink + relay), plus a driver
+that **opens the run** by delivering the first row to the opposite role, then
+runs the bus until a terminal condition (the close observed, coverage
+exhausted, or mutual PASS). Actors reply fire-and-forget via the bus; no
+synchronised alternation; anticipation and interjection are first-class.
 
-Every ``accept`` yields at least one proposal (``burst >= 1``, DDT-22): the
-actor base emits a PASS when ``next_events`` yields nothing, and two
-consecutive PASSes end the run as a stall. Tests use a
-:class:`_ScriptedActor` that emits scripted **bursts** of replies (one burst
-per ``accept``), then PASSes once exhausted — modelling one-or-many replies
-per accept with deterministic control over the messy relay.
+**The runner opens; actors never do.** The run's first row (its opening) is
+delivered by the runner to the opposite role. So in these tests the opener's
+bursts (``trainer_bursts`` when the script opens on T) never include the
+opening row — the runner supplies it. Every ``accept`` still yields at least
+one proposal (``burst >= 1``): the actor base emits a PASS when
+``next_events`` yields nothing, and two consecutive PASSes end the run as a
+stall. Tests use a :class:`_ScriptedActor` that emits scripted **bursts** of
+replies (one burst per ``accept``), then PASSes once exhausted.
 """
 
 from __future__ import annotations
@@ -66,14 +68,15 @@ def _bursts(*events: RationaliseEvent) -> list[list[RationaliseEvent]]:
 class _ScriptedActor:
     """An actor that emits scripted bursts of replies across ``accept``.
 
-    Holds a sink (injected at construction, as KAgent holds an adapter). Each
-    ``accept`` consumes the next burst (a list of events) and publishes the
-    whole burst to the sink via ``on_burst`` — modelling one-or-many replies
-    per accept as a single bus payload. When the burst list is exhausted,
-    ``accept`` publishes a single-PASS burst
-    (:func:`~training.dialogue.runner.pass_event`) — the ``burst >= 1``
-    contract (DDT-22): a compliant actor never replies zero. Two consecutive
-    PASSes (both actors exhausted) end the run as a stall.
+    Holds a sink (injected at construction). Each ``accept`` consumes the next
+    burst (a list of events) and publishes the whole burst to the sink via
+    ``on_burst`` — modelling one-or-many replies per accept as a single bus
+    payload. When the burst list is exhausted, ``accept`` publishes a single
+    PASS burst (``burst >= 1``): a compliant actor never replies zero. Two
+    consecutive PASSes (both actors exhausted) end the run as a stall.
+
+    The actor never opens — the runner delivers the opening row — so an
+    opener's bursts list only its *replies*.
     """
 
     def __init__(self, role: str, bursts: list[list[RationaliseEvent]], sink=None):
@@ -109,7 +112,10 @@ def _run(
     *,
     on_divergence: str = "fail",
 ):
-    """Construct actors (via factories) + runner and drive to completion."""
+    """Construct actors (via factories) + runner and drive to completion.
+
+    The opener's bursts exclude the opening row (the runner delivers it).
+    """
     runner = run(
         decoded,
         lambda sink: _ScriptedActor("T", trainer_bursts, sink=sink),
@@ -123,13 +129,14 @@ def _run(
 
 
 def test_runner_drives_the_exchange_via_bus():
-    """The runner drives the bus: the seed fires, replies relay, and the run
-    terminates. It is not a judge — assert coverage (displacement) and that the
-    exchange ran, not a verdict."""
+    """The runner drives the bus: the opening is delivered, replies relay,
+    and the run terminates. It is not a judge — assert coverage (displacement)
+    and that the exchange ran, not a verdict."""
+    # Opens on T(1,1); runner delivers it to K. T then replies with the close.
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
     assert len(res.events) >= 2  # the exchange ran
@@ -152,11 +159,11 @@ def test_runner_holds_no_actor_coupling_state():
 
 def test_coverage_row_emission_marks_covered():
     """An emission matching a coverage row marks it covered; full coverage is
-    zero displacement."""
+    zero displacement. The opening T(1,1) is delivered by the runner."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 3, 3), _ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
     assert res.uncovered == []
@@ -170,7 +177,7 @@ def test_duplicate_content_collapses_idempotently():
     )
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 3, 3), _ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
     assert res.unmatched == []
@@ -179,14 +186,17 @@ def test_duplicate_content_collapses_idempotently():
 def test_role_mismatch_is_immediate_divergence():
     """Matching is same-role; a K emission whose content matches a T-only row
     has a different (role,kline,sig) key → immediate divergence."""
-    decoded = _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9))
+    # Opens on T(1,1) (a T coverage row). K replies with K(1,1) — same kline
+    # but role K, which matches no K coverage row → unmatched divergence.
+    decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
-        trainee_bursts=_bursts(_ev("K", 3, 3)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
+        trainee_bursts=_bursts(_ev("K", 1, 1), _ev("K", 2, 2)),
         on_divergence="accept",
     )
     assert len(res.unmatched) == 1
+    assert res.unmatched[0].role == "K"
 
 
 # ── DDT-9: divergence policy ──────────────────────────────────────────────
@@ -198,7 +208,7 @@ def test_divergence_fail_raises_on_caller_thread():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner = run(
         decoded,
-        lambda sink: _ScriptedActor("T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink),
+        lambda sink: _ScriptedActor("T", _bursts(_ev("T", 9, 9)), sink=sink),
         lambda sink: _ScriptedActor("K", _bursts(_ev("K", 99, 99)), sink=sink),  # nothing matches
         on_divergence="fail",
     )
@@ -214,7 +224,7 @@ def test_divergence_accept_records_and_continues():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         # K emits off-script K(99) then legit K(2,2).
         trainee_bursts=_bursts(_ev("K", 99, 99), _ev("K", 2, 2)),
         on_divergence="accept",
@@ -234,7 +244,7 @@ def test_coverage_budget_counts_duplicate_rows():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 3, 3), _ev("T", 9, 9)),
         # K emits its budget of two K(2,2) copies — exactly authored.
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
@@ -250,7 +260,7 @@ def test_over_budget_emission_is_exhaustion_divergence():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         # K emits three K(2,2) in one burst — one more than the budget of two.
         trainee_bursts=[[_ev("K", 2, 2), _ev("K", 2, 2), _ev("K", 2, 2)]],
         on_divergence="accept",
@@ -266,7 +276,7 @@ def test_exhaustion_divergence_stops_immediately_under_accept():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         # K emits FOUR K(2,2) in one burst — two over budget. Only the first
         # over-budget copy is recorded; the run halts there.
         trainee_bursts=[
@@ -285,7 +295,7 @@ def test_unmatched_divergence_stops_immediately_under_accept():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         # K emits two off-table K(99) in one burst; only the first is recorded.
         trainee_bursts=[[_ev("K", 99, 99), _ev("K", 99, 99)]],
         on_divergence="accept",
@@ -300,9 +310,7 @@ def test_exhaustion_divergence_under_fail_carries_reason():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner = run(
         decoded,
-        lambda sink: _ScriptedActor(
-            "T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink
-        ),
+        lambda sink: _ScriptedActor("T", _bursts(_ev("T", 9, 9)), sink=sink),
         # K emits K(2,2) twice in one burst — budget is one.
         lambda sink: _ScriptedActor(
             "K", [[_ev("K", 2, 2), _ev("K", 2, 2)]], sink=sink
@@ -319,9 +327,7 @@ def test_unmatched_divergence_reason_is_unmatched():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner = run(
         decoded,
-        lambda sink: _ScriptedActor(
-            "T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink
-        ),
+        lambda sink: _ScriptedActor("T", _bursts(_ev("T", 9, 9)), sink=sink),
         lambda sink: _ScriptedActor("K", _bursts(_ev("K", 99, 99)), sink=sink),
         on_divergence="fail",
     )
@@ -336,11 +342,11 @@ def test_last_coverage_event_recorded_on_result():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 3, 3), _ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
     # The last coverage-consuming emission is T(3,3) (the close T(9,9) is not
-    # a coverage match).
+    # a coverage match; the opening T(1,1) is delivered by the runner).
     assert res.last_coverage_event is not None
     assert res.last_coverage_event.proposal.kline.signature == 3
 
@@ -351,9 +357,7 @@ def test_last_coverage_event_carried_on_exhaustion_divergence():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2)], ("T", 9, 9))
     runner = run(
         decoded,
-        lambda sink: _ScriptedActor(
-            "T", _bursts(_ev("T", 1, 1), _ev("T", 9, 9)), sink=sink
-        ),
+        lambda sink: _ScriptedActor("T", _bursts(_ev("T", 9, 9)), sink=sink),
         # K emits three K(2,2) in one burst; the third exhausts the budget.
         lambda sink: _ScriptedActor(
             "K", [[_ev("K", 2, 2), _ev("K", 2, 2), _ev("K", 2, 2)]], sink=sink
@@ -367,22 +371,26 @@ def test_last_coverage_event_carried_on_exhaustion_divergence():
 
 
 def test_last_coverage_event_none_when_nothing_covered():
-    """When no coverage content was ever matched, last_coverage_event is None.
-    The trainer diverges on its very first (opening) emission, so no coverage
-    allowance is ever consumed."""
+    """When no coverage content beyond the opening is ever matched,
+    last_coverage_event is the runner-delivered opening itself (the only
+    coverage match). K diverges on its first reply, so no further coverage
+    allowance is consumed."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner = run(
         decoded,
-        # T opens with off-table content T(99,99) — diverges immediately.
-        lambda sink: _ScriptedActor("T", _bursts(_ev("T", 99, 99)), sink=sink),
-        lambda sink: _ScriptedActor("K", [], sink=sink),
+        # T never replies with substance.
+        lambda sink: _ScriptedActor("T", [], sink=sink),
+        # K's first reply is off-table K(99,99) — diverges immediately.
+        lambda sink: _ScriptedActor("K", _bursts(_ev("K", 99, 99)), sink=sink),
         on_divergence="accept",
     )
     res = runner.run()
-    assert res.last_coverage_event is None
+    # The opening T(1,1) is the sole coverage match.
+    assert res.last_coverage_event is not None
+    assert res.last_coverage_event.proposal.kline.signature == 1
 
 
-# ── Close: de-positional, any agent, any time ─────────────────────────────
+# ── Close: any agent, any time ────────────────────────────────────────────
 
 
 def test_close_emission_terminates_run():
@@ -390,21 +398,22 @@ def test_close_emission_terminates_run():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
     assert res.uncovered == []
 
 
 def test_close_can_come_first():
-    """The close is de-positional: emitting it first (anticipation) terminates
-    the run immediately. The displacement (uncovered coverage rows) is the
-    signal of how much of the exchange was skipped — not a verdict."""
+    """The close is de-positional after the opening: T emits it as its first
+    reply (anticipation) and the run terminates immediately. The displacement
+    (uncovered coverage rows) is the signal of how much was skipped — not a
+    verdict."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T emits opening and close in one burst.
-        trainer_bursts=[[_ev("T", 1, 1), _ev("T", 9, 9)]],
+        # T replies with the close at once (anticipation).
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         trainee_bursts=[],
     )
     uncovered_sigs = {t.value.kline.signature for t in res.uncovered}
@@ -412,14 +421,14 @@ def test_close_can_come_first():
 
 
 def test_entry_exhaustion_terminates_run():
-    """When the coverage set is fully covered, the run terminates (entry
+    """When the coverage set is fully covered, the run terminates (coverage
     exhaustion) even without the close being emitted. The runner is not a
     judge: close-vs-exhaustion is not an important distinction."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens (covers T(1,1)); never emits the close.
-        trainer_bursts=_bursts(_ev("T", 1, 1)),
+        # T never emits the close.
+        trainer_bursts=[],
         # K covers K(2,2). Now every coverage row is covered → exhaustion.
         trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
@@ -433,8 +442,8 @@ def test_mutual_pass_terminates_with_displacement():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens, then exhausts → PASS.
-        trainer_bursts=_bursts(_ev("T", 1, 1)),
+        # T exhausts at once → PASS.
+        trainer_bursts=[],
         # K exhausts immediately → PASS.
         trainee_bursts=[],
     )
@@ -448,13 +457,14 @@ def test_emission_after_terminal_is_not_divergence():
     terminal emission and enqueue another *before* the wildcard marks the run
     closed. Such a trailing emission must NOT be treated as divergence.
     Regression for the SynthesizingTrainer-vs-TableTrainee run."""
-    # A T coverage row (T 3,3) lets T's 2nd accept match; T's 3rd accept reacts
-    # to the K close (9,9) by emitting an off-table T(7,7) "ratification".
+    # Opens on T(1,1). K's reply K(9,9) is the close. T reacts to that close
+    # by emitting an off-table T(7,7) "ratification" — a trailing emission
+    # after terminal that must not diverge.
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("K", 9, 9))
     runner = run(
         decoded,
         lambda sink: _ScriptedActor(
-            "T", _bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 7, 7)), sink=sink
+            "T", _bursts(_ev("T", 3, 3), _ev("T", 7, 7)), sink=sink
         ),
         lambda sink: _ScriptedActor(
             "K", _bursts(_ev("K", 2, 2), _ev("K", 9, 9)), sink=sink
@@ -474,7 +484,7 @@ def test_anticipation_permitted_and_unflagged():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 3, 3), _ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
     assert res.unmatched == []
@@ -488,7 +498,7 @@ def test_interjection_within_budget_is_permitted():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         # K interjects K(2,2) once — within its budget of one.
         trainee_bursts=_bursts(_ev("K", 2, 2)),
     )
@@ -501,14 +511,15 @@ def test_interjection_within_budget_is_permitted():
 def test_pass_then_burst_relayed_correctly():
     """An actor may reply one-or-many per accept; the bus relays each. Here the
     trainee PASSes (an empty accept yields a PASS under ``burst >= 1``), and the
-    trainer emits the whole exchange in a single accept burst — terminating
-    the run without the trainee ever emitting substance (extreme trainer
+    trainer emits coverage and close in a single reply burst — terminating the
+    run without the trainee ever emitting substance (extreme trainer
     autonomy)."""
+    # Opens on T(1,1); K PASSes; T replies with T(3,3) coverage + T(9,9) close.
     decoded = _decoded(("T", 1, 1), [("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T emits everything in its opening accept: open, coverage, close.
-        trainer_bursts=[[_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)]],
+        # T replies with coverage and close in one burst.
+        trainer_bursts=[[_ev("T", 3, 3), _ev("T", 9, 9)]],
         trainee_bursts=[[]],
     )
     assert res.uncovered == []  # the coverage row was traversed
@@ -524,7 +535,7 @@ def test_pass_is_not_coverage_or_divergence():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         # K PASSes once (empty accept), then covers the coverage row.
         trainee_bursts=[[], _bursts(_ev("K", 2, 2))[0]],
     )
@@ -542,8 +553,8 @@ def test_mutual_pass_terminates():
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens (sig 1), then exhausts → PASS.
-        trainer_bursts=_bursts(_ev("T", 1, 1)),
+        # T exhausts at once → PASS.
+        trainer_bursts=[],
         # K exhausts immediately → PASS.
         trainee_bursts=[],
     )
@@ -569,24 +580,26 @@ def test_pass_event_builder_has_sentinel_signature_at_s1():
 
 
 def test_result_events_are_arrival_ordered():
-    """events are in arrival order (bus delivery order); the seed emission first."""
+    """events are in arrival order (bus delivery order); the opening (delivered
+    by the runner) first."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        trainer_bursts=_bursts(_ev("T", 1, 1), _ev("T", 3, 3), _ev("T", 9, 9)),
+        trainer_bursts=_bursts(_ev("T", 3, 3), _ev("T", 9, 9)),
         trainee_bursts=_bursts(_ev("K", 2, 2), _ev("K", 2, 2)),
     )
     sigs = [e.proposal.kline.signature for e in res.events]
-    assert sigs[0] == 1  # the seed emission first
+    assert sigs[0] == 1  # the opening, delivered by the runner, first
 
 
 def test_result_uncovered_reports_displacement():
-    """uncovered lists the coverage rows never emitted — the displacement."""
+    """uncovered lists the coverage rows never emitted — the displacement.
+    T closes at once (anticipation); the coverage rows are never traversed."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("T", 3, 3)], ("T", 9, 9))
     runner, res = _run(
         decoded,
-        # T opens and closes immediately; coverage rows never traversed.
-        trainer_bursts=[[_ev("T", 1, 1), _ev("T", 9, 9)]],
+        # T replies with the close at once.
+        trainer_bursts=_bursts(_ev("T", 9, 9)),
         trainee_bursts=[],
     )
     uncovered_sigs = {t.value.kline.signature for t in res.uncovered}

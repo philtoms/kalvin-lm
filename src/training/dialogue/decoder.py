@@ -101,6 +101,11 @@ class DialogueScript:
     source: str
     turns: tuple[Turn, ...]
     events: tuple[Turn, ...] = ()
+    # ``priors`` (optional): other script files run **before** this script's
+    # own run, as a sequence of independent runs against the same actor
+    # instances. Each is a path to a script file (resolved and decoded by the
+    # sequencer, not merged in here).
+    priors: tuple[str, ...] = ()
     run_config: RunConfig | None = None
 
     @property
@@ -490,17 +495,14 @@ def _validate_close(decoded: list[DecodedTurn]) -> None:
 
 
 def _validate_run(decoded: list[DecodedTurn]) -> None:
-    """Validate the dialogue-mode invariants.
+    """Validate the dialogue-mode invariants for a single run.
 
-    The close need not be a unique content: it may recur as a coverage row,
-    in which case its coverage copies are consumed first and the run closes
-    on the post-exhaustion emission (see runner ``_observe``). The only
-    requirement is that a close is present (a script needs at least two
-    turns: a coverage set and a close).
+    A run needs at least two turns (an opening and a close). The close is the
+    run's terminal content (unique within the run).
     """
     if len(decoded) < 2:
         raise DecodeError(
-            "dialogue-mode script needs at least two turns (a coverage set and a close)"
+            "dialogue-mode script needs at least two turns (an opening and a close)"
         )
 
 
@@ -518,54 +520,37 @@ def _run_config_from_dict(raw: dict) -> RunConfig:
     return RunConfig(on_divergence=on_divergence)
 
 
-def _load_table_file(path: Path) -> DialogueScript:
-    """Load a :class:`DialogueTable` from a JSON file (used for ``priors``).
+def load_script_file(path: str | Path) -> DialogueScript:
+    """Load a :class:`DialogueScript` from a JSON file.
 
-    The loaded script's own ``priors`` resolve recursively by :func:`load_table`.
+    Used by the sequencer to resolve each ``priors`` entry (and the target
+    script) independently. The loaded script's own ``priors`` are carried
+    through (a prior may itself have priors), to be sequenced recursively.
     """
+    p = Path(path)
     try:
-        text = path.read_text(encoding="utf-8")
+        text = p.read_text(encoding="utf-8")
     except OSError as exc:
         raise DecodeError(
-            f"dialogue prior script {str(path)!r} could not be read: {exc}"
+            f"dialogue script {str(path)!r} could not be read: {exc}"
         ) from exc
     try:
         raw = json.loads(text)
     except json.JSONDecodeError as exc:
         raise DecodeError(
-            f"dialogue prior script {str(path)!r} is not valid JSON: {exc}"
+            f"dialogue script {str(path)!r} is not valid JSON: {exc}"
         ) from exc
     if not isinstance(raw, dict):
-        raise DecodeError(
-            f"dialogue prior script {str(path)!r} must be a JSON object"
-        )
+        raise DecodeError(f"dialogue script {str(path)!r} must be a JSON object")
     return load_script(raw)
 
 
-def _collapse_to_single_close(turns: tuple[Turn, ...]) -> tuple[Turn, ...]:
-    """Keep only the last ``close`` marker; clear every earlier one.
-
-    A composed multi-file script has a single close; each prior's own
-    ``close:true`` is an intermediate source boundary that becomes an ordinary
-    coverage row. A script with zero or one close is a no-op.
-    """
-    last_close = max(
-        (i for i, t in enumerate(turns) if t.close), default=-1
-    )
-    if last_close < 0:
-        return turns
-    from dataclasses import replace
-
-    return tuple(
-        replace(t, close=False) if (t.close and i != last_close) else t
-        for i, t in enumerate(turns)
-    )
-
-
 def load_script(raw: dict) -> DialogueScript:
-    """Parse a raw ``{source, turns[], run?, priors?}`` dict into a
-    :class:`DialogueTable`. Structural fields are validated for shape here;
-    symbol resolution happens later in :func:`decode`.
+    """Parse a raw ``{source, turns[], run?, events?, priors?}`` dict into a
+    :class:`DialogueScript` for a single run. Structural fields are validated
+    for shape here; symbol resolution happens later in :func:`decode`.
+    ``priors`` are carried as a path list (a sequence of runs to drive before
+    this one), not merged into ``turns``.
     """
     if "source" not in raw or not isinstance(raw["source"], str):
         raise DecodeError("dialogue script missing string 'source'")
@@ -602,25 +587,20 @@ def load_script(raw: dict) -> DialogueScript:
         events = tuple(_turn_from_dict(t) for t in events_raw)
     else:
         events = ()
-    # ``priors`` (optional): other script files whose turns run before this
-    # script's own, in list order. Each resolves its own ``source``; only its
-    # turns (and events) are carried in.
+    # ``priors`` (optional): other script files run before this script's
+    # own run, in list order, as a sequence of independent runs (each
+    # decoded and driven separately against the same actor instances). Not
+    # merged into ``turns``.
     priors_raw = raw.get("priors")
     if priors_raw is not None:
         if not isinstance(priors_raw, list) or not all(
             isinstance(p, str) for p in priors_raw
         ):
             raise DecodeError("'priors' must be a list of script-file path strings")
-        prior_turns: list[Turn] = []
-        prior_events: list[Turn] = []
-        for prior_path in priors_raw:
-            prior_table = _load_table_file(Path(prior_path))
-            prior_turns.extend(prior_table.turns)
-            prior_events.extend(prior_table.events)
-        turns = tuple(prior_turns) + turns
-        events = tuple(prior_events) + events
-    # Collapse to a single close: in the merged list only the final
-    # ``close:true`` is the run's terminal content; earlier ones become
-    # ordinary coverage rows.
-    turns = _collapse_to_single_close(turns)
-    return DialogueScript(source=source, turns=turns, events=events, run_config=run_config)
+        priors = tuple(priors_raw)
+    else:
+        priors = ()
+    return DialogueScript(
+        source=source, turns=turns, events=events, priors=priors,
+        run_config=run_config,
+    )

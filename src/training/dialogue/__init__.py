@@ -19,6 +19,7 @@ from training.dialogue.decoder import (
     decode,
     decode_events,
     load_script,
+    load_script_file,
 )
 from training.dialogue.actors import (
     RationalisingTrainee,
@@ -50,5 +51,6 @@ __all__ = [
     "decode",
     "decode_events",
     "load_script",
+    "load_script_file",
     "run",
 ]
