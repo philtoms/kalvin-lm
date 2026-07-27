@@ -134,6 +134,13 @@ class _ScriptedFallback:
     def _init_fallback(self, table: Sequence[DecodedTurn] | None) -> None:
         self._table = tuple(table) if table else ()
         self._t_covered = Counter()
+        # The runner delivers the opening same-role prefix (T opens most runs);
+        # those rows are already covered, so the fallback skips them. Matches
+        # ``_TableActor`` starting its cursor past the opening prefix.
+        for turn in self._table:
+            if turn.role != "T":
+                break
+            self._t_covered[turn_content_key(turn)] += 1
 
     def _next_scripted_t(self) -> KValue | None:
         budget: Counter[tuple] = Counter(

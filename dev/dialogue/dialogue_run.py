@@ -479,10 +479,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # The actor factories are per-run (each run has its own decoded table and
     # compiled source), but the rationaliser *state* is shared across the
-    # sequence — a prior run's grounded knowledge feeds the next. Table actors
+    # sequence — a prior run's grounded knowledge feeds the next. When no
+    # --load snapshot was supplied, each role still gets one fresh
+    # RationaliserState carried across every run (the spec's "same instances
+    # persist"); only an explicit --load seeds it from disk. Table actors
     # carry no state, so they are fresh per run.
-    shared_t_state = prior_state
-    shared_k_state = prior_state
+    shared_t_state = prior_state if prior_state is not None else RationaliserState()
+    shared_k_state = prior_state if prior_state is not None else RationaliserState()
 
     def _trainer_factory(run_decoded, run_compiled):
         if args.synthesize:
