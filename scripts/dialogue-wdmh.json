@@ -15,7 +15,7 @@
       "signature": "WDMH",
       "nodes": [
         "Mary",
-        "had",
+        "DH",
         "what"
       ],
       "significance": "S2",
@@ -141,8 +141,8 @@
       "op": "CANONIZES",
       "signature": "WDMH",
       "nodes": [
-        "had",
         "Mary",
+        "had",
         "a",
         "little",
         "lamb"
@@ -151,7 +151,7 @@
       "role": "K",
       "turn": 48,
       "role_turn": 25,
-      "notes": "Misfit proposal: K substitutes had for 'did have', 'a little lamb' for what. Node order is the order K actually synthesises (had leads)."
+      "notes": "Misfit proposal: K substitutes 'did have' for had, 'a little lamb' for what. Node order matches the entry (WDMH:[Mary, had, what]) and T's ratifying close (turn 49)."
     },
     {
       "op": "CANONIZES",

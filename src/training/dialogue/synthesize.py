@@ -60,7 +60,7 @@ def _reply_identity(
     """
     candidates = decompositions.get(signature, [])
 
-    canon = _first_canon(candidates, signifier)
+    canon = _best_canon(candidates, signifier, grounded)
     if canon is not None:
         significance = SIG_S1 if all(n in grounded for n in canon.nodes) else SIG_S2
         return KValue(canon, significance)
@@ -76,11 +76,24 @@ def _reply_identity(
     return KValue(KLine(signature, [signature]), SIG_S1)
 
 
-def _first_canon(candidates: list[KLine], signifier: KSignifier) -> KLine | None:
+def _best_canon(
+    candidates: list[KLine],
+    signifier: KSignifier,
+    grounded: set[int],
+) -> KLine | None:
+    """The canon decomposition closest to K's grounding: most nodes already in
+    ``grounded`` (the flattest form K can now ratify), ties broken by compiled
+    order. With a single canon this is the first canon."""
+    best = None
+    best_score = -1
     for kline in candidates:
-        if is_canon(kline, signifier):
-            return kline
-    return None
+        if not is_canon(kline, signifier):
+            continue
+        score = sum(1 for n in kline.nodes if n in grounded)
+        if score > best_score:
+            best = kline
+            best_score = score
+    return best
 
 
 def _first_connotes(candidates: list[KLine]) -> KLine | None:

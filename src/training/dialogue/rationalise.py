@@ -22,7 +22,7 @@ from kalvin.expand import (
     boundaries,
     structural_significance,
 )
-from kalvin.kline import KLine, is_canon, is_identity, is_misfit
+from kalvin.kline import COMPOUND_TOKEN, KLine, is_canon, is_identity, is_misfit
 from kalvin.kvalue import KValue
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -590,7 +590,13 @@ class _Turn:
         leftovers are passed through. Greedy is insufficient (a larger kline may
         block two smaller ones covering more), so this searches for a maximal
         disjoint cover.
+
+        ``COMPOUND_TOKEN`` is a structural marker (the compound-word system
+        flag), not a real node: two compound identities share it, so leaving it
+        in ``failed`` would make them falsely overlap and block one another. It
+        is stripped before covering and is never returned.
         """
+        failed = [n for n in failed if n != COMPOUND_TOKEN]
         failed_set = set(failed)
         covers: list[tuple[tuple[int, ...], int]] = []
         seen_sigs: set[int] = set()
@@ -598,19 +604,34 @@ class _Turn:
             for kline in bucket:
                 if kline.signature in seen_sigs or not kline.nodes:
                     continue
-                if set(kline.nodes).issubset(failed_set):
-                    covers.append((tuple(kline.nodes), kline.signature))
+                # Effective nodes carry no COMPOUND_TOKEN (see above); the
+                # disjoint-cover search and the cover accounting both use this.
+                effective = tuple(n for n in kline.nodes if n != COMPOUND_TOKEN)
+                if set(effective).issubset(failed_set):
+                    covers.append((effective, kline.signature))
                     seen_sigs.add(kline.signature)
 
         best = self._max_disjoint_cover(covers)
         if not best:
             return list(failed)
-        covered: set[int] = set()
-        resolved: list[int] = []
+        # Map each covered node to its cover's signature, then walk ``failed``
+        # in order so the output preserves the entry's node order (the order
+        # nodes appeared in the expansion) rather than the cover-emission order.
+        # A cover's signature is emitted once, at the position of its first
+        # covered node; subsequent covered nodes of the same cover are dropped.
+        node_to_sig: dict[int, int] = {}
         for canon_nodes, canon_sig in best:
-            resolved.append(canon_sig)
-            covered.update(canon_nodes)
-        resolved.extend(n for n in failed if n not in covered)
+            for n in canon_nodes:
+                node_to_sig[n] = canon_sig
+        resolved: list[int] = []
+        emitted_sigs: set[int] = set()
+        for n in failed:
+            sig = node_to_sig.get(n)
+            if sig is None:
+                resolved.append(n)          # leftover (uncoverable)
+            elif sig not in emitted_sigs:
+                resolved.append(sig)         # first node of this cover
+                emitted_sigs.add(sig)
         return resolved
 
     @staticmethod
