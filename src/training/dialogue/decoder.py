@@ -1,9 +1,7 @@
-"""Single-stage dialogue-script decoder.
+"""Single-stage dialogue-script decoder — see @specs/dialogue-driven-training.md §Decode.
 
-``decode(script)`` turns a :class:`DialogueTable` into a flat ordered list of
-:class:`DecodedTurn`, resolving every symbolic label against ``script``. The
-training loop receives the decoded list.
-"""
+``decode(script)`` turns a :class:`DialogueScript` into a flat ordered
+``list[DecodedTurn]``, resolving every symbolic label against ``script.source``."""
 
 from __future__ import annotations
 
@@ -22,11 +20,7 @@ if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
     from kalvin.nlp_tokenizer import NLPTokenizer
 
-# ── Significance band lookup ──────────────────────────────────────────────
-#
-# Significance is attached by band lookup ("S1"→SIG_S1, …). Independent of
-# ``op``. These are the same uint64 inverted-distance constants the compiler
-# attaches to compiled entries.
+# Significance by band lookup (independent of ``op``).
 BAND_TO_SIG: dict[str, int] = {
     "S1": SIG_S1,
     "S2": SIG_S2,
@@ -34,32 +28,21 @@ BAND_TO_SIG: dict[str, int] = {
     "S4": SIG_S4,
 }
 
-Role = Literal["T", "K"]  # a turn's role: trainer (T) or trainee (K)
-
-# The runner's divergence policy. Lives on :class:`RunConfig`, carried on
-# the script's optional ``run`` section.
+Role = Literal["T", "K"]  # trainer (T) or trainee (K)
 OnDivergence = Literal["fail", "accept"]
-
-# The script's closed op vocabulary. An unknown op is a decode error.
 DIALOGUE_OPS = frozenset({"COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY"})
 
 
 class DecodeError(Exception):
-    """A turn could not be decoded: an unknown op, an unresolved symbol, an
-    ambiguous/missing canon node-list match, or a band typo."""
+    """A turn could not be decoded (unknown op, unresolved symbol, bad band, …)."""
 
 # ── Typed script structures ────────────────────────────────────────────────
 
 
 @dataclass(frozen=True)
 class Turn:
-    """One row of the dialogue script.
-
-    Structural turns (those carrying ``op``) decode to a :class:`DecodedTurn`.
-    Annotation-only turns (``notes`` but no ``op``) are dropped at decode time.
-    ``close`` marks a turn as a script close (a boundary marker); the runner
-    reads it to know when a script ends.
-    """
+    """One row of the dialogue script. Annotation-only turns (``notes``, no
+    ``op``) are dropped at decode. ``close`` marks the run's terminal row."""
 
     role: Role
     op: str | None  # None on annotation-only turns
@@ -89,14 +72,9 @@ class RunConfig:
 
 @dataclass(frozen=True)
 class DialogueScript:
-    """The source artifact for a lesson.
-
-    ``source`` is the source of truth for kline structure; ``turns`` is the
-    exact T/K exchange. ``events`` (optional, same row shape as ``turns``)
-    holds expected K groundings the runner verifies white-box, separately
-    from the dialogue coverage check. ``run_config`` carries the runner
-    modifiers (``None`` when no ``run`` section is present).
-    """
+    """``source`` is the source of truth for kline structure; ``turns`` is the
+    exchange; ``events`` (optional) holds expected K groundings; ``priors``
+    (optional) are script files run before this one as a run sequence."""
 
     source: str
     turns: tuple[Turn, ...]
@@ -116,11 +94,7 @@ class DialogueScript:
 
 @dataclass(frozen=True)
 class DecodedTurn:
-    """A turn resolved to a submittable structure.
-
-    ``role`` and ``op`` are carried alongside the KValue as independent axes.
-    ``close`` is carried through from :class:`Turn.close` for the runner.
-    """
+    """A turn resolved to a :class:`KValue`, carrying ``role``/``op``/``close``."""
 
     role: Role
     op: str
@@ -137,8 +111,7 @@ class DecodedTurn:
 
 @dataclass(frozen=True)
 class _ResolvedScript:
-    """Compiled-source indices built once at decode time: canon-by-label,
-    relation-by-label, compound-by-label, and a general label→KLine index."""
+    """Compiled-source indices built at decode time."""
 
     canon_by_label: dict[str, KLine] = field(default_factory=dict)
     relation_by_label: dict[str, KLine] = field(default_factory=dict)
@@ -159,80 +132,27 @@ def _resolve_script(
     for e in entries:
         kl = e.kline
         d = kl.dbg
-        # Compiled entries from ``compile_source(..., dev=True)`` always carry
-        # ``dbg`` (op/label/decoded provenance). An entry without it is a
-        # compiler invariant violation, not a decode error.
         if d is None:
             raise DecodeError(
                 f"compiled entry 0x{kl.signature:x} has no debug info "
                 "— dev compile invariant broken"
             )
-        # Canon-by-label: the canonical signature for this label. Populated for
-        # any compiled canon (COUNTERSIGNS canons like MHALL, and CANONIZES
-        # canons like Det) so both node and signature resolution can prefer the
-        # canon when a label names one.
+        # Canon-by-label: populated for any compiled canon (COUNTERSIGNS or
+        # CANONIZES with nodes) so node/signature resolution can prefer it.
         if d.op in ("CANONIZES", "COUNTERSIGNS") and kl.nodes and d.label:
             resolved.canon_by_label.setdefault(d.label, kl)
-        # Compound-by-label: the §11.3 compound-word identity for this label
-        # (the CANONIZES whose nodes include COMPOUND_TOKEN). A label may have
-        # several CANONIZES (a compound identity plus a block-canon reference);
-        # this index holds the compound one specifically, so the decoder can
-        # recognise a compound signature without confusing it with a same-label
-        # block-canon misfit.
-        if (
-            d.op == "CANONIZES"
-            and d.label
-            and COMPOUND_TOKEN in kl.nodes
-        ):
+        # Compound-by-label: the compound-word identity (CANONIZES whose nodes
+        # include COMPOUND_TOKEN), held separately from a same-label block-canon.
+        if d.op == "CANONIZES" and d.label and COMPOUND_TOKEN in kl.nodes:
             resolved.compound_by_label.setdefault(d.label, kl)
         if d.op in ("COUNTERSIGNS", "CONNOTES", "DENOTES") and d.label:
-            # Relation-by-label: carries the relation's structural dbg.op, so a
-            # constructed-relation turn reports e.g. COUNTERSIGNS, not the
-            # CANONIZES of a canon that shares the label.
             resolved.relation_by_label.setdefault(d.label, kl)
-        # Label index: compound/atom dbg.label, and subword atom dbg.decoded.
+        # Label index: atom/compound dbg.label, and subword dbg.decoded.
         if d.label:
             resolved.labels.setdefault(d.label, kl)
         if d.decoded:
             resolved.labels.setdefault(d.decoded, kl)
     return entries, resolved
-
-
-def primaries_from_source(
-    source: str,
-    *,
-    tokenizer: NLPTokenizer | None = None,
-    signifier: KSignifier | None = None,
-) -> list[KLine]:
-    """The ordered source primaries (one per top-level KScript scope).
-
-    Each primary is the kline a trainer opens (R1) for that source. Used by a
-    multi-script trainer to open successive scripts after each close.
-    """
-    from ks.lexer import Lexer
-    from ks.parser import OperatorScope, Parser
-
-    kfile = Parser(Lexer(source).tokenize()).parse()
-    scope_labels = [
-        c.sig.id for c in kfile.constructs if isinstance(c, OperatorScope)
-    ]
-    if not scope_labels:
-        return []
-    entries = compile_source(source, tokenizer=tokenizer, signifier=signifier, dev=True)
-    first_by_label: dict[str, KLine] = {}
-    for e in entries:
-        lbl = e.kline.dbg.label if e.kline.dbg else None
-        if lbl and lbl not in first_by_label:
-            first_by_label[lbl] = e.kline
-    primaries: list[KLine] = []
-    for label in scope_labels:
-        kl = first_by_label.get(label)
-        if kl is None:
-            raise DecodeError(
-                f"source primary {label!r} has no compiled entry — cannot resolve"
-            )
-        primaries.append(kl)
-    return primaries
 
 
 # ── The single-stage decode ──────────────────────────────────────────────
@@ -267,87 +187,60 @@ def _resolve_kline(
     nodes: tuple[str, ...],
     resolved: _ResolvedScript,
 ) -> KLine:
-    """Resolve a turn's symbolic ``(op, signature, nodes)`` to a KLine.
-
-    The decoder is a resolver, not a gatekeeper: it builds the kline the turn
-    declares (declared signature verbatim, nodes resolved to canonical
-    signatures) — an author may declare a deliberate misfit. Three branches:
-    CANONIZES, IDENTITY, and constructed relation (CONNOTES/DENOTES/
-    COUNTERSIGNS).
-    """
+    """Build the kline the turn declares — a resolver, not a gatekeeper (an
+    author may declare a deliberate misfit)."""
     if op == "CANONIZES":
-        # Build the kline with the declared signature verbatim; nodes resolved
-        # to their canonical signatures. No signature-consistency check.
         node_sigs = _resolve_node_signatures(nodes, resolved, op="CANONIZES")
-        sig_kl = resolved.canon_by_label.get(signature)
-        if sig_kl is None:
-            sig_kl = resolved.labels.get(signature)
+        sig_kl = resolved.canon_by_label.get(signature) or resolved.labels.get(signature)
         if sig_kl is None:
             raise DecodeError(
                 f"CANONIZES signature {signature!r}: label not found in compiled source"
             )
-        # Compound catch-up: when the signature names a compound-word
-        # (it has a compiled compound identity) AND the declared nodes are
-        # that compound's subwords, the decoded kline must carry the marker
-        # too — otherwise the declared subwords form a misfit against the
-        # compound's CT-encoded signature. The author writes the subwords
-        # (``Mary => M ary``); the decoder prepends the system marker so the
-        # kline is the compound identity the compiler would produce.
-        #
-        # The catch-up fires only on a genuine subword declaration. A label
-        # may carry several CANONIZES (the compound identity plus a block-canon
-        # reference, e.g. ``had => did have``); the block-canon is a legitimate
-        # S2 misfit under the compound signature and must NOT be folded into
-        # the compound identity. Catch-up is gated on the declared nodes
-        # matching the compound's subwords (compound.nodes minus the marker).
-        compound = resolved.compound_by_label.get(signature)
-        if compound is not None and COMPOUND_TOKEN not in node_sigs:
-            subwords = [n for n in compound.nodes if n != COMPOUND_TOKEN]
-            if list(node_sigs) == subwords:
-                node_sigs = [COMPOUND_TOKEN, *node_sigs]
+        # Compound catch-up: if the signature names a compound-word and the
+        # declared nodes are exactly its subwords, prepend COMPOUND_TOKEN so
+        # the kline is the compound identity (not a misfit against the CT-encoded
+        # signature). Gated on the subwords to avoid folding a same-label
+        # block-canon (e.g. ``had => did have``) into the compound identity.
+        node_sigs = _maybe_catch_up_compound(signature, node_sigs, resolved)
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
     if op == "IDENTITY":
-        # Prefer the canon when the label names one (the identity names the
-        # concept, not its atoms).
-        kl = resolved.canon_by_label.get(signature)
-        if kl is None:
-            kl = resolved.labels.get(signature)
+        kl = resolved.canon_by_label.get(signature) or resolved.labels.get(signature)
         if kl is None:
             raise DecodeError(
                 f"IDENTITY {signature!r}: label not found in compiled source"
             )
-        # An identity has three shapes: the S4 ask ``X:[]`` (no nodes) and
-        # two S1 groundings — self-referential ``X:[X]`` and compound
-        # ``X:[COMPOUND_TOKEN, x, y]``. The compound shape MUST survive
-        # decoding: it is the form that decodes back into text. When the
-        # author declares subword nodes, resolve them and apply the same
-        # compound catch-up as CANONIZES (prepend COMPOUND_TOKEN) so the
-        # decoded kline is the compound identity the compiler would produce.
-        # No declared nodes → the ask shape ``X:[]``.
         if not nodes:
-            return KLine(kl.signature, [], dbg=kl.dbg)
+            return KLine(kl.signature, [], dbg=kl.dbg)  # the S4 ask ``X:[]``
         node_sigs = _resolve_node_signatures(nodes, resolved, op="IDENTITY")
-        compound = resolved.compound_by_label.get(signature)
-        if compound is not None and COMPOUND_TOKEN not in node_sigs:
-            subwords = [n for n in compound.nodes if n != COMPOUND_TOKEN]
-            if list(node_sigs) == subwords:
-                node_sigs = [COMPOUND_TOKEN, *node_sigs]
+        node_sigs = _maybe_catch_up_compound(signature, node_sigs, resolved)
         return KLine(kl.signature, node_sigs, dbg=kl.dbg)
 
-    # Constructed relation: resolve node labels to canonical signatures and
-    # rebuild the relation KLine.
+    # Constructed relation (CONNOTES/DENOTES/COUNTERSIGNS).
     node_sigs = _resolve_node_signatures(nodes, resolved, op="relation")
-    sig_kl = resolved.relation_by_label.get(signature)
-    if sig_kl is None:
-        # Fall back to the canon signature (same value) or the label index.
-        sig_canon = resolved.canon_by_label.get(signature)
-        sig_kl = sig_canon if sig_canon is not None else resolved.labels.get(signature)
+    sig_kl = (
+        resolved.relation_by_label.get(signature)
+        or resolved.canon_by_label.get(signature)
+        or resolved.labels.get(signature)
+    )
     if sig_kl is None:
         raise DecodeError(
             f"relation signature {signature!r}: label not found in compiled source"
         )
     return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
+
+
+def _maybe_catch_up_compound(
+    signature: str, node_sigs: list[int], resolved: _ResolvedScript
+) -> list[int]:
+    """Prepend COMPOUND_TOKEN when ``signature``'s compound identity's subwords
+    equal ``node_sigs``."""
+    compound = resolved.compound_by_label.get(signature)
+    if compound is not None and COMPOUND_TOKEN not in node_sigs:
+        subwords = [n for n in compound.nodes if n != COMPOUND_TOKEN]
+        if list(node_sigs) == subwords:
+            return [COMPOUND_TOKEN, *node_sigs]
+    return node_sigs
 
 
 def decode(
@@ -356,13 +249,7 @@ def decode(
     tokenizer: NLPTokenizer | None = None,
     signifier: KSignifier | None = None,
 ) -> list[DecodedTurn]:
-    """Pre-decode every turn into a flat ordered ``list[DecodedTurn]``.
-
-    Per turn: resolve the kline from ``source``, attach significance by band
-    lookup, pass through ``actor``/``op``, ignore ``notes``. Annotation-only
-    turns are dropped. A configuration-time function: call once, hand the
-    result to the training loop.
-    """
+    """Decode ``script.turns`` to a flat ordered ``list[DecodedTurn]``."""
     resolved = _resolve_script(
         script.source, tokenizer=tokenizer, signifier=signifier
     )[1]
@@ -383,11 +270,7 @@ def decode_events(
     signifier: KSignifier | None = None,
 ) -> list[DecodedTurn]:
     """Decode the script's ``events`` (expected K groundings) for white-box
-    verification.
-
-    Same row shape and resolution as :func:`decode`, but the result carries no
-    ``close`` semantics (events are groundings, not terminal dialogue content).
-    """
+    verification. Same resolution as :func:`decode`; no ``close`` semantics."""
     resolved = _resolve_script(
         script.source, tokenizer=tokenizer, signifier=signifier
     )[1]
@@ -397,14 +280,10 @@ def decode_events(
 def _decode_turns(
     turns: tuple[Turn, ...], resolved, *, what: str
 ) -> list[DecodedTurn]:
-    """Resolve a sequence of :class:`Turn`\ s into :class:`DecodedTurn`\ s.
-
-    Shared by :func:`decode` (turns) and :func:`decode_events` (events).
-    Annotation-only rows are dropped. ``what`` labels the row kind in errors.
-    """
+    """Resolve ``turns`` to :class:`DecodedTurn`\ s (shared by turns and events).
+    Annotation-only rows are dropped; ``what`` labels the row kind in errors."""
     out: list[DecodedTurn] = []
     for idx, turn in enumerate(turns):
-        # Annotation-only turns (notes, no op) are dropped.
         if turn.is_annotation_only:
             continue
         assert turn.op is not None and turn.significance is not None  # annotation guard
@@ -435,11 +314,8 @@ def _decode_turns(
 
 
 def _turn_from_dict(raw: dict) -> Turn:
-    """Build a :class:`Turn` from a raw JSON turn dict.
-
-    A turn with an ``op`` must also carry ``signature`` and ``significance``;
-    annotation-only turns carry only ``notes``.
-    """
+    """Build a :class:`Turn` from a raw JSON dict. A structural turn (with
+    ``op``) must also carry ``signature`` and ``significance``."""
     role = raw.get("role")
     if role not in ("T", "K"):
         raise DecodeError(f"turn role must be 'T' or 'K', got {role!r}")
@@ -473,12 +349,7 @@ def _turn_from_dict(raw: dict) -> Turn:
 
 
 def turn_content_key(turn: DecodedTurn) -> tuple[str, int, tuple[int, ...], int]:
-    """The content identity of a decoded turn:
-    ``(role, kline_signature, kline_nodes_tuple, significance)``.
-
-    Exists because :class:`KValue.__eq__` ignores significance, so matching
-    cannot use ``KValue`` equality directly.
-    """
+    """``(role, sig, nodes, significance)`` — :class:`KValue` equality ignores sig."""
     return (
         turn.role,
         turn.value.kline.signature,
@@ -488,18 +359,12 @@ def turn_content_key(turn: DecodedTurn) -> tuple[str, int, tuple[int, ...], int]
 
 
 def _validate_close(decoded: list[DecodedTurn]) -> None:
-    """Validate the ``close`` markers. Presence-only: a ``close: true`` is
-    well-formed on any row (role-agnostic). Tables with no ``close`` are valid
-    (the runner ends at the last row)."""
+    """No-op: a ``close:true`` is well-formed on any row; tables with none are valid."""
     return
 
 
 def _validate_run(decoded: list[DecodedTurn]) -> None:
-    """Validate the dialogue-mode invariants for a single run.
-
-    A run needs at least two turns (an opening and a close). The close is the
-    run's terminal content (unique within the run).
-    """
+    """A run needs at least two turns (an opening and a close)."""
     if len(decoded) < 2:
         raise DecodeError(
             "dialogue-mode script needs at least two turns (an opening and a close)"
@@ -507,8 +372,7 @@ def _validate_run(decoded: list[DecodedTurn]) -> None:
 
 
 def _run_config_from_dict(raw: dict) -> RunConfig:
-    """Build a :class:`RunConfig` from a raw ``run`` section dict. Only the
-    known modifier ``on_divergence`` is read; unknown keys are a decode error."""
+    """Build a :class:`RunConfig`; unknown keys are a decode error."""
     on_divergence = raw.get("on_divergence", "fail")
     if on_divergence not in ("fail", "accept"):
         raise DecodeError(
@@ -521,25 +385,16 @@ def _run_config_from_dict(raw: dict) -> RunConfig:
 
 
 def load_script_file(path: str | Path) -> DialogueScript:
-    """Load a :class:`DialogueScript` from a JSON file.
-
-    Used by the sequencer to resolve each ``priors`` entry (and the target
-    script) independently. The loaded script's own ``priors`` are carried
-    through (a prior may itself have priors), to be sequenced recursively.
-    """
+    """Load a :class:`DialogueScript` from a JSON file (used by the sequencer)."""
     p = Path(path)
     try:
         text = p.read_text(encoding="utf-8")
     except OSError as exc:
-        raise DecodeError(
-            f"dialogue script {str(path)!r} could not be read: {exc}"
-        ) from exc
+        raise DecodeError(f"dialogue script {str(path)!r} could not be read: {exc}") from exc
     try:
         raw = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise DecodeError(
-            f"dialogue script {str(path)!r} is not valid JSON: {exc}"
-        ) from exc
+        raise DecodeError(f"dialogue script {str(path)!r} is not valid JSON: {exc}") from exc
     if not isinstance(raw, dict):
         raise DecodeError(f"dialogue script {str(path)!r} must be a JSON object")
     return load_script(raw)
@@ -547,23 +402,16 @@ def load_script_file(path: str | Path) -> DialogueScript:
 
 def load_script(raw: dict) -> DialogueScript:
     """Parse a raw ``{source, turns[], run?, events?, priors?}`` dict into a
-    :class:`DialogueScript` for a single run. Structural fields are validated
-    for shape here; symbol resolution happens later in :func:`decode`.
-    ``priors`` are carried as a path list (a sequence of runs to drive before
-    this one), not merged into ``turns``.
-    """
+    :class:`DialogueScript` (one run). ``priors`` is a path list (a run
+    sequence), not merged into ``turns``."""
     if "source" not in raw or not isinstance(raw["source"], str):
         raise DecodeError("dialogue script missing string 'source'")
-    # ``source`` may be a path to a .ks file or inline source, disambiguated
-    # by path-likeness (path separator or ``.ks`` suffix). A path-like value
-    # is resolved against the file system; otherwise used verbatim as inline
-    # KScript.
+    # ``source`` is a path (path-like) or inline KScript.
     source = raw["source"]
     looks_like_path = ("/" in source) or ("\\" in source) or source.endswith(".ks")
     if looks_like_path:
-        script_path = Path(source)
         try:
-            source = script_path.read_text(encoding="utf-8")
+            source = Path(source).read_text(encoding="utf-8")
         except OSError as exc:
             raise DecodeError(
                 f"dialogue script 'source' path {source!r} could not be read: {exc}"
@@ -578,8 +426,6 @@ def load_script(raw: dict) -> DialogueScript:
     else:
         run_config = None
     turns = tuple(_turn_from_dict(t) for t in raw["turns"])
-    # ``events`` (optional): expected K groundings the runner verifies
-    # white-box, same row shape as ``turns``.
     events_raw = raw.get("events")
     if events_raw is not None:
         if not isinstance(events_raw, list):
@@ -587,10 +433,6 @@ def load_script(raw: dict) -> DialogueScript:
         events = tuple(_turn_from_dict(t) for t in events_raw)
     else:
         events = ()
-    # ``priors`` (optional): other script files run before this script's
-    # own run, in list order, as a sequence of independent runs (each
-    # decoded and driven separately against the same actor instances). Not
-    # merged into ``turns``.
     priors_raw = raw.get("priors")
     if priors_raw is not None:
         if not isinstance(priors_raw, list) or not all(
@@ -601,6 +443,5 @@ def load_script(raw: dict) -> DialogueScript:
     else:
         priors = ()
     return DialogueScript(
-        source=source, turns=turns, events=events, priors=priors,
-        run_config=run_config,
+        source=source, turns=turns, events=events, priors=priors, run_config=run_config,
     )

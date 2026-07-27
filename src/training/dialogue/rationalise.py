@@ -1,18 +1,9 @@
-r"""The rationalising engine — the pure-logic core of a rationalising trainee.
+r"""The rationalising engine — see @specs/dialogue-cogitation.md.
 
 A :class:`Rationaliser` derives one turn from ``(state, incoming)`` and returns
-``(batch, observations)``:
-
-- **batch** — dialogue emissions, speech acts K addresses to T (S4 identity
-  asks, S3 connotation proposals, S2 similar-fit proposals).
-- **observations** — K's internal S1 groundings this turn (same shape as the
-  batch), surfaced for white-box verification. Grounding never emits into the
-  dialogue.
-
-The engine is **stateless about its own emissions**: it may re-derive a
-proposal on successive turns, and the :class:`~training.dialogue.actors.RationalisingTrainee`
-actor is the single deduplication point. This keeps the engine's state a pure
-model of what K has grounded.
+``(batch, observations)`` — dialogue emissions and K's internal S1 groundings
+this turn. The engine is stateless about its own emissions; dedup lives in the
+actor.
 """
 
 from __future__ import annotations
@@ -59,11 +50,8 @@ class RationaliserState:
     # -- persistence -------------------------------------------------
     #
     # State is plain ints (signature + node lists); ``dbg`` is debug-only and
-    # not part of the model, so it is dropped on save. A saved state is a
-    # **grounded prior**: an engine snapshot produced once (typically by
-    # bootstrapping an actor as a trainee against the supervisor) and injected
-    # into an actor at construction so it can lead from a populated model
-    # rather than from an empty one.
+    # dropped on save. A saved state is a grounded prior injected into an actor
+    # at construction.
 
     def to_dict(self) -> dict:
         """A JSON-serialisable snapshot of the model (no ``dbg``)."""
@@ -314,10 +302,7 @@ class _Turn:
         engine has no canon or compound for ``signature``.
         """
         # Canon — teach the parts. Significance is structural: S1 when every
-        # node is grounded, else S2. This is the engine's bookkeeping, not a
-        # protocol choice: whether a canon is *proposed* at S2 (a trainer
-        # speech act, to direct the listener to cogitate over its nodes) is a
-        # kline-level decision owned by the actor, not the engine.
+        # node is grounded, else S2.
         nodes = self._canon_nodes(signature)
         if nodes:
             kline = KLine(signature, list(nodes))

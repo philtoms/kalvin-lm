@@ -63,7 +63,6 @@ from training.dialogue import (  # noqa: E402
     load_script_file,
     run,
 )
-from training.dialogue.decoder import primaries_from_source  # noqa: E402
 from training.dialogue.actors import (  # noqa: E402
     RationalisingTrainee,
     RationalisingTrainer,
@@ -457,15 +456,11 @@ def main(argv: list[str] | None = None) -> int:
     rationalise_trainee = args.rationalise or args.rationalise_both
     rationalise_trainer = args.rationalise_trainer or args.rationalise_both
 
-    # When a real trainer needs the compiled source or primaries, build them
-    # once here.
+    # Build the compiled source once for the target script when a real trainer
+    # needs it. (Each run recompiles from its own source in the sequencer.)
     compiled = None
-    primaries = None
     if args.synthesize or rationalise_trainer:
         compiled = compile_source(script.source, tokenizer=tok, signifier=sigf, dev=True)
-        primaries = primaries_from_source(
-            script.source, tokenizer=tok, signifier=sigf
-        )
 
     # --load: inject a saved RationaliserState (a grounded prior) into every
     # rationalising actor. Default path is data/dialogue/{stem}.json when a
@@ -492,11 +487,11 @@ def main(argv: list[str] | None = None) -> int:
     def _trainer_factory(run_decoded, run_compiled):
         if args.synthesize:
             return lambda sink: SynthesizingTrainer(
-                run_compiled, sigf, primaries, sink=sink, table=run_decoded
+                run_compiled, sigf, sink=sink, table=run_decoded
             )
         if rationalise_trainer:
             return lambda sink: RationalisingTrainer(
-                sigf, primaries, sink=sink, compiled=run_compiled,
+                sigf, sink=sink, compiled=run_compiled,
                 table=run_decoded, state=shared_t_state,
             )
         return lambda sink: ScriptTrainer(run_decoded, sink=sink)
