@@ -87,8 +87,29 @@ class _TableActor(Actor):
     def next_events(
         self, incoming: list[RationaliseEvent]
     ) -> Iterable[RationaliseEvent]:
+        # One row per incoming event, but never mix S1 with other bands in a
+        # single burst: a burst is all-S1 or all-non-S1. When the next row
+        # would cross that boundary, stop — the held-back row emits next turn.
+        # Mirrors how the rationaliser batches (S1 ratifications never share a
+        # burst with S2/S3/S4 proposals).
+        burst_class: bool | None = None
         for event in incoming:
+            row = self._peek_row()
+            if row is None:
+                return
+            row_class = row.value.significance == SIG_S1
+            if burst_class is None:
+                burst_class = row_class
+            elif row_class != burst_class:
+                return
             yield from self._emit_row(query=event.proposal)
+
+    def _peek_row(self) -> DecodedTurn | None:
+        """The next same-role row without advancing the cursor."""
+        i = self._cursor + 1
+        while i < len(self._table) and self._table[i].role != self._role:
+            i += 1
+        return self._table[i] if i < len(self._table) else None
 
     def _emit_row(self, query: KValue) -> Iterable[RationaliseEvent]:
         """Emit the next same-role row, advancing past other-role rows."""

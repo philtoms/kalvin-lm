@@ -181,8 +181,13 @@ The runner builds the bus-wired sink and constructs actors via **factories**
 `(sink) -> Actor`, so any actor is drop-in. The two defaults
 (`ScriptTrainer`, `ScriptTrainee`) read the decoded script and are content-blind —
 they advance their own cursor in script order and never realign to incoming
-content. `ScriptTrainee` exposes no `drain_observations`; grounding assertions
-apply only to a trainee that does (a rationalising trainee).
+content. They **pace their burst by significance class**: a single burst is
+all-S1 or all-non-S1, never mixed (mirroring how the rationaliser batches —
+an S1 ratification never shares a burst with an S2/S3/S4 proposal). When the
+next scripted row would cross that boundary the burst stops; the held-back
+row emits on the next `accept`. `ScriptTrainee` exposes no
+`drain_observations`; grounding assertions apply only to a trainee that does
+(a rationalising trainee).
 
 The real actors are drop-in substitutes that derive each turn:
 
