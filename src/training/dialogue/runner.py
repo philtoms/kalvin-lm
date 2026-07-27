@@ -563,7 +563,16 @@ class Runner:
         return out
 
     def _uncovered_groundings(self) -> list[DecodedTurn]:
-        """Asserted groundings never observed (grounding displacement)."""
+        """Asserted groundings never observed (grounding displacement).
+
+        Grounding assertions apply only to an observable trainee (one that
+        exposes ``drain_observations``); a table trainee performs no
+        grounding, so its assertions are neither observed nor reported —
+        matching the hard-fail path (:meth:`_check_grounding_assertions`) and
+        the contract (dialogue-driven-training §Grounding verification).
+        """
+        if not self._trainee_observable:
+            return []
         missing = [
             self._expected_groundings[k]
             for k in sorted(self._expected_groundings, key=_grounding_key_sort)

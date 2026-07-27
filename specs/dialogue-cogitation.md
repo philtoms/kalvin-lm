@@ -46,7 +46,11 @@ this spec owns only the two paths and their boundaries.
   compound shape is the grounding that decodes back into text, so it **must**
   be grounded (not discarded) whenever it is encountered; its subwords are
   how the item is reconstructed. All three shapes are the same identity —
-  the frame and grounding key them by signature alone, not by shape.
+  the frame and grounding key them by signature alone, not by shape. A bare
+  ``X:[]`` is structurally S4 (no significant knowledge); a rationaliser has
+  no significant knowledge to add, so it escalates, and the supervisor
+  (`synthesize`) **forges the self-referential ``X:[X]`` at S1** — the
+  structure that underpins the significance is the primitive naming itself.
 - **Emission deduplication.** K never publishes the same proposal twice. The
   engine is **stateless about its own emissions** — it may re-derive a
   proposal on successive turns (an S2 misfit persists in the work-list until

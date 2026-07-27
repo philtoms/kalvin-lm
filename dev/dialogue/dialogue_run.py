@@ -146,14 +146,14 @@ def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
     return _render_scripted(event.role or "?", op, event.proposal, sig_to_label)
 
 
-def _render_trace_entry(idx: int, scripted: str, record: dict | None) -> str:
+def _render_trace_entry(idx: int, scripted: str, record: dict | None, verbose: bool) -> str:
     """One trace line: the scripted form, with the source JSON record beneath.
 
     ``record`` is the raw JSON turn dict — when present it is shown verbatim so
     the script row the author wrote is visible alongside its decoded form.
     """
     line = f"  #{idx:2} {scripted}"
-    if record is not None:
+    if verbose and record is not None:
         line += "\n       " + json.dumps(record, sort_keys=True)
     return line
 
@@ -162,6 +162,7 @@ def _trace(
     events: list,
     decoded: list,
     sig_to_label: dict[int, str],
+    verbose: bool
 ) -> str:
     """Arrival-ordered trace of emissions in scripted form.
 
@@ -200,7 +201,7 @@ def _trace(
         queue = records_by_key.get(key)
         record = queue.popleft() if queue else None
         lines.append(
-            _render_trace_entry(i, _scripted_form_event(ev, sig_to_label), record)
+            _render_trace_entry(i, _scripted_form_event(ev, sig_to_label), record, verbose)
         )
     # Displacement: authored coverage copies never emitted. The per-key
     # queues were popped once per emission, so leftover entries are authored
@@ -221,7 +222,7 @@ def _trace(
             scripted = _render_scripted(
                 turn.role, op, turn.value, sig_to_label, close=turn.close
             )
-            lines.append(_render_trace_entry(idx, scripted, turn.record))
+            lines.append(_render_trace_entry(idx, scripted, turn.record, verbose))
             idx += 1
     return "\n".join(lines)
 
@@ -550,7 +551,7 @@ def main(argv: list[str] | None = None) -> int:
         header = "Exchange (arrival order):"
         if len(per_run) > 1:
             header = f"Run {idx + 1}/{len(per_run)} — {_rs.source.splitlines()[0] if _rs.source else ''}"
-        print(header + "\n" + _trace(rres.events, rd, sig_to_label))
+        print(header + "\n" + _trace(rres.events, rd, sig_to_label, args.verbose))
     # The supervisor-load baseline: how often the rationalising trainer's
     # cogitation PASSed and it asked the supervisor. Surfaced on every run
     # (not just -v) so the trajectory is visible as the rationaliser takes on

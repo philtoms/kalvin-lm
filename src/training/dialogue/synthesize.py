@@ -83,9 +83,14 @@ def _opening(primary: KLine) -> KValue:
 #   3. otherwise — ``sig`` has only a compound-word identity, only DENOTES
 #      role-bindings, or nothing at all. A compound-word identity
 #      (``{sig: [CT, x, y]}``) is the grounding that decodes back into text,
-#      so it is supplied at S1 in preference to the bare identity. Failing
-#      that, T ratifies the identity at S1: ``{sig: []}`` at S1, signalling
-#      "this is a primitive you may ground".
+#      so it is supplied at S1 in preference to the self-identity. Failing
+#      that, T ratifies the identity at S1 as the **self-identity**
+#      ``{sig: [sig]}`` at S1: the bare ``{sig: []}`` is structurally S4 (no
+#      significant knowledge), and ratification is a supervisor act that
+#      forges the structure underpinning the S1 — the primitive naming
+#      itself. The supervisor is the only place this forging can happen;
+#      a rationaliser has no significant knowledge to add, so it escalates
+#      here.
 
 
 def _reply_identity(
@@ -117,8 +122,12 @@ def _reply_identity(
     if compound is not None:
         return KValue(compound, SIG_S1)
 
-    # 4. Otherwise ratify the identity at S1 (a primitive K may ground).
-    return KValue(KLine(signature, []), SIG_S1)
+    # 4. Otherwise ratify the identity at S1 as the self-identity — the
+    #    structure that underpins the significance. The bare ``{sig: []}`` is
+    #    structurally S4 (the source offers no significant knowledge about
+    #    ``sig``); ratification is a supervisor act, so the supervisor forges
+    #    the self-identity ``{sig: [sig]}`` at S1 here.
+    return KValue(KLine(signature, [signature]), SIG_S1)
 
 
 def _first_canon(
