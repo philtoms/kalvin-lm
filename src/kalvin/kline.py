@@ -71,7 +71,7 @@ class KLine:
     """An identified, ordered sequence of zero or more nodes.
 
     Attributes:
-        signature: uint64 identity key (produced by make_signature).
+        signature: uint64 identity key (produced by signature_of).
         nodes: list of uint64 node values (always a list, never None).
         dbg: optional debug info (not spec'd).
     """
@@ -173,7 +173,7 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     A kline is a canon when it has multiple nodes and each of them is
     represented in its signature but does not constitute a compound identity. 
     """
-    return not is_identity(kline) and kline.signature == signifier.make_signature(kline.nodes)
+    return not is_identity(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
 def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
@@ -205,7 +205,7 @@ def sig_level(kline: KLine, signifier: KSignifier) -> str:
         return "S4"
     if len(nodes) == 1:
         return "S3"
-    return "S1" if kline.signature == signifier.make_signature(kline.nodes) else "S2"
+    return "S1" if kline.signature == signifier.signature_of(kline.nodes) else "S2"
 
 
 def kline_display(kline: KLine, tokenizer: object, signifier: KSignifier) -> str:
@@ -263,7 +263,7 @@ def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:
     """Infer operator symbol from KLine structure."""
     if not kline.nodes:
         return ""
-    nodes_sig = signifier.make_signature(kline.nodes)
+    nodes_sig = signifier.signature_of(kline.nodes)
     if kline.signature == nodes_sig:
         return "=>"  # perfect fit → canonize
     return ">"  # default: connote

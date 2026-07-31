@@ -212,7 +212,7 @@ class TestNoCrossLessonSpillover:
             # candidate, so Model.where() finds it and routing classifies S2
             # (node 10 overlaps, node 20 doesn't).
             q = KLine(0, [t(10), t(20)])
-            q.signature = signifier.make_signature([t(10), t(20)])
+            q.signature = signifier.signature_of([t(10), t(20)])
             agent.rationalise(_kv(q, agent.model))
 
             # The S2 candidate was submitted to the cogitator (not an

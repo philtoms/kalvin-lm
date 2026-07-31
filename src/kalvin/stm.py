@@ -2,7 +2,7 @@
 
 The STM indexes KLines by two keys:
   1. signature — kline.signature
-  2. nodes_signature — make_signature(kline.nodes)
+  2. nodes_signature — signature_of(kline.nodes)
 
 Both keys map into the same backing store. When the two keys are identical
 the KLine is stored under a single key.
@@ -90,7 +90,7 @@ class STM:
             while len(self._order) >= self._bound:
                 self._evict_oldest()
 
-            nodes_sig = self._signifier.make_signature(kline.nodes) if kline.nodes else 0
+            nodes_sig = self._signifier.signature_of(kline.nodes) if kline.nodes else 0
             sig = kline.signature or nodes_sig
 
             self._order.append(kline)
@@ -137,7 +137,7 @@ class STM:
         """Remove a KLine from all index entries."""
         with self._lock:
             sig = kline.signature
-            nodes_sig = self._signifier.make_signature(kline.nodes) if kline.nodes else 0
+            nodes_sig = self._signifier.signature_of(kline.nodes) if kline.nodes else 0
             self._remove_from(sig, kline)
             if nodes_sig and nodes_sig != sig:
                 self._remove_from(nodes_sig, kline)
@@ -203,7 +203,7 @@ class STM:
             return
         oldest = self._order.pop(0)
         sig = oldest.signature
-        nodes_sig = self._signifier.make_signature(oldest.nodes) if oldest.nodes else 0
+        nodes_sig = self._signifier.signature_of(oldest.nodes) if oldest.nodes else 0
         self._remove_from(sig, oldest)
         if nodes_sig and nodes_sig != sig:
             self._remove_from(nodes_sig, oldest)

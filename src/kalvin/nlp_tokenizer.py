@@ -41,9 +41,9 @@ UNKNOWN_NLP_TYPE = 65536
 #: external tokenizer splits into multiple BPE subwords (``[M, ary]``) —
 #: so the kline is built as ``Mary: [COMPOUND_TOKEN, M, ary]``. The token
 #: participates in the signature algebra like any other node (its type
-#: word contributes to ``make_signature``), so a compound's signature
+#: word contributes to ``signature_of``), so a compound's signature
 #: *encodes* the marker without any masking: ``signature ==
-#: make_signature([COMPOUND_TOKEN, M, ary])``. Detection is structural —
+#: signature_of([COMPOUND_TOKEN, M, ary])``. Detection is structural —
 #: ``COMPOUND_TOKEN in kline.nodes`` — with no bit-twiddling and no
 #: special-case masking in the signifier.
 #:

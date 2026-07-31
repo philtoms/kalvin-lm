@@ -100,7 +100,7 @@ class TestCogitatorWithFakeHandler:
         # and k3 is misfit so propose_expansions triggers generate_expansions.
         # q's type word (0b001) shares no bits with k3's (0b110).
         q = KLine(0, [t(0b001)])
-        q.signature = signifier.make_signature([t(0b001)])
+        q.signature = signifier.signature_of([t(0b001)])
         m.add_to_frame(q)
 
         cogitator.submit(WorkItem(KValue(q, 0x5678), k3, "S3"))

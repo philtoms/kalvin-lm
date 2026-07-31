@@ -106,19 +106,19 @@ class TestBandSignificance:
 
 class TestIsCanon:
     def test_canon_match(self):
-        """sig == make_signature(nodes), non-self-referential → canonical."""
+        """sig == signature_of(nodes), non-self-referential → canonical."""
         # sig = 0b110 = OR(0b100, 0b010); neither node equals the signature.
         k = KLine(0b110, [0b100, 0b010])
         assert is_canon(k, signifier) is True
 
     def test_canon_mismatch(self):
-        """sig != make_signature(nodes) → non-canonical."""
-        k = KLine(5, [10])  # make_signature([10]) = 10 ≠ 5
+        """sig != signature_of(nodes) → non-canonical."""
+        k = KLine(5, [10])  # signature_of([10]) = 10 ≠ 5
         assert is_canon(k, signifier) is False
 
     def test_self_referential_is_not_canon(self):
         """{S: [S]} is identity, not canon — overrules canon classification."""
-        k = KLine(10, [10])  # make_signature([10]) = 10, but self-referential
+        k = KLine(10, [10])  # signature_of([10]) = 10, but self-referential
         assert is_canon(k, signifier) is False
 
 
@@ -172,7 +172,7 @@ class TestEdgeHops:
         """ER-2: Identity kline {A: []} yields zero hops."""
         m = make_model()
         # Identity kline: sig > 0, nodes = []
-        # make_signature([]) = 0, so it's not canonical (sig ≠ 0)
+        # signature_of([]) = 0, so it's not canonical (sig ≠ 0)
         m.add_to_frame(KLine(42, []))  # identity, not canonical
         hops = list(edge_hops(m, 42, signifier))
         # Without guard: yields (1, 0) which is a dead end
@@ -478,7 +478,7 @@ class TestExpand:
 
 class TestIsS1:
     def test_canonical_kline(self):
-        """Genuine canon (sig == make_signature(nodes), non-self-referential) → S1."""
+        """Genuine canon (sig == signature_of(nodes), non-self-referential) → S1."""
         m = Model()
         # sig 0b110 = OR(0b100, 0b010); a genuine canon.
         k = KLine(0b110, [0b100, 0b010])
@@ -584,7 +584,7 @@ class TestStructuralSignificance:
     def test_canon_is_s1(self):
         # A canon is a grounded aggregation by structure → S1. (A canon whose
         # reciprocal countersigner is in the model is also S1, trivially.)
-        kl = KLine(0b110, [0b100, 0b010])  # sig == make_signature(nodes)
+        kl = KLine(0b110, [0b100, 0b010])  # sig == signature_of(nodes)
         assert structural_significance(kl, signifier) == SIG_S1
 
     def test_single_node_relationship_is_s3(self):

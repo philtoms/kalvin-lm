@@ -179,7 +179,7 @@ class _TierAdapter:
             return self._tier.find_by_nodes(nodes_sig)
         # KLineStore: scan via __reversed__
         for kl in reversed(self._tier):
-            if self._signifier.make_signature(kl.nodes) == nodes_sig:
+            if self._signifier.signature_of(kl.nodes) == nodes_sig:
                 return kl
         return None
 
@@ -462,7 +462,7 @@ class Model:
         - Identity (``is_identity`` — empty nodes OR self-referential
           ``{S: [S]}``) → [signature]. Base case.
         - Canon (``is_canon`` — non-empty, non-self-referential, signature ==
-          make_signature(nodes)) → concatenation of unpack(child) per node,
+          signature_of(nodes)) → concatenation of unpack(child) per node,
           in node order.
         - Any other input (connoted, denoted, misfit) → ValueError.
         - Child resolution: identity preferred over canon; within a kind,

@@ -67,7 +67,7 @@ class TestEncodeSentenceRationalises:
 
         sentence = "Hello world"
         nodes = agent.tokenizer.encode(sentence)
-        kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
+        kline = KLine(signature=signifier.signature_of(nodes), nodes=nodes)
         agent.rationalise(_kv(kline, agent.model))
 
         assert agent.frame_size() > initial
@@ -84,7 +84,7 @@ class TestEncodeEmptyString:
         nodes = agent.tokenizer.encode("")
         assert nodes == []
 
-        kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
+        kline = KLine(signature=signifier.signature_of(nodes), nodes=nodes)
         result = agent.rationalise(_kv(kline, agent.model))
 
         # Empty kline → S4 (frame event), size grows by 1
@@ -138,7 +138,7 @@ class TestEncodeMultipleSentences:
 
         for sentence in sentences:
             nodes = agent.tokenizer.encode(sentence)
-            kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
+            kline = KLine(signature=signifier.signature_of(nodes), nodes=nodes)
             agent.rationalise(_kv(kline, agent.model))
 
         # Signatures are OR-reductions of node values, so similar sentences
@@ -158,7 +158,7 @@ class TestAgentLoadSaveRoundtrip:
 
         # Encode a sentence
         nodes = agent.tokenizer.encode("Test sentence for roundtrip")
-        kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
+        kline = KLine(signature=signifier.signature_of(nodes), nodes=nodes)
         agent.rationalise(_kv(kline, agent.model))
 
         size_before = agent.frame_size()
@@ -177,7 +177,7 @@ class TestAgentLoadSaveRoundtrip:
 
         # Encode a sentence
         nodes = agent.tokenizer.encode("JSON roundtrip test")
-        kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
+        kline = KLine(signature=signifier.signature_of(nodes), nodes=nodes)
         agent.rationalise(_kv(kline, agent.model))
 
         size_before = agent.frame_size()
@@ -191,7 +191,7 @@ class TestAgentLoadSaveRoundtrip:
         agent = KAgent(adapter=EventBus())
 
         nodes = agent.tokenizer.encode("File roundtrip test")
-        kline = KLine(signature=signifier.make_signature(nodes), nodes=nodes)
+        kline = KLine(signature=signifier.signature_of(nodes), nodes=nodes)
         agent.rationalise(_kv(kline, agent.model))
 
         size_before = agent.frame_size()

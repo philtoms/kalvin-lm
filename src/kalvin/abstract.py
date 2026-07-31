@@ -76,7 +76,7 @@ class KSignifier(ABC):
     """
 
     @abstractmethod
-    def make_signature(self, nodes: Sequence[int]) -> int:
+    def signature_of(self, nodes: Sequence[int]) -> int:
         """Produce the signature value for a node sequence.
 
         The returned value occupies a kline's head position; the system

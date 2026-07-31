@@ -157,18 +157,18 @@ class TestSignatureEncoding:
         assert results[0].kline.signature == tz.encode("A")[0]
 
     def test_multi_char_sig_packed(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
-        """Multi-token identifier is packed via OR-reduction (make_signature).
+        """Multi-token identifier is packed via OR-reduction (signature_of).
 
         A multi-token signature heading an IDENTITY entry is decomposed into
         per-token IDENTITY entries plus a compound CANONIZES entry (the last
         result) whose nodes are the tokens plus COMPOUND_TOKEN; its signature
-        is ``make_signature(tokens + [COMPOUND_TOKEN])`` — the marker is
+        is ``signature_of(tokens + [COMPOUND_TOKEN])`` — the marker is
         encoded in the signature, not OR'd on as a bit.
         """
         from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         entry = SymbolicEntry(sig="HELLO", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        expected = signifier.make_signature(tz.encode("HELLO") + [COMPOUND_TOKEN])
+        expected = signifier.signature_of(tz.encode("HELLO") + [COMPOUND_TOKEN])
         assert results[-1].kline.signature == expected
 
 
@@ -223,24 +223,24 @@ class TestFullUint64:
         from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
         results = encoder.encode_entries([entry])
-        raw = signifier.make_signature(tz.encode("ABC"))
+        raw = signifier.signature_of(tz.encode("ABC"))
         # The compound CANONIZES entry (last) carries the unmasked OR-reduction
         # of the tokens plus COMPOUND_TOKEN (the marker encoded as a node).
-        expected = signifier.make_signature(tz.encode("ABC") + [COMPOUND_TOKEN])
+        expected = signifier.signature_of(tz.encode("ABC") + [COMPOUND_TOKEN])
         assert results[-1].kline.signature == expected
         # Ensure the value is unmasked — multiple type-word bits set (ABC
         # spans >1 token, so the OR-reduction has several bits).
         assert bin(raw).count("1") > 1
 
-    def test_signature_matches_make_signature(self) -> None:
+    def test_signature_matches_signature_of(self) -> None:
         """For multi-token words, the compound CANONIZES sig is
-        ``make_signature(tokens + [COMPOUND_TOKEN])``."""
+        ``signature_of(tokens + [COMPOUND_TOKEN])``."""
         from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         mock = MockMultiTokenTokenizer({"WORD": [100, 200]})
         enc = TokenEncoder(mock)
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
-        expected = signifier.make_signature([100, 200, COMPOUND_TOKEN])
+        expected = signifier.signature_of([100, 200, COMPOUND_TOKEN])
         # Main entry is last (after MTS expansion entries)
         assert results[-1].kline.signature == expected
 
@@ -273,10 +273,10 @@ class TestMultiTokenMTS:
         assert unsigned_entries[1].kline.nodes == []
 
         assert len(canonize_entries) == 1
-        packed = signifier.make_signature([10, 20, COMPOUND_TOKEN])
+        packed = signifier.signature_of([10, 20, COMPOUND_TOKEN])
         # The §11.3 compound-word CANONIZES kline's nodes are the subword
         # tokens plus COMPOUND_TOKEN; its signature encodes the marker
-        # (make_signature includes the token) — no bit masking.
+        # (signature_of includes the token) — no bit masking.
         assert canonize_entries[0].kline.signature == packed
         assert canonize_entries[0].kline.nodes == [10, 20, COMPOUND_TOKEN]
 
@@ -296,7 +296,7 @@ class TestMultiTokenMTS:
         entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
         results = enc.encode_entries([entry])
 
-        packed = signifier.make_signature([50, 60, COMPOUND_TOKEN])
+        packed = signifier.signature_of([50, 60, COMPOUND_TOKEN])
 
         # §11.4 MTS: IDENTITY(50), IDENTITY(60), CANONIZES(packed, [50,60,CT])
         mts_unsigned = [
@@ -364,7 +364,7 @@ class TestDedupMTS:
         assert len(connote_entries) == 2  # both main entries
 
         # Both main entries use the same compound signature as the node value
-        packed = signifier.make_signature([10, 20, COMPOUND_TOKEN])
+        packed = signifier.signature_of([10, 20, COMPOUND_TOKEN])
         assert connote_entries[0].kline.nodes == [packed]
         assert connote_entries[1].kline.nodes == [packed]
 

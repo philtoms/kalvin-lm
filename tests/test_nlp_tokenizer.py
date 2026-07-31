@@ -168,7 +168,7 @@ class TestNLPEncodingPipeline:
 
     These verify the NLP tokenizer produces correct NLP-BPE node values,
     that round-trip through encode/decode preserves text, and that
-    make_signature correctly handles NLP-BPE nodes and space tokens.
+    signature_of correctly handles NLP-BPE nodes and space tokens.
 
     Key insight: multi-word phrases produce space BPE tokens (ID 32) with
     nlp_type32=0, making them low-32-bit-only packed nodes rather than
@@ -219,7 +219,7 @@ class TestNLPEncodingPipeline:
                 assert (node >> 32) != 0, f"'{word}': node {node} should carry an NLP type"
             assert nlp.decode(nodes) == word, f"'{word}' should round-trip"
 
-    # Removed: test_pipeline_signature_nlp_only — make_signature() is now plain OR-reduce
+    # Removed: test_pipeline_signature_nlp_only — signature_of() is now plain OR-reduce
     # Removed: test_pipeline_signature_with_literal — literal concept removed
 
     def test_pipeline_space_nodes_not_nlp(self, nlp: NLPTokenizer) -> None:
@@ -241,5 +241,5 @@ class TestNLPEncodingPipeline:
         assert nlp.decode(nodes) == "Tea brewed"
 
         # Signature is well-formed and non-zero.
-        sig = signifier.make_signature(nodes)
+        sig = signifier.signature_of(nodes)
         assert sig != 0

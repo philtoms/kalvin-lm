@@ -148,8 +148,8 @@ def test_canon_reciprocal_grounded_when_all_operand_pairings_resolve():
     # Two primitive operands per side, with seen identities so the canons
     # are groundable.
     a1, a2, b1, b2 = 1 << 0, 1 << 1, 1 << 2, 1 << 3
-    a_sig = sigf.make_signature([a1, a2])
-    b_sig = sigf.make_signature([b1, b2])
+    a_sig = sigf.signature_of([a1, a2])
+    b_sig = sigf.signature_of([b1, b2])
 
     # Seed grounded memory: identities for the operands, the two canons,
     # and the two operand-level pairings plus their reciprocals (as if T

@@ -217,7 +217,7 @@ class KAgent:
         # ordinary signature value (the empty node set's signature).
         assert kline.signature is not None, (
             "KLine.signature must be set before rationalise; callers compute "
-            "it via signifier.make_signature(nodes)."
+            "it via signifier.signature_of(nodes)."
         )
 
         # Significance-comparison gate — Kalvin compares its own derived
@@ -253,7 +253,7 @@ class KAgent:
             self._publish("frame", value, KValue(kline, SIG_S4))  # S4
             return True
 
-        expected_sig = self._signifier.make_signature(kline.nodes)
+        expected_sig = self._signifier.signature_of(kline.nodes)
         if kline.signature == expected_sig:
             all_resolved = all(
                 (node_kl := self._model.find(n)) is not None and self._model.grounded(node_kl)
@@ -372,7 +372,7 @@ class KAgent:
         returns the result of ``rationalise``.
         """
         kline = value.kline
-        reciprocal_sig = self._signifier.make_signature(kline.nodes)
+        reciprocal_sig = self._signifier.signature_of(kline.nodes)
         reciprocal = KLine(reciprocal_sig, [kline.signature])
         reciprocal_value = KValue(reciprocal, SIG_S1)
         return self.rationalise(reciprocal_value)

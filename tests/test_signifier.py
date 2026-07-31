@@ -17,36 +17,36 @@ def t(bits: int) -> int:
 
 
 class TestMakeSignature:
-    """make_signature: bitwise OR-reduction of raw node values."""
+    """signature_of: bitwise OR-reduction of raw node values."""
 
     def test_empty_nodes(self):
-        assert signifier.make_signature([]) == 0
+        assert signifier.signature_of([]) == 0
 
     def test_single_node(self):
-        assert signifier.make_signature([42]) == 42
+        assert signifier.signature_of([42]) == 42
 
     def test_multiple_nodes(self):
-        assert signifier.make_signature([0b10, 0b100]) == 0b110
+        assert signifier.signature_of([0b10, 0b100]) == 0b110
 
     def test_commutative(self):
-        a = signifier.make_signature([0b10, 0b100])
-        b = signifier.make_signature([0b100, 0b10])
+        a = signifier.signature_of([0b10, 0b100])
+        b = signifier.signature_of([0b100, 0b10])
         assert a == b
 
     def test_identity(self):
-        """make_signature([x]) == x for any single node."""
-        assert signifier.make_signature([42]) == 42
+        """signature_of([x]) == x for any single node."""
+        assert signifier.signature_of([42]) == 42
 
     def test_well_known_zero(self):
-        assert signifier.make_signature([]) == 0
+        assert signifier.signature_of([]) == 0
 
     def test_or_reduce(self):
         """BPE-style tokens: full OR."""
-        assert signifier.make_signature([42, 100]) == 42 | 100
+        assert signifier.signature_of([42, 100]) == 42 | 100
 
     def test_or_reduction_of_packed_nodes(self):
         """OR-reduction of two packed node values produces their union (SIG-14)."""
-        assert signifier.make_signature([0b10, 0b100]) == 0b110
+        assert signifier.signature_of([0b10, 0b100]) == 0b110
 
 
 class TestSignifies:

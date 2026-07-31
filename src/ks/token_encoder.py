@@ -7,7 +7,7 @@ significance is derived from the production op (KP-1, D3).
 
 Encoding rules (spec §11):
   - Signature → tokenizer.encode(sig) → uint64 (multi-token results are
-    OR-reduced via make_signature()).
+    OR-reduced via signature_of()).
   - Nodes → each encoded individually via _encode_node(); a multi-token
     word (a resolved word the tokenizer splits into ≥2 subwords) triggers
     §11.3 compound-word decomposition, which emits a CANONIZES-shaped
@@ -190,10 +190,10 @@ class TokenEncoder:
         #    REFERENCE: it reuses the registered signature and must NOT
         #    recompute it from its own (possibly partial/misfit) operands,
         #    or it would clobber the compound's true signature with
-        #    make_signature(block_nodes) (§11.4: signature is a registry
+        #    signature_of(block_nodes) (§11.4: signature is a registry
         #    lookup, not a per-entry reduction of nodes).
         if is_compound_def and not is_compound_ref:
-            sig_uint64 = self._signifier.make_signature(node_values)
+            sig_uint64 = self._signifier.signature_of(node_values)
             self._compound_sigs[entry.sig] = sig_uint64
             sig_is_packed = True
 
@@ -286,13 +286,13 @@ class TokenEncoder:
         # The compound-word identity kline carries COMPOUND_TOKEN as an extra
         # node (e.g. ``Mary: [COMPOUND_TOKEN, M, ary]``). The token
         # participates in the signature algebra like any other node, so the
-        # compound's signature is ``make_signature([COMPOUND_TOKEN] + tokens)``
+        # compound's signature is ``signature_of([COMPOUND_TOKEN] + tokens)``
         # — the marker is *encoded* in the signature, not OR'd on as a bit.
         # No masking anywhere: ``packed`` below is this full signature, and it
         # is the value reused by references (a block-canon under the same
         # word). See @kline spec §Structural Predicates.
         compound_nodes = [COMPOUND_TOKEN] + list(tokens)
-        packed = self._signifier.make_signature(compound_nodes)
+        packed = self._signifier.signature_of(compound_nodes)
 
         # Register the compound-word's signature (§11.4: the compound-word
         # CANONIZES — word → its subword tokens + marker — DEFINES the
@@ -301,7 +301,7 @@ class TokenEncoder:
         # own operands). Without this registration, a block canon
         # (e.g. `had => did have`) falls into the defining branch and
         # clobbers the compound-word's true signature with
-        # make_signature(block_nodes). Only register when ``dbg_label``
+        # signature_of(block_nodes). Only register when ``dbg_label``
         # names the compound-word (it is empty at internal call sites that
         # have no id).
         if dbg_label:

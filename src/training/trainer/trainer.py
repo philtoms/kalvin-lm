@@ -198,7 +198,7 @@ class Trainer:
         target_underfit, target_overfit = self._signifier.classify_misfit(
             target.signature, target.nodes
         )
-        target_nodes_sig = self._signifier.make_signature(target.nodes)
+        target_nodes_sig = self._signifier.signature_of(target.nodes)
         underfit_gap = self._signifier.residual(target.signature, target_nodes_sig)
         overfit_mask = self._signifier.residual(target_nodes_sig, target.signature)
         return {

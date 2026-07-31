@@ -198,7 +198,7 @@ class QueryCandidate:
 def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[int, int]]:
     """Yield (hop_count, next_sig) for each non-canonical resolution step.
 
-    Follows: resolve sig → kline → signifier.make_signature(kline.nodes) → repeat.
+    Follows: resolve sig → kline → signifier.signature_of(kline.nodes) → repeat.
     Stops at a dead end, an identity kline, a canonical kline, or a cycle.
     """
     hop_count = 0
@@ -211,7 +211,7 @@ def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[i
         if kline is None or is_identity(kline) or is_canon(kline, signifier):
             break
         hop_count += 1
-        sig = signifier.make_signature(kline.nodes)
+        sig = signifier.signature_of(kline.nodes)
         yield hop_count, sig
 
 # Structural Grounding
@@ -244,7 +244,7 @@ def is_countersigned(model: Model, kline: KLine, signifier: KSignifier) -> bool:
     """
     if is_identity(kline):
         return False
-    nodes_signature = signifier.make_signature(kline.nodes)
+    nodes_signature = signifier.signature_of(kline.nodes)
     for countersigner in model.find_all(nodes_signature):
         if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
             return True
@@ -487,7 +487,7 @@ def propose_expansions(
         return
 
     candidate_sig = candidate.signature
-    nodes_sig = signifier.make_signature(candidate.nodes)
+    nodes_sig = signifier.signature_of(candidate.nodes)
     underfit_gap = signifier.residual(candidate_sig, nodes_sig)
     overfit_mask = signifier.residual(nodes_sig, candidate_sig)
 

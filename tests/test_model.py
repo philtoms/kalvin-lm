@@ -686,7 +686,7 @@ class TestTierChainFindByNodesFirst:
         stm.add(k1)
         stm.add(k2)
         chain = _TierChain([stm], signifier)
-        nodes_sig = signifier.make_signature([1, 2])
+        nodes_sig = signifier.signature_of([1, 2])
         result = chain.find_by_nodes_first(nodes_sig)
         assert result is k2
 
@@ -697,7 +697,7 @@ class TestTierChainFindByNodesFirst:
         store.add(k1)
         store.add(k2)
         chain = _TierChain([store], signifier)
-        nodes_sig = signifier.make_signature([3, 4])
+        nodes_sig = signifier.signature_of([3, 4])
         result = chain.find_by_nodes_first(nodes_sig)
         assert result is k2
 
@@ -709,14 +709,14 @@ class TestTierChainFindByNodesFirst:
         stm.add(k_stm)
         store.add(k_store)
         chain = _TierChain([stm, store], signifier)
-        nodes_sig = signifier.make_signature([5, 6])
+        nodes_sig = signifier.signature_of([5, 6])
         result = chain.find_by_nodes_first(nodes_sig)
         assert result is k_stm
 
     def test_no_match_returns_none(self):
         store = KLineStore()
         chain = _TierChain([store], signifier)
-        nodes_sig = signifier.make_signature([99])
+        nodes_sig = signifier.signature_of([99])
         assert chain.find_by_nodes_first(nodes_sig) is None
 
 
@@ -755,7 +755,7 @@ class TestUnpack:
     def test_mod63_connoted_raises(self):
         # MOD-63: non-decomposable input (connoted) → ValueError
         m = make_model()
-        connoted = KLine(0x100, [0x10])  # signature != signifier.make_signature(nodes)
+        connoted = KLine(0x100, [0x10])  # signature != signifier.signature_of(nodes)
         with pytest.raises(ValueError):
             m.unpack(connoted)
 
@@ -803,7 +803,7 @@ class TestUnpack:
         # a parent referencing the self-referential identity kline.
         m = make_model()
         # Direct case: unpack the self-referential identity kline itself.
-        self_ref = KLine(0x100, [0x100])  # signifier.make_signature([0x100]) == 0x100
+        self_ref = KLine(0x100, [0x100])  # signifier.signature_of([0x100]) == 0x100
         m.add_to_frame(self_ref)
         assert m.unpack(self_ref) == [0x100]
 

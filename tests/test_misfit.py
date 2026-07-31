@@ -28,7 +28,7 @@ class TestClassifyMisfit:
     def test_identity_self_referential(self):
         """Identity kline {S: [S]} → (False, False).
 
-        make_signature([S]) == S, so neither residual direction is non-zero.
+        signature_of([S]) == S, so neither residual direction is non-zero.
         classify_misfit does not distinguish identity from canon — see
         is_identity (KL-21) / is_canon (KL-24).
         """
@@ -38,7 +38,7 @@ class TestClassifyMisfit:
     def test_canonical(self):
         """Genuine canon {S: [A, B]} with S == A|B → (False, False).
 
-        nodes_sig = make_signature([A, B]) == S, so neither residual is
+        nodes_sig = signature_of([A, B]) == S, so neither residual is
         non-zero. See is_canon (KL-23).
         """
         k = KLine(t(0b110), [t(0b100), t(0b010)])
@@ -155,7 +155,7 @@ class TestGenerateExpansions:
         # proposals in the dual path.
         assert all(len(comps) == 1 for _, comps in results)
         assert companions[0].nodes == [t(0b110)]
-        assert companions[0].signature == t(0b110)  # make_signature([t(0b110)])
+        assert companions[0].signature == t(0b110)  # signature_of([t(0b110)])
 
     def test_dual_expansion_one_swap_per_contributor(self):
         """Dual path yields one atomic swap per gap-filling contributor."""

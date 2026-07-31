@@ -267,7 +267,7 @@ class ASTEmitter:
             #      components (the decoding aid; already emitted by
             #      _emit_mts when the sig was expanded). This entry DEFINES
             #      the compound's signature: the encoder computes it as
-            #      make_signature over these character components.
+            #      signature_of over these character components.
             #   2. Block canon    — compound → the block's resolved operands
             #      (the script's declared signature↔nodes relationship).
             # The block canon is emitted here as a SEPARATE CANONIZES entry

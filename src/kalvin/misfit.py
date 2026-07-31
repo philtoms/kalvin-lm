@@ -57,7 +57,7 @@ def _underfit_expansions(
         expanded_sig = kline.signature
         proposal = KLine(expanded_sig, expanded_nodes, kline.dbg)
 
-        new_nodes_sig = signifier.make_signature(expanded_nodes)
+        new_nodes_sig = signifier.signature_of(expanded_nodes)
         if signifier.signifies(new_nodes_sig, expanded_sig):
             yield (proposal, [])
 
@@ -77,7 +77,7 @@ def _overfit_expansions(kline: KLine, excess: int, signifier: KSignifier) -> Ite
         return
     trimmed = KLine(kline.signature, remaining, kline.dbg)
 
-    companion_sig = signifier.make_signature(excess_nodes)
+    companion_sig = signifier.signature_of(excess_nodes)
     companion = KLine(companion_sig, excess_nodes)
 
     yield (trimmed, [companion])
@@ -95,7 +95,7 @@ def _dual_expansions(
         replacement_nodes = remaining + list(contributor.nodes)
         replacement = KLine(kline.signature, replacement_nodes, kline.dbg)
 
-        companion_sig = signifier.make_signature(excess_nodes)
+        companion_sig = signifier.signature_of(excess_nodes)
         companion = KLine(companion_sig, excess_nodes)
 
         yield (replacement, [companion])

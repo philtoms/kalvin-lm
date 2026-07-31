@@ -125,7 +125,7 @@ class TestSelfFilterInCandidates:
 
         # Query overlaps on [10] but not [20] -> should be S2, not S1
         q = KLine(0, [t(10), t(20)])
-        q.signature = signifier.make_signature([t(10), t(20)])
+        q.signature = signifier.signature_of([t(10), t(20)])
         result = a.rationalise(_kv(q, a.model))
         # S2 should return False (slow path) even though q is in STM
         assert result is False

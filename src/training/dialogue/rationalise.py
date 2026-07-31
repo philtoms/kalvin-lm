@@ -239,7 +239,7 @@ class _Turn:
             if batch:
                 continue
 
-            if structural_significance(kline, self._signifier) == SIG_S1:
+            if self._is_groundable(kline):
                 del self._state.work_list[idx]
                 self._promote(kline)
                 continue
@@ -347,7 +347,7 @@ class _Turn:
         bucket.append(kline)
         self.observations.append(KValue(kline, SIG_S1))
         if not countersigning and self._is_countersignable(kline):
-            reciprocal = KLine(self._signifier.make_signature(kline.nodes), [kline.signature])
+            reciprocal = KLine(self._signifier.signature_of(kline.nodes), [kline.signature])
             self._ground(reciprocal, countersigning=True)
 
     def _is_groundable(self, kline: KLine) -> bool:
@@ -470,7 +470,7 @@ class _Turn:
         for lhs_sig, rhs_node, residual in self._operand_pairings(left_nodes, right_nodes):
             if self._pairing_resolved(lhs_sig, rhs_node, residual):
                 continue
-            head_sig = self._signifier.make_signature(residual) if residual else lhs_sig
+            head_sig = self._signifier.signature_of(residual) if residual else lhs_sig
             batch.append(KValue(KLine(head_sig, [rhs_node]), SIG_S3))
         return batch
 
@@ -494,11 +494,11 @@ class _Turn:
                 j += 1
             elif left_rem == 1:
                 residual = list(right_nodes[j:])
-                plan.append((left_nodes[i], self._signifier.make_signature(residual), residual))
+                plan.append((left_nodes[i], self._signifier.signature_of(residual), residual))
                 break
             elif right_rem == 1:
                 residual = list(left_nodes[i:])
-                plan.append((self._signifier.make_signature(residual), right_nodes[j], residual))
+                plan.append((self._signifier.signature_of(residual), right_nodes[j], residual))
                 break
             else:
                 plan.append((left_nodes[i], right_nodes[j], []))
@@ -512,7 +512,7 @@ class _Turn:
         For a grouped residual, ``head_sig`` is synthesised from the residual;
         for a 1:1 pair it is ``lhs_sig``.
         """
-        head_sig = self._signifier.make_signature(residual) if residual else lhs_sig
+        head_sig = self._signifier.signature_of(residual) if residual else lhs_sig
         return any(
             list(kline.nodes) == [rhs_node]
             for kline in self._state.grounded.get(head_sig, [])

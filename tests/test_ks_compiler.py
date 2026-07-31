@@ -415,7 +415,7 @@ class TestCanonicalEncoding:
 
 
 # ---------------------------------------------------------------------------
-# KS-43: CANONIZES misfit signature (compound sig ≠ make_signature(block))
+# KS-43: CANONIZES misfit signature (compound sig ≠ signature_of(block))
 # ---------------------------------------------------------------------------
 
 
@@ -434,7 +434,7 @@ class TestCanonizedMisfitSignature:
     whole point of the script.
 
     Regression for the bug where the compiler emitted
-    `make_signature(M,H,W)` (dropping D) for both the block canon and the
+    `signature_of(M,H,W)` (dropping D) for both the block canon and the
     compound signature, collapsing the misfit into a full canon with the
     wrong signature.
     """
@@ -443,7 +443,7 @@ class TestCanonizedMisfitSignature:
         return compile_source("WDMH => M H W", tokenizer=tokenizer, dev=True)
 
     def test_compound_sig_is_all_chars(self, tokenizer):
-        """The compound signature == make_signature(W,D,M,H), not (M,H,W)."""
+        """The compound signature == signature_of(W,D,M,H), not (M,H,W)."""
         from kalvin.signifier import NLPSignifier
 
         entries = self._entries(tokenizer)
@@ -451,15 +451,15 @@ class TestCanonizedMisfitSignature:
         w, d, m, h = (
             tokenizer.encode(c)[0] for c in ("W", "D", "M", "H")
         )
-        expected_all = sig.make_signature([w, d, m, h])
-        expected_block = sig.make_signature([m, h, w])
+        expected_all = sig.signature_of([w, d, m, h])
+        expected_block = sig.signature_of([m, h, w])
         assert expected_all != expected_block, "precondition: misfit is real"
 
         canon = [e for e in entries if e.kline.dbg.op == "CANONIZES"]
         assert canon, "expected at least one CANONIZES kline"
         for e in canon:
             assert e.kline.signature == expected_all, (
-                f"compound sig must be make_signature(W,D,M,H); "
+                f"compound sig must be signature_of(W,D,M,H); "
                 f"got 0x{e.kline.signature:x}, expected 0x{expected_all:x} "
                 f"(block-only would be 0x{expected_block:x})"
             )
@@ -477,7 +477,7 @@ class TestCanonizedMisfitSignature:
         w, d, m, h = (
             tokenizer.encode(c)[0] for c in ("W", "D", "M", "H")
         )
-        compound_sig = sig.make_signature([w, d, m, h])
+        compound_sig = sig.signature_of([w, d, m, h])
 
         canon = [e for e in entries if e.kline.dbg.op == "CANONIZES"]
         assert len(canon) == 2, f"expected 2 CANONIZES klines, got {len(canon)}"
@@ -509,7 +509,7 @@ class TestBlockCanonReusesPriorMtsSignature:
     preamble word or a node) DEFINES the compound's signature. A later
     block-canon entry with the same compound id (``had => did have``) is a
     REFERENCE and must reuse that signature — not recompute it as
-    ``make_signature(block_nodes)``, which would clobber the compound's true
+    ``signature_of(block_nodes)``, which would clobber the compound's true
     signature and corrupt cross-references (the dialogue decoder's
     ``canon_by_label`` picks one canon per label; a clobbered signature makes
     ``is_canon`` fail on the other script's canon, stalling a real
@@ -524,7 +524,7 @@ class TestBlockCanonReusesPriorMtsSignature:
     def _entries(self, tokenizer):
         # MHALL's preamble word-list MTS-expands `had` (compound -> [h, ad]).
         # WDMH then declares `had => did have` — a block canon that must reuse
-        # the MTS signature, not recompute make_signature([did, have]).
+        # the MTS signature, not recompute signature_of([did, have]).
         source = (
             "(Mary had a little lamb)\n"
             "MHALL == SVO =>\n"
@@ -554,7 +554,7 @@ class TestBlockCanonReusesPriorMtsSignature:
         entries = self._entries(tokenizer)
         sig = NLPSignifier()
         h, ad = (tokenizer.encode(c)[0] for c in ("h", "ad"))
-        had_sig = sig.make_signature([h, ad, COMPOUND_TOKEN])
+        had_sig = sig.signature_of([h, ad, COMPOUND_TOKEN])
 
         had_canon = [
             e for e in entries

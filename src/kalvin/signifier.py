@@ -14,7 +14,7 @@ layout)::
 between the NLP Tokenizer and the NLP Signifier (see specs/signifier.md
 §NLPSignifier). Its two operations:
 
-- :meth:`make_signature` — bitwise OR-reduce over the full 64-bit node
+- :meth:`signature_of` — bitwise OR-reduce over the full 64-bit node
   values.
 - :meth:`signifies` — masked overlap: AND the two values restricted to the
   upper 32 bits (the NLP type word); non-zero means overlap.
@@ -49,14 +49,14 @@ class NLPSignifier(KSignifier):
 
     See specs/signifier.md §NLPSignifier. Operationally:
 
-    - :meth:`make_signature` OR-reduces the full 64-bit node values.
+    - :meth:`signature_of` OR-reduces the full 64-bit node values.
     - :meth:`signifies` is ``(a & b & _TYPE_MASK) != 0``.
     - :meth:`residual` is ``(a & ~b) & _TYPE_MASK``.
     - :meth:`classify_misfit` uses :meth:`residual` on both directions and
       tests each for non-zero.
     """
 
-    def make_signature(self, nodes: Sequence[int]) -> int:
+    def signature_of(self, nodes: Sequence[int]) -> int:
         """Produce a signature by OR-reducing the full node values.
 
         Every node contributes its entire 64-bit value; the result
@@ -99,7 +99,7 @@ class NLPSignifier(KSignifier):
         - overfit — the nodes carry more than the signature captures
           (``residual(nodes_sig, signature) != 0``).
         """
-        nodes_sig = self.make_signature(nodes)
+        nodes_sig = self.signature_of(nodes)
         underfit = self.residual(signature, nodes_sig) != 0
         overfit = self.residual(nodes_sig, signature) != 0
         return underfit, overfit
