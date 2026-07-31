@@ -79,13 +79,13 @@ The fundamental unit of Kalvin's memory: a **signature** (its head node) and a *
 _Avoid_: kvalue (a KValue pairs a KLine with significance)
 
 **Composition**:
-The topological primitive: the algebraic relationship between a kline's signature and its nodes. Three values — the kline **roles**: **Identity** (composition is trivial), **Canon** (composition is exact), **Misfit** (composition is partial). Topology names the relationship; how it is evaluated is a structural concern (see **OR-reduction**).
+The topological primitive: the algebraic relationship between a kline's signature and its nodes. Three values — the kline **roles**: **Identity** (composition is trivial), **Canon** (composition is exact), **Misfit** (composition is partial). Owned at the agent layer alongside **Distance**; the model's structure evaluates it (today, OR-reduction via `signature_of`).
 
 **Signature**:
 The value occupying a kline's head position — the value its **Composition** relationship is assessed against. The same kind of value as a Node: a single Token ID or the OR-reduction of its nodes.
 
 **OR-reduction**:
-The structural arithmetic by which a kline's signature is derived from its nodes (bitwise OR over the node values). Realises the **Composition** relationship's evaluation (exposed as `signature_of(nodes)`); the arithmetic itself is structural, the relationship it evaluates is topological.
+The structural arithmetic owned by the model by which a kline's signature is derived from its nodes (bitwise OR over the node values). Evaluates the **Composition** relationship (exposed as `signature_of(nodes)`); the arithmetic is structural, the relationship it evaluates is topological.
 
 **Expectation**:
 A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
@@ -94,18 +94,27 @@ A scripted kline that enters the slow path (S2/S3) during rationalisation and re
 A KLine emitted by the Agent as a candidate response during rationalisation.
 
 **Significance**:
-A participant's subjective assessment of how well a KLine relates to what that participant already knows — classified into four levels: S1 (fully grounded), S2, S3, S4 (completely novel). Every participant assesses independently. Kalvin realises its own assessment by _computing_ it from structure (a 64-bit inverted distance whose bands map onto the structural relationships); that structural mapping is Kalvin's method, not a definition of the levels. See **Structural Relationship** for the objective structural facts the bands map onto.
-_Avoid_: confidence, score, weight
+A projection of rationalisation — a measurement of how strongly a kline relates to what Kalvin already holds, derived from the topological **Distance** between them (the model's structure evaluates the distance; significance projects it). Classified into four levels — the **significances** — which name qualities of understanding, not mechanisms:
+- **S1 — recognised.** Fully accounted for — by its own Composition (a canon) or by ratification. _I know that I know this._
+- **S2 — contested.** Relates but diverges: an unratified misfit, an active mismatch. _I infer this, but it does not yet fit._
+- **S3 — suggested.** Connects only indirectly, through intermediaries. _I recognise aspects of this, indirectly._
+- **S4 — unrecognised.** Shares nothing with what is held; no connection can be drawn. _I do not understand this at all._
+Every participant assesses independently. How Kalvin computes its own significance is a model concern (see **Grounding**); the levels themselves are independent of that computation.
+_Avoid_: confidence, score, weight, grounded (grounding is the model's implementation of S1, not a synonym for any level)
+
+**Distance**:
+The topological primitive measuring how far apart two klines are. Owned with **Composition** at the agent layer; evaluated by the model's structure (today, graph hop-counting). **Significance** is the rationalisation-layer projection of Distance.
+_Avoid_: hop count (the structural evaluation, not the topological concept), similarity (a consequence of small distance, not the concept)
 
 **Relational Tokens**:
-The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `=` (DENOTES), or none (identity). A compiler/provenance concept: the token declares an *intent* (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Composition** (topological) may or may not satisfy. Distinct from Composition despite the surface similarity.
+The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `=` (DENOTES), or none (identity). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Composition** (topological) may or may not satisfy. Distinct from Composition despite the surface similarity.
 
 - **COUNTERSIGNS** (`==`) — 1:1 emits a reciprocal pair `{A: [B]}`, `{B: [A]}`. The signature countersigns each other's nodes.
 - **CANONIZES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonizes its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
 - **CONNOTES** (`>`) — 1:1 `{A: [B]}`. The signature connotes each node (`A > B` ⇒ A connotes B; subjectively, _A is a B_).
 - **DENOTES** (`=`) — 1:1 `{B: [A]}`. The signature denotes each node (`A = B` ⇒ A denotes B; objectively, _B is an A_).
 - **IDENTITY** — `{A: []}` or `{A: [A]}` (self-referential) — see Identity.
-_Avoid_: structural relationship (legacy name — collides with the structure layer), relational operator (the token declares provenance, not an operation)
+  _Avoid_: structural relationship (legacy name — collides with the structure layer), relational operator (the token declares provenance, not an operation)
 
 **Identity**:
 A kline **role**: its Composition is trivial — the signature is not algebraically derived from non-trivial nodes. Takes three **structural shapes** (owned by structure, not topology): empty nodes (`{S: []}`), self-referential (`{S: [S]}`), or compound-word (carrying `COMPOUND_TOKEN`). Every kline bottoms out at one or more identities.
@@ -124,8 +133,8 @@ Persistent knowledge that survives across sessions. Structurally identical to Fr
 _Avoid_: persistent store (too vague), knowledge base, LTM frame
 
 **Grounding**:
-A model concern, neither topological nor structural. A kline is **grounded** when it resides in LTM. Resolution at S1 ("self-grounding" in legacy prose) is a consequence a kline's role may carry, derived by the significance/model layer — not a property of the role itself.
-_Avoid_: self-grounded (legacy; conflates role with memory residence), grounded identity (an identity is grounded iff it is in LTM — grounding applies to any kline, not just identities)
+The model's mechanism for realising **S1** (recognised). A kline is **grounded** when the model counts it as S1 — either by its own Composition (a canon self-grounds) or by residing in LTM via ratification (a structural fact the model owns). Grounding is how S1 is _produced_, not what S1 _means_; "recognised" is the significance-level concept.
+_Avoid_: self-grounded (legacy; conflates the mechanism with the level), grounded identity (grounding applies to any kline that attains S1, not just identities)
 
 **Escalation**:
 The Trainer deferring a proposal it cannot auto-ratify to the supervisor for resolution. The boundary between what the Trainer resolves and what the supervisor resolves.
@@ -134,11 +143,11 @@ The Trainer deferring a proposal it cannot auto-ratify to the supervisor for res
 The action of countersigning a selected proposal. Usually performed by the Trainer during curriculum execution.
 
 **Canon**:
-A kline **role**: its Composition is exact — the signature fully composes its nodes (`signature == signature_of(nodes)`). The signature carries no information beyond what its nodes already express.
+A kline **role**: its Composition is exact — the signature fully composes its nodes (`signature == signature_of(nodes)`). The signature carries no information beyond what its nodes already express. A Canon is recognised (S1) by its own Composition — it accounts for itself, needing no ratification.
 _Avoid_: canonical (ambiguous with Relational Tokens), treating `=>` (CANONIZES) as synonymous with being a Canon (the token declares an intent to compose; a CANONIZES kline need not be a Canon), MTS (an example, not the concept)
 
 **Misfit**:
-A kline **role**: its Composition is partial — the signature does not fully compose its nodes (`signature ≠ signature_of(nodes)`). A Misfit that is also a **Proposal** is subject to the proposal-layer constraints on origination; the role itself carries no provenance.
+A kline **role**: its Composition is partial — the signature does not fully compose its nodes (`signature ≠ signature_of(nodes)`). An unratified Misfit is contested (S2); ratification promotes it to recognised (S1). A Misfit that is also a **Proposal** is subject to the proposal-layer constraints on origination; the role itself carries no provenance.
 _Avoid_: fabrication (informal), conjecture/hypothesis (a misfit is a role, not a distinct emission kind)
 
 **MTS (Multi-Token Signature)**:
