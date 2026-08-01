@@ -43,7 +43,7 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signifier (@signifier spec)
 
-- Provides `make_signature(nodes)`, `signifies`, `residual`, and
+- Provides `signature_of(nodes)`, `signifies`, `residual`, and
   `classify_misfit(signature, nodes)` used during S2 misfit classification
   and expansion.
 
@@ -253,7 +253,7 @@ kline:
 Construct a **companion kline** from the removed nodes:
 
 ```
-{make_signature(removed_nodes): [removed_nodes]}
+{signature_of(removed_nodes): [removed_nodes]}
 ```
 
 Both the trimmed kline and the companion kline are emitted as independent
@@ -288,8 +288,8 @@ scaffolding is needed from the absence of a `frame` event.
 
 A second constraint governs proposal _shape_: **an expansion proposal must
 not be identity**. Identity (@CONTEXT.md §Identity) is either empty nodes
-`{S: []}` or self-referential `{S: [S]}`, and carries no decomposition
-information — so it is never a valid _expansion_ proposal. A single removed
+`{S: []}` or self-referential `{S: [S]}`, and its Composition is trivial
+— so it is never a valid _expansion_ proposal. A single removed
 node `n` would form the companion `{n: [n]}` (identity), which is dropped
 rather than emitted; likewise any proposal that reduces to identity is
 dropped. (Note: `{S: [S]}` _is_ a legitimate kline state — it is identity —

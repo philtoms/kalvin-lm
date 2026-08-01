@@ -64,7 +64,7 @@ commutative, order-sensitive, or identity-preserving, and it does not
 prescribe any signature value (including the empty-set signature). All such
 characteristics are concrete-signifier properties (see §NLPSignifier).
 
-### `make_signature(nodes: Sequence[uint64]) → uint64`
+### `signature_of(nodes: Sequence[uint64]) → uint64`
 
 Produce the signature value that will occupy a kline's head position for the
 given node sequence. The system indexes and retrieves klines by this value.
@@ -126,7 +126,7 @@ NLPSignifier understands the NLP Tokenizer's node packing (it masks the upper
 agree on the `sig_word` arrangement. It is a property of the NLP bundle,
 not of the interface — a different Signifier need not understand any packing.
 
-### `make_signature` — bitwise OR-reduce
+### `signature_of` — bitwise OR-reduce
 
 OR-reduces the full 64-bit node values (`sig |= node` over the entire word).
 Every node contributes its full value; the resulting signature accumulates
@@ -164,8 +164,8 @@ token-id differences.
 
 ### `classify_misfit` — masked residual classification
 
-Computes `residual(signature, make_signature(nodes))` and
-`residual(make_signature(nodes), signature)` and tests each for non-zero,
+Computes `residual(signature, signature_of(nodes))` and
+`residual(signature_of(nodes), signature)` and tests each for non-zero,
 returning `(underfit, overfit)`. The emptiness test (`!= 0`) lives inside
 this method — callers receive booleans and never inspect a residual value.
 
@@ -175,15 +175,15 @@ Every property below is a consequence of the NLP bit-algebra. None of them is
 required by the interface; each would be violated by a non-bit Signifier
 (e.g. a probabilistic or learned one), which is why they live here.
 
-**`make_signature`:**
+**`signature_of`:**
 
 - **Deterministic** — same node sequence → same signature.
 - **Commutative** — node order does not affect the result (OR is order-free).
 - **Lossy** — order and multiplicity are lost (`{A, B}` and `{A, A, B}`
   reduce identically).
-- **Empty → 0** — `make_signature([]) == 0`. The value `0` is NLPSignifier's
+- **Empty → 0** — `signature_of([]) == 0`. The value `0` is NLPSignifier's
   empty-set signature.
-- **Identity** — `make_signature([x]) == x` (OR of a single value).
+- **Identity** — `signature_of([x]) == x` (OR of a single value).
 
 **`signifies`:**
 
@@ -239,13 +239,13 @@ Every criterion below is a property of NLPSignifier's bit-algebra:
 
 | ID    | Criterion                                                    | Origin ref |
 | ----- | ------------------------------------------------------------ | ---------- |
-| SIG-1 | `make_signature([]) == 0` (empty → NLPSignifier's empty value) | — |
-| SIG-4 | `make_signature([x]) == x` (identity — OR of one)           | — |
-| SIG-6 | `make_signature([A, B]) == A \| B` (OR-reduce)               | — |
+| SIG-1 | `signature_of([]) == 0` (empty → NLPSignifier's empty value) | — |
+| SIG-4 | `signature_of([x]) == x` (identity — OR of one)           | — |
+| SIG-6 | `signature_of([A, B]) == A \| B` (OR-reduce)               | — |
 | SIG-7 | `signifies(0, anything) == False` (vacuous for 0)            | — |
 | SIG-9 | `signifies(T(0b110), T(0b010)) == True` (overlapping type bits) | — |
 | SIG-10 | `signifies(T(0b100), T(0b010)) == False` (no overlapping type bits) | — |
-| SIG-14 | `make_signature([0b10, 0b100]) == 0b110` (OR-reduction of two distinct node values) | — |
+| SIG-14 | `signature_of([0b10, 0b100]) == 0b110` (OR-reduction of two distinct node values) | — |
 | SIG-15 | `signifies(0b110, 0b010) == False` (lower/BPE bits masked off) | — |
 | SIG-16 | `signifies(T(0b110) \| 1, T(0b010) \| 2) == True` (type overlap beats differing BPE ids) | — |
 | SIG-17 | `residual(T(0b110), T(0b010)) == T(0b100)` (type-word bits in a not in b) | — |
@@ -285,9 +285,9 @@ The following are explicitly **out of scope** for this spec:
   node values (data flow); the NLP pair additionally share a packing
   agreement (see §NLPSignifier).
 - **Model** (@model spec) — candidate retrieval uses `signifies`.
-- **Agent** (@agent spec) — prepares signatures via `make_signature`.
-- **STM** (@stm spec) — computes nodes signatures via `make_signature`.
-- **Cogitator** (@cogitator spec) — uses `make_signature` during S2 misfit
+- **Agent** (@agent spec) — prepares signatures via `signature_of`.
+- **STM** (@stm spec) — computes nodes signatures via `signature_of`.
+- **Cogitator** (@cogitator spec) — uses `signature_of` during S2 misfit
   classification.
 - **NLP Tokenizer** (@nlp_tokenizer spec) — the NLP deployment bundles the
   NLP Tokenizer with `NLPSignifier`.

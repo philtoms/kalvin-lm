@@ -30,7 +30,7 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signifier (@signifier spec)
 
-- Provides `make_signature(nodes) → KSig` — produces a kline's signature from its nodes.
+- Provides `signature_of(nodes) → KSig` — produces a kline's signature from its nodes.
 - Provides `signifies(a, b)` — the candidate-retrieval pre-filter.
 
 ### Tokenizer (@tokenizer spec)
@@ -156,7 +156,7 @@ model. It proceeds in phases with a fast/slow split:
 ### Phase 1: Prepare
 
 The kline must arrive with its signature already set (callers compute it
-via `make_signature` before rationalising — see @kline spec). Rationalise
+via `signature_of` before rationalising — see @kline spec). Rationalise
 asserts this at entry; an unset signature is a caller bug and crashes
 loudly. There is no derivation step and no special signature value.
 
@@ -233,15 +233,15 @@ candidate retrieval or significance computation.
 **Unsigned**: If Q has zero nodes, it carries no information. Call
 `model.add_to_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
 
-**Canonical — self-grounded**: If `Q.signature == make_signature(Q.nodes)`
+**Canonical — recognised by its own Composition**: If `Q.signature == signature_of(Q.nodes)`
 (as defined in the @signifier spec) and every node that could resolve does
-resolve in the model (exists as a Kline signature), Q is fully grounded.
-The signature faithfully represents the nodes — nothing is missing and
+resolve in the model (exists as a Kline signature), Q is recognised (S1) —
+the model grounds it. The signature faithfully represents the nodes — nothing is missing and
 nothing is extraneous. Call `model.add_to_ltm(Q)`. Emit a `"frame"` event at
 S1. Return `True`.
 
 **Countersigned — ratified**: If the model contains a kline whose signature
-equals `make_signature(Q.nodes)` and whose sole node equals `Q.signature`,
+equals `signature_of(Q.nodes)` and whose sole node equals `Q.signature`,
 then Q is countersigned — another kline vouches for it structurally. This is
 the **ratification** check. It runs in the fast lane before candidates are
 retrieved, because countersignature is a structural property of Q and the
@@ -292,7 +292,7 @@ Routing distinguishes only **S2** (at least one overlapping node) from
   established by `expand()` / `is_s1()` (canonical composition or
   countersignature), not by node membership. Routing a pair as "S1" purely
   on overlap would publish S1 significance for pairs that are not
-  structurally grounded.
+  recognised (S1).
 - **S4 is not a routing outcome.** Identity klines (empty nodes) are
   resolved on the fast path in `rationalise` before any candidate is
   submitted to the Cogitator, so an empty query never reaches routing.
@@ -406,7 +406,7 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 
 | ID     | Criterion                                                   | Origin ref |
 | ------ | ----------------------------------------------------------- | ---------- |
-| AGT-7  | Signature assigned: KLine with sig=0 gets `make_signature(nodes)` | — |
+| AGT-7  | Signature assigned: KLine with sig=0 gets `signature_of(nodes)` | — |
 | AGT-8  | Signature preserved: existing non-zero sig unchanged        | — |
 
 ### Rationalisation — Phase 1b: Significance Comparison
@@ -431,8 +431,8 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 | ID     | Criterion                                                  | Origin ref |
 | ------ | ---------------------------------------------------------- | ---------- |
 | AGT-12 | Unsigned (no nodes): returns True, emits "frame" S4, kline in LTM | — |
-| AGT-14 | Self-grounded canonical: returns True when all nodes resolve, kline in LTM | — |
-| AGT-15 | Not self-grounded: falls through to Phase 4               | — |
+| AGT-14 | Canonical recognised by its own Composition: returns True when all nodes resolve, kline in LTM | — |
+| AGT-15 | Not recognised by Composition: falls through to Phase 4               | — |
 
 ### Rationalisation — Phase 4: Retrieve Candidates
 
@@ -494,11 +494,11 @@ Proposals can be emitted at any significance level. See @cogitator spec.
 
 ### 3. Grounding Assessment Formalisation
 
-This spec defines grounding checks (self-grounded, identity)
+This spec defines grounding checks (canonical, identity)
 as fast-path optimisations. An alternative design would route everything
 through routing, with the model's `is_s1` function handling these cases
-internally. `is_s1` now performs structural grounding (canonical or
-countersigned), which subsumes the earlier resolve-only check.
+internally. `is_s1` now performs grounding (canonical or
+countersigned — the model's mechanism for realising S1), which subsumes the earlier resolve-only check.
 
 **Recommendation:** Keep as agent-level fast paths. Grounding is about
 structural properties of a single Kline, not about comparison between two

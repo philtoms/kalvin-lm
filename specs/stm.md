@@ -32,7 +32,7 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signifier (@signifier spec)
 
-- `make_signature(nodes) → int` — produces a nodes signature for indexing.
+- `signature_of(nodes) → int` — produces a nodes signature for indexing.
 - Used to derive the nodes signature for dual-keyed indexing.
 
 ## Definition
@@ -60,7 +60,7 @@ STM(bound=256)
 Each KLine is indexed under **two keys**:
 
 1. **Signature key** — `kline.signature`
-2. **Nodes signature key** — `make_signature(kline.nodes)`
+2. **Nodes signature key** — `signature_of(kline.nodes)`
 
 Both keys map into the same `_store` dictionary. When the two keys are
 identical (signature equals nodes signature), the KLine is stored under a
@@ -90,7 +90,7 @@ Adds a KLine to the STM.
   `(kline.signature, tuple(kline.nodes))` is already in `_dedup`. If present,
   the existing entry is removed first, then the new entry is added — refreshing
   FIFO position.
-- Computes the nodes signature via `make_signature(kline.nodes)`. If the
+- Computes the nodes signature via `signature_of(kline.nodes)`. If the
   KLine has no nodes, the nodes signature is `0`.
 - The effective signature key is `kline.signature` if non-zero, otherwise
   the computed nodes signature.
@@ -309,7 +309,7 @@ The following are explicitly **out of scope** for this spec:
 - **Thread safety.** The synchronisation *mechanism* is an implementation
    concern; the *contract* (atomicity, snapshot iterators, lock ordering) is
    specified in §Thread Safety.
-- **Nodes signature computation.** The STM delegates to `make_signature`
+- **Nodes signature computation.** The STM delegates to `signature_of`
   from the @signifier spec.
 
 ## Referenced By

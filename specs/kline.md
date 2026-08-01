@@ -79,13 +79,13 @@ split into BPE subwords — carries the boundary marker token
 `COMPOUND_TOKEN` (@nlp_tokenizer spec) as an extra node: `Mary: [COMPOUND_TOKEN, M, ary]`.
 The token participates in the signature algebra like any other node, so the
 compound's signature _encodes_ the marker naturally
-(`signature == make_signature([M, ary, COMPOUND_TOKEN])`) — no bit masking
+(`signature == signature_of([M, ary, COMPOUND_TOKEN])`) — no bit masking
 anywhere. Three predicates capture the kinds relevant to rationalisation:
 
 - **`is_identity(kline)`** — `True` for the empty form `{S: []}`, the
   self-referential form `{S: [S]}` (sole node equals signature), or a
-  compound-word (`COMPOUND_TOKEN` is among the nodes). All three carry no
-  decomposition: the self-referential form is identity _by definition_ (a
+  compound-word (`COMPOUND_TOKEN` is among the nodes). All three have trivial
+  Composition: the self-referential form is identity _by definition_ (a
   value that decomposes into itself), the compound-word form is identity
   _by external tokenisation_ (the word is one lexical item; its subwords
   are an encoding artefact). Both overrule any canon classification (see
@@ -97,7 +97,7 @@ anywhere. Three predicates capture the kinds relevant to rationalisation:
   module names it, and the signifier treats it as an ordinary node (no
   masking).
 - **`is_canon(kline)`** — `True` when the kline is not identity AND
-  `signature == make_signature(nodes)`.
+  `signature == signature_of(nodes)`.
 
 These live with the KLine because they are structural properties; the model
 and significance modules consume them.

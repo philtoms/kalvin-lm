@@ -28,7 +28,7 @@ not define the algebra.
 
 ### Signifier (@signifier spec)
 
-- Signatures are produced by `make_signature` and compared by `signifies` —
+- Signatures are produced by `signature_of` and compared by `signifies` —
   both defined in the @signifier spec. The Signifier is the sole authority
   for signature bit-operations; Kalvin treats signatures as opaque values.
 
@@ -62,7 +62,7 @@ with it (see @signifier spec, `signifies`).
 ## Creation
 
 Signatures are produced by the Signifier — see @signifier spec
-(`make_signature`). This spec does not define the reduction.
+(`signature_of`). This spec does not define the reduction.
 
 ## Well-known Values
 
@@ -79,7 +79,7 @@ matching (`signifies(0, x) == False`; see @signifier spec).
 The following are explicitly **out of scope** for this spec:
 
 - **Creation and matching.** How signatures are produced
-  (`make_signature`) and compared for overlap (`signifies`) is defined in
+  (`signature_of`) and compared for overlap (`signifies`) is defined in
   the @signifier spec.
 - **Significance computation.** How signatures contribute to distance and
   significance values is defined in the @significance / @model specs.

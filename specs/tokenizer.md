@@ -51,7 +51,7 @@ The tokenizer does not interpret nodes beyond its own encoding.
 
 ### Signifier (@signifier spec)
 
-- Signature creation (`make_signature`) and overlap matching (`signifies`)
+- Signature creation (`signature_of`) and overlap matching (`signifies`)
   are defined in the @signifier spec. The Signifier consumes the nodes the
   Tokenizer produces; the tokenizer does not create signatures itself.
 
@@ -118,7 +118,7 @@ a concrete-tokenizer concern (see @nlp_tokenizer, Construction).
 
 ## Signature Behavior
 
-A concrete tokenizer passes its nodes to `make_signature()` as it would
+A concrete tokenizer passes its nodes to `signature_of()` as it would
 any other node sequence; the reduction is defined in the @signifier spec.
 
 ## Test Matrix
@@ -141,7 +141,7 @@ The following are explicitly **out of scope** for this spec:
   @nlp_tokenizer.
 - **Type dictionaries.** Type words, type lookup, and unknown-token
   fallback are concrete-tokenizer concerns (see @nlp_tokenizer).
-- **Signature creation.** Signature construction (`make_signature`) is
+- **Signature creation.** Signature construction (`signature_of`) is
   defined in the @signifier spec.
 - **Significance computation.** Significance is defined in the
   @significance spec. The tokenizer does not compute or store significance.

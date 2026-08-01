@@ -27,7 +27,7 @@ this spec owns only the two paths and their boundaries.
 
 ## Dependencies
 
-- `@CONTEXT.md` — Proposal, Misfit, Canon, Ratify, Structural Relationships.
+- `@CONTEXT.md` — Proposal, Misfit, Canon, Ratify, Relational Tokens.
 - `@specs/dialogue-driven-training.md` — the actor contract this cogitation
   satisfies (the trainee side).
 - `@specs/cogitator.md` — the real async slow path this deliberately simplifies.

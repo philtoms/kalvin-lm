@@ -89,7 +89,7 @@ A Model consists of:
 See the **@stm spec** for the full definition. Summary:
 
 - Bounded, dual-keyed index over recently added KLines (default bound: **256**).
-- Indexes each KLine by **signature** and **nodes signature** (via `make_signature`).
+- Indexes each KLine by **signature** and **nodes signature** (via `signature_of`).
 - FIFO eviction when bound is exceeded; evicted KLines remain in Frame and
   deeper tiers.
 - Enables **transitive grounding** — finding KLines that share node structure
@@ -278,7 +278,7 @@ model.find_by_nodes(nodes_signature) → Kline | none
 
 Returns the most recently added Kline whose nodes signature matches.
 
-- The nodes signature is `make_signature(kline.nodes)` as defined in the
+- The nodes signature is `signature_of(kline.nodes)` as defined in the
   @signifier spec.
 - Searches STM first (primary index for nodes signatures), then Frame,
   then LTM, then Base.
@@ -419,13 +419,13 @@ identity signatures (@CONTEXT.md §Identity).
 - **Identity** (`is_identity` — empty nodes OR self-referential `{S: [S]}`)
   → `[signature]`. Base case.
 - **Canon** (`is_canon` — non-empty, non-self-referential, and
-  `signature == make_signature(nodes)`, @signifier spec) → the
+  `signature == signature_of(nodes)`, @signifier spec) → the
   concatenation, in node order, of `unpack(child)` for each child kline
   resolved from the node value.
 - Any other input (connoted, denoted, misfit) → raises.
 - **Child resolution** uses three-tier precedence (highest first):
   1. empty-nodes identity, 2. genuine canon, 3. self-referential identity.
-     The self-referential form is identity but carries no decomposition, so it
+     The self-referential form is identity but its Composition is trivial, so it
      loses to a genuine canon for the same signature — otherwise it would
      displace the canon and collapse the result to identity. Within a kind, the
      most recently added kline wins (@CONTEXT.md §Recency Precedence). If no
@@ -516,18 +516,19 @@ components. Callers never see raw distance.
 is_s1(model, kline) → bool
 ```
 
-Determines whether a kline is structurally grounded (S1).
+Determines whether a kline is recognised (S1).
 
 - `kline` — a KLine to test.
 - A kline is S1 if:
   1. It is canonical (`is_canon` — non-empty, non-self-referential, and
-     `make_signature(kline.nodes) == kline.signature`), OR
+     `signature_of(kline.nodes) == kline.signature`), OR
   2. It is countersigned by another kline in the model.
 - A self-referential kline `{S: [S]}` is identity, not canon, and is not
   counted as its own countersigner, so it is not S1 by structure.
 - This is a stateful test: adding or removing klines changes the result.
-- S1 represents a **structurally grounded kline** — one whose signature
-  and nodes are fully accounted for by the model's structure.
+- S1 represents a **recognised kline** — one whose signature
+  and nodes are fully accounted for (by its own Composition or by
+  countersignature), which the model grounds.
 
 ### Expand (Significance)
 
@@ -592,7 +593,7 @@ The implementation algorithm and pseudocode are in
 | Mismatched, chain reaches signature with bitwise overlap | yields QC, +MAX_HOP     | S2 signifies candidate |
 | Mismatched, chain never reaches opposing mismatch set    | +MAX_HOP                | Accumulated directly   |
 | Mismatched candidate, chain bridges via connotation      | `S2_S3_DISTANCE + hops` | S3 linear (always)     |
-| Matched + structurally grounded (is_s1)                  | 0                       | Neutral                |
+| Matched + recognised (is_s1)                            | 0                       | Neutral                |
 | Matched + ungrounded                                     | +1                      | Accumulated directly   |
 
 ### Is Countersigned
@@ -605,7 +606,7 @@ Returns whether a kline is **countersigned** by any kline in the model.
 
 - `kline` — a KLine.
 - Returns `true` if the model contains a kline whose signature equals
-  `make_signature(kline.nodes)` and whose sole node equals `kline.signature`.
+  `signature_of(kline.nodes)` and whose sole node equals `kline.signature`.
 - A self-referential kline `{S: [S]}` is excluded: its nodes_signature is
   `S` and it is itself a one-node kline whose node is `S`, so it would
   otherwise count as its own countersigner.
@@ -700,18 +701,18 @@ Matched-but-ungrounded nodes add 1 each.
 
 `edge_hops(model, sig)` yields `(hop_count, next_sig)` for each
 non-canonical resolution step in the chain
-`sig → kline → make_signature(kline.nodes) → ...`. It must terminate on
+`sig → kline → signature_of(kline.nodes) → ...`. It must terminate on
 four conditions without raising:
 
 1. **Cycle** — if the chain revisits a signature already seen in the
    current traversal, it breaks immediately without yielding the cycle.
    Prevents countersigned pairs (e.g. `{M: [H]} ↔ {H: [M]}`) oscillating
    for all MAX_HOP iterations.
-2. **Identity kline** — if `make_signature(kline.nodes) == 0` (identity
+2. **Identity kline** — if `signature_of(kline.nodes) == 0` (identity
    kline with empty nodes), it breaks without yielding. There is no
    signature to follow from `nodes = []`.
 3. **Canonical kline** — if the kline is canonical
-   (`sig == make_signature(nodes)`), it breaks.
+   (`sig == signature_of(nodes)`), it breaks.
 4. **Dead end** — if `model.find(sig)` returns None, it breaks.
 
 The total number of yields never exceeds MAX_HOP.
@@ -866,7 +867,7 @@ else       → S4
 | MOD-57  | `generate_expansions` overfit: returns trimmed + companion                                                                                                                                                | —          |
 | MOD-58  | `generate_expansions` dual: returns replacement + companion (one atomic swap per gap-filling contributor; the dual path is exclusive — it does not also emit the underfit-only or overfit-only proposals) | —          |
 | MOD-59  | `generate_expansions` no gap: no expansion proposals emitted                                                                                                                                              | —          |
-| MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity carries no decomposition; see @cogitator spec §Universal Constraint                                          | —          |
+| MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity's Composition is trivial; see @cogitator spec §Universal Constraint                                          | —          |
 
 ## What a Model is Not
 

@@ -32,9 +32,9 @@ This spec depends on the following concepts, defined elsewhere:
   also exposes `is_s1` — `is_canon OR is_countersigned` — but the retrieval
   cascade does not invoke it directly (see §Retrieval).
 
-### Structural Relationship (@CONTEXT.md §Structural Relationship)
+### Relational Tokens (@CONTEXT.md §Relational Tokens)
 
-- The closed set of structural relationships (COUNTERSIGNS, CANONIZES, CONNOTES,
+- The closed set of relational tokens (COUNTERSIGNS, CANONIZES, CONNOTES,
   DENOTES, IDENTITY) produced by the written relational token.
 
 ## Definition
@@ -80,10 +80,10 @@ inverted scale (higher = more grounded):
 1. **Band-representative value** — one of four fixed constants, asserted by a
    producer that declares a band rather than computing a distance. The values
    and their derivation are owned by @model spec §Significance Semantics ›
-   Band-representative Values. The producer maps an entry's structural relationship
-   (@CONTEXT.md §Structural Relationship) to its band as follows:
+   Band-representative Values. The producer maps an entry's relational token
+   (@CONTEXT.md §Relational Tokens) to its band as follows:
 
-   | Structural Relationship       | Band |
+   | Relational Token             | Band |
    | ---------------------- | ---- |
    | COUNTERSIGNS          | S1   |
    | CANONIZES              | S2   |

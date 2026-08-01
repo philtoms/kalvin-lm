@@ -24,7 +24,7 @@ Kalvin and in LTM, with reported significance agreeing with declared significanc
 - `@specs/kscript.md` — compiled-entry declared bands (`op` field), structural
   states (COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, IDENTITY).
 - `@specs/kline.md` — `is_canon`, `is_identity`, KLine equality.
-- `@specs/signifier.md` — `make_signature`, `residual` (misfit diagnosis).
+- `@specs/signifier.md` — `signature_of`, `residual` (misfit diagnosis).
 - `@specs/stub-kagent.md` — the bootstrap trainee the satisfaction logic is
   validated against; the contract the real Kalvin must reproduce.
 - `@CONTEXT.md` — Learned, Canon, Ratify, Scaffolding.
@@ -40,7 +40,7 @@ Kalvin signature request:
 
 - **Identities** — every compiled entry with `op = IDENTITY`.
 - **Canons** — every compiled relationship kline where
-  `signature == make_signature(nodes)` and it is not identity (`is_canon`).
+  `signature == signature_of(nodes)` and it is not identity (`is_canon`).
   This includes the authored semantic canons (C_MHALL, C_SVO, C_ALL) **and** the
   tokenizer's subword canons (`{Mary:[Ma,ry]}`, etc.). Both are withheld; subword
   canons are not filtered out (see §Subword Canons).

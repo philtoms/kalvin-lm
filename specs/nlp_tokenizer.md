@@ -22,7 +22,7 @@ here**. The base `KTokenizer` interface (see @tokenizer) is layout- and
 type-agnostic; a base `Tokenizer` class wraps the BPE engine and is not
 itself a `KTokenizer`. This specialisation is the production tokenizer.
 
-The signature algebra over these nodes — reduction (`make_signature`) and
+The signature algebra over these nodes — reduction (`signature_of`) and
 overlap matching (`signifies`) — is owned by the @signifier spec. The NLP
 deployment bundles this tokenizer with `NLPSignifier`, the production
 concrete Signifier, as two sibling NLP specialisations: the tokenizer
@@ -76,7 +76,7 @@ sole free slot in the `sig_word` space; every other bit is assigned by
 
 The token participates in the signature algebra like any other node, so a
 compound's signature _encodes_ the marker (`signature ==
-make_signature([COMPOUND_TOKEN, M, ary])`) with no bit masking. Detection is
+signature_of([COMPOUND_TOKEN, M, ary])`) with no bit masking. Detection is
 `COMPOUND_TOKEN in kline.nodes` (@kline spec §Structural Predicates). The
 marker is confined to the kalvin↔NLP boundary: defined here, appended by
 `ks/token_encoder.py`, read by `kalvin/kline.py`; it is a compiler/NLP
