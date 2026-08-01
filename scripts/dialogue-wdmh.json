@@ -22,7 +22,7 @@
       "role": "T",
       "turn": 36,
       "role_turn": 18,
-      "notes": "T opens script 2: the question 'what did Mary have' is actually encoded 'mary had what' at S2."
+      "notes": "Note: the question 'what did Mary have' is actually encoded 'mary did had what' at S2."
     },
     {
       "op": "IDENTITY",
@@ -54,7 +54,7 @@
       "signature": "what",
       "nodes": [],
       "significance": "S4",
-      "notes": "K doesn't recognise what, did, have",
+      "notes": "K doesn't recognise what",
       "role": "K",
       "turn": 39,
       "role_turn": 20
@@ -66,6 +66,28 @@
         "what"
       ],
       "significance": "S1",
+      "role": "T",
+      "turn": 40,
+      "role_turn": 20
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "DH",
+      "nodes": [],
+      "significance": "S4",
+      "notes": "K doesn't recognise did, have",
+      "role": "K",
+      "turn": 39,
+      "role_turn": 20
+    },
+    {
+      "op": "IDENTITY",
+      "signature": "DH",
+      "nodes": [
+        "did",
+        "have"
+      ],
+      "significance": "S2",
       "role": "T",
       "turn": 40,
       "role_turn": 20
@@ -152,23 +174,6 @@
       "turn": 48,
       "role_turn": 25,
       "notes": "Misfit proposal: K substitutes 'did have' for had, 'a little lamb' for what. Node order matches the entry (WDMH:[Mary, had, what]) and T's ratifying close (turn 49)."
-    },
-    {
-      "op": "CANONIZES",
-      "signature": "WDMH",
-      "nodes": [
-        "Mary",
-        "had",
-        "a",
-        "little",
-        "lamb"
-      ],
-      "significance": "S1",
-      "role": "T",
-      "turn": 49,
-      "role_turn": 24,
-      "notes": "T ratifies the misfit at S1; closes the dialogue. K's canon-countersignature is an internal grounding (see events).",
-      "close": true
     }
   ],
   "events": [
