@@ -3,7 +3,7 @@
 **Spec:** @specs/kscript.md v3.0  
 **Date:** 2026-06-12  
 **Status:** Plan  
-**Assumes:** Kalvin core (`kalvin.kline.KLine`, `kalvin.signature.make_signature`, `kalvin.nlp_tokenizer.NLPTokenizer`)
+**Assumes:** Kalvin core (`kalvin.kline.KLine`, `kalvin.signature.signature_of`, `kalvin.nlp_tokenizer.NLPTokenizer`)
 
 ---
 
@@ -19,7 +19,7 @@ This plan builds the KScript compiler from scratch against the consolidated spec
 ## Dependency Graph
 
 ```
-[Kalvin Core: KLine, NLPTokenizer, make_signature]
+[Kalvin Core: KLine, NLPTokenizer, signature_of]
           │
           ▼
    Task 1: token.py (0.5h)
@@ -578,7 +578,7 @@ class TokenEncoder:
 
 **Canonical encoding (§11.3/§11.4).** A compound identifier (§8 multi-char sig) is BPE-encoded via its resolved components, never by re-encoding its literal string. Maintain `_compound_sigs: dict[str, int]`:
 
-- On a CANONIZES definition (the compound's defining entry): compute `sig = make_signature(node_values)` and register `entry.sig → sig`. The ASTEmitter guarantees definition-before-reference ordering.
+- On a CANONIZES definition (the compound's defining entry): compute `sig = signature_of(node_values)` and register `entry.sig → sig`. The ASTEmitter guarantees definition-before-reference ordering.
 - On any entry whose signature or node string is a known compound: reuse the registered uint64 instead of `encode(literal_string)`.
 
 This yields three coupled rules, all consequences of "a compound has one identity, computed once":

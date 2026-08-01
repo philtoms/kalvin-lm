@@ -11,7 +11,7 @@ NLPSignifier), `@specs/signature.md` (trimmed — delegates algebra to
 
 ## Problem
 
-`kalvin.signature` implements the NLP bit-algebra — `make_signature`
+`kalvin.signature` implements the NLP bit-algebra — `signature_of`
 (OR-reduce) and `signifies` (masked `TYPE_MASK` AND over the upper 32 bits) —
 as free functions called directly from ~15 sites across Kalvin core. Kalvin is
 therefore aware of, and coupled to, one concrete signature mechanism. The
@@ -26,14 +26,14 @@ signature values as opaque.
 
 ## Spec References
 
-- `@specs/signifier.md` — `KSignifier` interface (`make_signature`,
+- `@specs/signifier.md` — `KSignifier` interface (`signature_of`,
   `signifies`), NLPSignifier concrete, Opacity Invariant, SIG-1..SIG-16
 - `@specs/signature.md` — signature as a value; delegates creation/matching to
   @signifier
 - `@specs/tokenizer.md`, `@specs/nlp_tokenizer.md` — NLP bundle = NLPTokenizer
   + NLPSignifier; peer relationship
 - `@specs/agent.md`, `@specs/model.md`, `@specs/stm.md`, `@specs/cogitator.md`
-  — consume `make_signature` / `signifies` via the injected Signifier
+  — consume `signature_of` / `signifies` via the injected Signifier
 
 ## Module Layout (target)
 
@@ -61,7 +61,7 @@ no base concrete (the interface is the ABC; there is no generic Signifier).
   ```python
   class KSignifier(ABC):
       @abstractmethod
-      def make_signature(self, nodes: Sequence[int]) -> int: ...
+      def signature_of(self, nodes: Sequence[int]) -> int: ...
       @abstractmethod
       def signifies(self, a: int, b: int) -> bool: ...
   ```
@@ -77,7 +77,7 @@ no base concrete (the interface is the ABC; there is no generic Signifier).
   class NLPSignifier(KSignifier):
       _TYPE_MASK = 0xFFFF_FFFF_0000_0000
 
-      def make_signature(self, nodes):           # sig |= node  (OR-reduce)
+      def signature_of(self, nodes):           # sig |= node  (OR-reduce)
       def signifies(self, a, b):                 # (a & b & _TYPE_MASK) != 0
   ```
 - Module docstring documents the NLP mechanism (nlp_type32 packing, masked
@@ -108,27 +108,27 @@ no base concrete (the interface is the ABC; there is no generic Signifier).
     `src/training/harness/adapter.py` — add `signifier` param next to
     `tokenizer` where they construct or hold a tokenizer for compilation.
 - **Decision rule for who needs a signifier:** any component that today calls
-  `make_signature` or `signifies` (see Task 5). Components that only encode/
+  `signature_of` or `signifies` (see Task 5). Components that only encode/
   decode text (pure tokenizer consumers) do not need one.
 
 ### Task 5 — Migrate call sites (free functions → injected signifier)
 
 - **Spec ref:** @specs/signifier.md §Interface
-- Replace every `make_signature(...)` / `signifies(...)` call with
-  `self._signifier.make_signature(...)` / `self._signifier.signifies(...)`.
+- Replace every `signature_of(...)` / `signifies(...)` call with
+  `self._signifier.signature_of(...)` / `self._signifier.signifies(...)`.
   **Behaviour-preserving relocation only** — the deferred bare-bitwise bugs
   (Task 7) are NOT touched in this migration. Sites:
 
   | File | Current | Replacement |
   | ---- | ------- | ----------- |
-  | `src/kalvin/agent.py` | `make_signature` (3×: prepare, expected_sig, reciprocal) | `self._signifier.make_signature` |
-  | `src/kalvin/model.py` | `make_signature` (×1, line 177), `signifies` (×1, line 399) | via `self._signifier` (the Model must hold a signifier — add in Task 4) |
-  | `src/kalvin/expand.py` | `make_signature` (×3: lines 177, 221, 433), `signifies` (×2: lines 286, 314) | via a `signifier` param on the expand functions (see Decision: threading) |
-  | `src/kalvin/misfit.py` | `make_signature` (×4) | via a signifier param on `classify_misfit` / `generate_expansions` |
-  | `src/kalvin/stm.py` | `make_signature` (×3) | `self._signifier.make_signature` (STM holds a signifier — add in Task 4) |
-  | `src/kalvin/kline.py` | `make_signature` in `is_canon`, `_infer_level`, `_infer_op_symbol` | `signifier.make_signature` (see Task 6) |
-  | `src/ks/token_encoder.py` | `make_signature` (×2) | `self._signifier.make_signature` |
-  | `src/training/trainer/trainer.py` | `make_signature` (line ~282, gap computation) | `self._signifier.make_signature` |
+  | `src/kalvin/agent.py` | `signature_of` (3×: prepare, expected_sig, reciprocal) | `self._signifier.signature_of` |
+  | `src/kalvin/model.py` | `signature_of` (×1, line 177), `signifies` (×1, line 399) | via `self._signifier` (the Model must hold a signifier — add in Task 4) |
+  | `src/kalvin/expand.py` | `signature_of` (×3: lines 177, 221, 433), `signifies` (×2: lines 286, 314) | via a `signifier` param on the expand functions (see Decision: threading) |
+  | `src/kalvin/misfit.py` | `signature_of` (×4) | via a signifier param on `classify_misfit` / `generate_expansions` |
+  | `src/kalvin/stm.py` | `signature_of` (×3) | `self._signifier.signature_of` (STM holds a signifier — add in Task 4) |
+  | `src/kalvin/kline.py` | `signature_of` in `is_canon`, `_infer_level`, `_infer_op_symbol` | `signifier.signature_of` (see Task 6) |
+  | `src/ks/token_encoder.py` | `signature_of` (×2) | `self._signifier.signature_of` |
+  | `src/training/trainer/trainer.py` | `signature_of` (line ~282, gap computation) | `self._signifier.signature_of` |
 
 - **Decision: threading `expand`/`misfit` (module-level functions).** These are
   not classes, so they cannot store `self._signifier`. Two options:
@@ -146,12 +146,12 @@ no base concrete (the interface is the ABC; there is no generic Signifier).
   self-referential); no bit manipulation. Stays a free function taking no
   signifier.
 - `is_canon(kline, signifier)` — add a `signifier` parameter; body becomes
-  `kline.signature == signifier.make_signature(kline.nodes)`. Update every
+  `kline.signature == signifier.signature_of(kline.nodes)`. Update every
   `is_canon(...)` call site to pass the signifier.
 - `_infer_level(kline, signifier)` and `_infer_op_symbol(kline, signifier)` —
-  add `signifier` param; route `make_signature` through it. (These also contain
+  add `signifier` param; route `signature_of` through it. (These also contain
   deferred bare-`&` overlap — Task 7 — which stays untouched here except for
-  the `make_signature` relocation.)
+  the `signature_of` relocation.)
 - **Threading note:** `is_canon` / `_infer_level` are called from `kline_display`
   and `_infer_op_symbol`. `kline_display(kline, tokenizer)` must become
   `kline_display(kline, tokenizer, signifier)`. Audit its call sites.
@@ -162,14 +162,14 @@ no base concrete (the interface is the ABC; there is no generic Signifier).
 - **Rename** `tests/test_signature.py` → `tests/test_signifier.py`. Update
   imports to `from kalvin.signifier import NLPSignifier`. Construct one
   `NLPSignifier()` instance per test class (or a fixture) and call
-  `signifier.make_signature` / `signifier.signifies`. The existing assertions
+  `signifier.signature_of` / `signifier.signifies`. The existing assertions
   are all NLPSignifier properties and stay valid unchanged. Add the `T()`
   helper's doc note that it is an NLPSignifier-specific test aid.
 - **`tests/test_abstract.py`** — add an instantiation/ABC test for `KSignifier`
   (abstract; cannot instantiate; `NLPSignifier` satisfies it), mirroring
   whatever exists for `KTokenizer`.
 - **Migrate test imports:** the following test files import
-  `make_signature` and must switch to an `NLPSignifier()` instance:
+  `signature_of` and must switch to an `NLPSignifier()` instance:
   `test_agent.py`, `test_cogitator_drain.py`, `test_cogitator_handler.py`,
   `test_countersign_resolution.py`, `test_encode_text.py`,
   `test_ks_token_encoder.py`, `test_model.py`, `test_nlp_tokenizer.py`.
@@ -202,7 +202,7 @@ no base concrete (the interface is the ABC; there is no generic Signifier).
 | Module name | `signifier.py` (not `nlp_signifier.py`) | no sibling concrete; the concrete IS NLP but the file holds the only impl |
 | Injection channel | alongside existing `tokenizer` param | same wiring convention as the tokenizer refactor; no new top-level parameter concept |
 | `expand`/`misfit` threading | explicit `signifier` param (option a) | matches existing `model`-param convention; avoids a refactor into classes |
-| `is_canon` location | stays in `kline.py`, takes a signifier | structural predicate; the only bit-op is the delegated `make_signature` |
+| `is_canon` location | stays in `kline.py`, takes a signifier | structural predicate; the only bit-op is the delegated `signature_of` |
 | `is_identity` location | stays in `kline.py`, no signifier | pure structure, no bit manipulation |
 | Behaviour of migrated calls | unchanged (relocation only) | deferred bare-bitwise bugs fixed separately (Task 7 deferrals) |
 | Test file rename | `test_signature.py` → `test_signifier.py` | the module under test is renamed; all criteria are NLPSignifier properties |

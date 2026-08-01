@@ -63,7 +63,7 @@ tests that constructed such cases expecting misfit classification.
   def residual(self, a, b):
       return (a & ~b) & _TYPE_MASK
   def classify_misfit(self, signature, nodes):
-      nodes_sig = self.make_signature(nodes)
+      nodes_sig = self.signature_of(nodes)
       underfit = self.residual(signature, nodes_sig) != 0
       overfit = self.residual(nodes_sig, signature) != 0
       return underfit, overfit
@@ -93,7 +93,7 @@ tests that constructed such cases expecting misfit classification.
   ```
 - `src/training/trainer/trainer.py:291-293`:
   ```python
-  target_nodes_sig = self._signifier.make_signature(target.nodes)
+  target_nodes_sig = self._signifier.signature_of(target.nodes)
   underfit_gap = self._signifier.residual(target.signature, target_nodes_sig)
   overfit_mask = self._signifier.residual(target_nodes_sig, target.signature)
   ```
@@ -152,7 +152,7 @@ tests that constructed such cases expecting misfit classification.
 
 | Decision | Outcome | Rationale |
 | --- | --- | --- |
-| `residual` on interface | yes, `(a, b) → int` | valid signature-algebra op parallel to make_signature/signifies |
+| `residual` on interface | yes, `(a, b) → int` | valid signature-algebra op parallel to signature_of/signifies |
 | `classify_misfit` on interface | yes, `(signature, nodes) → (bool, bool)` | encapsulates residual + `!= 0`; callers never see residual representation |
 | Masking | masked (consistent with `signifies`) | type-word-only; fixes latent BPE-collision bugs |
 | `classify_misfit` signature | value-space `(signature, nodes)` | consistent with other interface methods (all take raw uint64) |

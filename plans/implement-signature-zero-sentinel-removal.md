@@ -17,7 +17,7 @@ Four sites in Kalvin core treat the signature value `0` as special:
 | ---- | ------- | ------ |
 | `agent.py:202` | `if signature == 0 and nodes: derive` | lazy-derive (transient) |
 | `agent.py:206` | `if signature != 0 and grounded(...)` | guard for the above |
-| `expand.py:178` | `if sig == 0: break` (after `make_signature`) | unreachable defensive |
+| `expand.py:178` | `if sig == 0: break` (after `signature_of`) | unreachable defensive |
 | `stm.py:125` | `if sig == 0: return []` | harmless early-return |
 
 This hardcodes NLPSignifier's empty-set value into Kalvin core. A Signifier
@@ -55,7 +55,7 @@ responsible for computing the signature before rationalising.
   # Phase 1: Prepare — callers must provide a set signature.
   assert kline.signature is not None, (
       "KLine.signature must be set before rationalise; callers compute it "
-      "via signifier.make_signature(nodes)."
+      "via signifier.signature_of(nodes)."
   )
   # Phase 2: Ground check (Frame/LTM/Base only — not STM)
   if self._model.grounded(kline):
@@ -78,7 +78,7 @@ removed derive:
 
 - `tests/test_cogitator_handler.py:94` — already pre-computes immediately
   after; the `KLine(0, [...])` placeholder can be replaced with the
-  computed signature directly (or `KLine(signifier.make_signature([...]), [...])`).
+  computed signature directly (or `KLine(signifier.signature_of([...]), [...])`).
 - Scan `tests/test_countersign_resolution.py`, `tests/test_cogitator_drain.py`,
   `tests/test_agent.py` for any `KLine(0, [non-empty nodes])` passed to
   rationalise; replace with a pre-computed signature.
