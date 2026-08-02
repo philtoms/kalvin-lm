@@ -1,6 +1,14 @@
 # Trainer Satisfaction Logic (Paced Loop) — Specification
 
-> **Legacy path.** This spec describes the non-rationalising trainer (a deterministic ratifier that auto-countersigns structural matches and escalates the rest to the supervisor). The rationalising trainer (`specs/dialogue-driven-training.md`) is the direction of travel: it cogitates and emits its own proposals, escalating only when its cogitation yields no reply. This spec is retained until the satisfaction-check code it describes is replaced. Where the two disagree, the dialogue path is current.
+> **Superseded at the glossary level — still the running production path.**
+> `CONTEXT.md` defines the **Trainer** as a rationaliser (the trainer-side peer
+> of the trainee, sharing its engine). This spec describes the deterministic
+> ratifier — the earlier path that auto-countersigns structural matches and
+> escalates the rest — which is still the trainer wired into the production
+> harness (`src/training/trainer/`, `class: Trainer` in `training.harness.yaml`).
+> It is retained unchanged until the dialogue path (`specs/dialogue-driven-training.md`,
+> `src/training/dialogue/`) replaces it under the harness. Where the two
+> disagree, the dialogue path is current per the glossary.
 
 ## Overview
 
@@ -16,8 +24,8 @@ Identities and Canons are supplied as **ratification** (submit-grounding) when
 Kalvin requests their signatures, never prompted proactively.
 
 An entry is **learned** when it is grounded at its declared band — understood by
-Kalvin and in LTM, with reported significance agreeing with declared significance
-(`@CONTEXT.md` §Learned). Grounding, not S1, is the satisfaction signal.
+Kalvin and in LTM, with reported significance agreeing with declared
+significance. Grounding, not S1, is the satisfaction signal.
 
 ## Dependencies
 
@@ -29,7 +37,7 @@ Kalvin and in LTM, with reported significance agreeing with declared significanc
 - `@specs/signifier.md` — `signature_of`, `residual` (misfit diagnosis).
 - `@specs/stub-kagent.md` — the bootstrap trainee the satisfaction logic is
   validated against; the contract the real Kalvin must reproduce.
-- `@CONTEXT.md` — Learned, Canon, Ratify, Scaffolding.
+- `@CONTEXT.md` — Canon, Ratify, Scaffolding, Significance (Rational).
 
 ## Definitions
 

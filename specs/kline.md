@@ -12,7 +12,7 @@ A Kline consists of:
 | Field     | Type               | Description                        |
 | --------- | ------------------ | ---------------------------------- |
 | signature | uint64             | Identity key.                      |
-| nodes     | sequence of uint64 | Zero or more child nodes. Ordered. |
+| nodes     | sequence of uint64 | Zero or more nodes. Ordered. |
 
 ### Nodes
 

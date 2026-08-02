@@ -582,7 +582,7 @@ The `entries` property returns a list of `KLine` objects, ordered compiled-sourc
 
 ## 14. Worked Examples
 
-### 14.1 Minimal Unsigned
+### 14.1 Minimal Identity
 
 ```
 A

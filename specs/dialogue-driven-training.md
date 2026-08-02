@@ -34,7 +34,7 @@ decide which artefact is wrong, and update them together.
 
 ## Dependencies
 
-- `@CONTEXT.md` — Structural State, Canon, KValue, Role, Significance.
+- `@CONTEXT.md` — Structure (KLine, Signature, Node, Identity, Canon, Misfit), Rationalisation (Significance, KValue), Training and Runtime (Role, Harness, Trainee, Trainer, Supervisor).
 - `@specs/kscript.md`, `@specs/kline.md`, `@specs/kvalue.md`, `@specs/agent.md`.
 - `@specs/harness-server.md` — the `MessageBus` the run is driven over.
 

@@ -243,7 +243,7 @@ The following are explicitly **out of scope** for this spec:
 | KV-6  | Cogitation proposal KValue carries the `expand()`-computed significance    | §KP-3 |
 | KV-7  | Codec persists `{signature, nodes}` only; significance not serialised      | §Storage |
 | KV-8  | Re-derivation: identity ask (empty nodes) → S4                               | §KV-1 |
-| KV-9  | Re-derivation: grounded identity / canon → S1                                | §KV-1 |
+| KV-9  | Re-derivation: identity with nodes / canon → S1                                | §KV-1 |
 | KV-10 | Re-derivation: S2 misfit with reciprocal countersigner present → S1          | §KV-1 |
 | KV-11 | Re-derivation: single-node relationship → S3                                 | §KV-1 |
 | KV-12 | Re-derivation never yields an unset significance                             | §KV-1 |

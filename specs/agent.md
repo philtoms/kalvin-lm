@@ -109,9 +109,9 @@ Rationalise(Q):
   ├───────────────────────────────────────────────────────────┤
   │ 3. ASSESS                                                │
   │    Evaluate Q's structural grounding:                     │
-  │    → Unsigned (no nodes): add_to_ltm(Q), emit "frame" S4,   │
+  │    → Identity (empty nodes): add_to_ltm(Q), emit "frame" S4,│
   │       return True.                                       │
-  │    → Self-grounded: add_to_ltm(Q), emit "frame" S1,         │
+  │    → Canon (self-grounds): add_to_ltm(Q), emit "frame" S1,  │
   │       return True.                                       │
   │    → Countersigned: add_to_ltm(Q), emit "frame" S1,         │
   │       return True.                                       │
@@ -230,7 +230,7 @@ This prevents infinite recursion and avoids re-processing known knowledge.
 Structural assessment determines whether Q can be fast-tracked without
 candidate retrieval or significance computation.
 
-**Unsigned**: If Q has zero nodes, it carries no information. Call
+**Identity (empty nodes)**: If Q has zero nodes, it carries no information. Call
 `model.add_to_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
 
 **Canonical — recognised by its own Composition**: If `Q.signature == signature_of(Q.nodes)`
@@ -352,7 +352,8 @@ assessment. Consumers that previously read the event significance read
 `event.query.significance` (the sender's declared assessment).
 
 `role` is the self-declared routing key of the emitting actor — the same
-discriminator the harness bus calls *role* (`@CONTEXT.md` §Role). It is
+discriminator the harness bus calls *role* (see `@CONTEXT.md` §Training and
+Runtime: a role is the address a participant registers on the harness bus). It is
 optional (`None` default) for events that are not part of a routed dialogue
 (internal cogitation emissions); the dialogue runner (`@specs/dialogue-driven-
 training.md` §Validation) sets and validates it so an actor announces itself
@@ -430,7 +431,7 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 
 | ID     | Criterion                                                  | Origin ref |
 | ------ | ---------------------------------------------------------- | ---------- |
-| AGT-12 | Unsigned (no nodes): returns True, emits "frame" S4, kline in LTM | — |
+| AGT-12 | Identity (empty nodes): returns True, emits "frame" S4, kline in LTM | — |
 | AGT-14 | Canonical recognised by its own Composition: returns True when all nodes resolve, kline in LTM | — |
 | AGT-15 | Not recognised by Composition: falls through to Phase 4               | — |
 

@@ -428,7 +428,8 @@ identity signatures (@CONTEXT.md §Identity).
      The self-referential form is identity but its Composition is trivial, so it
      loses to a genuine canon for the same signature — otherwise it would
      displace the canon and collapse the result to identity. Within a kind, the
-     most recently added kline wins (@CONTEXT.md §Recency Precedence). If no
+     most recently added kline wins (recency is the current default
+     preference; see `docs/kalvin-vision.md` §Klines). If no
      resolvable kline exists for the value → raises.
 - Node order is significant (@kline spec): the output sequence preserves
   the node order of every traversed kline.

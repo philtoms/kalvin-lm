@@ -1,6 +1,15 @@
 # Supervisor Decision — Specification
 
-> **Legacy path.** This spec describes the non-rationalising trainer (a deterministic ratifier that defers every proposal it cannot auto-countersign to the supervisor, and "never decides"). The rationalising trainer (`specs/dialogue-driven-training.md`) is the direction of travel: it cogitates and emits its own proposals, escalating only when its cogitation yields no reply. This spec is retained until the reactor code it describes is replaced. Where the two disagree, the dialogue path is current.
+> **Superseded at the glossary level — still the running production path.**
+> `CONTEXT.md` defines the **Trainer** as a rationaliser that escalates to the
+> supervisor only when its cogitation yields no reply. This spec describes the
+> deterministic ratifier of the earlier path — which defers every proposal it
+> cannot auto-countersign to the supervisor, and "never decides" — and that
+> path is still the trainer wired into the production harness
+> (`src/training/trainer/`, `class: Trainer` in `training.harness.yaml`). It is
+> retained unchanged until the dialogue path (`specs/dialogue-driven-training.md`,
+> `src/training/dialogue/`) replaces it under the harness. Where the two
+> disagree, the dialogue path is current per the glossary.
 
 ## Overview
 

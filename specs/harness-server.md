@@ -138,6 +138,19 @@ If a `submit` action contains KScript that fails to compile, the adapter sends a
 
 An embedded participant that drives the training loop. See `@specs/trainer.md` (TBD) for full specification.
 
+> **Production path vs. glossary definition.** The `Trainer` class wired into
+> the production harness (`training.harness.yaml`) is the deterministic ratifier
+> of the earlier path — it auto-countersigns structural matches and escalates
+> the rest to the supervisor, never cogitating. `CONTEXT.md`'s **Trainer**
+> entry has superseded this at the definition level: the Trainer is now defined
+> as a rationaliser that cogitates and escalates only when cogitation yields no
+> reply. That rationalising trainer lives in the dialogue sub-project
+> (`specs/dialogue-driven-training.md`, `src/training/dialogue/`) and is not yet
+> wired under the harness. The behaviours below describe the running production
+> trainer; `@specs/trainer-satisfaction.md` and `@specs/supervisor-decision.md`
+> carry the same superseded-but-running status. Where the two disagree, the
+> dialogue path is current per the glossary.
+
 Key behaviours:
 
 - **Curriculum progression**: drives the paced training loop — partitions lessons, prompts the primary, ratifies held klines on request, marks satisfaction. See `@specs/trainer-satisfaction.md` for the loop model.
