@@ -163,17 +163,17 @@ class TestKS11Countersign:
         assert_has_entry(entries, "B", ["A"], "COUNTERSIGNS")
 
     def test_entry_count(self):
-        """Exact entry counts — no spurious IDENTITY from bare Signature nodes."""
-        # A == B C → 4 COUNTERSIGNS, 0 IDENTITY
+        """Exact entry counts — no spurious UNKNOWN from bare Signature nodes."""
+        # A == B C → 4 COUNTERSIGNS, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.COUNTERSIGNS, items=[_sig("B"), _sig("C")])))
         assert len(entries) == 4
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
         assert sum(1 for e in entries if e.op == "COUNTERSIGNS") == 4
 
-        # A == B → 2 COUNTERSIGNS, 0 IDENTITY
+        # A == B → 2 COUNTERSIGNS, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.COUNTERSIGNS, items=[_sig("B")])))
         assert len(entries) == 2
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
 
 # ======================================================================
@@ -194,17 +194,17 @@ class TestKS12Denote:
         assert_has_entry(entries, "B", ["A"], "DENOTES")
 
     def test_entry_count(self):
-        """Exact entry counts — no spurious IDENTITY from bare Signature nodes."""
-        # A = B C → 2 DENOTES, 0 IDENTITY
+        """Exact entry counts — no spurious UNKNOWN from bare Signature nodes."""
+        # A = B C → 2 DENOTES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("B"), _sig("C")])))
         assert len(entries) == 2
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
         assert sum(1 for e in entries if e.op == "DENOTES") == 2
 
-        # A = B → 1 DENOTES, 0 IDENTITY
+        # A = B → 1 DENOTES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("B")])))
         assert len(entries) == 1
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
 
 # ======================================================================
@@ -225,17 +225,17 @@ class TestKS13Connote:
         assert_has_entry(entries, "A", ["B"], "CONNOTES")
 
     def test_entry_count(self):
-        """Exact entry counts — no spurious IDENTITY from bare Signature nodes."""
-        # A > B C → 2 CONNOTES, 0 IDENTITY
+        """Exact entry counts — no spurious UNKNOWN from bare Signature nodes."""
+        # A > B C → 2 CONNOTES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.CONNOTES, items=[_sig("B"), _sig("C")])))
         assert len(entries) == 2
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
         assert sum(1 for e in entries if e.op == "CONNOTES") == 2
 
-        # A > B → 1 CONNOTES, 0 IDENTITY
+        # A > B → 1 CONNOTES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.CONNOTES, items=[_sig("B")])))
         assert len(entries) == 1
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
 
 # ======================================================================
@@ -262,19 +262,19 @@ class TestKS14Canonize:
 
     def test_entry_count(self):
         """Exact entry counts — CANONIZES produces exactly one entry per scope."""
-        # A => B C D → 1 CANONIZES, 0 IDENTITY
+        # A => B C D → 1 CANONIZES, 0 UNKNOWN
         entries = emit(
             _file(_scope("A", TokenType.CANONIZES, items=[_sig("B"), _sig("C"), _sig("D")]))
         )
         assert len(entries) == 1
         assert entries[0].op == "CANONIZES"
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
-        # A => B → 1 CANONIZES, 0 IDENTITY
+        # A => B → 1 CANONIZES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.CANONIZES, items=[_sig("B")])))
         assert len(entries) == 1
         assert entries[0].op == "CANONIZES"
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
 
 # ======================================================================
@@ -319,8 +319,8 @@ class TestKS15OperatorChain:
         assert_has_entry(entries, "D", ["C"], "DENOTES")
 
     def test_entry_count(self):
-        """Exact entry counts — no spurious IDENTITY from chained operator nodes."""
-        # A == B > C = D → 4 entries (2 COUNTERSIGNS + 1 CONNOTES + 1 DENOTES, 0 IDENTITY)
+        """Exact entry counts — no spurious UNKNOWN from chained operator nodes."""
+        # A == B > C = D → 4 entries (2 COUNTERSIGNS + 1 CONNOTES + 1 DENOTES, 0 UNKNOWN)
         ast = _file(
             _scope(
                 "A",
@@ -336,7 +336,7 @@ class TestKS15OperatorChain:
         )
         entries = emit(ast)
         assert len(entries) == 4
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
         assert sum(1 for e in entries if e.op == "COUNTERSIGNS") == 2
         assert sum(1 for e in entries if e.op == "CONNOTES") == 1
         assert sum(1 for e in entries if e.op == "DENOTES") == 1
@@ -378,7 +378,7 @@ class TestKS16IndentExtends:
 class TestKS16SubscriptBlock14x8:
     """§14.8 — A =>\\n  B\\n  C = D → 5 entries.
 
-    CANONIZES subscript blocks emit IDENTITY for all identifiers
+    CANONIZES subscript blocks emit UNKNOWN for all identifiers
     that don't already have an operator entry as their signature.
     """
 
@@ -411,14 +411,14 @@ class TestKS16SubscriptBlock14x8:
         assert_has_entry(self.entries, "D", ["C"], "DENOTES")
 
     def test_identity_entries(self):
-        """B, C, D each get identity IDENTITY entries."""
-        assert_has_entry(self.entries, "B", [], "IDENTITY")
-        assert_has_entry(self.entries, "C", [], "IDENTITY")
-        assert_has_entry(self.entries, "D", [], "IDENTITY")
+        """B, C, D each get identity UNKNOWN entries."""
+        assert_has_entry(self.entries, "B", [], "UNKNOWN")
+        assert_has_entry(self.entries, "C", [], "UNKNOWN")
+        assert_has_entry(self.entries, "D", [], "UNKNOWN")
 
     def test_no_duplicate_identity(self):
-        """Exactly 3 IDENTITY entries total — no duplicates."""
-        assert sum(1 for e in self.entries if e.op == "IDENTITY") == 3
+        """Exactly 3 UNKNOWN entries total — no duplicates."""
+        assert sum(1 for e in self.entries if e.op == "UNKNOWN") == 3
 
 
 # ======================================================================
@@ -430,7 +430,7 @@ class TestKS14ChainedCanonize14x9:
     """§14.9 — A => B => C → 3 entries.
 
     Chained CANONIZES where B is both a CANONIZES scope sig and a node.
-    B does NOT get an IDENTITY entry because CANONIZES(B, [C]) already
+    B does NOT get an UNKNOWN entry because CANONIZES(B, [C]) already
     provides B as an entry signature.
     """
 
@@ -456,12 +456,12 @@ class TestKS14ChainedCanonize14x9:
         assert_has_entry(self.entries, "B", ["C"], "CANONIZES")
 
     def test_leaf_identity(self):
-        """C | [] | IDENTITY — leaf Signature gets identity IDENTITY."""
-        assert_has_entry(self.entries, "C", [], "IDENTITY")
+        """C | [] | UNKNOWN — leaf Signature gets identity UNKNOWN."""
+        assert_has_entry(self.entries, "C", [], "UNKNOWN")
 
     def test_no_identity_for_canonize_sig(self):
-        """B does NOT have IDENTITY(B, []) — B already has CANONIZES as identity."""
-        assert_no_entry(self.entries, "B", [], "IDENTITY")
+        """B does NOT have UNKNOWN(B, []) — B already has CANONIZES as identity."""
+        assert_no_entry(self.entries, "B", [], "UNKNOWN")
 
 
 # ======================================================================
@@ -520,9 +520,9 @@ class TestKS18NonCanonizeIndent:
         assert_has_entry(entries, "D", ["A"], "COUNTERSIGNS")
 
     def test_entry_count(self):
-        """Exact entry counts — per spec §14.10, no IDENTITY from child_block bare scopes.
+        """Exact entry counts — per spec §14.10, no UNKNOWN from child_block bare scopes.
 
-        A == B\\n  C\\n  D → 6 entries (all COUNTERSIGNS, 0 IDENTITY).
+        A == B\\n  C\\n  D → 6 entries (all COUNTERSIGNS, 0 UNKNOWN).
         """
         ast = _file(
             _scope(
@@ -538,10 +538,10 @@ class TestKS18NonCanonizeIndent:
         entries = emit(ast)
         assert len(entries) == 6
         assert sum(1 for e in entries if e.op == "COUNTERSIGNS") == 6
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
     def test_denote_with_child_block(self):
-        """A = B\\n  C\\n  D — per-item DENOTES extends into child block, no spurious IDENTITY."""
+        """A = B\\n  C\\n  D — per-item DENOTES extends into child block, no spurious UNKNOWN."""
         ast = _file(
             _scope(
                 "A",
@@ -556,10 +556,10 @@ class TestKS18NonCanonizeIndent:
         entries = emit(ast)
         assert len(entries) == 3  # B→[A] DENOTES, C→[A] DENOTES, D→[A] DENOTES
         assert sum(1 for e in entries if e.op == "DENOTES") == 3
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
     def test_connote_with_child_block(self):
-        """A > B\\n  C\\n  D — per-item CONNOTES extends into child block, no spurious IDENTITY."""
+        """A > B\\n  C\\n  D — per-item CONNOTES extends into child block, no spurious UNKNOWN."""
         ast = _file(
             _scope(
                 "A",
@@ -574,7 +574,7 @@ class TestKS18NonCanonizeIndent:
         entries = emit(ast)
         assert len(entries) == 3  # A→[B] CONNOTES, A→[C] CONNOTES, A→[D] CONNOTES
         assert sum(1 for e in entries if e.op == "CONNOTES") == 3
-        assert sum(1 for e in entries if e.op == "IDENTITY") == 0
+        assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
 
 # ======================================================================
@@ -583,15 +583,15 @@ class TestKS18NonCanonizeIndent:
 
 
 class TestKS19MTS:
-    """ABC → IDENTITY entries for A, B, C; CANONIZES {ABC:[A,B,C]}."""
+    """ABC → UNKNOWN entries for A, B, C; CANONIZES {ABC:[A,B,C]}."""
 
     def test_mts_expansion(self):
         entries = emit(_file(_bare("ABC")))
 
-        # Component IDENTITYs
-        assert_has_entry(entries, "A", [], "IDENTITY")
-        assert_has_entry(entries, "B", [], "IDENTITY")
-        assert_has_entry(entries, "C", [], "IDENTITY")
+        # Component UNKNOWNs
+        assert_has_entry(entries, "A", [], "UNKNOWN")
+        assert_has_entry(entries, "B", [], "UNKNOWN")
+        assert_has_entry(entries, "C", [], "UNKNOWN")
 
         # MTS CANONIZES
         assert_has_entry(entries, "ABC", ["A", "B", "C"], "CANONIZES")
@@ -613,7 +613,7 @@ class TestKS19MTS:
     def test_mts_entries_tagged_is_mts(self):
         """§8 MTS-produced entries carry is_mts=True; source entries do not.
 
-        Only the component IDENTITY entries and the MTS CANONIZES entry
+        Only the component UNKNOWN entries and the MTS CANONIZES entry
         produced by ``_emit_mts`` are tagged. Operator-produced entries
         (COUNTERSIGNS/DENOTES/CONNOTES), subscript identities, and
         single-char CANONIZES scopes stay source (is_mts=False) so the
@@ -628,14 +628,14 @@ class TestKS19MTS:
 
         # Component identities + both canonizations are MTS.
         for mts_entry in (
-            ("A", [], "IDENTITY"),
-            ("B", [], "IDENTITY"),
-            ("C", [], "IDENTITY"),
+            ("A", [], "UNKNOWN"),
+            ("B", [], "UNKNOWN"),
+            ("C", [], "UNKNOWN"),
             ("ABC", ["A", "B", "C"], "CANONIZES"),
-            ("M", [], "IDENTITY"),
-            ("H", [], "IDENTITY"),
-            ("A", [], "IDENTITY"),
-            ("L", [], "IDENTITY"),
+            ("M", [], "UNKNOWN"),
+            ("H", [], "UNKNOWN"),
+            ("A", [], "UNKNOWN"),
+            ("L", [], "UNKNOWN"),
             ("MHALL", ["M", "H", "A", "L", "L"], "CANONIZES"),
         ):
             assert any(
@@ -654,7 +654,7 @@ class TestKS19MTS:
 
         # No tagged entry is an operator entry.
         assert all(
-            e.op in ("IDENTITY", "CANONIZES") for e in tagged
+            e.op in ("UNKNOWN", "CANONIZES") for e in tagged
         ), f"Operator entry wrongly tagged MTS: {source}"
 
 
@@ -664,13 +664,13 @@ class TestKS19MTS:
 
 
 class TestKS20NoMTS:
-    """A → no CANONIZES entries, only IDENTITY {A:[]}."""
+    """A → no CANONIZES entries, only UNKNOWN {A:[]}."""
 
     def test_no_mts_single_char(self):
         entries = emit(_file(_bare("A")))
         canonize = _find_entries(entries, op="CANONIZES")
         assert len(canonize) == 0
-        unsigned = _find_entries(entries, sig="A", op="IDENTITY")
+        unsigned = _find_entries(entries, sig="A", op="UNKNOWN")
         assert len(unsigned) == 1
         assert unsigned[0].nodes == []
 
@@ -699,14 +699,14 @@ class TestKS20bNoMTSForWords:
         assert len(_find_entries(entries, sig="a")) == 0
         assert len(_find_entries(entries, sig="d")) == 0
         # The word itself is emitted as a single identity.
-        unsigned = _find_entries(entries, sig="had", op="IDENTITY")
+        unsigned = _find_entries(entries, sig="had", op="UNKNOWN")
         assert len(unsigned) == 1
         assert unsigned[0].nodes == []
 
     def test_no_mts_mixed_case_word(self):
         entries = emit(_file(_bare("Hello")))
         assert len(_find_entries(entries, op="CANONIZES")) == 0
-        unsigned = _find_entries(entries, sig="Hello", op="IDENTITY")
+        unsigned = _find_entries(entries, sig="Hello", op="UNKNOWN")
         assert len(unsigned) == 1
         assert unsigned[0].nodes == []
 
@@ -714,7 +714,7 @@ class TestKS20bNoMTSForWords:
         # Sanity: all-uppercase multi-char identifiers still trigger MTS.
         entries = emit(_file(_bare("ALL")))
         assert_has_entry(entries, "ALL", ["A", "L", "L"], "CANONIZES")
-        assert_has_entry(entries, "A", [], "IDENTITY")
+        assert_has_entry(entries, "A", [], "UNKNOWN")
 
 
 # ======================================================================
@@ -727,11 +727,11 @@ class TestKS21MTSNode:
 
     def test_mts_on_node(self):
         entries = emit(_file(_scope("A", TokenType.COUNTERSIGNS, items=[_sig("MHALL")])))
-        # MTS for MHALL: component IDENTITYs
-        assert_has_entry(entries, "M", [], "IDENTITY")
-        assert_has_entry(entries, "H", [], "IDENTITY")
-        assert_has_entry(entries, "A", [], "IDENTITY")
-        assert_has_entry(entries, "L", [], "IDENTITY")
+        # MTS for MHALL: component UNKNOWNs
+        assert_has_entry(entries, "M", [], "UNKNOWN")
+        assert_has_entry(entries, "H", [], "UNKNOWN")
+        assert_has_entry(entries, "A", [], "UNKNOWN")
+        assert_has_entry(entries, "L", [], "UNKNOWN")
         # MTS CANONIZES
         assert_has_entry(entries, "MHALL", ["M", "H", "A", "L", "L"], "CANONIZES")
 
@@ -878,21 +878,21 @@ class TestKS26RuleB4:
 
 
 class TestKS33SelfIdentity:
-    """A = A → {A:[], IDENTITY} (collapsed from DENOTES)."""
+    """A = A → {A:[], UNKNOWN} (collapsed from DENOTES)."""
 
     def test_self_identity(self):
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("A")])))
-        # Should produce IDENTITY with empty nodes, not DENOTES
-        assert_has_entry(entries, "A", [], "IDENTITY")
+        # Should produce UNKNOWN with empty nodes, not DENOTES
+        assert_has_entry(entries, "A", [], "UNKNOWN")
         # Should NOT produce DENOTES entry
         assert_no_entry(entries, "A", ["A"], "DENOTES")
 
     def test_entry_count(self):
-        """Exact entry count — self-identity produces exactly 1 IDENTITY entry."""
-        # A = A → 1 entry (IDENTITY with empty nodes)
+        """Exact entry count — self-identity produces exactly 1 UNKNOWN entry."""
+        # A = A → 1 entry (UNKNOWN with empty nodes)
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("A")])))
         assert len(entries) == 1
-        assert entries[0].op == "IDENTITY"
+        assert entries[0].op == "UNKNOWN"
         assert entries[0].nodes == []
 
 
@@ -912,8 +912,8 @@ class TestAnnotations:
                 _bare("A"),
             )
         )
-        # Only IDENTITY for A — no entry for the annotation
-        assert len([e for e in entries if e.op != "IDENTITY" or e.sig == "A"]) >= 1
+        # Only UNKNOWN for A — no entry for the annotation
+        assert len([e for e in entries if e.op != "UNKNOWN" or e.sig == "A"]) >= 1
 
     def test_annotation_feeds_scope(self):
         """Block annotation words are available for resolution."""
@@ -927,7 +927,7 @@ class TestAnnotations:
             scope=scope,
         )
         # M should be resolved to "Mary"
-        unsigned_m = _find_entries(entries, sig="Mary", op="IDENTITY")
+        unsigned_m = _find_entries(entries, sig="Mary", op="UNKNOWN")
         assert len(unsigned_m) >= 1
 
 
@@ -951,44 +951,44 @@ class TestMTSDedup:
         assert len(canonize) == 1  # deduped
 
     def test_identity_dedup_by_mts(self):
-        """MTS component IDENTITY entries ARE deduped across calls."""
+        """MTS component UNKNOWN entries ARE deduped across calls."""
         entries = emit(
             _file(
-                _bare("ABC"),  # emits IDENTITY A, B, C; CANONIZES ABC; IDENTITY ABC
+                _bare("ABC"),  # emits UNKNOWN A, B, C; CANONIZES ABC; UNKNOWN ABC
             )
         )
-        # Exactly one IDENTITY per unique char (A, B, C) plus compound ABC
-        identity_a = _find_entries(entries, sig="A", op="IDENTITY")
+        # Exactly one UNKNOWN per unique char (A, B, C) plus compound ABC
+        identity_a = _find_entries(entries, sig="A", op="UNKNOWN")
         assert len(identity_a) == 1  # deduped
 
     def test_non_mts_identity_no_dedup(self):
-        """Non-MTS IDENTITY entries (from bare single-char scopes) are NOT deduped."""
+        """Non-MTS UNKNOWN entries (from bare single-char scopes) are NOT deduped."""
         entries = emit(
             _file(
                 _bare("A"),
                 _bare("A"),
             )
         )
-        identity_a = _find_entries(entries, sig="A", op="IDENTITY")
+        identity_a = _find_entries(entries, sig="A", op="UNKNOWN")
         assert len(identity_a) == 2  # NOT deduped
 
 
 # ======================================================================
-# Test: MTS component IDENTITY intra- and inter-expansion dedup
+# Test: MTS component UNKNOWN intra- and inter-expansion dedup
 # ======================================================================
 
 
 class TestMTSComponentDedup:
-    """MTS component IDENTITY deduplication (§8.3 extended)."""
+    """MTS component UNKNOWN deduplication (§8.3 extended)."""
 
     def test_intra_expansion_dedup(self):
-        """MHALL has two L's — only one IDENTITY L is emitted."""
+        """MHALL has two L's — only one UNKNOWN L is emitted."""
         entries = emit(_file(_bare("MHALL")))
-        identity_l = _find_entries(entries, sig="L", op="IDENTITY")
+        identity_l = _find_entries(entries, sig="L", op="UNKNOWN")
         assert len(identity_l) == 1  # not 2
 
     def test_inter_expansion_dedup(self):
-        """Second _emit_mts for same compound emits no component IDENTITY."""
+        """Second _emit_mts for same compound emits no component UNKNOWN."""
         emitter = ASTEmitter()
         idx1 = emitter._emit_mts("ABC")
         count_after_first = len(emitter.entries)
@@ -1003,7 +1003,7 @@ class TestMTSComponentDedup:
         count_after_mhall = len(emitter.entries)
         emitter._emit_mts("SVO")
         new_entries = emitter.entries[count_after_mhall:]
-        # SVO emits: IDENTITY S, V, O + CANONIZES SVO (no compound-own identity)
+        # SVO emits: UNKNOWN S, V, O + CANONIZES SVO (no compound-own identity)
         assert len(new_entries) == 4
         sigs = [e.sig for e in new_entries]
         assert sigs == ["S", "V", "O", "SVO"]

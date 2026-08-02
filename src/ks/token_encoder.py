@@ -18,14 +18,14 @@ Encoding rules (spec §11):
     ``_compound_sigs`` registry; declared compounds are exempt from §11.3
     (their decomposition is their §8 MTS entry, not a re-encoding of the
     literal string); a packed signature never heads an empty-form
-    `{S: []}` IDENTITY kline (CONTEXT.md "Identity"). Packed signatures
+    `{S: []}` UNKNOWN kline (CONTEXT.md "Identity"). Packed signatures
     are opaque per §11.5.
 
 Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.expand.band_significance(op), computed from the production op at
 encode time (never from dbg):
     COUNTERSIGNS → S1    DENOTES → S3    CANONIZES → S2
-    CONNOTES → S3      IDENTITY → S4
+    CONNOTES → S3      UNKNOWN → S4
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.expand.band_significance, kalvin.abstract.KTokenizer,
@@ -166,7 +166,7 @@ class TokenEncoder:
                 sig_uint64, sig_extras = self._emit_mts_for_tokens(
                     sig_tokens,
                     dbg_label=entry.sig,
-                    op="IDENTITY",
+                    op="UNKNOWN",
                 )
                 extras.extend((kv, True) for kv in sig_extras)
                 sig_is_packed = True
@@ -203,11 +203,11 @@ class TokenEncoder:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op, packed=sig_is_packed)
 
         # 5. A packed signature cannot head an empty-form `{S: []}`
-        #    IDENTITY kline (CONTEXT.md "Identity"); the §11.3 compound-word
+        #    UNKNOWN kline (CONTEXT.md "Identity"); the §11.3 compound-word
         #    decomposition (CANONIZES-shaped, carrying COMPOUND_TOKEN) or the
         #    §8 MTS entry is the sole representation. Operator entries with a
         #    packed sig are legitimate references and are emitted normally.
-        if entry.op == "IDENTITY" and sig_is_packed:
+        if entry.op == "UNKNOWN" and sig_is_packed:
             return extras
 
         main = KLine(
@@ -241,7 +241,7 @@ class TokenEncoder:
             return (tokens[0], [])
 
         # Multi-token word → §11.3 compound-word decomposition.
-        return self._emit_mts_for_tokens(tokens, dbg_label=word, op="IDENTITY")
+        return self._emit_mts_for_tokens(tokens, dbg_label=word, op="UNKNOWN")
 
     # §11.3 compound-word decomposition for multi-token results
 
@@ -249,7 +249,7 @@ class TokenEncoder:
         self,
         tokens: list[int],
         dbg_label: str = "",
-        op: str = "IDENTITY",
+        op: str = "UNKNOWN",
     ) -> tuple[int, list[KValue]]:
         """Emit §11.3 compound-word decomposition entries for a multi-token word.
 
@@ -262,7 +262,7 @@ class TokenEncoder:
         only a compound-word's kline carries it.
 
         Emits:
-          1. One IDENTITY KValue per BPE subword token.
+          1. One UNKNOWN KValue per BPE subword token.
           2. One CANONIZES-shaped KValue whose nodes are the subword tokens
              plus COMPOUND_TOKEN — canon-shaped but an identity (S1)
              because of the marker.
@@ -271,8 +271,8 @@ class TokenEncoder:
         no entries are emitted (but the packed signature is still returned).
 
         Each emitted KValue carries the band-representative significance for
-        its production op (subword IDENTITY entries use ``op`` — always
-        "IDENTITY" at call sites; the CANONIZES entry uses "CANONIZES").
+        its production op (subword UNKNOWN entries use ``op`` — always
+        "UNKNOWN" at call sites; the CANONIZES entry uses "CANONIZES").
 
         Args:
             tokens: List of BPE token uint64 values.
@@ -315,15 +315,15 @@ class TokenEncoder:
             for tok in tokens:
                 tok_dbg: KDbg | None = None
                 if self._dev:
-                    # Each subword IDENTITY kline is its own lexical item,
+                    # Each subword UNKNOWN kline is its own lexical item,
                     # not the compound word: pass no label so _build_dbg
                     # names the kline after its own decoded subword text
                     # (e.g. ``M``, ``ary``) instead of inheriting the
                     # compound's ``dbg_label`` (``Mary``), which would label
                     # every subword identically and obscure which is which.
-                    tok_dbg = self._build_dbg(tok, "", op="IDENTITY")
+                    tok_dbg = self._build_dbg(tok, "", op="UNKNOWN")
                 else:
-                    tok_dbg = KDbg(op="IDENTITY")
+                    tok_dbg = KDbg(op="UNKNOWN")
                 extras.append(
                     KValue(
                         KLine(
@@ -362,7 +362,7 @@ class TokenEncoder:
         self,
         sig_uint64: int,
         label: str,
-        op: str = "IDENTITY",
+        op: str = "UNKNOWN",
         *,
         packed: bool = False,
     ) -> KDbg:

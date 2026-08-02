@@ -122,9 +122,9 @@ class TestKLineNodeAccess:
 class TestKDbgOp:
     """KDbg.op field for operator provenance."""
 
-    def test_default_op_is_identity(self):
+    def test_default_op_is_unknown(self):
         dbg = KDbg()
-        assert dbg.op == "IDENTITY"
+        assert dbg.op == "UNKNOWN"
 
     def test_op_set_on_construction(self):
         dbg = KDbg(op="COUNTERSIGNS")
@@ -134,8 +134,8 @@ class TestKDbgOp:
         dbg = KDbg(op="COUNTERSIGNS")
         assert "op=COUNTERSIGNS" in repr(dbg)
 
-    def test_repr_omits_identity_op(self):
-        dbg = KDbg(op="IDENTITY")
+    def test_repr_omits_default_op(self):
+        dbg = KDbg(op="UNKNOWN")
         assert "op=" not in repr(dbg)
 
     def test_truthy_with_only_op(self):

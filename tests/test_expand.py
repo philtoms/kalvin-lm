@@ -95,8 +95,8 @@ class TestBandSignificance:
         assert band_significance("DENOTES") == SIG_S3
 
     def test_identity_is_s4(self):
-        """IDENTITY → SIG_S4."""
-        assert band_significance("IDENTITY") == SIG_S4
+        """UNKNOWN → SIG_S4."""
+        assert band_significance("UNKNOWN") == SIG_S4
 
     def test_unknown_op_defaults_to_s4(self):
         """Unknown op → SIG_S4 (the safe floor)."""

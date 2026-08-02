@@ -10,18 +10,18 @@ converts SymbolicEntry tuples to encoded uint64 values.
   node identifiers from items and child_block, and emitting operator-specific
   entries:
 
-  - IDENTITY (op=None):   {sig: []}   — bare identity
+  - UNKNOWN (op=None):   {sig: []}   — bare unknown ask
   - COUNTERSIGNS (==):   {sig: [node]}, {node: [sig]} per item  — bidirectional
   - DENOTES (=):      {node: [sig]} per item  — reversed direction
   - CONNOTES (>):         {sig: [node]} per item  — forward direction
   - CANONIZES (=>):       {sig: [all_nodes]}  — aggregated single entry
 
-  Self-identity (A = A) collapses to IDENTITY with empty nodes (spec §7.3).
+  Self-identity (A = A) collapses to UNKNOWN with empty nodes (spec §7.3).
 
 **MTS expansion (spec §8):**
   Multi-character all-uppercase identifiers (compounds: MHALL, SVO, ALL)
   trigger automatic emission of:
-  1. One IDENTITY entry per resolved constituent character.
+  1. One UNKNOWN entry per resolved constituent character.
   2. One CANONIZES entry mapping the compound to its resolved components.
 
   MTS applies to compounds wherever they appear — signature side or node
@@ -32,7 +32,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
   rule (§2).
 
 **MTS deduplication (§8.3):**
-  CANONIZES entries are deduplicated on (sig, nodes).  Component IDENTITY
+  CANONIZES entries are deduplicated on (sig, nodes).  Component UNKNOWN
   entries are deduplicated across MTS calls via _mts_identity_seen (a
   character emitted once is never emitted again).  Intra-expansion dedup
   prevents duplicate chars within a single compound (e.g., MHALL's second L).
@@ -55,9 +55,9 @@ converts SymbolicEntry tuples to encoded uint64 values.
 **Key design constraints:**
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
-  - No IDENTITY op — self-identity emits IDENTITY with empty nodes.
+  - No UNKNOWN op written — self-denote (A = A) emits UNKNOWN with empty nodes.
   - No general deduplication beyond MTS — CANONIZES dedup per §8.3,
-    plus component IDENTITY dedup.
+    plus component UNKNOWN dedup.
 
 Spec references: §3 (Scope Model), §6 (Entry Model), §7 (Operator Rules),
 §8 (MTS Expansion), §10 (Word Binding Resolution).
@@ -84,18 +84,18 @@ class SymbolicEntry(NamedTuple):
 
     Attributes:
         sig:  The signature identifier string (possibly a resolved word).
-        nodes: Always a list — empty for IDENTITY, single-item for per-item
+        nodes: Always a list — empty for UNKNOWN, single-item for per-item
                operators, multi-item for CANONIZES aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
         op:   One of "COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES",
-               "IDENTITY".
+               "UNKNOWN".
         component_labels: Resolved words per signature character (for word
                mode).  None when not applicable.
     """
 
     sig: str
     nodes: list[str]
-    op: str  # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | IDENTITY
+    op: str  # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | UNKNOWN
     component_labels: list[str] | None = None
     is_mts: bool = False  # True for §8 MTS-produced entries (component
                           # identity + MTS canonization). The TokenEncoder
@@ -178,12 +178,12 @@ class ASTEmitter:
         mts_idx = self._emit_mts(scope.sig.id)
         op = self._op_to_str(scope.op)
 
-        if op == "IDENTITY":
+        if op == "UNKNOWN":
             # For multi-char sigs _emit_mts already introduced the compound
             # via CANONIZES (mts_idx is not None) — a compound can't form an
-            # identity (§8). Single-char sigs get a bare IDENTITY here.
+            # identity (§8). Single-char sigs get a bare UNKNOWN here.
             if mts_idx is None:
-                self._emit_entry(sig_resolved, [], "IDENTITY")
+                self._emit_entry(sig_resolved, [], "UNKNOWN")
             return
 
         node_ids = self._collect_node_ids(scope)
@@ -251,8 +251,8 @@ class ASTEmitter:
         elif op == "DENOTES":
             for node in nodes:
                 if node == sig:
-                    # Self-identity → IDENTITY with empty nodes (§7.3)
-                    self._emit_entry(sig, [], "IDENTITY")
+                    # Self-identity → UNKNOWN with empty nodes (§7.3)
+                    self._emit_entry(sig, [], "UNKNOWN")
                 else:
                     self._emit_entry(node, [sig], "DENOTES")
 
@@ -335,19 +335,19 @@ class ASTEmitter:
     def _emit_mts(self, sig: str) -> int | None:
         """Emit MTS entries for a multi-character identifier.
 
-        1. One IDENTITY entry per resolved constituent character (deduped).
+        1. One UNKNOWN entry per resolved constituent character (deduped).
         2. One CANONIZES entry mapping the compound to its resolved components.
 
-        Component IDENTITY deduplication (§8.3 extended):
+        Component UNKNOWN deduplication (§8.3 extended):
           - Intra-expansion: duplicate chars within a compound (e.g., MHALL's
-            second L) emit only one IDENTITY L.
+            second L) emit only one UNKNOWN L.
           - Inter-expansion: if a char was already emitted by a previous MTS
             call, it is silently skipped.
 
         CANONIZES deduplication (§8.3):
           - Same (sig, nodes) pair is silently skipped.
 
-        No IDENTITY entry is emitted for the compound itself.  A compound
+        No UNKNOWN entry is emitted for the compound itself.  A compound
         signature is the OR-reduction of multiple token IDs and cannot form
         an identity (spec §8; CONTEXT.md "Identity" glossary).
 
@@ -378,7 +378,7 @@ class ASTEmitter:
             if resolved_char in self._mts_identity_seen:
                 continue  # inter-expansion dedup
             self._mts_identity_seen.add(resolved_char)
-            self._emit_entry(resolved_char, [], "IDENTITY", is_mts=True)
+            self._emit_entry(resolved_char, [], "UNKNOWN", is_mts=True)
 
         key = (sig, tuple(chars))
         if key in self._mts_canonize_seen:
@@ -402,7 +402,7 @@ class ASTEmitter:
         entries, subscript identities, and single-char CANONIZES scopes
         carry the default (source).
 
-        Note: IDENTITY dedup for MTS components is handled in _emit_mts
+        Note: UNKNOWN dedup for MTS components is handled in _emit_mts
         via _mts_identity_seen, not here.
         """
         if op == "CANONIZES":
@@ -416,7 +416,7 @@ class ASTEmitter:
     # Identity emission for CANONIZES subscript blocks
 
     def _emit_identity_if_needed(self, sig: str) -> None:
-        """Emit identity IDENTITY only if no IDENTITY entry for this sig exists.
+        """Emit identity UNKNOWN only if no UNKNOWN entry for this sig exists.
 
         Used in CANONIZES subscript blocks to ensure every identifier appears
         as the signature of at least one emitted entry.
@@ -425,11 +425,11 @@ class ASTEmitter:
           1. _mts_identity_seen — sig was already emitted as MTS component.
           2. Existing CANONIZES entry — sig is a compound already introduced
              by its CANONIZES entry from MTS.
-          3. Existing IDENTITY entries — sig already has an IDENTITY entry.
+          3. Existing UNKNOWN entries — sig already has an UNKNOWN entry.
 
-        This prevents duplicate IDENTITY when MTS expansion already provided
+        This prevents duplicate UNKNOWN when MTS expansion already provided
         one for the same identifier, or when the identifier already appears
-        as the signature of an IDENTITY entry.  The CANONIZES check blocks
+        as the signature of an UNKNOWN entry.  The CANONIZES check blocks
         compounds (which cannot form an identity) without affecting single-char
         sigs that have only DENOTES entries (e.g., D in §14.8).
         """
@@ -437,9 +437,9 @@ class ASTEmitter:
             return
         if any(e.sig == sig and e.op == "CANONIZES" for e in self.entries):
             return  # compound already introduced by its CANONIZES entry
-        if any(e.sig == sig and e.op == "IDENTITY" for e in self.entries):
+        if any(e.sig == sig and e.op == "UNKNOWN" for e in self.entries):
             return
-        self._emit_entry(sig, [], "IDENTITY")
+        self._emit_entry(sig, [], "UNKNOWN")
 
     # Scope walk and child compilation (Step 3)
 
@@ -457,22 +457,22 @@ class ASTEmitter:
         kline tracking (Rule B4). Bare OperatorScope nodes (op=None) in a
         non-CANONIZES child_block are skipped — already collected as node
         identifiers by _collect_node_ids; under CANONIZES they still emit
-        their own IDENTITY (independent subscript identity).
+        their own UNKNOWN (independent subscript identity).
 
         **CANONIZES subscript identity (§7.6, §14.8, §14.9):**
 
         A CANONIZES scope with recursive content forms a "subscript block"
         where every identifier must appear as the signature of at least
-        one emitted entry; identity IDENTITY fills any gap. Activated only
+        one emitted entry; identity UNKNOWN fills any gap. Activated only
         when the CANONIZES sig did NOT trigger MTS (mts_idx is None) —
         multi-char sigs get component identities from MTS, so subscript
-        identity would produce spurious entries (e.g. IDENTITY D in §14.11).
+        identity would produce spurious entries (e.g. UNKNOWN D in §14.11).
 
         _emit_identity_if_needed is applied to leaf Signature items (no
         operator entry) and to DENOTES scope sigs (their entries use nodes
         as sigs, so the scope's own sig lacks identity). Not needed for
         CANONIZES/COUNTERSIGNS/CONNOTES scope sigs (already produce entries
-        with the scope's sig) nor bare op=None scopes (emit IDENTITY in
+        with the scope's sig) nor bare op=None scopes (emit UNKNOWN in
         _process_scope). The flag does not propagate between CANONIZES scopes.
         """
         is_canonize = op == "CANONIZES"
@@ -525,10 +525,10 @@ class ASTEmitter:
                 ):
                     # Bare node in non-CANONIZES child_block — already
                     # collected by _collect_node_ids; skip to avoid a
-                    # spurious IDENTITY.
+                    # spurious UNKNOWN.
                     continue
                 # DENOTES scope sigs in subscript child_blocks need
-                # identity; bare scopes (op=None) emit IDENTITY in
+                # identity; bare scopes (op=None) emit UNKNOWN in
                 # _process_scope.
                 if (
                     self._in_canonize_subscript
@@ -770,13 +770,13 @@ class ASTEmitter:
 
     @staticmethod
     def _op_to_str(op: TokenType | None) -> str:
-        """Convert a TokenType operator to its string name, or 'IDENTITY'."""
+        """Convert a TokenType operator to its string name, or 'UNKNOWN'."""
         if op is None:
-            return "IDENTITY"
+            return "UNKNOWN"
         _map = {
             TokenType.COUNTERSIGNS: "COUNTERSIGNS",
             TokenType.CANONIZES: "CANONIZES",
             TokenType.CONNOTES: "CONNOTES",
             TokenType.DENOTES: "DENOTES",
         }
-        return _map.get(op, "IDENTITY")
+        return _map.get(op, "UNKNOWN")

@@ -679,17 +679,17 @@ class TestEmitterOperators:
     # -- KS-33: Self-identity --------------------------------------------
 
     def test_ks33_self_identity(self):
-        """KS-33: A = A → single {A:[]} IDENTITY."""
+        """KS-33: A = A → single {A:[]} UNKNOWN."""
         entries = compile_dev("A = A")
         assert len(entries) == 1
-        assert entries[0].kline.dbg.op == "IDENTITY"
+        assert entries[0].kline.dbg.op == "UNKNOWN"
         assert _sig_str(entries[0]) == "A"
         assert entries[0].kline.nodes == []
 
     def test_ks33_self_identity_unsigned_present(self):
-        """KS-33 (relaxed): At least one A IDENTITY with empty nodes exists."""
+        """KS-33 (relaxed): At least one A UNKNOWN with empty nodes exists."""
         entries = compile_dev("A = A")
-        assert has_entry(entries, sig="A", op="IDENTITY", nodes=[])
+        assert has_entry(entries, sig="A", op="UNKNOWN", nodes=[])
 
 
 # ===================================================================
@@ -714,19 +714,19 @@ class TestEmitterMTS:
         entries = compile_dev("ABC")
         assert len(entries) == 4
 
-        assert _sig_str(entries[0]) == "A" and entries[0].kline.dbg.op == "IDENTITY"
-        assert _sig_str(entries[1]) == "B" and entries[1].kline.dbg.op == "IDENTITY"
-        assert _sig_str(entries[2]) == "C" and entries[2].kline.dbg.op == "IDENTITY"
+        assert _sig_str(entries[0]) == "A" and entries[0].kline.dbg.op == "UNKNOWN"
+        assert _sig_str(entries[1]) == "B" and entries[1].kline.dbg.op == "UNKNOWN"
+        assert _sig_str(entries[2]) == "C" and entries[2].kline.dbg.op == "UNKNOWN"
         assert _sig_str(entries[3]) == "ABC" and entries[3].kline.dbg.op == "CANONIZES"
         assert _node_strs(entries[3]) == ["A", "B", "C"]
 
     # -- KS-20: No MTS for single-char -----------------------------------
 
     def test_ks20_no_mts_for_single_char(self):
-        """KS-20: A → single IDENTITY entry, no component expansion."""
+        """KS-20: A → single UNKNOWN entry, no component expansion."""
         entries = compile_dev("A")
         assert len(entries) == 1
-        assert entries[0].kline.dbg.op == "IDENTITY"
+        assert entries[0].kline.dbg.op == "UNKNOWN"
         assert _sig_str(entries[0]) == "A"
         assert entries[0].kline.nodes == []
 
@@ -812,7 +812,7 @@ class TestStructure:
         assert len(canon[0].kline.nodes) >= 1
 
     def test_ks34_nodes_always_list_unsigned(self):
-        """KS-34: IDENTITY entry nodes is an empty list (not None)."""
+        """KS-34: UNKNOWN entry nodes is an empty list (not None)."""
         entries = compile_dev("A")
         assert len(entries) == 1
         assert isinstance(entries[0].kline.nodes, list)
@@ -853,7 +853,7 @@ class TestEncoding:
         assert bpe_id > 0, f"Expected a valid BPE token id, got {bpe_id}"
         # Must NOT be the legacy character-bit-packed value (single-bit encoding)
         assert entry.kline.signature != 67108864, "Signature should not be a legacy bit value"
-        assert entry.kline.dbg.op == "IDENTITY"
+        assert entry.kline.dbg.op == "UNKNOWN"
 
 
 # ===================================================================
@@ -887,25 +887,25 @@ class TestComplexExamples:
         assert len(entries) == 5
         assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
         assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
-        assert has_entry(entries, sig="B", op="IDENTITY", nodes=[])
-        assert has_entry(entries, sig="C", op="IDENTITY", nodes=[])
-        assert has_entry(entries, sig="D", op="IDENTITY", nodes=[])
+        assert has_entry(entries, sig="B", op="UNKNOWN", nodes=[])
+        assert has_entry(entries, sig="C", op="UNKNOWN", nodes=[])
+        assert has_entry(entries, sig="D", op="UNKNOWN", nodes=[])
 
     def test_sec148_presence(self):
         """§14.8 secondary regression — key entries present (5 entries).
 
         CANONIZES subscript blocks emit identity for
         bare scopes, DENOTES scope sigs, and leaf Signature items.
-        identity entries use IDENTITY op.
+        identity entries use UNKNOWN op.
         Now matches spec §14.8 exactly (5 entries).
         """
         entries = compile_dev(_SEC148_SOURCE)
         assert len(entries) == 5
         assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
         assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
-        assert has_entry(entries, sig="B", op="IDENTITY", nodes=[])
-        assert has_entry(entries, sig="C", op="IDENTITY", nodes=[])
-        assert has_entry(entries, sig="D", op="IDENTITY", nodes=[])
+        assert has_entry(entries, sig="B", op="UNKNOWN", nodes=[])
+        assert has_entry(entries, sig="C", op="UNKNOWN", nodes=[])
+        assert has_entry(entries, sig="D", op="UNKNOWN", nodes=[])
 
     # -- KS-35: §14.11 complex nested (master regression) ----------------
 
@@ -913,7 +913,7 @@ class TestComplexExamples:
         """KS-35: §14.11 master regression — strict spec count (18 entries).
 
         Output ordering is source-first: compiled source klines precede
-        every MTS expansion kline. MTS component IDENTITY dedup, no
+        every MTS expansion kline. MTS component UNKNOWN dedup, no
         compound-own identity, subscript identity suppression for MTS
         CANONIZES scopes.
 
@@ -982,7 +982,7 @@ class TestComplexExamples:
 
         # MTS identity for all single-char identifiers
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
-            assert has_entry(entries, sig=char, op="IDENTITY"), f"Missing IDENTITY entry for {char}"
+            assert has_entry(entries, sig=char, op="UNKNOWN"), f"Missing UNKNOWN entry for {char}"
 
         # MTS CANONIZES for compound identifiers
         assert has_entry(entries, sig="MHALL", op="CANONIZES")
@@ -1044,7 +1044,7 @@ class TestComplexExamples:
 
         # MTS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb
         # Check that "Mary" appears as a signature (from MTS resolution)
-        assert has_entry(entries, sig="Mary", op="IDENTITY") or has_entry(
+        assert has_entry(entries, sig="Mary", op="UNKNOWN") or has_entry(
             entries, sig="Mary", op="CANONIZES"
         ), "Expected 'Mary' entries from MHALL MTS resolution"
 
@@ -1091,6 +1091,6 @@ class TestComplexExamples:
                 "CANONIZES",
                 "CONNOTES",
                 "DENOTES",
-                "IDENTITY",
+                "UNKNOWN",
             )
             assert _SIG_LEVELS.get(e.kline.dbg.op, "S4") in ("S1", "S2", "S3", "S4")

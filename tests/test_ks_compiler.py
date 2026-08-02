@@ -145,7 +145,7 @@ class TestKS35ComplexNested:
     def test_entry_count(self) -> None:
         """Total entry count matches spec §14.11 (18 entries).
 
-        MTS component IDENTITY dedup, no compound-own
+        MTS component UNKNOWN dedup, no compound-own
         identity, and subscript identity suppression for MTS CANONIZES scopes.
         """
         assert len(self.entries) == 18
@@ -168,10 +168,10 @@ class TestKS35ComplexNested:
 
     def test_mts_mhall_components(self) -> None:
         """MTS for MHALL: unsigned entries for M, H, A, L components."""
-        assert _has_entry(self.entries, "IDENTITY", "M")
-        assert _has_entry(self.entries, "IDENTITY", "H")
-        assert _has_entry(self.entries, "IDENTITY", "A")
-        assert _has_entry(self.entries, "IDENTITY", "L")
+        assert _has_entry(self.entries, "UNKNOWN", "M")
+        assert _has_entry(self.entries, "UNKNOWN", "H")
+        assert _has_entry(self.entries, "UNKNOWN", "A")
+        assert _has_entry(self.entries, "UNKNOWN", "L")
 
     def test_mts_mhall_canonize(self) -> None:
         """MTS canonization: MHALL → [M, H, A, L, L]."""
@@ -179,9 +179,9 @@ class TestKS35ComplexNested:
 
     def test_mts_svo_components(self) -> None:
         """MTS for SVO: unsigned entries for S, V, O components."""
-        assert _has_entry(self.entries, "IDENTITY", "S")
-        assert _has_entry(self.entries, "IDENTITY", "V")
-        assert _has_entry(self.entries, "IDENTITY", "O")
+        assert _has_entry(self.entries, "UNKNOWN", "S")
+        assert _has_entry(self.entries, "UNKNOWN", "V")
+        assert _has_entry(self.entries, "UNKNOWN", "O")
 
     def test_mts_svo_canonize(self) -> None:
         """MTS canonization: SVO → [S, V, O]."""
@@ -217,17 +217,17 @@ class TestKS35ComplexNested:
             assert isinstance(e, KValue)
 
     def test_identity_count(self) -> None:
-        """7 IDENTITY entries from MTS component identities.
+        """7 UNKNOWN entries from MTS component identities.
 
         MTS components (deduped): M, H, A, L, S, V, O = 7 unique chars.
-        Total IDENTITY: 7 (no compound-own identity).
+        Total UNKNOWN: 7 (no compound-own identity).
         """
-        assert _count_entries(self.entries, "IDENTITY") == 7
+        assert _count_entries(self.entries, "UNKNOWN") == 7
 
     def test_source_precedes_mts(self) -> None:
         """Compiled source precedes any MTS entries in the output.
 
-        Source klines (COUNTERSIGNS/DENOTES/CONNOTES/IDENTITY that come
+        Source klines (COUNTERSIGNS/DENOTES/CONNOTES/UNKNOWN that come
         directly from the script, and single-char CANONIZES) appear before
         every MTS expansion kline (§8 character-level components/canonizations
         and §11.3 BPE-subword decompositions). The partition is stable, so
@@ -236,7 +236,7 @@ class TestKS35ComplexNested:
         ops = [e.kline.dbg.op for e in self.entries]
 
         # The COUNTERSIGNS pair is source and must precede every CANONIZES
-        # (MTS canonization) and every MTS component IDENTITY.
+        # (MTS canonization) and every MTS component UNKNOWN.
         first_countersign = ops.index("COUNTERSIGNS")
         last_countersign = len(ops) - 1 - ops[::-1].index("COUNTERSIGNS")
         first_canonized = ops.index("CANONIZES")
@@ -351,7 +351,7 @@ class TestKS36WordBound:
             assert isinstance(e.kline, KLine)
             assert isinstance(e.kline.signature, int)
             assert e.kline.dbg.op in (
-                "COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY"
+                "COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "UNKNOWN"
             )
 
 
@@ -366,7 +366,7 @@ class TestCanonicalEncoding:
 
     Asserted at the KLine level (post-TokenEncoder) on the §14.12
     Word-bound example. These are the regression net for the duplicate-
-    CANONIZES and phantom-IDENTITY bugs: an identifier has one identity,
+    CANONIZES and phantom-UNKNOWN bugs: an identifier has one identity,
     computed once and reused.
     """
 
@@ -385,14 +385,14 @@ class TestCanonicalEncoding:
             )
 
     def test_no_packed_identity(self, tokenizer):
-        """KS-42: no IDENTITY kline carries a packed (compound) signature."""
+        """KS-42: no UNKNOWN kline carries a packed (compound) signature."""
         entries = self._entries(tokenizer)
         packed_sigs = {e.kline.signature for e in entries if e.kline.dbg.op == "CANONIZES"}
         bad = [
             e for e in entries
-            if e.kline.dbg.op == "IDENTITY" and e.kline.signature in packed_sigs
+            if e.kline.dbg.op == "UNKNOWN" and e.kline.signature in packed_sigs
         ]
-        assert bad == [], f"IDENTITY klines with packed sigs: {bad}"
+        assert bad == [], f"UNKNOWN klines with packed sigs: {bad}"
 
     def test_compound_resolution_consistent(self, tokenizer):
         """KS-41: a compound resolves identically wherever it appears.
@@ -662,7 +662,7 @@ class TestKScriptAPI:
         """KScript('A') produces a single unsigned entry."""
         model = KScript("A")
         assert len(model.entries) == 1
-        assert model.entries[0].kline.dbg.op == "IDENTITY"
+        assert model.entries[0].kline.dbg.op == "UNKNOWN"
         assert _decode_sig(model.entries[0]) == "A"
 
     def test_complex_source(self) -> None:
@@ -710,9 +710,9 @@ class TestPipelineWiring:
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
         # MTS for ABC
-        assert _has_entry(entries, "IDENTITY", "A")
-        assert _has_entry(entries, "IDENTITY", "B")
-        assert _has_entry(entries, "IDENTITY", "C")
+        assert _has_entry(entries, "UNKNOWN", "A")
+        assert _has_entry(entries, "UNKNOWN", "B")
+        assert _has_entry(entries, "UNKNOWN", "C")
         # No MTS for single-char X
         assert _has_entry(entries, "COUNTERSIGNS", "ABC", "X")
         assert _has_entry(entries, "COUNTERSIGNS", "X", "ABC")
@@ -805,7 +805,7 @@ class TestKV4CompilerSignificance:
     """KV-4 — Compiler attaches band-representative significance.
 
     S1 for == (COUNTERSIGNS), S2 for => (CANONIZES),
-    S3 for = (DENOTES) and > (CONNOTES), S4 for identity (IDENTITY).
+    S3 for = (DENOTES) and > (CONNOTES), S4 for identity (UNKNOWN).
 
     The significance is stamped on the KValue at construction from the
     production op (KP-1, D3), never derived from dbg.
@@ -854,33 +854,33 @@ class TestKV4CompilerSignificance:
         assert len(connoted) == 1
         assert connoted[0].significance == SIG_S3
 
-    # -- S4: IDENTITY -----------------------------------------------------
+    # -- S4: UNKNOWN -----------------------------------------------------
 
     def test_identity_is_s4(self) -> None:
-        """`A` → one IDENTITY KValue, S4 (0)."""
+        """`A` → one UNKNOWN KValue, S4 (0)."""
         entries = compile_source("A", dev=True)
         assert len(entries) == 1
         assert entries[0].significance == SIG_S4
-        assert entries[0].kline.dbg.op == "IDENTITY"
+        assert entries[0].kline.dbg.op == "UNKNOWN"
 
     # -- MTS op threading -------------------------------------------------
 
     def test_mts_entries_get_correct_significance(self) -> None:
         """`ABC == X` (multi-char triggers MTS) threads the op correctly.
 
-        IDENTITY entries (MTS subwords) get SIG_S4, CANONIZES entries (the
+        UNKNOWN entries (MTS subwords) get SIG_S4, CANONIZES entries (the
         ABC aggregate) get SIG_S2, and COUNTERSIGNS entries (ABC↔X) get
         SIG_S1. This verifies the production op is threaded through MTS
         expansion, not lost when wrapping KLines as KValues.
         """
         entries = compile_source("ABC == X", dev=True)
 
-        identities = [kv for kv in entries if kv.kline.dbg.op == "IDENTITY"]
+        identities = [kv for kv in entries if kv.kline.dbg.op == "UNKNOWN"]
         canonized = [kv for kv in entries if kv.kline.dbg.op == "CANONIZES"]
         countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNS"]
 
         # Guard against vacuous pass: at least one entry of each op exists.
-        assert len(identities) >= 1, "Expected MTS subword IDENTITY entries"
+        assert len(identities) >= 1, "Expected MTS subword UNKNOWN entries"
         assert len(canonized) >= 1, "Expected an ABC CANONIZES entry"
         assert len(countersigned) >= 1, "Expected ABC↔X COUNTERSIGNS entries"
 

@@ -97,7 +97,7 @@ class TestUnresolvedCharEncoding:
 
     def test_unresolved_sig_is_typed_node(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         """An unresolved char produces a valid typed node (not a legacy bit value)."""
-        entry = SymbolicEntry(sig="Z", nodes=[], op="IDENTITY")
+        entry = SymbolicEntry(sig="Z", nodes=[], op="UNKNOWN")
         results = encoder.encode_entries([entry])
         sig = results[0].kline.signature
         assert sig == tz.encode("Z")[0]
@@ -112,7 +112,7 @@ class TestNodesAlwaysList:
     """KLine.nodes is always list[int], never None or bare int."""
 
     def test_empty_nodes(self, encoder: TokenEncoder) -> None:
-        entry = SymbolicEntry(sig="A", nodes=[], op="IDENTITY")
+        entry = SymbolicEntry(sig="A", nodes=[], op="UNKNOWN")
         results = encoder.encode_entries([entry])
         assert len(results) == 1
         assert results[0].kline.nodes == []
@@ -136,7 +136,7 @@ class TestNodesAlwaysList:
     def test_all_entries_have_list_nodes(self, encoder: TokenEncoder) -> None:
         """Every KLine produced must have list nodes."""
         entries = [
-            SymbolicEntry(sig="A", nodes=[], op="IDENTITY"),
+            SymbolicEntry(sig="A", nodes=[], op="UNKNOWN"),
             SymbolicEntry(sig="B", nodes=["C"], op="CONNOTES"),
             SymbolicEntry(sig="D", nodes=["E", "F"], op="COUNTERSIGNS"),
         ]
@@ -152,21 +152,21 @@ class TestSignatureEncoding:
     """Signature strings are correctly encoded to uint64."""
 
     def test_single_char_sig(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
-        entry = SymbolicEntry(sig="A", nodes=[], op="IDENTITY")
+        entry = SymbolicEntry(sig="A", nodes=[], op="UNKNOWN")
         results = encoder.encode_entries([entry])
         assert results[0].kline.signature == tz.encode("A")[0]
 
     def test_multi_char_sig_packed(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         """Multi-token identifier is packed via OR-reduction (signature_of).
 
-        A multi-token signature heading an IDENTITY entry is decomposed into
-        per-token IDENTITY entries plus a compound CANONIZES entry (the last
+        A multi-token signature heading an UNKNOWN entry is decomposed into
+        per-token UNKNOWN entries plus a compound CANONIZES entry (the last
         result) whose nodes are the tokens plus COMPOUND_TOKEN; its signature
         is ``signature_of(tokens + [COMPOUND_TOKEN])`` — the marker is
         encoded in the signature, not OR'd on as a bit.
         """
         from kalvin.nlp_tokenizer import COMPOUND_TOKEN
-        entry = SymbolicEntry(sig="HELLO", nodes=[], op="IDENTITY")
+        entry = SymbolicEntry(sig="HELLO", nodes=[], op="UNKNOWN")
         results = encoder.encode_entries([entry])
         expected = signifier.signature_of(tz.encode("HELLO") + [COMPOUND_TOKEN])
         assert results[-1].kline.signature == expected
@@ -199,13 +199,13 @@ class TestSignificanceLevels:
             ("DENOTES", "S3"),
             ("CANONIZES", "S2"),
             ("CONNOTES", "S3"),
-            ("IDENTITY", "S4"),
+            ("UNKNOWN", "S4"),
         ],
     )
     def test_sig_level(self, dev_encoder: TokenEncoder, op: str, expected_level: str) -> None:
         from kalvin.kline import _SIG_LEVELS
 
-        entry = SymbolicEntry(sig="A", nodes=["B"] if op != "IDENTITY" else [], op=op)
+        entry = SymbolicEntry(sig="A", nodes=["B"] if op != "UNKNOWN" else [], op=op)
         results = dev_encoder.encode_entries([entry])
         # Find the main entry (last one with matching op)
         main = [r for r in results if r.kline.dbg and r.kline.dbg.op == op]
@@ -221,7 +221,7 @@ class TestFullUint64:
 
     def test_no_masking(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
         from kalvin.nlp_tokenizer import COMPOUND_TOKEN
-        entry = SymbolicEntry(sig="ABC", nodes=[], op="IDENTITY")
+        entry = SymbolicEntry(sig="ABC", nodes=[], op="UNKNOWN")
         results = encoder.encode_entries([entry])
         raw = signifier.signature_of(tz.encode("ABC"))
         # The compound CANONIZES entry (last) carries the unmasked OR-reduction
@@ -238,7 +238,7 @@ class TestFullUint64:
         from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         mock = MockMultiTokenTokenizer({"WORD": [100, 200]})
         enc = TokenEncoder(mock)
-        entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
+        entry = SymbolicEntry(sig="WORD", nodes=[], op="UNKNOWN")
         results = enc.encode_entries([entry])
         expected = signifier.signature_of([100, 200, COMPOUND_TOKEN])
         # Main entry is last (after MTS expansion entries)
@@ -259,9 +259,9 @@ class TestMultiTokenMTS:
         entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTES")
         results = enc.encode_entries([entry])
 
-        # Should have: IDENTITY(10), IDENTITY(20), CANONIZES(packed,[10,20,CT]), CONNOTES(A, [packed])
+        # Should have: UNKNOWN(10), UNKNOWN(20), CANONIZES(packed,[10,20,CT]), CONNOTES(A, [packed])
         unsigned_entries = [
-            r for r in results if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and not r.kline.nodes
+            r for r in results if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and not r.kline.nodes
         ]
         canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZES"]
         connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
@@ -286,22 +286,22 @@ class TestMultiTokenMTS:
         assert connote_entries[0].kline.nodes == [packed]
 
     def test_multi_token_sig_emits_mts(self) -> None:
-        """A multi-token signature heading an IDENTITY entry is represented
+        """A multi-token signature heading an UNKNOWN entry is represented
         solely by its §11.4 decomposition — no standalone packed-sig
-        IDENTITY (CONTEXT.md "Identity").
+        UNKNOWN (CONTEXT.md "Identity").
         """
         from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         mock = MockMultiTokenTokenizer({"WORD": [50, 60]})
         enc = TokenEncoder(mock, dev=True)
-        entry = SymbolicEntry(sig="WORD", nodes=[], op="IDENTITY")
+        entry = SymbolicEntry(sig="WORD", nodes=[], op="UNKNOWN")
         results = enc.encode_entries([entry])
 
         packed = signifier.signature_of([50, 60, COMPOUND_TOKEN])
 
-        # §11.4 MTS: IDENTITY(50), IDENTITY(60), CANONIZES(packed, [50,60,CT])
+        # §11.4 MTS: UNKNOWN(50), UNKNOWN(60), CANONIZES(packed, [50,60,CT])
         mts_unsigned = [
             r for r in results
-            if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.signature in (50, 60)
+            if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and r.kline.signature in (50, 60)
         ]
         canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZES"]
         assert len(mts_unsigned) == 2
@@ -310,10 +310,10 @@ class TestMultiTokenMTS:
         assert canonize_entries[0].kline.signature == packed
         assert canonize_entries[0].kline.nodes == [50, 60, COMPOUND_TOKEN]
 
-        # No standalone IDENTITY at the packed signature.
+        # No standalone UNKNOWN at the packed signature.
         assert not [
             r for r in results
-            if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.signature == packed
+            if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and r.kline.signature == packed
         ]
         assert len(results) == 3
 
@@ -331,9 +331,9 @@ class TestMultiTokenMTS:
 
         # Source entry is first
         assert results[0].kline.dbg.op == "CONNOTES"
-        # All remaining entries are MTS (IDENTITY/CANONIZES)
+        # All remaining entries are MTS (UNKNOWN/CANONIZES)
         for r in results[1:]:
-            assert r.kline.dbg.op in ("IDENTITY", "CANONIZES")
+            assert r.kline.dbg.op in ("UNKNOWN", "CANONIZES")
 
 
 # ── Dedup multi-token MTS ────────────────────────────────────────────
@@ -352,9 +352,9 @@ class TestDedupMTS:
         ]
         results = enc.encode_entries(entries)
 
-        # Only 2 IDENTITY entries (not 4) and 1 CANONIZES (not 2)
+        # Only 2 UNKNOWN entries (not 4) and 1 CANONIZES (not 2)
         unsigned_entries = [
-            r for r in results if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and not r.kline.nodes
+            r for r in results if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and not r.kline.nodes
         ]
         canonize_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CANONIZES"]
         connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
@@ -416,7 +416,7 @@ class TestMultipleEntries:
 
     def test_ordering_and_completeness(self, dev_encoder: TokenEncoder) -> None:
         entries = [
-            SymbolicEntry(sig="A", nodes=[], op="IDENTITY"),
+            SymbolicEntry(sig="A", nodes=[], op="UNKNOWN"),
             SymbolicEntry(sig="B", nodes=["C"], op="CONNOTES"),
             SymbolicEntry(sig="D", nodes=["E", "F"], op="CANONIZES"),
         ]
@@ -425,7 +425,7 @@ class TestMultipleEntries:
         assert len(results) >= 3
         # Ops present in order
         ops = [r.kline.dbg.op for r in results]
-        assert "IDENTITY" in ops
+        assert "UNKNOWN" in ops
         assert "CONNOTES" in ops
         assert "CANONIZES" in ops
 

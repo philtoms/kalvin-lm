@@ -83,7 +83,7 @@ _OP_TO_SIG: dict[str, int] = {
     "CANONIZES": SIG_S2,
     "CONNOTES": SIG_S3,
     "DENOTES": SIG_S3,
-    "IDENTITY": SIG_S4,
+    "UNKNOWN": SIG_S4,
 }
 
 

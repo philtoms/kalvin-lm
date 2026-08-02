@@ -43,7 +43,7 @@ def _kv(sig: int, band: int) -> KValue:
 
 
 def _turn(role: str, sig: int, band: int) -> DecodedTurn:
-    return DecodedTurn(role=cast(Role, role), op="IDENTITY", value=_kv(sig, band))
+    return DecodedTurn(role=cast(Role, role), op="UNKNOWN", value=_kv(sig, band))
 
 
 def _ev(role: str, sig: int, band: int) -> RationaliseEvent:

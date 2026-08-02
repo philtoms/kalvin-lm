@@ -27,7 +27,7 @@ def _turn(role: str, sig: int) -> DecodedTurn:
 
     from training.dialogue.decoder import Role
 
-    return DecodedTurn(role=cast(Role, role), op="IDENTITY", value=_kv(sig))
+    return DecodedTurn(role=cast(Role, role), op="UNKNOWN", value=_kv(sig))
 
 
 def _ev(role: str, sig: int) -> RationaliseEvent:

@@ -14,7 +14,7 @@
       "role_turn": 1
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "MHALL",
       "nodes": [],
       "significance": "S4",
@@ -40,7 +40,7 @@
       "role_turn": 2
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "Mary",
       "nodes": [],
       "significance": "S4",
@@ -63,7 +63,7 @@
       "role_turn": 3
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "had",
       "nodes": [],
       "significance": "S4",
@@ -84,7 +84,7 @@
       "role_turn": 4
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "a",
       "nodes": [],
       "significance": "S4",
@@ -104,7 +104,7 @@
       "role_turn": 5
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "Det",
       "nodes": [],
       "significance": "S4",
@@ -126,7 +126,7 @@
       "role_turn": 6
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "little",
       "nodes": [],
       "significance": "S4",
@@ -147,7 +147,7 @@
       "role_turn": 7
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "lamb",
       "nodes": [],
       "significance": "S4",
@@ -174,7 +174,7 @@
       "role_turn": 8
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "SVO",
       "nodes": [],
       "significance": "S4",
@@ -196,7 +196,7 @@
       "role_turn": 9
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "Subject",
       "nodes": [],
       "significance": "S4",
@@ -217,7 +217,7 @@
       "role_turn": 10
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "Verb",
       "nodes": [],
       "significance": "S4",
@@ -239,7 +239,7 @@
       "role_turn": 11
     },
     {
-      "op": "IDENTITY",
+      "op": "UNKNOWN",
       "signature": "Object",
       "nodes": [],
       "significance": "S4",
@@ -350,7 +350,7 @@
         "Det"
       ],
       "significance": "S2",
-      "notes": "Same response as before; closes the dialogue (the close may recur as coverage — its coverage copy is consumed first). K's S3 countersignature of MHALL<->SVO is an internal grounding (see events).",
+      "notes": "Same response as before; closes the dialogue (the close may recur as coverage \u2014 its coverage copy is consumed first). K's S3 countersignature of MHALL<->SVO is an internal grounding (see events).",
       "role": "T",
       "turn": 33,
       "role_turn": 16,
