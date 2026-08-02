@@ -12,7 +12,7 @@ A kline node value may be a **packed signature** — the OR-reduction of two or
 more token IDs (a §11.4 multi-token word, a §11.5 compound). Passing such a
 value directly to a tokenizer's `decode` is incorrect: the low 32 bits are
 not a single valid token ID. Decode of node/signature values must first
-flatten the value to its constituent identity signatures via the graph, then
+flatten the value to its constituent terminal signatures via the graph, then
 hand that sequence to the tokenizer. This plan adds that flattening
 operation; tokenizer integration is left to callers (out of scope — see
 Design Decisions).
@@ -72,7 +72,7 @@ Add a `TestUnpack` group covering MOD-60..MOD-66:
 
 | Spec ID | Test                                   |
 | ------- | -------------------------------------- |
-| MOD-60  | identity kline → `[signature]`         |
+| MOD-60  | Unknown/Identity kline (terminal) → `[signature]`         |
 | MOD-61  | canon → ordered identity children      |
 | MOD-62  | canon-of-canons → flattened, ordered   |
 | MOD-63  | connoted input (not identity/canon) raises |
@@ -86,15 +86,15 @@ Resolved during the grilling session that produced this plan.
 
 | Decision | Outcome | Rationale |
 | --- | --- | --- |
-| Input unit | a kline; recursion walks its node tree | only identity signatures decode to text |
-| Base case | identity (empty nodes) → `[signature]` | the identity's single token is the terminal |
+| Input unit | a kline; recursion walks its node tree | only terminal signatures decode to text |
+| Base case | terminal (empty Unknown / self-ref Identity / compound-word) → `[signature]` | a terminal's single token is the leaf; traversal stops |
 | Recursive case | canon (`signature == make_signature(nodes)`) → concat `unpack(child)` per node | only canon has a recoverable decomposition |
 | Kind precedence | identity → canon → raise | semantic-relation klines contribute no tokens; following them risks non-termination (e.g. countersigned pairs) |
 | Within-kind ambiguity | most-recently-added wins (Recency Precedence) | core Kalvin principle; now grounded in CONTEXT.md |
 | Unresolvable node | raise | treat missing data as a bug at this stage |
 | Non-decomposable input | raise | S2-misfit / S3 traversal deferred |
 | Cycle defense | none — let it overflow | trust the DAG invariant; cycles are malformed-graph bugs |
-| Return type | `list[int]` (identity signature values) | the natural input to a tokenizer `decode` |
+| Return type | `list[int]` (terminal signature values) | the natural input to a tokenizer `decode` |
 | Placement | `Model.unpack(kline)` method | recursive node-tree walk is the same shape as the (now-removed) `descendants`; no import cycle (model already imports `make_signature`) |
 | Tokenizer | out of scope — `unpack` returns the sequence only | keeps the model-dependent and tokenizer-dependent concerns separate; callers compose `tokenizer.decode(model.unpack(...))` |
 | Naming | `unpack`, not `decode` | it flattens the node tree; decoding happens at the tokenizer |

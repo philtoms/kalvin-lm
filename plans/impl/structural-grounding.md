@@ -100,7 +100,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine) -> None:
     After countersignature is detected between query and candidate,
     cascade both plus any STM klines whose signatures appear in the
     union of their nodes to LTM via add_to_ltm(). This enriches LTM with
-    S4 identity klines and S2/S3 partial klines involved in the ratification.
+    S4 Unknown klines and S2/S3 partial klines involved in the ratification.
 
     Returns void — add_to_ltm() cascades through Frame to STM.
     """
@@ -206,7 +206,7 @@ The candidate is a model kline (from `model.where()`), so
 | MOD-35  | `is_s1` countersigned                     | Two klines with mutual node references → True         |
 | MOD-36  | `is_s1` neither                           | KLine that is not canonical or countersigned → False  |
 | MOD-48  | `promote_participating` basic             | Query + candidate promoted                            |
-| MOD-49  | `promote_participating` with S4 identity  | S4 identity klines in STM also promoted               |
+| MOD-49  | `promote_participating` with S4 Unknown  | S4 Unknown klines in STM also promoted               |
 | MOD-50  | `promote_participating` with S2/S3        | Partial klines in STM promoted                        |
 | MOD-51  | `promote_participating` no double-promote | Already-promoted klines not re-promoted               |
 | —       | Frame holds S4–S1                         | After ratification, frame contains mixed significance |

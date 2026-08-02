@@ -416,18 +416,20 @@ model.unpack(kline) → sequence of uint64
 Flattens a kline's signature decomposition into an ordered sequence of
 identity signatures (@CONTEXT.md §Identity).
 
-- **Identity** (`is_identity` — empty nodes OR self-referential `{S: [S]}`)
-  → `[signature]`. Base case.
-- **Canon** (`is_canon` — non-empty, non-self-referential, and
+- **Identity / Unknown** (`is_identity` / `is_unknown` — empty nodes
+  `{S: []}`, or self-referential `{S: [S]}`) → `[signature]`. Base case.
+  (An empty Unknown is terminal; it unpacks to its own signature as the
+  trivial leaf, since traversal stops.)
+- **Canon** (`is_canon` — a non-terminal kline whose
   `signature == signature_of(nodes)`, @signifier spec) → the
   concatenation, in node order, of `unpack(child)` for each child kline
   resolved from the node value.
 - Any other input (connoted, denoted, misfit) → raises.
 - **Child resolution** uses three-tier precedence (highest first):
-  1. empty-nodes identity, 2. genuine canon, 3. self-referential identity.
-     The self-referential form is identity but its Composition is trivial, so it
+  1. empty-nodes Unknown, 2. genuine canon, 3. self-referential Identity.
+     The self-referential form is terminal but carries no decomposition, so it
      loses to a genuine canon for the same signature — otherwise it would
-     displace the canon and collapse the result to identity. Within a kind, the
+     displace the canon and collapse the result to a single leaf. Within a kind, the
      most recently added kline wins (recency is the current default
      preference; see `docs/kalvin-vision.md` §Klines). If no
      resolvable kline exists for the value → raises.
@@ -521,14 +523,14 @@ Determines whether a kline is recognised (S1).
 
 - `kline` — a KLine to test.
 - A kline is S1 if:
-  1. It is canonical (`is_canon` — non-empty, non-self-referential, and
+  1. It is a canon (`is_canon` — a non-terminal kline whose
      `signature_of(kline.nodes) == kline.signature`), OR
   2. It is countersigned by another kline in the model.
-- A self-referential kline `{S: [S]}` is identity, not canon, and is not
+- A self-referential kline `{S: [S]}` is an Identity, not a canon, and is not
   counted as its own countersigner, so it is not S1 by structure.
 - This is a stateful test: adding or removing klines changes the result.
 - S1 represents a **recognised kline** — one whose signature
-  and nodes are fully accounted for (by its own Composition or by
+  and nodes are fully accounted for (by its own structure or by
   countersignature), which the model grounds.
 
 ### Expand (Significance)
@@ -709,7 +711,7 @@ four conditions without raising:
    current traversal, it breaks immediately without yielding the cycle.
    Prevents countersigned pairs (e.g. `{M: [H]} ↔ {H: [M]}`) oscillating
    for all MAX_HOP iterations.
-2. **Identity kline** — if `signature_of(kline.nodes) == 0` (identity
+2. **Unknown kline** — if `signature_of(kline.nodes) == 0` (an Unknown
    kline with empty nodes), it breaks without yielding. There is no
    signature to follow from `nodes = []`.
 3. **Canonical kline** — if the kline is canonical
@@ -793,14 +795,14 @@ else       → S4
 | MOD-19  | Query_expand depth 2: returns direct children                                                                          | —          |
 | MOD-20  | Query_expand cycle detection: no infinite loop                                                                         | —          |
 | MOD-22  | Query: find + expand combined                                                                                          | —          |
-| MOD-60  | Unpack identity: `unpack({S: []})` → `[S]`                                                                             | —          |
+| MOD-60  | Unpack Unknown/Identity: `unpack({S: []})` → `[S]`                                                                    | —          |
 | MOD-61  | Unpack canon: ordered identity child sequence                                                                          | —          |
 | MOD-62  | Unpack nested canon: recursively flattened, order preserved                                                            | —          |
 | MOD-63  | Unpack non-decomposable input (e.g. connoted) → raises                                                                 | —          |
 | MOD-64  | Unpack unresolvable child node → raises                                                                                | —          |
-| MOD-65  | Unpack child resolution: empty-identity > canon > self-referential identity                                            | —          |
+| MOD-65  | Unpack child resolution: empty-Unknown > canon > self-referential Identity                                            | —          |
 | MOD-66  | Unpack within-kind ambiguity: most-recently-added wins                                                                 | —          |
-| MOD-67  | Unpack self-referential `{S: [S]}` is identity → `[S]` (no recursion); loses to a genuine canon for the same signature | —          |
+| MOD-67  | Unpack self-referential `{S: [S]}` is an Identity (terminal) → `[S]` (no recursion); loses to a genuine canon for the same signature | —          |
 | MOD-67b | Unpack canon sharing node value but different nodes still recurses                                                     | —          |
 
 ### Write Cascade
@@ -848,7 +850,7 @@ else       → S4
 | ID   | Criterion                                                                  | Origin ref |
 | ---- | -------------------------------------------------------------------------- | ---------- |
 | ER-1 | Countersigned pair (M↔H) yields at most 2 hops, not MAX_HOP (cycle breaks) | —          |
-| ER-2 | Identity kline `{A: []}` yields zero hops                                  | —          |
+| ER-2 | Unknown kline `{A: []}` yields zero hops                                  | —          |
 | ER-6 | `expand()` does not crash when a `match_sig` is unresolvable               | —          |
 | ER-7 | S2 expansion scenario over countersign cycles completes without exception  | —          |
 
@@ -857,7 +859,7 @@ else       → S4
 | ID      | Criterion                                                                                                                                                                                                 | Origin ref |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | MOD-48  | `promote_participating`: query + candidate promoted after ratification                                                                                                                                    | —          |
-| MOD-49  | `promote_participating`: S4 identity klines in STM also promoted                                                                                                                                          | —          |
+| MOD-49  | `promote_participating`: S4 Unknown klines in STM also promoted                                                                                                                                          | —          |
 | MOD-50  | `promote_participating`: S2/S3 partial klines in STM promoted                                                                                                                                             | —          |
 | MOD-51  | `promote_participating`: already-promoted klines not re-promoted                                                                                                                                          | —          |
 | MOD-52  | `classify_misfit` (see @signifier SIG-20..23): canonical → (False, False)                                                                                                                                | —          |
@@ -868,7 +870,7 @@ else       → S4
 | MOD-57  | `generate_expansions` overfit: returns trimmed + companion                                                                                                                                                | —          |
 | MOD-58  | `generate_expansions` dual: returns replacement + companion (one atomic swap per gap-filling contributor; the dual path is exclusive — it does not also emit the underfit-only or overfit-only proposals) | —          |
 | MOD-59  | `generate_expansions` no gap: no expansion proposals emitted                                                                                                                                              | —          |
-| MOD-59b | `generate_expansions` never yields an identity proposal (`{S: []}` or `{S: [S]}`) — identity's Composition is trivial; see @cogitator spec §Universal Constraint                                          | —          |
+| MOD-59b | `generate_expansions` never yields a terminal proposal (`{S: []}`, `{S: [S]}`, or a compound-word) — a terminal carries no decomposition, so it is never a valid _expansion_ proposal; see @cogitator spec §Universal Constraint                                          | —          |
 
 ## What a Model is Not
 

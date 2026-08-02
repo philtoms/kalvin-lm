@@ -148,8 +148,8 @@ CogitationHandler:
 Work items arrive routed as **S2** or **S3** only (see @agent spec,
 §Routing). Routing does not produce S1 or S4: full node overlap is a
 necessary but insufficient condition for S1 (true S1 is structural —
-canonical composition or countersignature, established by `expand()` /
-`is_s1()`), and identity klines are resolved on the agent's fast path
+canonical structure or countersignature, established by `expand()` /
+`is_s1()`), and Unknown klines are resolved on the agent's fast path
 before any candidate is submitted.
 
 ### Work Item Processing
@@ -275,8 +275,8 @@ removed nodes as independent `frame` events.
 | Dual misfit    | The replacement kline **and** the companion kline from removed nodes |
 
 Each proposal is an independent `frame` event. The agent ratifies (or
-rejects) each one individually. An identity proposal or companion (empty
-nodes or self-referential `{S: [S]}`) is not emitted (see Universal
+rejects) each one individually. A terminal proposal or companion (empty
+nodes, self-referential `{S: [S]}`, or a compound-word) is not emitted (see Universal
 Constraint below).
 
 ### Universal Constraint
@@ -287,12 +287,13 @@ constraint cannot be satisfied, no proposal is emitted — the agent infers
 scaffolding is needed from the absence of a `frame` event.
 
 A second constraint governs proposal _shape_: **an expansion proposal must
-not be identity**. Identity (@CONTEXT.md §Identity) is either empty nodes
-`{S: []}` or self-referential `{S: [S]}`, and its Composition is trivial
-— so it is never a valid _expansion_ proposal. A single removed
-node `n` would form the companion `{n: [n]}` (identity), which is dropped
-rather than emitted; likewise any proposal that reduces to identity is
-dropped. (Note: `{S: [S]}` _is_ a legitimate kline state — it is identity —
+not be a terminal**. A terminal (@CONTEXT.md §Terminal) — empty nodes
+`{S: []}` (Unknown), self-referential `{S: [S]}` (Identity), or a
+compound-word — carries no decomposition, so it is never a valid
+_expansion_ proposal. A single removed
+node `n` would form the companion `{n: [n]}` (an Identity terminal), which is dropped
+rather than emitted; likewise any proposal that reduces to a terminal is
+dropped. (Note: `{S: [S]}` _is_ a legitimate kline state — it is an Identity terminal —
 but it is not something the expander should produce, since the expander's
 purpose is to decompose.)
 
@@ -319,7 +320,7 @@ S2 expansion requires structural grounding for two reasons:
 1. **Promotion after ratification** — when the agent countersigns an
    expansion proposal, all participating klines must be cascaded to LTM
    via `add_to_ltm` (not just the ratified kline), including the added/removed node
-   groups and any S4 identity klines involved. `promote_participating` calls
+   groups and any S4 Unknown klines involved. `promote_participating` calls
    `add_to_ltm` in a loop for each participating kline.
 
 2. **Frame richness** — the expansion search requires a model populated

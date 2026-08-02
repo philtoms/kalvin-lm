@@ -223,7 +223,7 @@ Annotation
 
 OperatorScope
   ├── sig: Signature           # the identifier preceding the operator
-  ├── op: TokenType | None     # None = bare signature (identity)
+  ├── op: TokenType | None     # None = bare signature (UNKNOWN token)
   ├── items: [ConstructItem]   # nodes and child constructs
   └── child_block: Block | None  # indented child scope
 
@@ -260,7 +260,7 @@ KLine:
     dbg: KDbg                       # op (structural relationship) + diagnostic fields
 ```
 
-**No singleton rule.** Nodes are always a list. An identity entry has an empty list. A single-node entry has a one-element list. A multi-node entry has multiple elements.
+**No singleton rule.** Nodes are always a list. An UNKNOWN entry has an empty list (structurally an Unknown). A single-node entry has a one-element list. A multi-node entry has multiple elements.
 
 ### 6.2 Significance Level Assignment
 
@@ -272,7 +272,7 @@ Each emitted entry is tagged with a significance level based on its structural r
 | DENOTES (`=`)       | S3    | Objective — signature denotes node     |
 | CANONIZES (`=>`)    | S2    | Canonical                              |
 | CONNOTES (`>`)      | S3    | Connotative — signature connotes node  |
-| IDENTITY (bare)     | S4    | Identity — bare node, no relationships |
+| UNKNOWN (bare)      | S4    | Unknown — bare node, no relationships |
 
 Significance bits are not encoded into the token IDs. The level is carried as metadata on the compiled entry.
 
@@ -280,11 +280,17 @@ Significance bits are not encoded into the token IDs. The level is carried as me
 
 ## 7. Relationship Compilation Rules
 
-### 7.1 Identity (bare signature)
+### 7.1 UNKNOWN token (bare signature)
 
 ```
 A       → {A: []}
 ```
+
+A bare signature compiles under the **UNKNOWN** token (@CONTEXT.md §Relational
+Tokens). The resulting empty kline `{A: []}` is structurally an **Unknown**
+that claims S4 (@CONTEXT.md §Unknown). (A scripted true-**Identity** token for
+self-referential `{A: [A]}` is reserved for future work; the UNKNOWN token
+names the bare ask, not the decodable identity.)
 
 Plus MTS expansion if multi-character (§8).
 
@@ -301,11 +307,11 @@ Each node produces a bidirectional pair.
 
 ```
 A = B       → {B: A}
-A = A       → {A: []}              (self-identity, IDENTITY)
+A = A       → {A: []}              (self-unknown, UNKNOWN)
 A = B C D   → {B: A}, {C: A}, {D: A}
 ```
 
-A denote declares an objective relationship: the written signature denotes each node, so the node becomes the signature and the written signature its node (`A = B` ⇒ A denotes B; literally, _B is an A_). Each node produces its own kline. Self-identity collapses to identity.
+A denote declares an objective relationship: the written signature denotes each node, so the node becomes the signature and the written signature its node (`A = B` ⇒ A denotes B; literally, _B is an A_). Each node produces its own kline. Self-denote (`A = A`) collapses to the empty Unknown `{A: []}`.
 
 ### 7.4 CONNOTES (`>`) — unidirectional, per-item
 
@@ -342,7 +348,7 @@ Items in child scope: B, C. CANONIZES aggregates → `{A: [B, C]}`. Recursive co
 - A **leaf Signature item** (a bare node like `B` above) emits no operator entry, so it has no entry whose signature is `B`.
 - A **DENOTES scope sig** (`C = D` produces `{D: [C]}` — the scope's own sig `C` is never a signature).
 
-For these, an IDENTITY entry `{sig: []}` is emitted to fill the gap. Identity emission is deduplicated: if the identifier already has an IDENTITY entry, or was already introduced as an MTS component, or is a compound already introduced by its CANONIZES entry, no new IDENTITY is emitted.
+For these, an UNKNOWN entry `{sig: []}` is emitted to fill the gap. (Structurally each is an **Unknown** claiming S4, @CONTEXT.md §Unknown; "UNKNOWN" here is the compiler token, §7.1.) UNKNOWN emission is deduplicated: if the identifier already has an UNKNOWN entry, or was already introduced as an MTS component, or is a compound already introduced by its CANONIZES entry, no new UNKNOWN is emitted.
 
 **MTS-expanded sig suppression.** This identity filling applies only when the CANONIZES scope's sig did **not** trigger MTS — i.e. it is a single-character sig. A multi-character CANONIZES sig already receives component identities from its own MTS expansion (§8), so subscript identity would only produce spurious duplicates and is suppressed. (This is why §14.11 emits no identity for `ALL`'s subscript children `A`, `L` — they were already introduced by `MHALL`'s MTS expansion.)
 
@@ -356,7 +362,7 @@ The identity-filling flag does not propagate between CANONIZES scopes; only the 
 
 When an MTS entry appears (signature side or node side, any operator), the ASTEmitter automatically emits:
 
-1. **Component identities:** One identity entry per constituent character (resolved via BindingScope).
+1. **Component identities:** One UNKNOWN entry per constituent character (resolved via BindingScope). Each `{char: []}` is structurally an Unknown (S4); together they seed the model with the character signatures the canonization references.
 2. **MTS canonization:** One CANONIZES entry mapping the identifier to its resolved components.
 
 ```
@@ -365,9 +371,9 @@ ABC  →  {A: []}, {B: []}, {C: []}, {ABC: [A, B, C]}
 
 Single-character signatures do NOT trigger MTS expansion.
 
-**Semantics.** The MTS canonization kline `{ABC: [A, B, C]}` is structurally a **canon** — its signature equals `signature_of([A, B, C])`. It is therefore recognised (S1) by its own Composition. MTS never produces an identity; the decomposition is the point.
+**Semantics.** The MTS canonization kline `{ABC: [A, B, C]}` is structurally a **canon** — its signature equals `signature_of([A, B, C])`. It is therefore recognised (S1) by its own structure (see @CONTEXT.md §Canon). MTS never produces an Unknown or Identity; the decomposition is the point.
 
-MTS character-expansion applies only to all-uppercase identifiers. A lowercase or mixed-case multi-character identifier (e.g. `had`, `did`, `all`) is a **single word** — one lexical item — not an MTS entry; it is emitted as its own IDENTITY and is never decomposed into per-character entries. Case is the discriminator that separates an MTS entry from a word; both are admitted by the case-insensitive SIGNATURE rule (§2). (Historically every multi-character identifier was uppercase, so the case guard was implicit; the SIGNATURE relaxation made it explicit.) A word that the _external tokenizer_ splits into multiple BPE subwords is handled by the orthogonal compound-word mechanism (§11.3), not by MTS.
+MTS character-expansion applies only to all-uppercase identifiers. A lowercase or mixed-case multi-character identifier (e.g. `had`, `did`, `all`) is a **single word** — one lexical item — not an MTS entry; it is emitted as its own UNKNOWN and is never decomposed into per-character entries. Case is the discriminator that separates an MTS entry from a word; both are admitted by the case-insensitive SIGNATURE rule (§2). (Historically every multi-character identifier was uppercase, so the case guard was implicit; the SIGNATURE relaxation made it explicit.) A word that the _external tokenizer_ splits into multiple BPE subwords is handled by the orthogonal compound-word mechanism (§11.3), not by MTS.
 
 MTS applies wherever **all-uppercase multi-character identifiers** appear — signature side or node side, any operator. There is no position-dependent rule.
 
@@ -383,11 +389,11 @@ The number of nodes in an MTS canonization entry always equals the number of cha
 
 MTS deduplication prevents duplicate entries when the same identifier appears in multiple MTS expansions. Two categories are deduplicated:
 
-**Component identity dedup.** Each constituent character of an MTS expansion produces one IDENTITY (S4) entry. If a character was already emitted by a previous MTS expansion, the duplicate is silently dropped. Intra-expansion dedup also prevents duplicate emission when the same character appears multiple times in an MTS entry (e.g., the second L in MHALL).
+**Component identity dedup.** Each constituent character of an MTS expansion produces one UNKNOWN (S4) entry. If a character was already emitted by a previous MTS expansion, the duplicate is silently dropped. Intra-expansion dedup also prevents duplicate emission when the same character appears multiple times in an MTS entry (e.g., the second L in MHALL).
 
 **Canonization dedup.** An MTS canonization entry is a CANONIZES (S2) entry mapping an MTS entry to its components. If another CANONIZES entry with the same signature and nodes would be produced (e.g., a CANONIZES scope that aggregates the same components), the duplicate is silently dropped.
 
-Deduplication applies only to MTS-produced entries — it is not a general deduplication mechanism. Relationship-produced entries (COUNTERSIGNS, DENOTES, CONNOTES) and non-MTS IDENTITY entries are always emitted.
+Deduplication applies only to MTS-produced entries — it is not a general deduplication mechanism. Relationship-produced entries (COUNTERSIGNS, DENOTES, CONNOTES) and non-MTS UNKNOWN entries are always emitted.
 
 **Canonical resolution.** An MTS entry's MTS component list is computed once, on first expansion, and reused by every subsequent reference (node-side or signature-side, any operator). The occurrence counter (§10.1) disambiguates characters within a single expansion (e.g. the two L's in `MHALL`); it does not advance between expansions of the same identifier.
 
@@ -450,7 +456,7 @@ WDMH =>
   DH = h(ad)
   W
 ```
-the `h(ad)` override binds `h → "had"` only within `DH`'s own subscript (so `DH`'s MTS expansion resolves its `H` char to "had"). It does **not** affect `WDMH`'s MTS expansion, whose `H` char resolves to the header word **"have"** via first-letter matching — giving `have` its own identity kline and `DH` the surface `[did, have]`.
+the `h(ad)` override binds `h → "had"` only within `DH`'s own subscript (so `DH`'s MTS expansion resolves its `H` char to "had"). It does **not** affect `WDMH`'s MTS expansion, whose `H` char resolves to the header word **"have"** via first-letter matching — giving `have` its own Unknown kline and `DH` the surface `[did, have]`.
 
 ### 10.2 Binding Scope
 
@@ -498,7 +504,7 @@ The discriminator is the boundary marker token `COMPOUND_TOKEN` (@nlp_tokenizer 
 
 When a resolved word BPE-encodes to multiple tokens, the TokenEncoder emits:
 
-1. **Component identities:** One identity entry per BPE subword token.
+1. **Component identities:** One UNKNOWN entry per BPE subword token (each `{sig: []}` is structurally an Unknown, S4).
 2. **Compound-word identity:** One CANONIZES-shaped entry `{packed_sig → [COMPOUND_TOKEN, subwords...]}` carrying the marker. Structurally canon-shaped, semantically an identity (S1).
 3. **Packed signature:** The compound-word's signature becomes the single `uint64` node used in the parent kline.
 
@@ -582,7 +588,7 @@ The `entries` property returns a list of `KLine` objects, ordered compiled-sourc
 
 ## 14. Worked Examples
 
-### 14.1 Minimal Identity
+### 14.1 Minimal Unknown
 
 ```
 A
@@ -592,7 +598,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op       | Level |
 | ----- | --------- | ----- | -------- | ----- |
-| 1     | A         | []    | IDENTITY | S4    |
+| 1     | A         | []    | UNKNOWN  | S4    |
 
 ### 14.2 Bidirectional Link
 
@@ -631,7 +637,7 @@ Compiled:
 | ----- | --------- | ----- | -------- | ----- |
 | 1     | A         | [B]   | CONNOTES | S3    |
 
-### 14.5 Self-Identity
+### 14.5 Self-Unknown (`A = A`)
 
 ```
 A = A
@@ -641,7 +647,7 @@ Compiled:
 
 | Entry | Signature | Nodes | Op       | Level |
 | ----- | --------- | ----- | -------- | ----- |
-| 1     | A         | []    | IDENTITY | S4    |
+| 1     | A         | []    | UNKNOWN  | S4    |
 
 ### 14.6 MTS Expansion
 
@@ -653,9 +659,9 @@ Compiled:
 
 | Entry | Signature | Nodes     | Op        | Level |
 | ----- | --------- | --------- | --------- | ----- |
-| 1     | A         | []        | IDENTITY  | S4    |
-| 2     | B         | []        | IDENTITY  | S4    |
-| 3     | C         | []        | IDENTITY  | S4    |
+| 1     | A         | []        | UNKNOWN  | S4    |
+| 2     | B         | []        | UNKNOWN  | S4    |
+| 3     | C         | []        | UNKNOWN  | S4    |
 | 4     | ABC       | [A, B, C] | CANONIZES | S2    |
 
 ### 14.7 Relationship Chain
@@ -687,9 +693,9 @@ Compiled:
 | ----- | --------- | ------ | --------- | ----- |
 | 1     | A         | [B, C] | CANONIZES | S2    |
 | 2     | D         | [C]    | DENOTES   | S3    |
-| 3     | B         | []     | IDENTITY  | S4    |
-| 4     | C         | []     | IDENTITY  | S4    |
-| 5     | D         | []     | IDENTITY  | S4    |
+| 3     | B         | []     | UNKNOWN  | S4    |
+| 4     | C         | []     | UNKNOWN  | S4    |
+| 5     | D         | []     | UNKNOWN  | S4    |
 
 ### 14.9 Chained CANONIZES
 
@@ -703,7 +709,7 @@ Compiled:
 | ----- | --------- | ----- | --------- | ----- |
 | 1     | A         | [B]   | CANONIZES | S2    |
 | 2     | B         | [C]   | CANONIZES | S2    |
-| 3     | C         | []    | IDENTITY  | S4    |
+| 3     | C         | []    | UNKNOWN  | S4    |
 
 ### 14.10 Non-CANONIZES with Indent
 
@@ -748,14 +754,14 @@ Compiled (source-first — §11.6):
 | 6   | Denote (D denotes A)   | D         | [A]             | DENOTES      | S3                                                     |
 | 7   | Denote (M denotes L)   | M         | [L]             | DENOTES      | S3                                                     |
 | 8   | Connote (L connotes O) | L         | [O]             | CONNOTES     | S3                                                     |
-| 9   | MTS M                  | M         | []              | IDENTITY     | S4                                                     |
-| 10  | MTS H                  | H         | []              | IDENTITY     | S4                                                     |
-| 11  | MTS A                  | A         | []              | IDENTITY     | S4                                                     |
-| 12  | MTS L                  | L         | []              | IDENTITY     | S4                                                     |
+| 9   | MTS M                  | M         | []              | UNKNOWN  | S4                                                     |
+| 10  | MTS H                  | H         | []              | UNKNOWN  | S4                                                     |
+| 11  | MTS A                  | A         | []              | UNKNOWN  | S4                                                     |
+| 12  | MTS L                  | L         | []              | UNKNOWN  | S4                                                     |
 | 13  | MTS MHALL canonize     | MHALL     | [M, H, A, L, L] | CANONIZES    | S2                                                     |
-| 14  | MTS S                  | S         | []              | IDENTITY     | S4                                                     |
-| 15  | MTS V                  | V         | []              | IDENTITY     | S4                                                     |
-| 16  | MTS O                  | O         | []              | IDENTITY     | S4                                                     |
+| 14  | MTS S                  | S         | []              | UNKNOWN  | S4                                                     |
+| 15  | MTS V                  | V         | []              | UNKNOWN  | S4                                                     |
+| 16  | MTS O                  | O         | []              | UNKNOWN  | S4                                                     |
 | 17  | MTS SVO canonize       | SVO       | [S, V, O]       | CANONIZES    | S2                                                     |
 | —   | SVO canonize subscript | —         | —               | —            | Dropped (canonize dedup: identical to entry 17)        |
 | —   | MTS ALL A              | —         | —               | —            | Dropped (identity dedup: {A:[]} identical to entry 11) |
@@ -763,7 +769,7 @@ Compiled (source-first — §11.6):
 | 18  | MTS ALL canonize       | ALL       | [A, L, L]       | CANONIZES    | S2                                                     |
 | —   | ALL canonize subscript | —         | —               | —            | Dropped (canonize dedup: identical to entry 18)        |
 
-> **MTS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MTS entries. Two component identity entries (MTS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MTS canonization counterparts already exist. Compound identifiers receive no IDENTITY of their own (an identity requires a single-token signature), so there is nothing to drop for those. Only MTS-produced entries (component identity and canonization) are deduplicated — relationship-produced duplicates are emitted as-is.
+> **MTS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MTS entries. Two component identity entries (MTS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MTS canonization counterparts already exist. Compound identifiers receive no UNKNOWN of their own (an Unknown requires a single-token signature), so there is nothing to drop for those. Only MTS-produced entries (component identity and canonization) are deduplicated — relationship-produced duplicates are emitted as-is.
 
 ### 14.12 Word-Bound Example
 
@@ -809,15 +815,15 @@ Compiled (resolved-word level; source-first — §11.6). MHALL has five distinct
 | 6   | D         | [A]                          | DENOTES      | S3    |
 | 7   | Mary      | [Little]                     | DENOTES      | S3    |
 | 8   | Lamb      | [O]                          | CONNOTES     | S3    |
-| 9   | Mary      | []                           | IDENTITY     | S4    |
-| 10  | Had       | []                           | IDENTITY     | S4    |
-| 11  | A         | []                           | IDENTITY     | S4    |
-| 12  | Little    | []                           | IDENTITY     | S4    |
-| 13  | Lamb      | []                           | IDENTITY     | S4    |
+| 9   | Mary      | []                           | UNKNOWN  | S4    |
+| 10  | Had       | []                           | UNKNOWN  | S4    |
+| 11  | A         | []                           | UNKNOWN  | S4    |
+| 12  | Little    | []                           | UNKNOWN  | S4    |
+| 13  | Lamb      | []                           | UNKNOWN  | S4    |
 | 14  | MHALL     | [Mary, Had, A, Little, Lamb] | CANONIZES    | S2    |
-| 15  | S         | []                           | IDENTITY     | S4    |
-| 16  | V         | []                           | IDENTITY     | S4    |
-| 17  | O         | []                           | IDENTITY     | S4    |
+| 15  | S         | []                           | UNKNOWN  | S4    |
+| 16  | V         | []                           | UNKNOWN  | S4    |
+| 17  | O         | []                           | UNKNOWN  | S4    |
 | 18  | SVO       | [Subject, V, O]              | CANONIZES    | S2    |
 | 19  | ALL       | [A, Little, Lamb]            | CANONIZES    | S2    |
 
@@ -867,8 +873,8 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-30                 | Unresolved identifier (BindingScope returns None) is encoded as its own raw BPE token — no special fallback state                                                                                                                                             | Binding     |
 | KS-31                 | Inert annotation: no matching characters → no effect                                                                                                                                                                                                          | Binding     |
 | KS-32                 | An unresolved single character (e.g. `Z`) encodes to a single typed uint64 node — the same encoding path as any resolved character                                                                                                                            | Encoding    |
-| **Self-Identity**     |                                                                                                                                                                                                                                                               |             |
-| KS-33                 | Self-identity: `A = A` → `{A: []}` with op=IDENTITY                                                                                                                                                                                                           | Operators   |
+| **Self-Unknown**       |                                                                                                                                                                                                                                                               |             |
+| KS-33                 | Self-unknown: `A = A` → `{A: []}` (an Unknown) with op=UNKNOWN                                                                                                                                                                                               | Operators   |
 | **Structure**         |                                                                                                                                                                                                                                                               |             |
 | KS-34                 | Nodes always a list: `A => B` → `{A: [B]}`, `A` → `{A: []}`                                                                                                                                                                                                   | Structure   |
 | **Integration**       |                                                                                                                                                                                                                                                               |             |

@@ -74,44 +74,78 @@ The number of nodes. Equivalent to `len(kline.nodes)`.
 ## Structural Predicates
 
 A kline's structural kind is determined by its signature and nodes (no model
-state). A §11.3 **compound-word** — a single word the external tokenizer
+state). The kinds are defined in @CONTEXT.md §Structure: **Terminal** is the
+genus of **Unknown** and **Identity**; **Canon** and **Misfit** are the
+non-terminal structures. The predicates below expose these kinds to
+rationalisation.
+
+A §11.3 **compound-word** — a single word the external tokenizer
 split into BPE subwords — carries the boundary marker token
 `COMPOUND_TOKEN` (@nlp_tokenizer spec) as an extra node: `Mary: [COMPOUND_TOKEN, M, ary]`.
 The token participates in the signature algebra like any other node, so the
 compound's signature _encodes_ the marker naturally
 (`signature == signature_of([M, ary, COMPOUND_TOKEN])`) — no bit masking
-anywhere. Three predicates capture the kinds relevant to rationalisation:
+anywhere.
 
-- **`is_identity(kline)`** — `True` for the empty form `{S: []}`, the
-  self-referential form `{S: [S]}` (sole node equals signature), or a
-  compound-word (`COMPOUND_TOKEN` is among the nodes). All three have trivial
-  Composition: the self-referential form is identity _by definition_ (a
-  value that decomposes into itself), the compound-word form is identity
-  _by external tokenisation_ (the word is one lexical item; its subwords
-  are an encoding artefact). Both overrule any canon classification (see
-  @CONTEXT.md §Identity).
 - **`is_compound_word(kline)`** — `True` iff `COMPOUND_TOKEN` is among the
   kline's nodes. The compiler appends the token only to a compound-word's
   nodes. The marker is confined to the kalvin↔NLP boundary: defined in
   `nlp_tokenizer.py`, appended by `ks/token_encoder.py`, read here; no other
   module names it, and the signifier treats it as an ordinary node (no
   masking).
-- **`is_canon(kline)`** — `True` when the kline is not identity AND
-  `signature == signature_of(nodes)`.
+- **`is_terminal(kline)`** — `True` for any kline that carries no further
+  decomposition: the empty form `{S: []}`, the self-referential form
+  `{S: [S]}` (sole node equals signature), or a compound-word
+  (`is_compound_word`). A terminal is a leaf that tells traversal to stop
+  (see @CONTEXT.md §Terminal). It is the genus of `is_unknown` and
+  `is_identity`.
+- **`is_unknown(kline)`** — `True` for the empty form `{S: []}` only. An
+  Unknown claims **S4** — nothing held for this signature; the structural
+  form of an ask (see @CONTEXT.md §Unknown).
+- **`is_identity(kline)`** — `True` for a terminal that is directly decodable:
+  the self-referential form `{S: [S]}` (a value that decodes into itself), or
+  a compound-word (the word is one lexical item; its subwords are an
+  encoding artefact). An Identity claims **S1**. Both forms overrule any
+  canon classification (see `is_canon` and @CONTEXT.md §Identity).
+- **`is_canon(kline)`** — `True` when the kline is _not_ terminal AND
+  `signature == signature_of(nodes)`. Canons are non-terminal: a terminal
+  is never a canon.
+- **`is_misfit(kline)`** — `True` for a non-terminal kline whose
+  `signature != signature_of(nodes)` (the residual case after terminal and
+  canon are excluded). A Misfit claims **S2** (@CONTEXT.md §Misfit); the
+  underfit/overfit/dual residuals are classified by the @signifier spec
+  (`classify_misfit`).
 
 These live with the KLine because they are structural properties; the model
 and significance modules consume them.
 
-| ID    | Criterion                                                                   |
-| ----- | --------------------------------------------------------------------------- |
-| KL-20 | `is_identity({S: []})` → True                                               |
-| KL-21 | `is_identity({S: [S]})` → True (self-referential)                           |
-| KL-22 | `is_identity({S: [A]})` (A ≠ S) → False                                     |
-| KL-23 | `is_canon({S: [A, B]})` where `S == A\|B` and `S` not in nodes → True       |
-| KL-24 | `is_canon({S: [S]})` → False (self-referential is identity, not canon)      |
-| KL-25 | `is_canon({S: []})` → False (identity)                                      |
-| KL-26 | `is_identity({S: [COMPOUND_TOKEN, A, B]})` → True (compound-word)           |
-| KL-27 | `is_canon({S: [COMPOUND_TOKEN, A, B]})` → False (compound-word is identity) |
+> **Glossary reconciliation note.** The glossary splits the former conflated
+> `is_identity` into the genus `is_terminal` and the two species `is_unknown`
+> (the empty form) and `is_identity` (the decodable forms). Code reconciliation
+> (splitting the implementation predicate) is deferred; until then the code's
+> `is_identity` still matches all three terminal shapes and `is_canon`/`is_s1`
+> remain correct because they only need the genus. The empty form is now
+> classified as an **Unknown** (S4) at the spec layer; the Phase-3 fast path
+> (@agent spec) treats it accordingly.
+
+| ID    | Criterion                                                                        |
+| ----- | -------------------------------------------------------------------------------- |
+| KL-20 | `is_unknown({S: []})` → True (empty form is Unknown, not Identity)               |
+| KL-20a | `is_terminal({S: []})` → True                                                   |
+| KL-20b | `is_identity({S: []})` → False (empty form is Unknown)                         |
+| KL-21 | `is_identity({S: [S]})` → True (self-referential, decodable)                    |
+| KL-21a | `is_terminal({S: [S]})` → True                                                  |
+| KL-22 | `is_identity({S: [A]})` (A ≠ S) → False                                          |
+| KL-23 | `is_canon({S: [A, B]})` where `S == A\|B` and `S` not in nodes → True          |
+| KL-24 | `is_canon({S: [S]})` → False (terminal, not canon)                              |
+| KL-25 | `is_canon({S: []})` → False (terminal, not canon)                               |
+| KL-26 | `is_identity({S: [COMPOUND_TOKEN, A, B]})` → True (compound-word, decodable)    |
+| KL-26a | `is_terminal({S: [COMPOUND_TOKEN, A, B]})` → True                               |
+| KL-27 | `is_canon({S: [COMPOUND_TOKEN, A, B]})` → False (terminal, not canon)            |
+| KL-28 | `is_misfit({AB: [C, D]})` (signature ≠ signature_of(nodes)) → True              |
+| KL-29 | `is_misfit({S: [A, B]})` where `S == A\|B` (canon) → False                     |
+| KL-30 | `is_misfit({S: []})` → False (terminal, not misfit)                              |
+| KL-31 | `is_misfit({S: [S]})` → False (terminal, not misfit)                             |
 
 ## What a Kline is Not
 

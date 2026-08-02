@@ -33,12 +33,15 @@ _Avoid_: child, element (the structural slot is specifically a node)
 **Structural Significance**:
 The significance a kline's structure **claims** — an S-level (the same **S1**–**S4** as **Rational Significance**) derived from the signature–nodes relationship alone, without model traversal. Each structure makes its claim: **Unknown** claims **S4** (nothing held for this signature), **Identity** and **Canon** claim **S1** (a known value; a signature that stands for its nodes), **Misfit** claims **S2** (diverges). A claim that **Cogitation** measures against what Kalvin actually holds.
 
+**Terminal**:
+A kline whose structure carries no further decomposition — a leaf that tells Kalvin to stop traversing. Three shapes are terminal: empty nodes, self-referential nodes, and the compound-word form. _Avoid_: leaf node (a terminal is a kline, not a node), base case (implementation term), atomic (overloaded)
+
 **Unknown**:
-A kline **structure**: empty nodes (`{S: []}`). Claims **S4** — _"I don't know this"_ (nothing held for this signature). The structural form of an ask.
+A kline **structure**: a **Terminal** with empty nodes (`{S: []}`). Claims **S4** — _"I don't know this"_ (nothing held for this signature). The structural form of an ask: an S4 proposal that requests an **Identity** ratification.
 _Avoid_: empty kline (describes syntax, not the meaning), bare signature (describes syntax, not the structure), identity (the empty form is _not_ an identity — it is the opposite: unknown, not known)
 
 **Identity**:
-A kline **structure**: a known value that translates to something in the outside world. Claims **S1** — _"I know this."_ Two structural shapes:
+A kline **structure**: a **Terminal** that is directly decodable — a known value that translates to something in the outside world. Claims **S1** — _"I know this."_ Two structural shapes:
 
 - self-referential (`{S: [S]}`)
 - compound-word (`{S: [COMPOUND_TOKEN, Token ID, ...]}`)
@@ -93,13 +96,13 @@ The unit of exchange between participants — a **KLine** (objective structure) 
 A value produced by the tokenizer. Includes the special token `COMPOUND_TOKEN`.
 
 **Relational Tokens**:
-The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `=` (DENOTES), or none (IDENTITY). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
+The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
 
 - **COUNTERSIGNS** (`==`) — 1:1 emits a reciprocal pair `{A: [B]}`, `{B: [A]}`. The signature countersigns each other's nodes.
 - **CANONIZES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonizes its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
 - **CONNOTES** (`>`) — 1:1 `{A: [B]}`. The signature connotes each node (`A > B` ⇒ A connotes B; subjectively, _A is a B_).
 - **DENOTES** (`=`) — 1:1 `{B: [A]}`. The signature denotes each node (`A = B` ⇒ A denotes B; objectively, _B is an A_).
-- **IDENTITY** — `{A: []}` or `{A: [A]}` (self-referential) — see Identity.
+- **UNKNOWN** — `{A: []}` (bare signature) — see Unknown. The structural form of an ask: nothing held for this signature.
   _Avoid_: structural relationship (collides with Structural Significance), relational operator (the token declares provenance, not an operation)
 
 **MTS (Multi-Token Signature)**:

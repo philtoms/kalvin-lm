@@ -33,7 +33,7 @@ Three rules:
   the subwords as tokeniser artefacts; that dropped the text-recoverable
   grounding, so the compound shape is now supplied.)
 
-- **R3 — Reply to a non-identity proposal**: echo an exact compiled match
+- **R3 — Reply to a non-Unknown proposal**: echo an exact compiled match
   verbatim (S1 for a relation — ratify; S2 for a canon — confirm); otherwise
   emit the proposal back at S4 (T cannot endorse it here).
 

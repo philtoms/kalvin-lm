@@ -29,7 +29,7 @@ The reactive decision in a training session — what to do when Kalvin produces 
 
 The choice made when Kalvin produces a proposal the Trainer cannot auto-ratify — a proposal not resolved by auto-countersign (structural match to a loaded expectation) or recurrence dedup. One of three answers: **ratify**, **scaffold**, or **continue** (see §Decision Answers).
 
-There is no distinction between request types: every Kalvin request carries a proposal, and a proposal the Trainer cannot auto-ratify is escalated regardless of significance band. An S4 identity request for a signature the Trainer holds no kline for is the same decision as an S2/S3 that did not auto-countersign — the proposal (here `{X: []}`) is carried in the decision request, and the significance band is context, not a discriminator.
+There is no distinction between request types: every Kalvin request carries a proposal, and a proposal the Trainer cannot auto-ratify is escalated regardless of significance band. An S4 Unknown request for a signature the Trainer holds no kline for is the same decision as an S2/S3 that did not auto-countersign — the proposal (here `{X: []}`) is carried in the decision request, and the significance band is context, not a discriminator.
 
 ### Decider
 

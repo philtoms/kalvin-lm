@@ -35,7 +35,7 @@ This spec depends on the following concepts, defined elsewhere:
 ### Relational Tokens (@CONTEXT.md §Relational Tokens)
 
 - The closed set of relational tokens (COUNTERSIGNS, CANONIZES, CONNOTES,
-  DENOTES, IDENTITY) produced by the written relational token.
+  DENOTES, UNKNOWN) produced by the written relational token.
 
 ## Definition
 
@@ -88,7 +88,7 @@ inverted scale (higher = more grounded):
    | COUNTERSIGNS          | S1   |
    | CANONIZES              | S2   |
    | CONNOTES / DENOTES | S3   |
-   | IDENTITY               | S4   |
+   | UNKNOWN                | S4   |
 
 2. **Computed value** — a full 64-bit inverted distance produced by
    `expand()` (Kalvin's method). Any value within a band, not just the
@@ -105,7 +105,7 @@ Every participant that emits a KValue sets its significance:
 
 | Producer            | KLine source               | significance                                |
 | ------------------- | -------------------------- | ------------------------------------------- |
-| Compiler            | compiled entry             | band-representative, derived from the entry's structural relationship (COUNTERSIGNS→S1, CANONIZES→S2, CONNOTES/DENOTES→S3, IDENTITY→S4) |
+| Compiler            | compiled entry             | band-representative, derived from the entry's structural relationship (COUNTERSIGNS→S1, CANONIZES→S2, CONNOTES/DENOTES→S3, UNKNOWN→S4) |
 | Countersign         | the reciprocal kline       | `D_MAX` (S1) — the act of countersigning is an S1 ratification             |
 | Cogitation / expand | expansion proposal kline   | the computed value yielded by `expand()`    |
 | Kalvin fast path    | the inbound kline          | the computed/structural value Kalvin assigns during rationalisation |
@@ -143,8 +143,8 @@ the structural predicates (@kline spec) and the node count:
 
 | Structure (composed from predicates)                                  | significance |
 | --------------------------------------------------------------------- | ------------ |
-| identity with empty nodes `{A:[]}` (the identity ask)                 | S4           |
-| identity with nodes (self-referential `{A:[A]}` or a compound-word)   | S1           |
+| Unknown with empty nodes `{A:[]}` (the Unknown ask)                 | S4           |
+| Identity with nodes (self-referential `{A:[A]}` or a compound-word)   | S1           |
 | canon `{AB:[A, B]}`                                                    | S1           |
 | single-node non-identity relationship `{A:[B]}` (CONNOTES / DENOTES)  | S3           |
 | multi-node misfit (underfit / overfit / misfit)                       | S2           |
@@ -238,12 +238,12 @@ The following are explicitly **out of scope** for this spec:
 | KV-1  | Construction requires both kline and significance (no default)             | §Construction |
 | KV-2  | Equality ignores significance: same KLine, different significance → equal  | §Equality |
 | KV-3  | Hash ignores significance: same KLine, different significance → equal hash | §Equality |
-| KV-4  | Compiler attaches S1 for `==`, S2 for `=>`, S3 for `=`/`>`, S4 for identity | §KP-1 |
+| KV-4  | Compiler attaches S1 for `==`, S2 for `=>`, S3 for `=`/`>`, S4 for UNKNOWN | §KP-1 |
 | KV-5  | Countersign reciprocal KValue carries `D_MAX`                              | §KP-2 |
 | KV-6  | Cogitation proposal KValue carries the `expand()`-computed significance    | §KP-3 |
 | KV-7  | Codec persists `{signature, nodes}` only; significance not serialised      | §Storage |
-| KV-8  | Re-derivation: identity ask (empty nodes) → S4                               | §KV-1 |
-| KV-9  | Re-derivation: identity with nodes / canon → S1                                | §KV-1 |
+| KV-8  | Re-derivation: Unknown ask (empty nodes) → S4                                | §KV-1 |
+| KV-9  | Re-derivation: Identity with nodes / canon → S1                                | §KV-1 |
 | KV-10 | Re-derivation: S2 misfit with reciprocal countersigner present → S1          | §KV-1 |
 | KV-11 | Re-derivation: single-node relationship → S3                                 | §KV-1 |
 | KV-12 | Re-derivation never yields an unset significance                             | §KV-1 |

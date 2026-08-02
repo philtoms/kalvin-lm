@@ -109,7 +109,7 @@ Rationalise(Q):
   ├───────────────────────────────────────────────────────────┤
   │ 3. ASSESS                                                │
   │    Evaluate Q's structural grounding:                     │
-  │    → Identity (empty nodes): add_to_ltm(Q), emit "frame" S4,│
+  │    → Unknown (empty nodes): add_to_ltm(Q), emit "frame" S4,│
   │       return True.                                       │
   │    → Canon (self-grounds): add_to_ltm(Q), emit "frame" S1,  │
   │       return True.                                       │
@@ -190,7 +190,7 @@ Three outcomes:
 
 | Condition | MVP action |
 | --------- | ---------- |
-| `derived == SIG_S4` and `declared == SIG_S4` (agree) | process normally — Kalvin agrees. An identity ask (empty-nodes identity) declared S4 agrees here and is never dropped. |
+| `derived == SIG_S4` and `declared == SIG_S4` (agree) | process normally — Kalvin agrees. An Unknown ask (empty-nodes Unknown) declared S4 agrees here and is never dropped. |
 | `declared == SIG_S4` and `derived != SIG_S4` (S4 disagreement) | **drop** — return `True`, no STM write, no event. This is the MVP's honoured disagreement. |
 | `declared != SIG_S4` (any S1/S2/S3 disagreement, or agreement) | process normally — the MVP ignores non-S4 disagreements. |
 
@@ -203,11 +203,11 @@ to honour an S4 disagreement by discarding. Consuming S1/S2/S3 disagreements
 is deferred.
 
 **How a declared-S4 disagreement arises.** `structural_significance`
-yields `SIG_S4` only for the empty-nodes identity ask, and the compiler's
-IDENTITY→S4 mapping always agrees with that — so a declared S4 over an
-identity ask never reaches the drop branch. The drop branch is live only
+yields `SIG_S4` only for the empty-nodes Unknown ask, and the compiler's
+UNKNOWN→S4 mapping always agrees with that — so a declared S4 over an
+Unknown ask never reaches the drop branch. The drop branch is live only
 against a **sender-constructed KValue** carrying `SIG_S4` over a
-non-identity kline: the sender re-submits a proposal at declared S4 to
+non-terminal kline: the sender re-submits a proposal at declared S4 to
 signal "this proposal doesn't work." The trainer produces such a KValue on
 **second-sighting recurrence** (see @harness-server spec §Trainer).
 
@@ -230,10 +230,11 @@ This prevents infinite recursion and avoids re-processing known knowledge.
 Structural assessment determines whether Q can be fast-tracked without
 candidate retrieval or significance computation.
 
-**Identity (empty nodes)**: If Q has zero nodes, it carries no information. Call
+**Unknown (empty nodes)**: If Q has zero nodes, it is an Unknown —
+it carries no information and claims S4 (@CONTEXT.md §Unknown). Call
 `model.add_to_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
 
-**Canonical — recognised by its own Composition**: If `Q.signature == signature_of(Q.nodes)`
+**Canonical — recognised by its own structure**: If `Q.signature == signature_of(Q.nodes)`
 (as defined in the @signifier spec) and every node that could resolve does
 resolve in the model (exists as a Kline signature), Q is recognised (S1) —
 the model grounds it. The signature faithfully represents the nodes — nothing is missing and
@@ -289,11 +290,11 @@ Routing distinguishes only **S2** (at least one overlapping node) from
 
 - **S1 is not a routing outcome.** Full node overlap is a necessary but
   insufficient condition for S1; true S1 is a structural property
-  established by `expand()` / `is_s1()` (canonical composition or
+  established by `expand()` / `is_s1()` (canonical structure or
   countersignature), not by node membership. Routing a pair as "S1" purely
   on overlap would publish S1 significance for pairs that are not
   recognised (S1).
-- **S4 is not a routing outcome.** Identity klines (empty nodes) are
+- **S4 is not a routing outcome.** Unknown klines (empty nodes) are
   resolved on the fast path in `rationalise` before any candidate is
   submitted to the Cogitator, so an empty query never reaches routing.
 
@@ -414,7 +415,7 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 
 | ID      | Criterion                                                                 | Origin ref |
 | ------- | ------------------------------------------------------------------------- | ---------- |
-| AGT-7a  | declared == SIG_S4 and derived == SIG_S4 (identity declared S4) → process normally (agree) | §Phase 1b |
+| AGT-7a  | declared == SIG_S4 and derived == SIG_S4 (Unknown declared S4) → process normally (agree) | §Phase 1b |
 | AGT-7b  | declared == SIG_S4 and derived != SIG_S4 → return True, no STM write, no event (drop) | §Phase 1b |
 | AGT-7c  | declared in {S1,S2,S3} (any non-S4 disagreement or agreement) → process normally (MVP ignores) | §Phase 1b |
 | AGT-7d  | Drop leaves memory untouched (no eviction): proposal not added to STM/Frame/LTM | §Phase 1b |
@@ -431,9 +432,9 @@ enables immediate S1 resolution and parallel processing of S2/S3.
 
 | ID     | Criterion                                                  | Origin ref |
 | ------ | ---------------------------------------------------------- | ---------- |
-| AGT-12 | Identity (empty nodes): returns True, emits "frame" S4, kline in LTM | — |
-| AGT-14 | Canonical recognised by its own Composition: returns True when all nodes resolve, kline in LTM | — |
-| AGT-15 | Not recognised by Composition: falls through to Phase 4               | — |
+| AGT-12 | Unknown (empty nodes): returns True, emits "frame" S4, kline in LTM | — |
+| AGT-14 | Canonical recognised by its own structure: returns True when all nodes resolve, kline in LTM | — |
+| AGT-15 | Not recognised by structure: falls through to Phase 4               | — |
 
 ### Rationalisation — Phase 4: Retrieve Candidates
 
@@ -495,7 +496,7 @@ Proposals can be emitted at any significance level. See @cogitator spec.
 
 ### 3. Grounding Assessment Formalisation
 
-This spec defines grounding checks (canonical, identity)
+This spec defines grounding checks (canonical, Unknown)
 as fast-path optimisations. An alternative design would route everything
 through routing, with the model's `is_s1` function handling these cases
 internally. `is_s1` now performs grounding (canonical or

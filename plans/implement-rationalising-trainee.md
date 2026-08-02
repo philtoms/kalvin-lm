@@ -18,7 +18,7 @@ emissions**: it may re-derive a proposal on successive turns, and the actor
 is the single deduplication point — it records every proposal it has
 published (by `(signature, nodes)`) and drops re-derivations, so K never
 repeats itself. (An earlier build kept an `asked` set in the engine to
-dedup identity asks; that responsibility moved to the actor so the engine's
+dedup Unknown asks; that responsibility moved to the actor so the engine's
 state is a pure model of grounding.)
 
 The turn produces two channels: the **batch** (dialogue emissions — speech
@@ -49,7 +49,7 @@ The mechanism has two cogitation dispatch paths:
 
 The turn is two stages inside `_Turn`: `route` then `cogitate`.
 
-- **Routing** (`_Turn.route`) only pops an **S4** query's pending identity
+- **Routing** (`_Turn.route`) only pops an **S4** query's pending Unknown
   ask; **every other query (S1, S2, S3)** is appended to the work-list. An
   **S2** misfit additionally appends its unrecognised nodes and signature as
   identity placeholders. Routing does no grounding and emits nothing.
@@ -60,7 +60,7 @@ The turn is two stages inside `_Turn`: `route` then `cogitate`.
   whose nodes are all grounded) is grounded at S1 (observed, not emitted)
   and dropped; a countersignable entry whose pairings are unresolved takes
   the S3 path (emitting the unresolved pairings); a multi-node misfit takes
-  the S2 path; an identity that remains ungroundable is emitted as an S4
+  the S2 path; an Unknown that remains ungroundable is emitted as an S4
   ask. Grounding — whether reached from routing's promotion cascade or from
   cogitation — flows through `_ground`, which grounds the reciprocal of any
   countersignable kline as part of its own bookkeeping, so the two paths

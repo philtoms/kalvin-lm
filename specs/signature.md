@@ -68,10 +68,11 @@ Signatures are produced by the Signifier — see @signifier spec
 
 | Value | Meaning                                              |
 | ----- | ---------------------------------------------------- |
-| 0     | No nodes at all. An identity kline.                    |
+| 0     | No nodes at all. An Unknown kline.                      |
 
-A signature of 0 means the kline has no nodes — it is an **identity**
-kline carrying no structural identity. It cannot be found via overlap
+A signature of 0 means the kline has no nodes — it is an **Unknown**
+kline (@CONTEXT.md §Unknown): nothing held for this signature, the
+structural form of an ask. It cannot be found via overlap
 matching (`signifies(0, x) == False`; see @signifier spec).
 
 ## What a Signature is Not

@@ -42,16 +42,17 @@ contract: each entry is expected to change as the mechanism evolves. The code
 
 - **Two channels.** Each turn emits a dialogue **batch** (S4 asks, S3/S2
   proposals, S1/S2 replies) and **observations** of K's S1 groundings.
-- **Identities.** Three shapes for one lexical item: the S4 ask `X:[]`, the
-  self-referential `X:[X]`, and the compound `X:[COMPOUND_TOKEN, x, y]`; all
-  key by signature alone.
-- **Self-identity forging.** A bare `X:[]` the engine can't answer is forged
-  by the supervisor (`synthesize`) as `X:[X]` at S1.
+- **Terminals for one lexical item.** The Unknown ask `X:[]` (S4) and the
+  two Identity shapes — self-referential `X:[X]` and compound
+  `X:[COMPOUND_TOKEN, x, y]` (S1) — all key by signature alone.
+- **Identity forging.** A bare `X:[]` (an Unknown) the engine can't answer is forged
+  by the supervisor (`synthesize`) as `X:[X]` at S1 — turning the Unknown ask
+  into a self-referential Identity.
 - **Emission dedup.** The actor (not the engine) drops any proposal it has
   already published; a fully-duplicate batch yields a PASS.
 - **Routing.** Significance is derived from structure. S4 pops the framed
-  identity ask; S1/S2/S3 are appended to the work-list; an S2 misfit also
-  unpacks its unknown nodes/signature as identity asks.
+  Unknown ask; S1/S2/S3 are appended to the work-list; an S2 misfit also
+  unpacks its unknown nodes/signature as Unknown asks.
 - **S1 identity fast path.** An incoming S1 identity grounds whenever its
   signature has been seen (framed, pending, or grounded).
 - **Replies (role-neutral).** The engine answers an S4 ask with the canon

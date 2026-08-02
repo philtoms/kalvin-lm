@@ -54,7 +54,7 @@ DialogueScript:
 ```
 Turn:
   actor:        "T" | "K"
-  op:           str   # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | IDENTITY
+  op:           str   # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | IDENTITY | UNKNOWN
   signature:    str   # symbolic label, resolved by the decoder
   nodes:        list[str]
   significance: "S1" | "S2" | "S3" | "S4"
@@ -118,12 +118,16 @@ the compound's subwords (the compound's nodes minus the marker), so a
 declared misfit like `had CANONIZES [did, have]` decodes verbatim and is not
 folded into the compound-word identity.
 
-**IDENTITY compound nodes.** An IDENTITY turn is decoded by the same rule:
-when it declares subword nodes (`Mary IDENTITY [M, ary]` at S1) the decoder
+**UNKNOWN — the bare ask.** An UNKNOWN turn declares a signature with no
+nodes and decodes to the ask shape `X:[]` (S4) — the structural form of an
+ask (@CONTEXT.md §Unknown).
+
+**IDENTITY — a scripted true identity.** An IDENTITY turn declares a
+decodable identity. With no declared nodes it is the self-referential form
+`{X: [X]}` (S1); when it declares subword nodes (`Mary IDENTITY [M, ary]` at S1) the decoder
 applies compound catch-up so the kline is the compound grounding
 (`Mary:[COMPOUND_TOKEN, M, ary]`), which is the shape that decodes back into
-text and must be grounded. An IDENTITY with no declared nodes decodes to the
-ask shape `X:[]`.
+text and must be grounded.
 
 ```
 DecodedTurn:

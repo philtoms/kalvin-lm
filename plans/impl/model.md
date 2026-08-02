@@ -83,7 +83,7 @@ def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
         visited.add(sig)
         kline = self.find(sig)
         if kline is None or is_identity(kline) or is_canon(kline):
-            break  # dead end / identity kline (ER-2) / canonical (ER-3)
+            break  # dead end / Unknown kline (ER-2) / canonical (ER-3)
         hop_count += 1
         sig = make_signature(kline.nodes)
         if sig == 0:
@@ -92,7 +92,7 @@ def _edge_hops(self, sig: int) -> Iterator[tuple[int, int]]:
 ```
 
 Termination conditions (ER-1…ER-5, defined in the @model spec
-§edge_hops Termination): cycle, identity kline, canonical kline, dead
+§edge_hops Termination): cycle, Unknown kline, canonical kline, dead
 end, and the MAX_HOP bound.
 
 ### Algorithm

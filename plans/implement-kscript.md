@@ -358,7 +358,7 @@ This is the largest task. Build in layers: unsigned → inline ops → multi-ite
 class SymbolicEntry(NamedTuple):
     sig: str
     nodes: list[str]       # always a list
-    op: str                # COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, IDENTITY
+    op: str                # COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, UNKNOWN
     component_labels: list[str] | None = None  # resolved words per sig char
 
 class ASTEmitter:
@@ -374,7 +374,7 @@ _sig_levels = {
     "DENOTES": "S1",
     "CANONIZES": "S2",
     "CONNOTES": "S3",
-    "IDENTITY": "S4",
+    "UNKNOWN": "S4",
 }
 ```
 
@@ -395,7 +395,7 @@ def _process_scope(self, scope: OperatorScope) -> None:
     self._emit_mts(resolved_sig)
 
     if scope.op is None:
-        self._emit_entry(resolved_sig, [], "IDENTITY")
+        self._emit_entry(resolved_sig, [], "UNKNOWN")
         return
 
     items = scope.items
@@ -412,7 +412,7 @@ def _process_scope(self, scope: OperatorScope) -> None:
     elif scope.op == TokenType.DENOTES:
         for node_id in node_ids:
             if node_id == resolved_sig:
-                self._emit_entry(resolved_sig, [], "IDENTITY")
+                self._emit_entry(resolved_sig, [], "UNKNOWN")
             else:
                 self._emit_entry(node_id, [resolved_sig], "DENOTES")
 
@@ -479,7 +479,7 @@ def _emit_mts(self, sig: str) -> int | None:
         self._resolution_cache[sig] = list(chars)
 
     for resolved_char in chars:
-        self._emit_entry(resolved_char, [], "IDENTITY")      # deduped via _mts_identity_seen
+        self._emit_entry(resolved_char, [], "UNKNOWN")      # deduped via _mts_identity_seen
     self._emit_entry(sig, chars, "CANONIZES")             # deduped via _mts_canonize_seen
     return len(self.entries) - 1  # index of CANONIZES entry for Rule B4
 ```
@@ -545,7 +545,7 @@ def _apply_inline_override(self, char: str, word: str, parent_canonize_idx: int 
 | KS-21   | MTS on node side: `A == MHALL` triggers MTS for MHALL                   |
 | KS-22   | Node count invariant: MTS node count equals character count             |
 | KS-26   | Rule B4 override: inline patches parent MTS CANONIZES                    |
-| KS-33   | Self-identity: `A = A` → `{A:[]}` with op=IDENTITY                      |
+| KS-33   | Self-unknown: `A = A` → `{A:[]}` (an Unknown) with op=UNKNOWN             |
 | KS-34   | Nodes always a list: `A => B` → `{A:[B]}`, `A` → `{A:[]}`               |
 
 ---
@@ -584,7 +584,7 @@ class TokenEncoder:
 This yields three coupled rules, all consequences of "a compound has one identity, computed once":
 
 1. Compound exemption: a compound sig is never passed through §11.3 (`encode("MHALL")` → literal letters is meaningless); its components are the resolved node values.
-2. Packed-sig IDENTITY suppression: when `op == IDENTITY` and the signature is packed (multi-token §11.3 word or compound), do not emit a main IDENTITY kline — the decomposition above is the sole representation, and a packed value cannot head an identity (CONTEXT.md "Identity").
+2. Packed-sig UNKNOWN suppression: when `op == UNKNOWN` and the signature is packed (multi-token §11.3 word or compound), do not emit a main UNKNOWN kline — the decomposition above is the sole representation, and a packed value cannot head an Unknown `{sig: []}` (CONTEXT.md §Unknown: the head must be a decodable identity signature, not a packed aggregate).
 3. `_build_dbg` must not `decode()` a packed signature: it is opaque per §11.5 (decode may crash or return an unrelated word). Track `sig_is_packed` alongside the signature and skip decode/grammar-lookup when set; decode defensively (try/except) for the single-token path.
 
 Operator entries (COUNTERSIGNS/DENOTES/CONNOTES) with a compound signature are legitimate references and are emitted normally; for them `signature != OR(nodes)` by design (the signature is a registry lookup, not a reduction of that entry's own nodes).
@@ -602,7 +602,7 @@ def _encode_node(self, word: str) -> tuple[int, list[SymbolicEntry]]:
     # Multi-token: run MTS at BPE subword level
     extras = []
     for tok in tokens:
-        extras.append(SymbolicEntry(tok, [], "IDENTITY"))
+        extras.append(SymbolicEntry(tok, [], "UNKNOWN"))
     packed = 0
     for tok in tokens:
         packed |= tok
@@ -762,7 +762,7 @@ def has_entry(md, sig, nodes):
 | KS-30   | Binding     | Unresolved identifier returns None                                                        |
 | KS-31   | Binding     | Inert annotation                                                                          |
 | KS-32   | Encoding    | Unresolved char encodes to its own raw NLP-BPE node                                       |
-| KS-33   | Operators   | Self-identity                                                                             |
+| KS-33   | Operators   | Self-unknown (`A = A`)                                                                    |
 | KS-34   | Structure   | Nodes always a list                                                                       |
 | KS-35   | Integration | §14.11 complex nested                                                                     |
 | KS-36   | Integration | §14.12 NLP-bound                                                                          |

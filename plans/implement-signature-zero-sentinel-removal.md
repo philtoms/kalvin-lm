@@ -82,7 +82,7 @@ removed derive:
 - Scan `tests/test_countersign_resolution.py`, `tests/test_cogitator_drain.py`,
   `tests/test_agent.py` for any `KLine(0, [non-empty nodes])` passed to
   rationalise; replace with a pre-computed signature.
-- Identity klines (`KLine(0, [])`) are fine — `0` is a legitimate signature
+- Unknown klines (`KLine(0, [])`) are fine — `0` is a legitimate signature
   for an empty node set; these do not rely on the derive and must **not**
   be changed. The assertion passes them (signature is set, to `0`).
 
@@ -113,8 +113,8 @@ contract. *(Optional; the assert itself is the enforcement.)*
 | The assert | `signature is not None` (presence), not a value-test | a loud misuse crash without re-introducing a special value; `0` is ordinary |
 | `expand.py:178` | delete (unreachable) | `is_identity` above already catches empty nodes |
 | `stm.py:125` | delete (harmless) | empty-signature query scans and matches nothing |
-| Identity klines | unchanged (`KLine(0, [])` is legitimate) | `0` is a valid signature for empty nodes; only the *unset* meaning is removed |
-| Tests | fix only those relying on the derive | minimal blast radius; identity `KLine(0, [])` left alone |
+| Unknown klines | unchanged (`KLine(0, [])` is legitimate) | `0` is a valid signature for empty nodes; only the *unset* meaning is removed |
+| Tests | fix only those relying on the derive | minimal blast radius; Unknown `KLine(0, [])` left alone |
 
 ## Deferred
 

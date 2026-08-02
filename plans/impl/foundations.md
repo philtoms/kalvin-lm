@@ -68,7 +68,7 @@ is_signature(x)  = NO TEST — any uint64 can be a signature
 
 | Value                   | Name                 | Meaning                                                  |
 | ----------------------- | -------------------- | -------------------------------------------------------- |
-| `0`                     | `IDENTITY`           | No nodes. Empty kline. Cannot be found via AND matching. |
+| `0`                     | `UNKNOWN`            | No nodes. Empty kline (structurally an Unknown claiming S4). Cannot be found via AND matching. |
 | 9                       | `_S3_BIAS`           | Tier bias for S3 connotation hops (now linear; `_S3_BIAS = 1`).    |
 | `0xFFFF_FFFF_FFFF_FFFF` | `D_MAX` / `S1_VALUE` | Maximum distance / maximum significance.                 |
 | `0x0000_0000_0000_0000` | `S4_VALUE`           | Zero significance / maximum distance.                    |

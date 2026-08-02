@@ -52,7 +52,7 @@ The flag `trainer.llm.enabled` and the `delegate_reactive` parameter are removed
 - **Spec ref:** @specs/supervisor-decision.md §Decision gate, §API
 - **Files:** `src/training/trainer/trainer.py`, `src/training/trainer/reactor.py`
 - **Details:**
-  - In `Trainer._handle_kagent_event`, remove the `if self._delegate_reactive` guard around misfit/context computation and around arming `_pending_decision`: the enrichment and the gate now run on every proposal the Trainer cannot auto-ratify (per G3 — there is no request/proposal distinction; an ungrounded S4 identity request is escalated like any other unresolvable proposal).
+  - In `Trainer._handle_kagent_event`, remove the `if self._delegate_reactive` guard around misfit/context computation and around arming `_pending_decision`: the enrichment and the gate now run on every proposal the Trainer cannot auto-ratify (per G3 — there is no request/proposal distinction; an ungrounded S4 Unknown request is escalated like any other unresolvable proposal).
   - The held-event queue, `_handle_supervisor_decision`, and the replay loop already implement SD-4/5/6/7; they become the only path (no parallel inline path).
 
 ### Task T4: Strip the Reactor to surface-and-gate support (SD-1, SD-3, SD-13, SD-14)
@@ -117,7 +117,7 @@ Existing tests asserting the `delegate_reactive` flag, the two-mode budget, or T
 
 **G2 — harness-server.md keeps bus-message facts only (resolved).** The Trainer section keeps what actions it emits and to which roles; reactive-mode and escalation bullets are removed; HRNS-13/14 are `[removed]`-tombstoned. The decision contract is owned by `@specs/supervisor-decision.md`; the loop model by `@specs/trainer-satisfaction.md`. Ratify routing unified through the Trainer (`supervisor_decision`) for all deciders — HRNS-27/34 reworded accordingly.
 
-**G3 — Request = proposal (resolved).** There is no distinction between request types: every Kalvin request carries a proposal, and a proposal the Trainer cannot auto-ratify is escalated regardless of significance band. The S4 ungroundable-identity stall (`trainer-satisfaction.md` rules 16–17, `ungroundable_request`) folds into SD-1; those rules are `[removed]`. The significance band is context in the payload, not a discriminator.
+**G3 — Request = proposal (resolved).** There is no distinction between request types: every Kalvin request carries a proposal, and a proposal the Trainer cannot auto-ratify is escalated regardless of significance band. The S4 ungroundable-Unknown stall (`trainer-satisfaction.md` rules 16–17, `ungroundable_request`) folds into SD-1; those rules are `[removed]`. The significance band is context in the payload, not a discriminator.
 
 **Misfit/context computation stays on the Trainer (T3 note).** The Trainer emits the decision request, so it computes the enrichment; the LLMSupervisor consumes the enriched fields rather than recomputing them. Single source of truth for misfit diagnosis.
 

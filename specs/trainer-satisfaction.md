@@ -32,7 +32,7 @@ significance. Grounding, not S1, is the satisfaction signal.
 - `@specs/harness-server.md` — Trainer participant, bus actions, supervisor messages.
 - `@specs/agent.md` — RationaliseEvent shape, significance on the KValue.
 - `@specs/kscript.md` — compiled-entry declared bands (`op` field), structural
-  states (COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, IDENTITY).
+  states (COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, UNKNOWN).
 - `@specs/kline.md` — `is_canon`, `is_identity`, KLine equality.
 - `@specs/signifier.md` — `signature_of`, `residual` (misfit diagnosis).
 - `@specs/stub-kagent.md` — the bootstrap trainee the satisfaction logic is
@@ -48,7 +48,7 @@ On lesson compile, the trainer partitions compiled entries into two sets.
 **Withheld** — held by the trainer, supplied only as ratification in response to a
 Kalvin signature request:
 
-- **Identities** — every compiled entry with `op = IDENTITY`.
+- **Identities** — every compiled entry with `op = UNKNOWN`.
 - **Canons** — every compiled relationship kline where
   `signature == signature_of(nodes)` and it is not identity (`is_canon`).
   This includes the authored semantic canons (C_MHALL, C_SVO, C_ALL) **and** the
@@ -83,7 +83,7 @@ The band the author asserted via the written token, read from the compiled entry
 | CANONIZES-which-is-Canon | S2 |
 | CANONIZES-not-Canon | (n/a — treated as prompted, see below) |
 | CONNOTES, DENOTES | S3 |
-| IDENTITY | S4 |
+| UNKNOWN | S4 |
 
 A CANONIZES entry that is not a Canon (e.g. `A => B` where `A ≠ B|…`) is prompted,
 not withheld, and its declared band is S3 (it carries no OR-reduction structure).
@@ -95,8 +95,8 @@ Two delivery forms:
 
 - **Canon-ratify** — Kalvin requests signature X; the trainer submits a withheld
   Canon `{X:[operands]}`. Kalvin grounds it at S2.
-- **Identity-ratify** — Kalvin requests signature X; no canon/relation is held for
-  X, so the trainer submits the identity `X:[]`. Kalvin grounds it at S4.
+- **Unknown-ratify** — Kalvin requests signature X; no canon/relation is held for
+  X, so the trainer submits the Unknown `X:[]`. Kalvin grounds it at S4.
 
 Relations in the held index (the prompted relations pulled by signature) are *also*
 delivered as submission; the trainer does not distinguish "withheld relation" from
@@ -139,8 +139,8 @@ submitted`), where `submitted` now spans all four bands, not just S1.
 ### Drive the Cascade (request/response)
 
 6. On a Kalvin **request** event (a `frame` at S4 whose proposal is an ungrounded
-   identity `X:[]`), the trainer looks up signature X in the Held Index and submits
-   every held kline for X, in pull-priority order (canon → relation → identity).
+   Unknown `X:[]`), the trainer looks up signature X in the Held Index and submits
+   every held kline for X, in pull-priority order (canon → relation → unknown).
    This is ratification.
 7. If signature X has no held entry, the trainer cannot auto-ratify the request —
    it escalates the proposal to the supervisor (`@specs/supervisor-decision.md` SD-1).
@@ -235,7 +235,7 @@ atom reuse, subword canons grounded) is the table produced in the design grill. 
 grounds, in order: the primary `{MHALL:[SVO]}` (S1); the canons C_MHALL, C_ALL,
 C_SVO (S2); the subword canons `{Mary:[Ma,ry]}`, `{had:[h,ad]}`, etc. (S2); the
 relations `{M:[S]}`, `{H:[V]}`, `{A:[D]}`, `{Lᵢ:[Mo]}`, `{Lₐ:[O]}`, `{ALL:[O]}`
-(S3); and every identity atom (S4). Every compiled entry is grounded at its
+(S3); and every Unknown atom (S4). Every compiled entry is grounded at its
 declared band; the lesson completes on the primary's S1 countersign.
 
 The deterministic driver for this dialogue — a table-driven contract double that
@@ -247,14 +247,14 @@ emits it without real cogitation — is `@specs/stub-kagent.md` (`StubKAgent`).
 |-----|-----------|------------|
 | TS-1 | Lesson compile partitions entries into Prompted and Withheld (Identities + Canons) | §Partition |
 | TS-2 | Withheld set includes subword canons (no filtering) | §Subword Canons, §Partition |
-| TS-3 | Held Index maps signature → ordered (canon, relation, identity) klines | §Held Index |
+| TS-3 | Held Index maps signature → ordered (canon, relation, unknown) klines | §Held Index |
 | TS-4 | Only the primary is prompted at lesson start | §Prompt the Primary |
 | TS-5 | Submitting the primary starts a single cascade; no further proactive prompts | §Prompt the Primary |
 | TS-6 | On a request for signature X, the trainer submits every held kline for X in priority order | §Drive the Cascade |
 | TS-7 | Canon is submitted before Relation for a shared signature | §Canon-First Ordering |
 | TS-8 | An entry is satisfied by a ground event at its declared band (band-equal) | §Satisfaction |
 | TS-9 | An entry grounded at the wrong band is a divergence, not satisfaction | §Divergences |
-| TS-10 | A ground at S4 satisfies an identity (S4 is learned, not a failure) | §Satisfaction, §Grounding |
+| TS-10 | A ground at S4 satisfies an Unknown (S4 is learned, not a failure) | §Satisfaction, §Grounding |
 | TS-11 | The primary is satisfied by a frame at S1 (Kalvin-emitted countersign) | §Satisfaction |
 | TS-12 | Lesson completes when satisfied ⊇ submitted across all four bands | §Lesson Completion |
 | TS-13 | [removed] — relocated to `@specs/supervisor-decision.md` SD-1 (escalation of an unresolvable proposal) | §Stall |

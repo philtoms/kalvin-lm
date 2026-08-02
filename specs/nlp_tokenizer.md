@@ -225,7 +225,8 @@ parenthetical annotation.
   lower 32 bits carry the BPE token ID. The same character always
   produces the same node value.
 - A bare multi-token signature (e.g. `MHALL`, `SVO`) decomposes into
-  individual identity entries plus a canonize (S2) entry mapping the first
+  individual UNKNOWN entries (`{sig: []}`, structurally Unknowns claiming
+  S4) plus a canonize (S2) entry mapping the first
   token to all tokens.
 - The binding resolver operates correctly with an empty symbol table —
   bare signatures compile and produce valid graph nodes.
@@ -247,7 +248,7 @@ parenthetical annotation.
 | TOK-NLP-7  | Vocabulary sizes: BPE vocab = 25,007 tokens, type dictionary = 25,007 entries                                                                                 | NLP        |
 | TOK-NLP-8  | Dimension count: `nlp_type32` provides 32 dimensions (17 POS + 8 DEP + 7 MORPH)                                                                               | NLP        |
 | TOK-NLP-9  | Bare single-character signatures (e.g. `M`, `H`, `A`) produce consistent typed nodes; the same character always yields the same node value                    | NLP        |
-| TOK-NLP-10 | Bare multi-token signatures (e.g. `MHALL`, `SVO`) decompose into individual identity entries plus a canonize (S2) entry mapping the first token to all tokens | NLP        |
+| TOK-NLP-10 | Bare multi-token signatures (e.g. `MHALL`, `SVO`) decompose into individual UNKNOWN entries (Unknowns, `{sig: []}`) plus a canonize (S2) entry mapping the first token to all tokens | NLP        |
 | TOK-NLP-11 | The binding resolver operates correctly with an empty symbol table (bare sigs compile without annotation)                                                     | NLP        |
 | TOK-NLP-12 | Curricula using abstract uppercase letters (A–Z) require no parenthetical comments; comments are required only when semantic word resolution is desired       | NLP        |
 | TOK-NLP-13 | `NLPTokenizer()` loads the BPE engine and NLP type dictionary from standard paths                                                                             | NLP        |

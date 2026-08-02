@@ -149,7 +149,7 @@ implemented and is out of scope.)
 MASK64 = 0xFFFF_FFFF_FFFF_FFFF       # Full 64-bit mask
 
 # Well-known signatures
-IDENTITY = 0                      # No nodes
+UNKNOWN_SIG = 0                 # No nodes — the empty/Unknown signature
 
 # Significance
 _S3_BIAS = 1                         # Tier bias for S3 connotation hops (linear)

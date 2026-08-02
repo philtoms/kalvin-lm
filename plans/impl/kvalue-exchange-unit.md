@@ -78,7 +78,7 @@ production field.
 ### D4 — Re-derivation function lives in `kalvin/expand.py`
 
 `structural_significance(kline, signifier) -> int` implements the
-structural band (identity-ask→S4; grounded identity/canon→S1;
+structural band (Unknown-ask→S4; grounded Identity/canon→S1;
 single-node relationship→S3; multi-node misfit→S2) per @kvalue
 spec §Retrieval. It belongs with the significance semantics and band constants
 (already owned by `expand.py`), and composes the existing structural predicates
@@ -145,7 +145,7 @@ _OP_TO_SIG: dict[str, int] = {
     "CANONIZES":     SIG_S2,
     "CONNOTES":      SIG_S3,
     "DENOTES":   SIG_S3,
-    "IDENTITY":      SIG_S4,
+    "UNKNOWN":      SIG_S4,
 }
 
 def band_significance(op: str) -> int:
@@ -157,8 +157,8 @@ def structural_significance(kline, signifier) -> int:
     site, not here)."""
 ```
 
-- `structural_significance` mapping: identity-ask (empty nodes)→S4;
-  grounded identity / canon→S1; single-node relationship→S3; multi-node
+- `structural_significance` mapping: Unknown-ask (empty nodes)→S4;
+  grounded Identity / canon→S1; single-node relationship→S3; multi-node
   misfit→S2. Never returns an unset value (KV-12). The S2→S1 countersigned
   fork is applied at the call site (e.g. `agent.py`).
 - Note: `token_encoder.py` already has a `_SIG_LEVELS` op→"S1" string map; this
@@ -278,8 +278,8 @@ Spec ref: @kvalue spec §Storage; KV-7.
 | KV-5    | Countersign reciprocal carries `D_MAX`            | test_agent.py              | D, E      |
 | KV-6    | Cogitation proposal carries computed significance | test_agent.py / test_cogitator | E      |
 | KV-7    | Codec persists `{signature,nodes}` only           | test_agent_codec.py        | H         |
-| KV-8    | Re-derive identity ask (empty nodes) → S4          | test_expand.py             | B         |
-| KV-9    | Re-derive grounded identity / canon → S1           | test_expand.py             | B         |
+| KV-8    | Re-derive Unknown ask (empty nodes) → S4          | test_expand.py             | B         |
+| KV-9    | Re-derive grounded Identity / canon → S1           | test_expand.py             | B         |
 | KV-10   | Re-derive S2 misfit + countersigner present → S1   | test_expand.py             | B         |
 | KV-11   | Re-derive single-node relationship → S3            | test_expand.py             | B         |
 | KV-12   | Re-derivation never unset                          | test_expand.py             | B         |
