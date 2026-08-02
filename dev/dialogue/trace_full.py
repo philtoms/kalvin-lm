@@ -18,8 +18,8 @@ from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
-from training.dialogue import decode, load_script
-from training.dialogue.actors import RationalisingTrainee
+from dialogue import decode, load_script
+from dialogue.actors import RationalisingTrainee
 
 _BAND = {SIG_S1: "S1", SIG_S2: "S2", SIG_S3: "S3", SIG_S4: "S4"}
 

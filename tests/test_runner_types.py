@@ -14,8 +14,8 @@ from __future__ import annotations
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
-from training.dialogue.decoder import DecodedTurn
-from training.dialogue.runner import Divergence, RunResult
+from dialogue.decoder import DecodedTurn
+from dialogue.runner import Divergence, RunResult
 
 
 def _kv(sig: int = 1) -> KValue:
@@ -25,7 +25,7 @@ def _kv(sig: int = 1) -> KValue:
 def _turn(role: str, sig: int) -> DecodedTurn:
     from typing import cast
 
-    from training.dialogue.decoder import Role
+    from dialogue.decoder import Role
 
     return DecodedTurn(role=cast(Role, role), op="UNKNOWN", value=_kv(sig))
 

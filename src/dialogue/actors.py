@@ -10,14 +10,14 @@ from kalvin.events import RationaliseEvent
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import is_canon
 from kalvin.kvalue import KValue
-from training.dialogue.decoder import DecodedTurn, turn_content_key
-from training.dialogue.rationalise import Rationaliser, RationaliserState
-from training.dialogue.runner import is_pass, pass_event
-from training.dialogue.synthesize import synthesize
+from dialogue.decoder import DecodedTurn, turn_content_key
+from dialogue.rationalise import Rationaliser, RationaliserState
+from dialogue.runner import is_pass, pass_event
+from dialogue.synthesize import synthesize
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
-    from training.dialogue.runner import EventSink
+    from dialogue.runner import EventSink
 
 
 # ── The Actor base class ─────────────────────────────────────────────────

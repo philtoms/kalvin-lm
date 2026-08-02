@@ -7,7 +7,7 @@
 
 ## What was built
 
-`src/training/dialogue/rationalise.py` — the `Rationaliser` engine: a
+`src/dialogue/rationalise.py` — the `Rationaliser` engine: a
 **stateless** object that derives each turn from `(state, incoming)` and
 returns a `(batch, observations)` pair. The `RationalisingTrainee` actor
 (`actors.py`) owns the `RationaliserState`, wraps each batch value in a

@@ -26,8 +26,8 @@ import pytest
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
-from training.dialogue.decoder import DecodedTurn, Role
-from training.dialogue.runner import (
+from dialogue.decoder import DecodedTurn, Role
+from dialogue.runner import (
     Divergence,
     PASS_SIGNATURE,
     is_pass,

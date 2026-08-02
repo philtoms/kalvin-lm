@@ -5,7 +5,7 @@
 
 ## What was built
 
-The dialogue runner (`src/training/dialogue/`): a dialogue-table decoder
+The dialogue runner (`src/dialogue/`): a dialogue-table decoder
 (configuration-time) plus a coverage-tracking runner that drives two actors
 over the harness `MessageBus`.
 

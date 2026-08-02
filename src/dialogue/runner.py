@@ -21,7 +21,7 @@ from kalvin.expand import SIG_S1
 Burst = list[RationaliseEvent]
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
-from training.dialogue.decoder import DecodedTurn, turn_content_key
+from dialogue.decoder import DecodedTurn, turn_content_key
 from training.harness.bus import WILDCARD_ROLE, MessageBus
 from training.harness.message import Message
 
@@ -494,7 +494,7 @@ def _placeholder_turn(k: ContentKey) -> DecodedTurn:
     from typing import cast
 
     from kalvin.kline import KLine
-    from training.dialogue.decoder import Role
+    from dialogue.decoder import Role
 
     return DecodedTurn(
         role=cast(Role, k[0]),

@@ -38,7 +38,7 @@ Cogitation is the evolving mechanism by which agents become aligned with the
 script. The list below is a maintenance-oriented inventory of **current**
 cogitation behaviour — what the engine does today, one line each. It is not a
 contract: each entry is expected to change as the mechanism evolves. The code
-(`src/training/dialogue/rationalise.py`) is the source of truth for how.
+is the source of truth for how.
 
 - **Two channels.** Each turn emits a dialogue **batch** (S4 asks, S3/S2
   proposals, S1/S2 replies) and **observations** of K's S1 groundings.

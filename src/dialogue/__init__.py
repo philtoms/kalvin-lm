@@ -11,7 +11,7 @@ table-reading scaffolding, individually replaceable by a real trainer or
 trainee.
 """
 
-from training.dialogue.decoder import (
+from dialogue.decoder import (
     BAND_TO_SIG,
     DecodedTurn,
     DialogueScript,
@@ -21,13 +21,13 @@ from training.dialogue.decoder import (
     load_script,
     load_script_file,
 )
-from training.dialogue.actors import (
+from dialogue.actors import (
     RationalisingTrainee,
     RationalisingTrainer,
     ScriptTrainee,
     ScriptTrainer,
 )
-from training.dialogue.runner import (
+from dialogue.runner import (
     Divergence,
     GroundingDivergence,
     Runner,

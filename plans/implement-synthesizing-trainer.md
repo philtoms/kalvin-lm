@@ -7,7 +7,7 @@
 
 ## What was built
 
-`src/training/dialogue/synthesize.py` — the `synthesize(compiled, incoming,
+`src/dialogue/synthesize.py` — the `synthesize(compiled, incoming,
 signifier, grounded) -> KValue` function — plus the `SynthesizingTrainer` actor
 (`actors.py`) that wraps it. A drop-in for `ScriptTrainer`: it derives each turn
 from the compiled script and the trainee's last KValue. The decoded table

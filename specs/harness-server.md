@@ -145,7 +145,7 @@ An embedded participant that drives the training loop. See `@specs/trainer.md` (
 > entry has superseded this at the definition level: the Trainer is now defined
 > as a rationaliser that cogitates and escalates only when cogitation yields no
 > reply. That rationalising trainer lives in the dialogue sub-project
-> (`specs/dialogue-driven-training.md`, `src/training/dialogue/`) and is not yet
+> (`specs/dialogue-driven-training.md`) and is not yet
 > wired under the harness. The behaviours below describe the running production
 > trainer; `@specs/trainer-satisfaction.md` and `@specs/supervisor-decision.md`
 > carry the same superseded-but-running status. Where the two disagree, the

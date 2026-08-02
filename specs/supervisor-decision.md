@@ -7,8 +7,8 @@
 > cannot auto-countersign to the supervisor, and "never decides" — and that
 > path is still the trainer wired into the production harness
 > (`src/training/trainer/`, `class: Trainer` in `training.harness.yaml`). It is
-> retained unchanged until the dialogue path (`specs/dialogue-driven-training.md`,
-> `src/training/dialogue/`) replaces it under the harness. Where the two
+> retained unchanged until the dialogue path (`specs/dialogue-driven-training.md`)
+> replaces it under the harness. Where the two
 > disagree, the dialogue path is current per the glossary.
 
 ## Overview

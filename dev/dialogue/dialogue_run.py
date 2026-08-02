@@ -52,7 +52,7 @@ from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4  # noqa: E402
 from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
 from kalvin.signifier import NLPSignifier  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
-from training.dialogue import (  # noqa: E402
+from dialogue import (  # noqa: E402
     Divergence,
     GroundingDivergence,
     ScriptTrainee,
@@ -63,12 +63,12 @@ from training.dialogue import (  # noqa: E402
     load_script_file,
     run,
 )
-from training.dialogue.actors import (  # noqa: E402
+from dialogue.actors import (  # noqa: E402
     RationalisingTrainee,
     RationalisingTrainer,
     SynthesizingTrainer,
 )
-from training.dialogue.rationalise import RationaliserState  # noqa: E402
+from dialogue.rationalise import RationaliserState  # noqa: E402
 
 _SIG_TO_BAND = {
     SIG_S1: "S1",
@@ -137,7 +137,7 @@ def _scripted_form_event(event, sig_to_label: dict[int, str]) -> str:
     kline was built with) stands in, falling back to ``?`` when absent. A PASS
     (the no-content proposal, DDT-22) renders as ``<role> PASS``.
     """
-    from training.dialogue.runner import is_pass
+    from dialogue.runner import is_pass
 
     if is_pass(event):
         return f"{event.role or '?'} PASS"
@@ -178,7 +178,7 @@ def _trace(
     # coverage row, the 2nd shows the close row.
     from collections import defaultdict, deque
 
-    from training.dialogue.decoder import turn_content_key
+    from dialogue.decoder import turn_content_key
 
     records_by_key: dict = defaultdict(deque)
     for turn in decoded:

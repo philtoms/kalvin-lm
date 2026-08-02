@@ -24,7 +24,7 @@ from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
-from training.dialogue.rationalise import Rationaliser, RationaliserState
+from dialogue.rationalise import Rationaliser, RationaliserState
 
 _BAND = {SIG_S1: "S1", SIG_S2: "S2", SIG_S3: "S3", SIG_S4: "S4"}
 

@@ -1,12 +1,12 @@
 ---
 name: dialogue-dev
-description: Investigates and progresses the dialogue sub-project src/training/dialogue/ — the authored-script ↔ real-actor ↔ rules triad and the coverage/displacement loop that brings them into agreement. Use when the user says "/dialogue-dev" or asks to work on, debug, advance, tune, or understand the dialogue training system, the rationalising trainee, the synthesizing trainer, the runner, or dialogue scripts.
+description: Investigates and progresses the dialogue sub-project src/dialogue/ — the authored-script ↔ real-actor ↔ rules triad and the coverage/displacement loop that brings them into agreement. Use when the user says "/dialogue-dev" or asks to work on, debug, advance, tune, or understand the dialogue training system, the rationalising trainee, the synthesizing trainer, the runner, or dialogue scripts.
 ---
 
 # Dialogue Dev
 
 Guide for investigating and progressing the dialogue sub-project:
-`src/training/dialogue/`.
+`src/dialogue/`.
 
 ## Conceptual model
 
@@ -30,17 +30,17 @@ Every run produces two numbers. Read both before reading code.
 
 ## Where everything lives
 
-| Artefact | Path | Role |
-| --- | --- | --- |
-| Actors | `src/training/dialogue/actors.py` | `ScriptTrainer`/`ScriptTrainee` (table), `SynthesizingTrainer`, `RationalisingTrainee` (K), `RationalisingTrainer` (T) |
-| Runner | `src/training/dialogue/runner.py` | Bus subscriber + driver; opens/closes a run; coverage/divergence |
-| Rationaliser | `src/training/dialogue/rationalise.py` | Pure shared engine: `(state, incoming) -> (batch, observations)` |
-| Supervisor | `src/training/dialogue/synthesize.py` | `synthesize` — answers from compiled source when cogitation has nothing |
-| Decoder | `src/training/dialogue/decoder.py` | Script → `list[DecodedTurn]`; resolver, not gatekeeper |
-| Driver | `dev/dialogue/dialogue_run.py` | End-to-end CLI; renders trace, displacement, escalation load |
-| Probe | `dev/dialogue/probe_rationalise.py` | Drives the pure engine turn-by-turn; edit in place per question |
-| Scripts | `scripts/dialogue-mhall.json`, `dialogue-wdmh.json` | Authored dialogues (mhall is canonical) |
-| Smoke test | `tests/test_dialogue_smoke.py` | Basic-operation acceptance (DDT-1..3) |
+| Artefact     | Path                                                | Role                                                                                                                   |
+| ------------ | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Actors       | `src/dialogue/actors.py`                            | `ScriptTrainer`/`ScriptTrainee` (table), `SynthesizingTrainer`, `RationalisingTrainee` (K), `RationalisingTrainer` (T) |
+| Runner       | `src/dialogue/runner.py`                            | Bus subscriber + driver; opens/closes a run; coverage/divergence                                                       |
+| Rationaliser | `src/dialogue/rationalise.py`                       | Pure shared engine: `(state, incoming) -> (batch, observations)`                                                       |
+| Supervisor   | `src/dialogue/synthesize.py`                        | `synthesize` — answers from compiled source when cogitation has nothing                                                |
+| Decoder      | `src/dialogue/decoder.py`                           | Script → `list[DecodedTurn]`; resolver, not gatekeeper                                                                 |
+| Driver       | `dev/dialogue/dialogue_run.py`                      | End-to-end CLI; renders trace, displacement, escalation load                                                           |
+| Probe        | `dev/dialogue/probe_rationalise.py`                 | Drives the pure engine turn-by-turn; edit in place per question                                                        |
+| Scripts      | `scripts/dialogue-mhall.json`, `dialogue-wdmh.json` | Authored dialogues (mhall is canonical)                                                                                |
+| Smoke test   | `tests/test_dialogue_smoke.py`                      | Basic-operation acceptance (DDT-1..3)                                                                                  |
 
 ## Commands
 
@@ -74,7 +74,7 @@ the target's own run.
    turn earned, escalated, or scripted? Read the spec, not the code's comments,
    for what these mean.
 3. **Edit** — smallest honest change. Keep code and comments minimal: describe
-   *what* a block does, not a theory of why the design is right. Don't mirror
+   _what_ a block does, not a theory of why the design is right. Don't mirror
    the spec's prose into the code.
 4. **Verify** — re-run; snapshot both signals before and after.
 

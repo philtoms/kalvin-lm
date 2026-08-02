@@ -17,10 +17,10 @@ from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 from tests._fixtures import mhall_script
-from training.dialogue import ScriptTrainee, ScriptTrainer, decode, load_script, run
-from training.dialogue.decoder import DecodeError
-from training.dialogue.rationalise import Rationaliser, RationaliserState
-from training.dialogue.runner import Divergence, RationaliseEvent
+from dialogue import ScriptTrainee, ScriptTrainer, decode, load_script, run
+from dialogue.decoder import DecodeError
+from dialogue.rationalise import Rationaliser, RationaliserState
+from dialogue.runner import Divergence, RationaliseEvent
 
 
 @pytest.fixture(scope="module")
