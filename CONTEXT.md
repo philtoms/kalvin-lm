@@ -21,57 +21,56 @@ Kalvin is a rationalising system whose entire world is built from klines. This g
 ### Structure
 
 **KLine**:
-The fundamental unit of Kalvin's memory: a **signature** (its head node) and a **nodes** list, between which holds a structural relationship — Identity, Canon, or Misfit - projected onto a rationalised **Significance**; hence **Structural Significance**.
+The fundamental unit of Kalvin's memory, and the unit Kalvin rationalises. A structure containing a **signature** (its head node) and a **nodes** list, between which holds a relationship Kalvin rationalises as a **Structural Significance**.
 
 **Signature**:
 The value occupying a kline's head position — the head value a kline's nodes compose against (see **Structural Significance**). Also a value other klines hold as nodes to evaluate **Rational Significance**.
 
 **Node**:
 A structural slot: a value occupying a position in a kline's nodes list. A node is either a **Token Id** or the **signature** of another kline.
-Every node in every kline resolves to an identity.
 _Avoid_: child, element (the structural slot is specifically a node)
 
 **Structural Significance**:
-The structural component of a kline's significance. The basis upon which full **Rational Significance** is projected. Structural significance is the composed from the relationship between a kline's signature and its nodes.
+The significance a kline's structure **claims** — an S-level (the same **S1**–**S4** as **Rational Significance**) derived from the signature–nodes relationship alone, without model traversal. Each structure makes its claim: **Unknown** claims **S4** (nothing held for this signature), **Identity** and **Canon** claim **S1** (a known value; a signature that stands for its nodes), **Misfit** claims **S2** (diverges). A claim that **Cogitation** measures against what Kalvin actually holds.
+
+**Unknown**:
+A kline **structure**: empty nodes (`{S: []}`). Claims **S4** — _"I don't know this"_ (nothing held for this signature). The structural form of an ask.
+_Avoid_: empty kline (describes syntax, not the meaning), bare signature (describes syntax, not the structure), identity (the empty form is _not_ an identity — it is the opposite: unknown, not known)
 
 **Identity**:
-A kline **structure**: its composition is tokenize-decodable. Takes three structural shapes:
+A kline **structure**: a known value that translates to something in the outside world. Claims **S1** — _"I know this."_ Two structural shapes:
 
-- empty nodes (`{S: []}`): evaluates to **S4**
-- self-referential (`{S: [S]}`): evaluates to **S1**
-- compound-word (`{S: [COMPOUND_TOKEN, Token ID,...]}`): evaluates to **S1**
-  _Avoid_: unsigned (implementation term), bare signature (describes syntax, not the structure)
+- self-referential (`{S: [S]}`)
+- compound-word (`{S: [COMPOUND_TOKEN, Token ID, ...]}`)
+  _Avoid_: unsigned (implementation term), bare signature (describes syntax, not the structure), treating the empty kline as an Identity (it is an **Unknown**)
 
 **Canon**:
-A kline **structure**: its composition is exact (evaluates to **S1**) — the signature fully composes its nodes (`signature == signature_of(nodes)`). The signature carries no information beyond what its nodes already express. It has the following structural shape: `{AB: [A, B]}` where `AB` represents a composition of two or more nodes.
+A kline **structure**: the signature equals `signature_of(nodes)`. Claims **S1** — the signature stands for its nodes, so it is safe to use the signature in place of them. The signature carries no information beyond what its nodes already express. Structural shape: `{AB: [A, B]}` where `AB` represents a combination of two or more nodes.
 _Avoid_: canonical (ambiguous with Relational Tokens), treating `=>` (CANONIZES) as synonymous with being a Canon (the token declares an intent to compose; a CANONIZES statement need not construct a Canon), MTS (an example, not the concept)
 
 **Misfit**:
-A kline **structure**: its composition is partial (evaluates to **S2**) — the signature does not fully compose its nodes (`signature ≠ signature_of(nodes)`). Takes one of the following structural shapes:
+A kline **structure**: the signature does not equal `signature_of(nodes)`. Claims **S2** — the signature diverges from its nodes, so Kalvin proposes similar klines. Structural shapes:
 
-- misfit (`{AB: [C, D]}`): Signature attracts KLine substitution
-- underfit (`{AB: [A]}`): Signature attracts KLine expansion
-- overfit (`{A: [A, B]}`): Signature attracts KLine contraction
+- misfit (`{AB: [C, D]}`): signature attracts kline substitution
+- underfit (`{AB: [A]}`): signature attracts kline expansion
+- overfit (`{A: [A, B]}`): signature attracts kline contraction
   _Avoid_: fabrication (informal), conjecture/hypothesis (a misfit is a structure, not a distinct emission kind)
 
 ### Rationalisation
 
 **Significance (Rational)**:
-A measurement of how strongly a kline relates to what Kalvin already holds. Classified into four levels of understanding:
+The measurement of whether a kline's structural claim holds against what Kalvin holds — refined through model traversal and learned preferences. Classified into four levels of understanding:
 
-- **S1** Fully accounted for — by its own Role (a canon) or by ratification. _I know that I know this._
+- **S1** Fully accounted for — by its own structure (an **Identity** or a **Canon**) or by ratification. _I know that I know this._
 - **S2** Relates but diverges: an unratified misfit, an active mismatch. _I infer this, but it does not yet fit._
 - **S3** Connects only indirectly, through intermediaries. _I recognise aspects of this, indirectly._
 - **S4** Shares nothing with what is held; no connection can be drawn. _I do not understand this at all._
   Every agent assesses independently. How Kalvin computes its own significance is a model concern (see **Grounding**); the levels themselves are independent of that computation.
   _Avoid_: confidence, score, weight, grounded (grounding is the model's implementation of S1, not a synonym for any level)
 
-**Expectation**:
-A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
-
-**Grounding**:
-The model's mechanism for realising **S1** (recognised). A kline is **grounded** when the model counts it as S1 — either by its own structure (a canon self-grounds) or by residing in LTM via ratification (a structural fact the model owns). Grounding is how S1 is _produced_, not what S1 _means_; "recognised" is the significance-level concept.
-_Avoid_: self-grounded (legacy; conflates the mechanism with the level), grounded identity (grounding applies to any kline that attains S1, not just identities)
+**Cogitation**:
+The slow path of rationalisation — model traversal that tests a kline's structural **claim** against what Kalvin holds. Where **Structural Significance** is derived from the signature–nodes relationship alone, Cogitation expands the kline through the model: retracing paths, discovering connections, classifying each against the **Rational Significance** levels. It drains a backlog of unresolved (S2/S3) klines, emitting **proposals** for ratification; it is the work whose result is a Rationally Significant KLine - A kline that Kalvin understands.
+_Avoid_: thinking (informal), background thread (implementation), the cogitator (the implementation class)
 
 **Frame**:
 Recognised working context persisted across sessions. Monotonic.
@@ -152,6 +151,13 @@ The action of countersigning a selected proposal. Usually performed by the Train
 **Escalation**:
 The rationalising trainer deferring a proposal to the supervisor when its cogitation yields no reply. The boundary between what the Trainer resolves by rationalising and what the supervisor resolves.
 _Avoid_: auto-ratify failure (the earlier path's trigger — the trainer now escalates on cogitation-empty, not on a failed deterministic countersign)
+
+**Expectation**:
+A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
+
+**Grounding**:
+The model's mechanism for realising **S1** (recognised). A kline is **grounded** when the model counts it as S1 — either by its own structure (a canon self-grounds) or by residing in LTM via ratification (a structural fact the model owns). Grounding is how S1 is _produced_, not what S1 _means_; "recognised" is the significance-level concept.
+_Avoid_: self-grounded (legacy; conflates the mechanism with the level), grounded identity (grounding applies to any kline that attains S1, not just identities)
 
 **Auto-Tune**:
 A tuning loop where an LLM coding agent runs repeated sessions against the codebase, observes results, edits code, and re-runs to converge on a goal. Not a training concept — auto-tune improves the _codebase_, not Kalvin's model.
