@@ -1,5 +1,7 @@
 # Trainer Satisfaction Logic (Paced Loop) — Specification
 
+> **Legacy path.** This spec describes the non-rationalising trainer (a deterministic ratifier that auto-countersigns structural matches and escalates the rest to the supervisor). The rationalising trainer (`specs/dialogue-driven-training.md`) is the direction of travel: it cogitates and emits its own proposals, escalating only when its cogitation yields no reply. This spec is retained until the satisfaction-check code it describes is replaced. Where the two disagree, the dialogue path is current.
+
 ## Overview
 
 This spec defines the trainer's behaviour under the new **paced-loop** training

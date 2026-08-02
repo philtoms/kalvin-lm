@@ -98,9 +98,14 @@ A KLine emitted by the Agent as a subjective response during rationalisation.
 The action of countersigning a selected proposal. Usually performed by the Trainer during curriculum execution.
 
 **Escalation**:
-The Trainer deferring a proposal it cannot auto-ratify to the supervisor for resolution. The boundary between what the Trainer resolves and what the supervisor resolves.
+The rationalising trainer deferring a proposal to the supervisor when its cogitation yields no reply. The boundary between what the Trainer resolves by rationalising and what the supervisor resolves.
+_Avoid_: auto-ratify failure (the earlier path's trigger — the trainer now escalates on cogitation-empty, not on a failed deterministic countersign)
 
 ### Runtime
+
+**Agent**:
+A participant that forms its own **judgement** on a kline. Three species, each registered on the harness bus under a **role**: **Kalvin** (the trainee), the **Trainer**, and the **Supervisor**. A judgement may be reached by measurement (Kalvin's significance; an LLMSupervisor's internal assessment) or by decision (a human Supervisor's ratify); the genus is the judgement formed, not the route to it. The **Harness** is not an agent — it routes messages but forms no judgement. Not to be confused with an **actor** (a dialogue-runner construct; see `specs/dialogue-driven-training.md` §Actor contract) or the implementation class `Agent` (`specs/agent.md` — Kalvin's rationalisation orchestrator).
+_Avoid_: using "agent" for the implementation class when the genus is meant — say the Agent class or KAgent for the code.
 
 **Harness**:
 The multi-agent runtime that loads participants and runs a dialogue loop between them. A message broker — participants send role-addressed messages through the harness and it routes them to all subscribers of that role. Participants never communicate directly.
@@ -109,7 +114,7 @@ The multi-agent runtime that loads participants and runs a dialogue loop between
 A unit of inter-participant communication routed by the harness — addressed to a role with an action interpreted by the recipient.
 
 **Role**:
-The routing key for inter-participant communication on the harness bus. Three defined roles: **trainee** (Kalvin), **trainer** (Trainer), **supervisor** (TUI, Slack, future AI agents).
+The routing key for inter-participant communication on the harness bus. Three defined roles: **trainee** (Kalvin), **trainer** (Trainer), **supervisor** (TUI, Slack, an LLMSupervisor, or a future AI Agent).
 _Avoid_: address (legacy), topic (legacy), type (ambiguous with config `type: embedded/client`)
 
 **Dialogue**:
@@ -142,15 +147,15 @@ The participant under instruction — the rationalising system being trained, an
 
 **Kalvin**:
 The project's name for the trainee.
-_Avoid_: Agent (ambiguous), KAgent (that's the implementation class)
+_Avoid_: KAgent (the implementation class — say the Agent class for the code, Agent for the genus)
 
 **Trainer**:
-An agent-in-the-loop that drives the training loop on behalf of a supervisor. Registered on the harness bus with role `trainer`.
-_Avoid_: auto-agent, training bot
+A rationaliser — the trainer-side peer of the trainee, sharing the same rationalising engine and differing only in the significance bands it keeps (S1 ratifications and S2 proposals). Cogitates over incoming proposals and emits its own; escalates to the supervisor only when its cogitation yields no reply. Registered on the harness bus with role `trainer`.
+_Avoid_: auto-agent, training bot, the deterministic ratifier of the earlier path (it now rationalises; see `specs/dialogue-driven-training.md`)
 
 **Supervisor**:
-A participant subscribed to the `supervisor` role that monitors the training session and may intercede when needed. Independent of medium — TUI, Slack, or a future AI agent all share the same capabilities.
-_Avoid_: UI (too narrow), human (a supervisor may be an AI agent)
+An Agent that resolves the proposals the Trainer escalates — deciding ratify, scaffold, or continue. Independent of medium — TUI, Slack, CLI, or an LLMSupervisor all share the same capabilities; a judgement may be a human decision or an LLM's internal assessment. Registered on the harness bus with role `supervisor`.
+_Avoid_: UI (too narrow), human (a supervisor may be an LLMSupervisor)
 
 **Curriculum**:
 A living structured document owned by the Harness and accessible to all participants. The source of truth for training — never rolled back, only evolved forward. Three sections: **objective** (what it teaches), **approach** (the pedagogical strategy), and **lessons** (ordered KScript entries with human-readable context).

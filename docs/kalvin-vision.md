@@ -2,7 +2,7 @@
 
 Kalvin is a rationalising system that accepts, thinks, and talks in klines. It receives klines — the fundamental units of its memory — and attempts to understand each one in terms of what it already knows. What it sends back is never just a response: it is a response paired with **significance**, a measurement of how well-grounded that response is in the knowledge Kalvin already holds. This measurement is not a quality score applied after the fact. It is a direct consequence of how the new kline fits into the model.
 
-This is what separates Kalvin from an oracle. An oracle gives an answer and nothing else — you take it or leave it, with no basis for deciding whether to trust it. Kalvin is not an oracle: it gives an answer _and_ the structural grounds for that answer. Because significance makes the degree of grounding visible, every response is actionable. The other agent in the dialogue knows exactly where understanding is solid and where it breaks down, and can decide what to do next — ratify, scaffold, correct, or submit new information.
+This is what separates Kalvin from an oracle. An oracle gives an answer and nothing else — you take it or leave it, with no basis for deciding whether to trust it. Kalvin is not an oracle: it gives an answer _and_ the grounds for that answer. Because significance makes the degree of grounding visible, every response is actionable. The other agent in the dialogue knows exactly where understanding is solid and where it breaks down, and can decide what to do next — ratify, scaffold, correct, or submit new information.
 
 This is also what separates Kalvin from a lookup table. A lookup table returns immediately: you submit a key and receive a value, with no expectation of thought. Kalvin is not a lookup table. When understanding is partial, Kalvin demands the autonomy to cogitate — to retrace paths, discover connections, and strengthen its grasp before responding. If you treat Kalvin as a lookup table, you cut off the process through which understanding develops.
 
@@ -18,7 +18,7 @@ Klines are how Kalvin holds the world. Every piece of knowledge Kalvin possesses
 
 When a new kline arrives — carrying its signature and its nodes — Kalvin measures how it fits against what it already knows. Some nodes resolve to grounded knowledge: they connect to identities and relationships Kalvin has already established. Others do not: they are novel, carrying structure that nothing yet grounds. The pattern of resolution and non-resolution is the shape of the fit, and it is the first thing Kalvin perceives.
 
-Connection is necessary, but shape alone is not understanding. The quality of understanding also depends on what Kalvin has learned to prefer — which paths through the model to favour when multiple candidates compete — and on how visible the degree of fit is to other agents, so they can act on it. Understanding emerges from the interplay of three things: structural fit, learned preferences, and significance. This three-part model is the subject of the next section.
+Connection is necessary, but shape alone is not understanding. The quality of understanding also depends on what Kalvin has learned to prefer — which paths through the model to favour when multiple candidates compete — and on how visible the degree of fit is to other agents, so they can act on it. Understanding emerges from the interplay of three things: how well the new kline fits what Kalvin holds, learned preferences, and significance. This three-part model is the subject of the next section.
 
 What Kalvin considers optimal is not fixed. Preferences are learned, not given — they are part of the model, subject to the same rationalisation and ratification as any other kline. When multiple paths could ground a new arrival, preferences guide which one Kalvin favours. Currently, the default is recency: Kalvin favours more recently established knowledge. But preferences are themselves knowledge. They participate in rationalisation, and they can be taught, scaffolded, and refined. There is no fixed utility function. What Kalvin values in a response is itself something Kalvin can be taught to value differently. This makes preferences load-bearing — one of the three pillars of understanding — rather than an implementation detail bolted on after the fact.
 
@@ -26,7 +26,7 @@ What Kalvin considers optimal is not fixed. Preferences are learned, not given �
 
 Understanding, for Kalvin, is not a single faculty. It emerges from the interplay of three things:
 
-1. **Structural fit** — how closely a new kline's nodes connect to existing knowledge. This is the shape of the fit: the pattern of what resolves and what does not.
+1. **Fit** — how closely a new kline's nodes connect to existing knowledge. This is the shape of the fit: the pattern of what resolves and what does not.
 2. **Learned preferences** — which paths through the model Kalvin favours when multiple candidates could ground the new arrival. Preferences guide the measurement.
 3. **Significance** — the degree of fit made visible to other agents, enabling them to decide what to do next.
 
@@ -40,7 +40,7 @@ When Kalvin rationalises a kline — searching its knowledge, measuring fit, pro
 
 Significance falls on a spectrum. At one end, every node resolves to grounded knowledge: Kalvin fully understands what it has received — "I know that I know this." At the other end, nothing connects at all: the kline is entirely novel — "I do not understand this at all." Between these two extremes lie degrees of partial understanding: "I understand some of it," or "I recognise aspects of it." Some nodes match, some do not, or the connections are associative rather than direct.
 
-The spectrum resolves into four levels. **S1** is full understanding — every node grounded. **S4** is complete novelty — nothing connects. **S2** and **S3** are the middle: partial understanding, active reasoning, connections half-formed. S1 and S4 are **significants** — the kline is either confirmed or entirely novel, and no further processing is needed. S2 and S3 are **rationals** — partial relationships that Kalvin continues to work on.
+The spectrum resolves into four levels, each naming a quality of understanding. **S1 — recognised**: full understanding, every node accounted for. _I know that I know this._ **S4 — unrecognised**: complete novelty, nothing connects. _I do not understand this at all._ **S2 — contested** and **S3 — suggested** are the middle: partial understanding, active reasoning, connections half-formed. S2 relates but diverges; S3 connects only indirectly, through intermediaries.
 
 Most of Kalvin's rationalising life is spent in the middle, at S2 and S3. These are not failed S1s; they are active states of reasoning. During these states, Kalvin continues to think: retracing paths through its model, discovering connections that were not apparent before, applying its learned preferences, generating proposals. This is where understanding becomes a temporal concern. S2 and S3 take time. Kalvin is not expected to return immediately. It is expected to think, and to be given the time to do so.
 
@@ -48,7 +48,7 @@ Most of Kalvin's rationalising life is spent in the middle, at S2 and S3. These 
 
 Kalvin can publish proposals at any significance level. An S2 proposal is not a failed S1 — it is a legitimate expression of partial understanding. An S3 proposal is not noise — it is an associative hint. Every result is a proposal, and the agent decides what to do with it.
 
-This is fundamentally different from systems that suppress results below a confidence threshold. In Kalvin, a low-significance proposal is not hidden; it is offered, and its significance tells the other agent exactly how much weight to give it. The agent may accept a low-significance proposal as sufficient for now, reject a high-significance proposal that does not match expectations (significance measures structural similarity, not correctness), or instruct by providing new klines that fill in the gaps.
+This is fundamentally different from systems that suppress results below a confidence threshold. In Kalvin, a low-significance proposal is not hidden; it is offered, and its significance tells the other agent exactly how much weight to give it. The agent may accept a low-significance proposal as sufficient for now, reject a high-significance proposal that does not match expectations (significance measures how alike the klines are, not correctness), or instruct by providing new klines that fill in the gaps.
 
 ## The Dialogue
 
@@ -114,7 +114,7 @@ Two guarantees hold: no kline enters the model without agent ratification, and n
 
 Kalvin's memory only grows. Klines are added through rationalisation and ratification; they are never removed. This monotonic property has consequences worth tracing.
 
-Correction happens through the introduction of more significant information, not by retracting what came before. New information does not override old information; it outcompetes it. If Kalvin holds a ratified misconception and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path. The misconception is still there, structurally intact, but it is no longer the optimal response. Nothing was deleted. The model grew, and the balance of significance shifted.
+Correction happens through the introduction of more significant information, not by retracting what came before. New information does not override old information; it outcompetes it. If Kalvin holds a ratified misconception and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path. The misconception is still there, intact in the model, but it is no longer the optimal response. Nothing was deleted. The model grew, and the balance of significance shifted.
 
 Monotonicity is what makes scaffolding irreversible. Each scaffold adds structure to the model. Even if a particular teaching goal is abandoned, the scaffolding remains, enriching future rationalisation. Every round leaves the model larger than it found it.
 
@@ -127,7 +127,7 @@ The distinction between S1 and S2 becomes particularly interesting when the agen
 Kalvin's design makes several choices worth stating plainly:
 
 - **Preferences are learned, not given.** They are part of the model — subject to ratification, scaffoldable, revisable.
-- **Information is structurally accumulated, not statistically weighted.** The model grows through the addition of ratified klines. It does not converge through parameter adjustment.
+- **Information is accumulated, not statistically weighted.** The model grows through the addition of ratified klines. It does not converge through parameter adjustment.
 - **Actions include meta-actions.** Producing significance is itself the agentic act — not a side channel or a quality metric, but the communication.
 - **Optimality is actionable, not accurate.** The optimal response is the most significant one Kalvin can produce, even if that response is "I do not understand this at all." An S4 response is optimally useful — it tells the other agent exactly where understanding breaks down.
 - **Rationality is second-order.** Kalvin rationalises its own rational outputs. The ability to assess and communicate the grounds for one's own understanding is not an add-on to rationality; it is constitutive of it.

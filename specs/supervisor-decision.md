@@ -1,5 +1,7 @@
 # Supervisor Decision — Specification
 
+> **Legacy path.** This spec describes the non-rationalising trainer (a deterministic ratifier that defers every proposal it cannot auto-countersign to the supervisor, and "never decides"). The rationalising trainer (`specs/dialogue-driven-training.md`) is the direction of travel: it cogitates and emits its own proposals, escalating only when its cogitation yields no reply. This spec is retained until the reactor code it describes is replaced. Where the two disagree, the dialogue path is current.
+
 ## Overview
 
 The reactive decision in a training session — what to do when Kalvin produces a proposal the Trainer cannot auto-ratify — is owned by a **supervisor participant**. The Trainer surfaces the decision, gates the run until it is answered, and applies the answer; it never decides. There is one model: the decider is always a supervisor participant, and the LLMSupervisor is one such participant (a peer of the TUI, Slack, and CLI participants).
