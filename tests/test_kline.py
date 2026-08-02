@@ -1,6 +1,6 @@
 """Tests for KLine — specs/kline.md conformance."""
 
-from kalvin.kline import KDbg, KLine, is_canon, is_identity
+from kalvin.kline import KDbg, KLine, is_canon, is_compound_word, is_identity, is_misfit, is_terminal, is_unknown
 from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.signifier import NLPSignifier
 
@@ -144,10 +144,33 @@ class TestKDbgOp:
 
 
 class TestStructuralPredicates:
-    """is_identity / is_canon — specs/kline.md §Structural Predicates."""
+    """is_terminal / is_unknown / is_identity / is_canon / is_misfit — specs/kline.md §Structural Predicates."""
 
-    def test_kl20_is_identity_empty(self):
-        assert is_identity(KLine(0xFF, [])) is True
+    # ── is_unknown ───────────────────────────────────────────────────────
+    def test_kl20_is_unknown_empty(self):
+        assert is_unknown(KLine(0xFF, [])) is True
+
+    def test_kl20_is_unknown_false_for_self_referential(self):
+        assert is_unknown(KLine(0xFF, [0xFF])) is False
+
+    # ── is_terminal (genus: empty Unknown / self-ref Identity / compound) ─
+    def test_kl20a_is_terminal_empty(self):
+        assert is_terminal(KLine(0xFF, [])) is True
+
+    def test_kl21a_is_terminal_self_referential(self):
+        assert is_terminal(KLine(0xFF, [0xFF])) is True
+
+    def test_kl26a_is_terminal_compound_word(self):
+        nodes = [0b100, 0b010, COMPOUND_TOKEN]
+        assert is_terminal(KLine(0b110 | COMPOUND_TOKEN, nodes)) is True
+
+    def test_is_terminal_canon_shaped_is_not_terminal(self):
+        assert is_terminal(KLine(0b110, [0b100, 0b010])) is False
+
+    # ── is_identity (strict: decodable terminals only) ──────────────────
+    def test_kl20b_is_identity_empty_is_false(self):
+        # The empty form is an Unknown, not an Identity.
+        assert is_identity(KLine(0xFF, [])) is False
 
     def test_kl21_is_identity_self_referential(self):
         assert is_identity(KLine(0xFF, [0xFF])) is True
@@ -157,15 +180,18 @@ class TestStructuralPredicates:
 
     def test_is_identity_compound_word(self):
         # A §11.3 compound-word: COMPOUND_TOKEN is among the nodes.
-        # Structurally canon-shaped (multi-node) but semantically an identity.
         nodes = [0b100, 0b010, COMPOUND_TOKEN]
         assert is_identity(KLine(0b110 | COMPOUND_TOKEN, nodes)) is True
 
     def test_is_identity_compound_word_no_token_is_not_identity(self):
-        # Without COMPOUND_TOKEN in the nodes, a canon-shaped kline is just a
-        # canon candidate.
         assert is_identity(KLine(0b110, [0b100, 0b010])) is False
 
+    def test_is_compound_word_predicate(self):
+        nodes = [0b100, 0b010, COMPOUND_TOKEN]
+        assert is_compound_word(KLine(0b110 | COMPOUND_TOKEN, nodes)) is True
+        assert is_compound_word(KLine(0b110, [0b100, 0b010])) is False
+
+    # ── is_canon (non-terminal, signature == signature_of(nodes)) ───────
     def test_kl23_is_canon_genuine(self):
         # sig 0b110 = OR(0b100, 0b010); neither node is the signature.
         assert is_canon(KLine(0b110, [0b100, 0b010]), signifier) is True
@@ -176,10 +202,23 @@ class TestStructuralPredicates:
     def test_kl25_is_canon_empty_is_not_canon(self):
         assert is_canon(KLine(0xFF, []), signifier) is False
 
+    def test_kl27_is_canon_compound_word_is_not_canon(self):
+        # A compound-word is a terminal, so it is not a canon.
+        nodes = [0b100, 0b010, COMPOUND_TOKEN]
+        assert is_canon(KLine(0b110 | COMPOUND_TOKEN, nodes), signifier) is False
+
     def test_is_canon_mismatched_sig(self):
         assert is_canon(KLine(0b100, [0b110]), signifier) is False
 
-    def test_is_canon_compound_word_is_not_canon(self):
-        # A compound-word is an identity, so it is filtered out of is_canon.
-        nodes = [0b100, 0b010, COMPOUND_TOKEN]
-        assert is_canon(KLine(0b110 | COMPOUND_TOKEN, nodes), signifier) is False
+    # ── is_misfit (non-terminal, signature != signature_of(nodes)) ──────
+    def test_kl28_is_misfit_genuine(self):
+        assert is_misfit(KLine(0b110, [0b001, 0b010]), signifier) is True
+
+    def test_kl29_is_misfit_canon_is_false(self):
+        assert is_misfit(KLine(0b110, [0b100, 0b010]), signifier) is False
+
+    def test_kl30_is_misfit_empty_is_false(self):
+        assert is_misfit(KLine(0xFF, []), signifier) is False
+
+    def test_kl31_is_misfit_self_referential_is_false(self):
+        assert is_misfit(KLine(0xFF, [0xFF]), signifier) is False

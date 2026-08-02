@@ -22,7 +22,7 @@ from kalvin.expand import (
     boundaries,
     structural_significance,
 )
-from kalvin.kline import COMPOUND_TOKEN, KLine, is_canon, is_identity, is_misfit
+from kalvin.kline import COMPOUND_TOKEN, KLine, is_canon, is_compound_word, is_identity, is_misfit, is_terminal, is_unknown
 from kalvin.kvalue import KValue
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -198,14 +198,14 @@ class _Turn:
         if signature in self._state.grounded:
             return True
         return any(
-            entry.signature == signature and is_identity(entry)
+            entry.signature == signature and is_unknown(entry)
             for entry in self._state.work_list
         )
 
     def _pop_identity(self, signature: int) -> None:
-        """Drop the first pending identity ask for ``signature`` (T answered it)."""
+        """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
         for i, entry in enumerate(self._state.work_list):
-            if entry.signature == signature and is_identity(entry):
+            if entry.signature == signature and is_unknown(entry):
                 del self._state.work_list[i]
                 return
 
@@ -232,7 +232,7 @@ class _Turn:
         for idx in range(len(self._state.work_list) - 1, -1, -1):
             kline = self._state.work_list[idx]
 
-            if is_identity(kline):
+            if is_unknown(kline):
                 batch.append(self._emit_identity(idx, kline.signature))
                 continue
 
@@ -308,9 +308,9 @@ class _Turn:
             kline = KLine(signature, list(nodes))
             sig = SIG_S1 if all(n in self._state.grounded for n in nodes) else SIG_S2
             return KValue(kline, sig)
-        # Compound identity — the text-recoverable grounding.
+        # Compound-word identity — the text-recoverable grounding.
         for kline in self._state.grounded.get(signature, []):
-            if is_identity(kline) and kline.nodes:
+            if is_compound_word(kline):
                 return KValue(kline, SIG_S1)
         return None
 
@@ -357,7 +357,7 @@ class _Turn:
         grounded; or a single-node relationship whose reciprocal is grounded.
         Multi-node misfits never ground here — they propose.
         """
-        if is_identity(kline):
+        if is_terminal(kline):
             return kline.signature in self._state.grounded
         if is_canon(kline, self._signifier):
             return all(node in self._state.grounded for node in kline.nodes)
@@ -373,17 +373,17 @@ class _Turn:
         )
 
     def _is_seen(self, signature: int) -> bool:
-        """Has K seen ``signature`` — grounded or pending as an identity?"""
+        """Has K seen ``signature`` — grounded or pending as an Unknown ask?"""
         if signature in self._state.grounded:
             return True
         return any(
-            entry.signature == signature and is_identity(entry)
+            entry.signature == signature and is_unknown(entry)
             for entry in self._state.work_list
         )
 
     def _is_countersignable(self, entry: KLine) -> bool:
         """Is ``entry`` a single-node relationship whose two operands both have canons?"""
-        if is_identity(entry) or len(entry.nodes) != 1:
+        if is_terminal(entry) or len(entry.nodes) != 1:
             return False
         return (
             self._canon_nodes(entry.signature) is not None
@@ -402,15 +402,15 @@ class _Turn:
     def _in_frame(self, kline: KLine) -> bool:
         """Is ``kline`` already in play in the frame?
 
-        Identities are keyed by signature alone: an identity is one lexical
-        item with multiple shapes (the S4 ask ``X:[]`` and the S1 groundings
-        ``X:[X]``, ``X:[COMPOUND, x, y]``), and any shape recognises any
-        other — an S4 ask framed by K matches the S1 reply T sends back.
-        Non-identities match on structural significance, as before.
+        Terminals are keyed by signature alone: a terminal is one lexical
+        item with multiple shapes (the S4 Unknown ask ``X:[]`` and the S1
+        Identity groundings ``X:[X]``, ``X:[COMPOUND, x, y]``), and any shape
+        recognises any other — an S4 ask framed by K matches the S1 reply T
+        sends back. Non-terminals match on structural significance, as before.
         """
         bucket = self._state.frame.get(kline.signature, [])
-        if is_identity(kline):
-            return any(is_identity(framed) for framed in bucket)
+        if is_terminal(kline):
+            return any(is_terminal(framed) for framed in bucket)
         target = structural_significance(kline, self._signifier)
         return any(
             structural_significance(framed, self._signifier) == target
@@ -420,12 +420,12 @@ class _Turn:
     def _is_framed(self, kline: KLine) -> bool:
         """Is an isomorphic kline in the frame?
 
-        Identities match by signature (any shape); everything else by exact
+        Terminals match by signature (any shape); everything else by exact
         nodes, as before.
         """
         bucket = self._state.frame.get(kline.signature, [])
-        if is_identity(kline):
-            return any(is_identity(existing) for existing in bucket)
+        if is_terminal(kline):
+            return any(is_terminal(existing) for existing in bucket)
         return any(existing.nodes == kline.nodes for existing in bucket)
 
     def _frame(self, kline: KLine) -> None:
@@ -435,10 +435,10 @@ class _Turn:
         bucket = self._state.frame.get(kline.signature)
         if not bucket:
             return
-        if is_identity(kline):
-            # An identity reply consumes the framed ask (any shape): drop every
-            # identity entry under this signature.
-            kept = [k for k in bucket if not is_identity(k)]
+        if is_terminal(kline):
+            # A terminal reply consumes the framed ask (any shape): drop every
+            # terminal entry under this signature.
+            kept = [k for k in bucket if not is_terminal(k)]
         else:
             kept = [
                 k for k in bucket

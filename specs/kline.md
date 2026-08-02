@@ -119,15 +119,6 @@ anywhere.
 These live with the KLine because they are structural properties; the model
 and significance modules consume them.
 
-> **Glossary reconciliation note.** The glossary splits the former conflated
-> `is_identity` into the genus `is_terminal` and the two species `is_unknown`
-> (the empty form) and `is_identity` (the decodable forms). Code reconciliation
-> (splitting the implementation predicate) is deferred; until then the code's
-> `is_identity` still matches all three terminal shapes and `is_canon`/`is_s1`
-> remain correct because they only need the genus. The empty form is now
-> classified as an **Unknown** (S4) at the spec layer; the Phase-3 fast path
-> (@agent spec) treats it accordingly.
-
 | ID    | Criterion                                                                        |
 | ----- | -------------------------------------------------------------------------------- |
 | KL-20 | `is_unknown({S: []})` → True (empty form is Unknown, not Identity)               |

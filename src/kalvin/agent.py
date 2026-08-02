@@ -182,7 +182,7 @@ class KAgent:
         S1 (full overlap) is intentionally NOT routed here — true S1 is a
         structural property established by ``expand()`` / ``is_s1()``, not
         by node membership. S4 (empty query) never reaches routing because
-        identity klines are resolved on the fast path in ``rationalise``
+        Unknown klines are resolved on the fast path in ``rationalise``
         before any candidate is submitted to the cogitator.
         """
         candidate_nodes = set(candidate.nodes)
@@ -233,8 +233,8 @@ class KAgent:
         # function cannot be used to detect S4. The derived band is the
         # structural band (structural_significance) with the one model-state
         # fork: a structurally-S2 misfit whose reciprocal countersigner is
-        # present upgrades to S1. Only an identity ask (empty-nodes identity)
-        # derives SIG_S4, so an identity kline declared S4 agrees here and is
+        # present upgrades to S1. Only an Unknown ask (empty-nodes Unknown)
+        # derives SIG_S4, so an Unknown kline declared S4 agrees here and is
         # never dropped.
         derived_sig = structural_significance(kline, self._signifier)
         if derived_sig == SIG_S2 and is_countersigned(self._model, kline, self._signifier):

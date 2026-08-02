@@ -131,7 +131,7 @@ KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 from kalvin.nlp_tokenizer import COMPOUND_TOKEN  # noqa: E402
 
 
-def _is_compound_word(kline: KLine) -> bool:
+def is_compound_word(kline: KLine) -> bool:
     """Test whether a kline is a §11.3 compound-word identity.
 
     True iff :data:`COMPOUND_TOKEN` is among the kline's nodes. The compiler
@@ -143,46 +143,72 @@ def _is_compound_word(kline: KLine) -> bool:
     return COMPOUND_TOKEN in kline.nodes
 
 
-def is_identity(kline: KLine) -> bool:
-    """Test whether a kline is an identity.
+def is_terminal(kline: KLine) -> bool:
+    """Test whether a kline is a terminal — a leaf that stops traversal.
 
-    A kline is identity when it carries no decomposition — either form:
-      - empty nodes: ``{S: []}``, or
-      - self-referential: ``{S: [S]}`` — its own signature is its sole node, or
+    A terminal carries no further decomposition. Three shapes are terminal:
+      - empty nodes: ``{S: []}`` (an Unknown),
+      - self-referential: ``{S: [S]}``, or
+      - compound-word: ``{S: [COMPOUND_TOKEN, M, ary]}``.
+
+    Terminal is the genus of :func:`is_unknown` and :func:`is_identity`;
+    the canon/misfit distinction applies only to non-terminals
+    (@CONTEXT.md §Terminal).
+    """
+    if not kline.nodes:
+        return True
+    if kline.nodes == [kline.signature]:
+        return True
+    return is_compound_word(kline)
+
+
+def is_unknown(kline: KLine) -> bool:
+    """Test whether a kline is an Unknown — the empty form ``{S: []}``.
+
+    An Unknown claims S4: nothing held for this signature, the structural
+    form of an ask (@CONTEXT.md §Unknown).
+    """
+    return not kline.nodes
+
+
+def is_identity(kline: KLine) -> bool:
+    """Test whether a kline is a decodable Identity terminal.
+
+    An Identity is a terminal that translates to a known value in the
+    outside world — directly decodable. Two shapes:
+      - self-referential: ``{S: [S]}`` — a value that decodes into itself, or
       - compound-word: ``{S: [COMPOUND_TOKEN, M, ary]}`` — a single word
         whose nodes include :data:`COMPOUND_TOKEN` because the external
         tokenizer split it into multiple BPE subwords. The word is one
         lexical item; the decomposition is an encoding artefact, not a
         declared aggregation.
 
-    The self-referential form is identity *by definition*: a value that
-    decomposes into itself carries no further information. The compound-word
-    form is identity *by external tokenisation*: the word does not aggregate
-    its subwords. Both overrule any canon classification (see :func:`is_canon`).
+    The empty form ``{S: []}`` is an :func:`is_unknown`, not an Identity.
+    Both Identity shapes overrule any canon classification
+    (see :func:`is_canon` and @CONTEXT.md §Identity).
     """
     if not kline.nodes:
-        return True
+        return False
     if kline.nodes == [kline.signature]:
         return True
-    return _is_compound_word(kline)
+    return is_compound_word(kline)
 
 
 def is_canon(kline: KLine, signifier: KSignifier) -> bool:
-    """Test whether a kline is canonical.
+    """Test whether a kline is a canon.
 
-    A kline is a canon when it has multiple nodes and each of them is
-    represented in its signature but does not constitute a compound identity. 
+    A kline is a canon when it is a non-terminal whose signature equals
+    ``signature_of(nodes)`` (@CONTEXT.md §Canon). A terminal is never a canon.
     """
-    return not is_identity(kline) and kline.signature == signifier.signature_of(kline.nodes)
+    return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
 def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
-    
-    A kline is a misfit when it has multiple nodes and at least one node is 
-    not represented by its signature (ie, kline is not a canon) but does not 
-    constitute a compound identity. 
+
+    A kline is a misfit when it is a non-terminal whose signature does not
+    equal ``signature_of(nodes)`` (@CONTEXT.md §Misfit).
     """
-    return len(kline.nodes) > 1 and not _is_compound_word(kline) and not is_canon(kline, signifier)
+    return len(kline.nodes) > 1 and not is_terminal(kline) and not is_canon(kline, signifier)
 
 # Display helper
 

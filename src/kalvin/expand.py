@@ -36,7 +36,7 @@ import logging
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
-from kalvin.kline import KLine, is_canon, is_identity, is_misfit
+from kalvin.kline import KLine, is_canon, is_identity, is_misfit, is_terminal, is_unknown
 from kalvin.misfit import generate_expansions
 
 if TYPE_CHECKING:
@@ -208,7 +208,7 @@ def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[i
             break  # cycle detected
         visited.add(sig)
         kline = model.find(sig)
-        if kline is None or is_identity(kline) or is_canon(kline, signifier):
+        if kline is None or is_terminal(kline) or is_canon(kline, signifier):
             break
         hop_count += 1
         sig = signifier.signature_of(kline.nodes)
@@ -242,7 +242,7 @@ def is_countersigned(model: Model, kline: KLine, signifier: KSignifier) -> bool:
     is ``S`` and it is itself a one-node kline whose node is ``S``, so it
     would otherwise count as its own countersigner.
     """
-    if is_identity(kline):
+    if is_terminal(kline):
         return False
     nodes_signature = signifier.signature_of(kline.nodes)
     for countersigner in model.find_all(nodes_signature):
@@ -259,17 +259,17 @@ def structural_significance(kline: KLine, signifier: KSignifier) -> int:
 
     Mapping (@CONTEXT.md §Structural Relationship):
 
-    - **S1** — a grounded identity or a canon. An identity with nodes
+    - **S1** — a grounded Identity terminal or a canon. An Identity
       (self-referential ``{A:[A]}`` or a compound-word) is self-grounded;
-      the empty form ``{A:[]}`` is the S4 ask, not S1. A canon
+      the empty form ``{A:[]}`` is an Unknown (S4), not S1. A canon
       ``{AB:[A, B]}`` is a grounded aggregation.
-    - **S3** — a single-node, non-identity relationship ``{A:[B]}``
+    - **S3** — a single-node, non-terminal relationship ``{A:[B]}``
       (connotation / denotation).
     - **S2** — a multi-node misfit (underfit / overfit / misfit).
-    - **S4** — the empty identity frame ``{A:[]}``.
+    - **S4** — the empty Unknown frame ``{A:[]}``.
     """
-    if is_identity(kline):
-        return SIG_S4 if not kline.nodes else SIG_S1
+    if is_terminal(kline):
+        return SIG_S4 if is_unknown(kline) else SIG_S1
     if len(kline.nodes) == 1:
         return SIG_S3
     if is_canon(kline, signifier):
@@ -410,7 +410,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine, signifie
     After S1 ratification between query and candidate, promote:
     1. The query and candidate themselves (always)
     2. Any STM kline whose signature is a node value in the query or
-       candidate AND whose nodes are empty (identity frame), a single
+       candidate AND whose nodes are empty (Unknown frame), a single
        non-literal node (countersign/denote pair), or a canonical
        composition (canonization entry).
 
@@ -430,7 +430,7 @@ def promote_participating(model: Model, query: KLine, candidate: KLine, signifie
     for kl in model.iter_stm():
         if kl.signature not in node_sigs:
             continue
-        # Promote structural klines: identity frames, single-node entries,
+        # Promote structural klines: Unknown frames, single-node entries,
         # or canonical compositions.
         if not kl.nodes:
             to_promote.append(kl)
@@ -473,13 +473,14 @@ def propose_expansions(
     for handler dispatch — for connotation yields from ``expand()``, this is
     ``qc.query``, not the original WorkItem's query.
 
-    Expansion proposals must carry decomposition information, so identity
-    klines (empty nodes or self-referential ``{S: [S]}``) are never emitted
+    Expansion proposals must carry decomposition information, so terminal
+    klines (the empty Unknown, self-referential ``{S: [S]}``, or a
+    compound-word) are never emitted
     — neither as the proposal nor as a companion. A single removed node
-    produces the companion ``{n: [n]}``, which is identity and is dropped.
+    produces the companion ``{n: [n]}``, which is a terminal and is dropped.
     """
-    if is_identity(candidate) or is_canon(candidate, signifier):
-        return  # identity or canonical — nothing to expand
+    if is_terminal(candidate) or is_canon(candidate, signifier):
+        return  # terminal or canonical — nothing to expand
 
     underfit, overfit = signifier.classify_misfit(candidate.signature, candidate.nodes)
 
@@ -492,10 +493,10 @@ def propose_expansions(
     overfit_mask = signifier.residual(nodes_sig, candidate_sig)
 
     for proposal, companions in generate_expansions(model, candidate, underfit_gap, overfit_mask, signifier):
-        if is_identity(proposal):
+        if is_terminal(proposal):
             continue
         yield (proposal, significance)
         for companion in companions:
-            if is_identity(companion):
+            if is_terminal(companion):
                 continue
             yield (companion, significance)

@@ -560,10 +560,10 @@ class TestIsCountersigned:
 class TestStructuralSignificance:
     """structural_significance — the pure-structural band, no model state.
 
-    Composed from the kline predicates (is_identity, is_canon, is_misfit) and
-    node count; the compound-word identity form is folded into is_identity and
-    never named here. The sole model-state adjustment (the S2→S1 countersigned
-    fork) is applied at the call site, not here.
+    Composed from the kline predicates (is_terminal, is_unknown, is_identity,
+    is_canon, is_misfit) and node count; the compound-word identity form is a
+    terminal and never named here. The sole model-state adjustment (the S2→S1
+    countersigned fork) is applied at the call site, not here.
     """
 
     def test_empty_identity_ask_is_s4(self):
@@ -575,7 +575,7 @@ class TestStructuralSignificance:
 
     def test_compound_word_is_s1(self):
         # A §11.3 compound-word: COMPOUND_TOKEN is among the nodes.
-        # It is an identity (folded into is_identity) with nodes → S1; its
+        # It is an Identity terminal with nodes → self-grounded S1; its
         # subwords are opaque and never re-enter the band logic here.
         nodes = [0b100, 0b010, COMPOUND_TOKEN]
         kl = KLine(0b110 | COMPOUND_TOKEN, nodes)

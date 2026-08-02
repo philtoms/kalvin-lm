@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from kalvin.expand import SIG_S1, SIG_S2, SIG_S4
-from kalvin.kline import KLine, is_canon, is_identity
+from kalvin.kline import KLine, is_canon, is_compound_word, is_unknown
 from kalvin.kvalue import KValue
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -39,7 +39,7 @@ def synthesize(
         return KValue(primary, SIG_S2)
 
     proposal = incoming.kline
-    if is_identity(proposal):
+    if is_unknown(proposal):
         return _reply_identity(proposal.signature, decompositions, signifier, grounded)
     return _echo_compiled(proposal, decompositions, signifier)
 
@@ -108,7 +108,7 @@ def _first_connotes(candidates: list[KLine]) -> KLine | None:
 def _first_compound(candidates: list[KLine], signifier: KSignifier) -> KLine | None:
     """First compound-word identity ``{sig: [CT, x, y]}`` among ``candidates``."""
     for kline in candidates:
-        if is_identity(kline) and kline.nodes:
+        if is_compound_word(kline):
             return kline
     return None
 
