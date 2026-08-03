@@ -570,13 +570,13 @@ computed significance.
 `expand()` must satisfy these properties:
 
 1. **Compose-on-return** — per-node accountedness captured on descent,
-   composed on the return phase into the terminal byte (Q16).
+   composed on the return phase into the terminal byte.
 2. **Significance is an 8-bit grade** — `byte & SIG_MASK` in `[0x00, 0xFF]`.
 3. **Accountedness is topology-driven** — derived from reentrant graph hops.
 4. **S2 signifies short-circuits before S3** — overlap match yields QC and
    stops chain; `s3_connotations` not populated.
 5. **Connotation is always S3** — indirect bridging recurses (case E).
-6. **Matched-ungrounded is `decay(1)`** — one hop of doubt (Q17a).
+6. **Matched-ungrounded is `decay(1)`** — one hop of doubt.
 7. **Bidirectional** — both query and candidate mismatched nodes contribute.
 8. **Linear S3 distance** — `S2_S3_DISTANCE + hop_count + _S3_BIAS - 1`;
    `_S3_BIAS = 1`. No quadratic packing.
@@ -659,10 +659,10 @@ retrieval, never persisted (carried on KValue/events only).
 SIG_MASK = 0xFF              # low-byte mask isolating the 8-bit significance
 SIG8_MAX = 0xFF              # the S1 sentinel / exact-match byte
 SIG8_MIN = 0x00              # the S4 sentinel / structural-unresolvable byte
-DEFAULT_S2_S3_BOUNDARY = 0x80  # the one configurable boundary (Q4/Q5)
+DEFAULT_S2_S3_BOUNDARY = 0x80  # the one configurable boundary
 ```
 
-### Saturation Guards (Q9)
+### Saturation Guards
 
 The two limits are reachable only by their defining cases:
 
@@ -672,7 +672,7 @@ The two limits are reachable only by their defining cases:
 The interior `(0x01..0xFE)` is the open band of graded distance; a computed
 (resolvable) distance never yields either sentinel.
 
-### Band Layout (Q4/Q5)
+### Band Layout
 
 Only `S2_S3_BOUNDARY` is configurable; S1|S2 and S3|S4 are fixed sentinels.
 `BandLayout` derives the four bands and the band-representative values:
@@ -690,8 +690,7 @@ reciprocal). They are consumed by the @kvalue spec as the significance
 carried on an exchanged KValue. Computed values (from `expand()`) may be any
 value within a band, not only the representative. Classification
 (`BandLayout.classify`) is the **routing use** of the one significance
-quantity (Q7: one quantity, two uses — routing classifies; cogitation
-computes).
+quantity (one quantity, two uses: routing classifies; cogitation computes).
 
 The module-level sentinels `SIG_S1`/`SIG_S2`/`SIG_S3`/`SIG_S4`
 (`0xFF`/`0xFE`/`0x7F`/`0x00`) are the **fixed** band representatives at the
@@ -701,13 +700,13 @@ to stamp a structure's claimed band. They are fixed (not derived from a
 claims*, independent of where the configurable `S2_S3_BOUNDARY` is drawn for
 computed grades.
 
-### Byte Conversion (Q3)
+### Byte Conversion
 
 `distance_to_byte(distance)` maps a linear inverted distance to a byte in
 `[0x01, 0xFF]`: distance 0 → `0xFF`; distance in `[1, 0xFE]` → linear
 `[0xFE, 0x01]`; distance ≥ `0xFE` floors at `0x01` (never `0x00`).
 
-### Aggregation Model (Q10–Q18)
+### Aggregation Model
 
 `expand()` uses **compose-on-return** aggregation: topology is captured on
 descent (per-node accountedness retained as a float), and composition is
@@ -716,16 +715,16 @@ applied on the return phase. The per-node accountedness is:
 | Case                                    | Accountedness    |
 | --------------------------------------- | ---------------- |
 | matched AND grounded                    | `1.0`            |
-| matched but ungrounded (Q17a)           | `decay(1)`       |
+| matched but ungrounded                  | `decay(1)`       |
 | resolvable in `h` reentrant hops         | `decay(h)`       |
 | unresolvable                            | `0.0`            |
 
 The aggregate is the **accounted fraction** — `compose(slot_values)` over
 the per-node floats — mapped through `distance_to_byte`. The default
 `compose` is `mean_compose` (count-invariant: scaling the same accountedness
-distribution leaves the byte unchanged, Q10).
+distribution leaves the byte unchanged).
 
-#### Two Pluggable Seams (Q12, Q16)
+#### Two Pluggable Seams
 
 - **`DecayFunction`** — leaf decay: `decay(hops) -> float in [0,1]`. Default
   `asymptotic_decay` (`k / (k + hops)`, `k=50`). Also: `harmonic_decay`,
@@ -736,10 +735,9 @@ distribution leaves the byte unchanged, Q10).
 Both are bundled on an `Aggregator` (with a `BandLayout`); `expand()` takes
 an optional `aggregator` keyword (default `DEFAULT_AGGREGATOR`).
 
-#### Yield Asymmetry (Q18)
+#### Yield Asymmetry
 
-The three mismatch-resolution kinds keep distinct yield behaviour (unchanged
-from the prior traversal; the redesign changes only the bytes carried):
+The three mismatch-resolution kinds keep distinct yield behaviour:
 
 - **C — exact opposing match (S2 direct):** recurses (`yield from expand`).
 - **D — signifies (S2 loose):** emits a side-candidate `QueryCandidate`
@@ -772,20 +770,19 @@ The total number of yields never exceeds MAX_HOP.
 ### Properties
 
 1. **8-bit grade**: significance is a byte in `[0x00, 0xFF]`; higher is
-   more significant. `0xFF` and `0x00` are the saturation sentinels (Q9).
+   more significant. `0xFF` and `0x00` are the saturation sentinels.
 2. **Linear inverted distance**: the interior `(0x01, 0xFE)` is a global
-   linear axis; no reshape at the S2|S3 boundary (Q3).
+   linear axis; no reshape at the S2|S3 boundary.
 3. **Pessimistic**: any unaccounted slot prevents `0xFF` (full account).
 4. **Arithmetically comparable at a single slot**: S1 > S2 > S3 > S4 by
    unsigned comparison **at a single contested node slot**. Under
    aggregation the boundary is unstable, but it is only consulted by
-   routing (Q7), never by cogitation — so the instability is harmless.
+   routing, never by cogitation — so the instability is harmless.
 5. **Count-invariant (default compose)**: scaling the same accountedness
-   distribution leaves the byte unchanged (Q10).
-6. **Topology-driven**: accountedness is derived from reentrant graph hops;
-   the traversal (`expand`, `edge_hops`) is unchanged by this scheme.
-7. **One configurable boundary**: only `S2_S3_BOUNDARY` (Q4/Q5); S1|S2 and
-   S3|S4 are fixed sentinels.
+   distribution leaves the byte unchanged.
+6. **Topology-driven**: accountedness is derived from reentrant graph hops.
+7. **One configurable boundary**: only `S2_S3_BOUNDARY`; S1|S2 and S3|S4
+   are fixed sentinels.
 
 ## Test Matrix
 

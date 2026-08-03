@@ -51,7 +51,7 @@ class TestBandRepresentativeConstants:
         """SIG_S1..SIG_S4 are the fixed 8-bit sentinels (0xFF/0xFE/0x7F/0x00)."""
         assert SIG_S1 == 0xFF
         assert SIG_S2 == 0xFE  # top of S2
-        assert SIG_S3 == 0x7F  # top of S3 at the default boundary (Q5: boundary - 1)
+        assert SIG_S3 == 0x7F  # top of S3 at the default boundary
         assert SIG_S4 == 0x00
 
     def test_constants_align_with_sig8_and_layout(self):
@@ -196,7 +196,7 @@ class TestExpand:
         m = make_model()
         k = KLine(10, [10, 20, 30])
         results = list(expand(m, k, k, signifier))
-        # All 3 nodes match; none grounded -> 3 x decay(1) (Q17a).
+        # All 3 nodes match; none grounded -> 3 x decay(1).
         assert len(results) == 1
         assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
             [DEFAULT_AGGREGATOR.decay(1)] * 3
@@ -236,7 +236,7 @@ class TestExpand:
         q = KLine(100, [t(5), t(2)])  # mismatched_q: {5, 2}
         c = KLine(200, [t(10), t(3)])  # mismatched_c: {10, 3}
         results = list(expand(m, q, c, signifier))
-        # Q18: cardinality unchanged from the old scheme.
+        # Cardinality: 5 yields + terminal.
         assert len(results) == 6
         # Terminal slots: q-5 resolves to c-10 at 1 hop (decay(1));
         # q-2, c-3 unresolvable (0.0); c-10 signifies at 2 hops (decay(2)).
@@ -245,7 +245,7 @@ class TestExpand:
         )
 
         # S2 signifies side-candidates reaching sig 0b110 at 2 hops carry the
-        # byte for [decay(2)] (Q18 D: side-candidate, decay-derived).
+        # byte for [decay(2)] (side-candidate).
         sig_two_hops = DEFAULT_AGGREGATOR.compose_terminal([DEFAULT_AGGREGATOR.decay(2)])
         signifies_two_hops = [r for r in results[:-1] if r.significance == sig_two_hops]
         assert len(signifies_two_hops) >= 1
@@ -261,7 +261,7 @@ class TestExpand:
         q = KLine(100, [5, 20])  # mismatched_q: {5, 20}
         c = KLine(200, [10, 30])  # mismatched_c: {10, 30}
         results = list(expand(m, q, c, signifier))
-        # Q18: 2 recursive connotations + terminal.
+        # 2 recursive connotations + terminal.
         assert len(results) == 3
         # Resolution is directional: q-nodes 5,20 resolve to c-nodes 10,30 at
         # 1 hop (decay(1) each); c-nodes 10,30 are identity terminals, so
@@ -278,7 +278,7 @@ class TestExpand:
         q = KLine(5, [0b110, 0b1100])
         c = KLine(6, [0b110, 0b1100])
         results = list(expand(m, q, c, signifier))
-        # Fully accounted (2 x 1.0) -> saturates to SIG8_MAX (Q9).
+        # Fully accounted (2 x 1.0) -> saturates to SIG8_MAX.
         assert results[-1].significance == SIG8_MAX
 
     def test_expand_in_valid_byte_range(self):
@@ -344,7 +344,7 @@ class TestExpand:
         # signifies(4,8)=False, signifies(2,8)=False -> S3 path exercised.
         # s3_connotations[8] = 1 (from q-4); c-2 bridges at s3_hop = 1+1 = 2.
         results = list(expand(m, q, c, signifier))
-        # Q18 (E): connotation recurses, no side-candidate here. 1 nested
+        # Connotation recurses, no side-candidate. 1 nested
         # terminal + top-level terminal.
         assert len(results) == 2
 
@@ -403,7 +403,7 @@ class TestExpand:
         ]
         assert len(signifies_candidates) == 1
         sig_cand = signifies_candidates[0]
-        # Q18 D: side-candidate carries the byte for [decay(hops)].
+        # Side-candidate carries the byte for [decay(hops)].
         assert sig_cand.significance == DEFAULT_AGGREGATOR.compose_terminal(
             [DEFAULT_AGGREGATOR.decay(2)]
         )
@@ -431,7 +431,7 @@ class TestExpand:
         #   → S2 signifies candidate, break
 
         results = list(expand(m, q, c, signifier))
-        # Q18: 2 signifies side-candidates + terminal.
+        # 2 signifies side-candidates + terminal.
         assert len(results) == 3
 
         # Both signifies candidates reach sig 28 at 1 hop -> byte for [decay(1)].
@@ -672,11 +672,7 @@ class TestPromoteParticipating:
 
 
 class TestBandLayout:
-    """Verify BandLayout.classify maps bytes to S1/S2/S3/S4 bands (Q4/Q5).
-
-    Replaces the old TestBoundaries/TestClassify (removed: the 64-bit
-    boundaries()/classify() functions are gone; BandLayout is the new path).
-    """
+    """Verify BandLayout.classify maps bytes to S1/S2/S3/S4 bands."""
 
     def test_default_boundary(self):
         layout = BandLayout()
@@ -721,7 +717,7 @@ class TestBandLayout:
         assert layout.classify(0x00) == "S4"
 
     def test_classify_uses_low_byte_only(self):
-        # Q7: classification is the routing use; it sees only the low byte.
+        # Classification sees only the low byte.
         layout = BandLayout()
         assert layout.classify(0xDEAD_BEEF) == layout.classify(0xEF)
         assert layout.classify(0x0000_0000) == "S4"

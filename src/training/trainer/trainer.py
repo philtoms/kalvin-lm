@@ -293,9 +293,7 @@ class Trainer:
             proposal_src = repr(event.proposal)
 
         if event.proposal.significance:
-            # Under the 8-bit scheme the byte IS the grade (Q19); sig_norm is
-            # a trivial byte/255 rescale for the log line, distance is dropped
-            # (it was the old 64-bit inversion, meaningless on a byte).
+            # byte/255 rescale for the log line (the byte is the grade).
             sig_norm = (event.proposal.significance & SIG_MASK) / SIG8_MAX
         else:
             sig_norm = 0.0

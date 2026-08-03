@@ -1147,9 +1147,8 @@ class TestKValueExchangeCriteria:
         m.add_to_ltm(k2)
         k3 = KLine(t(0b110), [t(0b100)])  # misfit (underfitting)
         m.add_to_ltm(k3)
-        # Query shares resolvable node t(0b100) with k3 (grounded by k1) so the
-        # pair escapes S4 under the accounted-fraction scheme and reaches
-        # propose_expansions.
+        # Query shares resolvable node t(0b100) with k3 (grounded by k1) so
+        # the pair escapes S4 and reaches propose_expansions.
         q = KLine(0, [t(0b100)])
         q.signature = signifier.signature_of([t(0b100)])
         m.add_to_frame(q)

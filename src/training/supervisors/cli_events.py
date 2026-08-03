@@ -153,9 +153,8 @@ def _build_significance(raw_sig: int) -> dict:
 
     Returns dict with raw, normalised, and level fields.
 
-    Under the 8-bit scheme the byte IS the grade (Q19); ``normalised`` is a
-    trivial ``byte / 255`` rescale for human-readable display, no longer a
-    separate band-anchored projection. ``level`` comes from BandLayout.
+    The byte is the grade; ``normalised`` is a trivial ``byte / 255`` rescale
+    for human-readable display. ``level`` comes from BandLayout.
     """
     layout = BandLayout()
     level = layout.classify(raw_sig)

@@ -180,11 +180,9 @@ if declared == SIG_S4 and derived != SIG_S4:
 (written by `on_expansion`), and `model.grounded()` excludes only STM, so a
 post-ground gate would be inert against its one real target.
 
-**S4 is detected by value.** Under the 8-bit scheme `BandLayout.classify`
-does return `"S4"` for the `0x00` byte (unlike the old 64-bit `classify`,
-which collapsed the S3|S4 boundary). Nonetheless S4 is still detected by
-value (`== SIG_S4`) for the agreement check, which is value-based rather
-than band-based.
+**S4 is detected by value.** `BandLayout.classify` returns `"S4"` for the
+`0x00` byte, but S4 is detected by value (`== SIG_S4`) for the agreement
+check, which is value-based rather than band-based.
 
 Three outcomes:
 

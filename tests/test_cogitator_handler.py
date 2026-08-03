@@ -100,9 +100,8 @@ class TestCogitatorWithFakeHandler:
         # k1 grounds it) -> non-S4 after expand, so cogitation reaches
         # propose_expansions. k3 is a misfit (sig t(0b110) promises more than
         # nodes [t(0b100)] deliver) so generate_expansions yields proposals.
-        # Under the old distance scheme an unrelated query also reached S3;
-        # under the accounted-fraction scheme the pair must actually share
-        # resolvable structure to escape S4.
+        # The query must share resolvable structure with k3 to escape S4
+        # (an unrelated pair is fully unaccounted -> S4 -> skipped).
         q = KLine(0, [t(0b100)])
         q.signature = signifier.signature_of([t(0b100)])
         m.add_to_frame(q)

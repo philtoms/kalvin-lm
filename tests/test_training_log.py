@@ -29,7 +29,7 @@ from training.trainer.trainer import Trainer
 
 # ── Significance constants ────────────────────────────────────────────
 
-_S1_SIGNIFICANCE = 0xFF  # S1 sentinel byte (exact match; Q5/Q9)
+_S1_SIGNIFICANCE = 0xFF  # S1 sentinel byte (exact match)
 _S2_SIGNIFICANCE = 0x80  # S2 byte at the S2_S3_BOUNDARY (sig_norm = 0x80/0xFF ≈ 0.501)
 
 

@@ -4,10 +4,10 @@ expansion proposal pipeline.
 This module owns the full significance → classification → expansion proposal
 pipeline:
 
-  1. **Significance computation** — expand() computes packed distances and
-     yields QueryCandidate objects with connotation and terminal significance.
-  2. **Boundary constants** — BandLayout maps bytes to S1/S2/S3/S4 bands
-     (the routing use; Q7). Only S2_S3_BOUNDARY is configurable (Q4/Q5).
+  1. **Significance computation** — expand() composes an 8-bit grade per
+     query|candidate pair and yields QueryCandidate objects.
+  2. **Band classification** — BandLayout maps bytes to S1/S2/S3/S4 bands.
+     Only S2_S3_BOUNDARY is configurable.
   3. **Expansion proposals** — propose_expansions() classifies misfits and
      generates (proposal, significance) tuples for the caller to dispatch.
   4. **Structural grounding** — is_s1(), is_countersigned() verify S1 status;
@@ -20,12 +20,9 @@ Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Module-level constants and types:
   MAX_HOP, QueryCandidate,
-  SIG_MASK, SIG8_MAX, SIG8_MIN, DEFAULT_S2_S3_BOUNDARY (8-bit scheme),
+  SIG_MASK, SIG8_MAX, SIG8_MIN, DEFAULT_S2_S3_BOUNDARY,
   SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative sentinels),
   BandLayout, distance_to_byte, Aggregator, DEFAULT_AGGREGATOR
-
-Band-anchored normalization:
-  normalise_significance was removed (Q19): the byte is already the grade.
 
 Producer significance:
   band_significance — op → band-representative integer (KP-1)
@@ -48,59 +45,53 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-# Upper bound on edge hop chain depth (the only live use is edge_hops's
-# traversal bound below).
-# a mismatched node that does not resolve to an exact opposing match
-# (fully-unresolved OR S2 "signifies" loose case).
+# Upper bound on edge hop chain depth (edge_hops's traversal bound).
 MAX_HOP = 100
 
 # ─────────────────────────────────────────────────────────────────────
-# 8-bit compositional significance (Q1–Q19 redesign, in progress).
+# 8-bit compositional significance.
 #
 # Significance occupies the LOW 8 BITS of an int; access is always via
 # masking: ``sig & SIG_MASK``. It is a global linear inverted distance in
-# ``(0x00, 0xFF)`` (Q3): higher byte = closer match, no reshape at the
-# S2|S3 boundary. Saturation guards (Q9): ``0xFF`` is reachable ONLY by
-# exact match (distance 0); ``0x00`` is reachable ONLY by a structural
-# unresolvable; the interior ``(0x01..0xFE)`` is the open band of graded
-# distance.
+# ``(0x00, 0xFF)``: higher byte = closer match, no reshape at the S2|S3
+# boundary. Saturation guards: ``0xFF`` is reachable ONLY by exact match
+# (distance 0); ``0x00`` is reachable ONLY by a structural unresolvable;
+# the interior ``(0x01..0xFE)`` is the open band of graded distance.
 #
-# Only ``S2_S3_BOUNDARY`` is configurable (Q4/Q5); S1|S2 and S3|S4 are
-# fixed sentinels.
+# Only ``S2_S3_BOUNDARY`` is configurable; S1|S2 and S3|S4 are fixed
+# sentinels.
 # ─────────────────────────────────────────────────────────────────────
 
-#: Low-byte mask isolating the 8-bit significance (Q1).
+#: Low-byte mask isolating the 8-bit significance.
 SIG_MASK: int = 0xFF
 
-#: The S1 sentinel / exact-match byte (Q5, Q9). Reachable only at distance 0.
+#: The S1 sentinel / exact-match byte. Reachable only at distance 0.
 SIG8_MAX: int = 0xFF
 
-#: The S4 sentinel / structural-unresolvable byte (Q5, Q9). A computed
-#: (resolvable) distance never yields this — only a structural unresolvable
-#: path does, which does not go through ``distance_to_byte``.
+#: The S4 sentinel / structural-unresolvable byte. A computed (resolvable)
+#: distance never yields this — only a structural unresolvable path does,
+#: which does not go through ``distance_to_byte``.
 SIG8_MIN: int = 0x00
 
-#: Default for the one configurable boundary (Q4). S2 = [0x80, 0xFE];
+#: Default for the one configurable boundary. S2 = [0x80, 0xFE];
 #: S3 = [0x01, 0x7F]. Must be in [0x02, 0xFE] so both interior bands are
 #: non-empty (see ``BandLayout.validate``).
 DEFAULT_S2_S3_BOUNDARY: int = 0x80
 
-#: Distance at which ``distance_to_byte`` floors at 0x01 (the open interior's
-#: bottom). Distances >= this saturate to 0x01, never 0x00 (Q9).
+#: Distance at which ``distance_to_byte`` floors at 0x01. Distances >= this
+#: saturate to 0x01, never 0x00.
 _MAX_INTERIOR_DISTANCE: int = 0xFE
 
 # Band-representative significance values — the canonical bytes a producer
 # stamps when asserting a band rather than computing a grade (the compiler,
-# the countersign reciprocal, structural_significance). Fixed 8-bit
-# sentinels at the DEFAULT boundary; single source of truth per @model spec
-# §Band-representative Values. Computed values from expand() may be any byte
-# within a band, not only the representative.
+# the countersign reciprocal, structural_significance). Single source of
+# truth per @model spec §Band-representative Values. Computed values from
+# expand() may be any byte within a band, not only the representative.
 #
-# These are fixed (not derived from a BandLayout) because structural
-# significance marks *which band a structure claims*, independent of where
-# the configurable S2_S3_BOUNDARY is drawn for computed grades (Q19: routing
-# logic unchanged; only the constant width is aligned with the 8-bit byte).
-# BandLayout exposes matching layout-derived representatives for classification.
+# Fixed (not derived from a BandLayout): structural significance marks *which
+# band a structure claims*, independent of where the configurable
+# S2_S3_BOUNDARY is drawn for computed grades. BandLayout exposes matching
+# layout-derived representatives for classification.
 SIG_S1 = 0xFF  # exact match  (== SIG8_MAX; the S1|S2 boundary)
 SIG_S2 = 0xFE  # top of S2
 SIG_S3 = 0x7F  # top of S3 at the default boundary (DEFAULT_S2_S3_BOUNDARY - 1)
@@ -130,15 +121,15 @@ def band_significance(op: str) -> int:
     return _OP_TO_SIG.get(op, SIG_S4)
 
 
-# ── 8-bit byte conversion (Q3 linear, Q9 saturation guards) ───────────
+# ── Byte conversion (linear inverted distance) ──────────────────────
 
 
 def distance_to_byte(distance: int) -> int:
-    """Linear inverted ``distance`` → byte in ``[0x01, 0xFF]`` (Q3, Q9).
+    """Linear inverted ``distance`` → byte in ``[0x01, 0xFF]``.
 
     - ``distance == 0``        → ``0xFF`` (exact match — the only path to 0xFF)
     - ``1 <= distance <= 0xFE`` → ``0xFE..0x01`` (linear, monotone decreasing)
-    - ``distance >= 0xFE``      → ``0x01`` (floors; never reaches 0x00 — Q9 guard)
+    - ``distance >= 0xFE``      → ``0x01`` (floors; never reaches 0x00)
 
     This function never emits ``0x00``: a *computed* distance is by definition
     resolvable, and only a structural unresolvable yields the ``SIG8_MIN``
@@ -155,7 +146,7 @@ def distance_to_byte(distance: int) -> int:
 
 
 class BandLayout:
-    """The four bands over the linear byte, derived from one boundary (Q4/Q5).
+    """The four bands over the linear byte, derived from one boundary.
 
     Only ``s2_s3_boundary`` is configurable; S1|S2 and S3|S4 are fixed
     sentinels exposed as named constants.
@@ -195,9 +186,9 @@ class BandLayout:
                 f"for non-empty S2 and S3 bands; got {s2_s3_boundary!r}"
             )
 
-    # Fixed sentinels (Q5), as lowercase properties (ruff N802).
-    # The module-level SIG_S1/SIG_S4 constants remain uppercase (they are
-    # constants, not functions); these are the layout-internal accessors.
+    # Fixed sentinels, as lowercase properties (ruff N802). The module-level
+    # SIG_S1/SIG_S4 constants are uppercase (constants, not functions); these
+    # are the layout-internal accessors.
     @property
     def sig_s1(self) -> int:
         return 0xFF
@@ -206,7 +197,7 @@ class BandLayout:
     def sig_s4(self) -> int:
         return 0x00
 
-    # Boundary-derived representatives (Q5).
+    # Boundary-derived representatives.
     @property
     def sig_s2(self) -> int:
         return 0xFE  # top of S2
@@ -216,10 +207,7 @@ class BandLayout:
         return self.s2_s3_boundary - 1  # top of S3
 
     def classify(self, sig: int) -> str:
-        """Classify a raw byte into S1/S2/S3/S4. Operates on the low byte only.
-
-        This is the routing *use* of the one significance quantity (Q7).
-        """
+        """Classify a raw byte into S1/S2/S3/S4. Operates on the low byte only."""
         b = sig & SIG_MASK
         if b == self.sig_s1:
             return "S1"
@@ -230,13 +218,13 @@ class BandLayout:
         return "S4"
 
 
-# ── Pluggable seams for compositional significance (Q12, Q16) ──────────
+# ── Pluggable seams for compositional significance ───────────────────
 #
-# A compositional significance has TWO functions, not one:
+# A compositional significance has two functions:
 #   1. DecayFunction  — leaf decay: reentrant hop count -> accountedness.
 #   2. ComposeFunction — how per-node accountedness values combine.
 # Both are Protocols with default implementations; expand() is parameterised
-# over them (step 3 wires them in).
+# over them via Aggregator.
 
 
 @runtime_checkable
@@ -245,7 +233,7 @@ class DecayFunction(Protocol):
 
     The caller (expand) supplies the boundary cases directly:
       - matched AND grounded     -> 1.0  (decay is never called)
-      - matched but ungrounded   -> decay(1)  (Q17a: "+1 = one hop of doubt")
+      - matched but ungrounded   -> decay(1)  (one hop of doubt)
       - resolvable in h hops      -> decay(h)
       - unresolvable              -> 0.0  (decay is never called)
     """
@@ -257,16 +245,16 @@ class DecayFunction(Protocol):
 class ComposeFunction(Protocol):
     """Composition: per-slot accountedness values -> aggregate in [0, 1].
 
-    The result is the accounted fraction (Q10) consumed by the byte encoder.
-    Implementations should be count-invariant (Q10's intent: scaling the same
-    accountedness distribution leaves the byte unchanged) unless they
-    deliberately trade that property away.
+    The result is the accounted fraction consumed by the byte encoder.
+    Implementations should be count-invariant (scaling the same accountedness
+    distribution leaves the byte unchanged) unless they deliberately trade
+    that property away.
     """
 
     def __call__(self, slot_values: Sequence[float]) -> float: ...
 
 
-# ── Default decay functions (Q12) ─────────────────────────────────────
+# ── Default decay functions ──────────────────────────────────────────
 
 
 def asymptotic_decay(hops: int, k: int = 50) -> float:
@@ -308,7 +296,7 @@ def make_asymptotic_decay(k: int = 50) -> DecayFunction:
     return _decay
 
 
-# ── Default compose functions (Q10 count-invariance) ──────────────────
+# ── Default compose functions ────────────────────────────────────────
 
 
 def mean_compose(slot_values: Sequence[float]) -> float:
@@ -316,7 +304,7 @@ def mean_compose(slot_values: Sequence[float]) -> float:
 
     Count-invariant by construction: scaling the same accountedness
     distribution (repeating it) leaves the mean — and thus the byte —
-    unchanged (Q10).
+    unchanged.
     """
     n = len(slot_values)
     if n == 0:
@@ -328,7 +316,7 @@ def mean_compose(slot_values: Sequence[float]) -> float:
 
 @dataclass(frozen=True)
 class Aggregator:
-    """The compose-on-return policy, bundling layout + the two seams (Q16).
+    """The compose-on-return policy, bundling layout + the two seams.
 
     ``expand()`` is parameterised over a single ``Aggregator`` (keyword-only,
     defaulting to :data:`DEFAULT_AGGREGATOR`) so the call site stays readable
@@ -343,10 +331,8 @@ class Aggregator:
     def compose_terminal(self, slot_values: list[float]) -> int:
         """Compose per-slot accountedness into the terminal significance byte.
 
-        The replacement for the former 64-bit sum-and-invert pattern
-        ``(~min(total_distance, ...)) & MASK64`` (now removed). Maps the compose() of
-        per-slot accountedness through the linear inverted-distance byte with
-        the two Q9 saturation guards.
+        Maps the compose() of per-slot accountedness through the linear
+        inverted-distance byte, with the two saturation guards:
 
           accounted_fraction == 1.0 -> 0xFF  (exact match only)
           accounted_fraction == 0.0 -> 0x00  (only total non-account)
@@ -499,21 +485,20 @@ def expand(
 ) -> Iterator[QueryCandidate]:
     """Expand a query-candidate pair, yielding connotations and terminal byte.
 
-    Compose-on-return aggregation (Q16-Q18): topology is captured on descent
-    (per-node accountedness retained as a float), and composition is applied
-    on the return phase, replacing the former sum-and-invert pattern.
+    Compose-on-return aggregation: topology is captured on descent (per-node
+    accountedness retained as a float), and composition is applied on the
+    return phase.
 
-    Per-node accountedness (Q11/12, Q17a):
+    Per-node accountedness:
       matched & grounded       -> 1.0
-      matched but ungrounded   -> decay(1)   (Q17a: "+1 = one hop of doubt")
+      matched but ungrounded   -> decay(1)   (one hop of doubt)
       resolvable in h hops      -> decay(h)
       unresolvable              -> 0.0
 
-    Yield asymmetry (Q18, unchanged from before): exact opposing matches (C)
-    and S3 connotation bridges (E) recurse; signifies matches (D) emit a
-    side-candidate and do not recurse. The redesign changes only the bytes
-    carried, not the shape or cardinality of the stream. The final yield is
-    always the terminal QueryCandidate for the original pair.
+    Yield asymmetry: exact opposing matches and S3 connotation bridges
+    recurse; signifies matches emit a side-candidate and do not recurse.
+    The final yield is always the terminal QueryCandidate for the original
+    pair.
 
     ``aggregator`` bundles the layout (S2_S3_BOUNDARY) and the two pluggable
     seams (DecayFunction, ComposeFunction); defaults to
@@ -538,7 +523,7 @@ def expand(
 
     s3_connotations: dict[int, int] = {}  # sig -> min hops from any query node
 
-    # Q17b: per-node accountedness, in slot order. One float per slot.
+    # Per-node accountedness, in slot order. One float per slot.
     slot_values: list[float] = []
 
     decay = aggregator.decay
@@ -606,13 +591,13 @@ def expand(
                     break
         slot_values.append(accounted)
 
-    # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1) (Q17a).
+    # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1).
     for n in matched:
         kl = model.find(n)
         if kl is not None and is_s1(model, kl, signifier):
             slot_values.append(1.0)
         else:
-            # Ungrounded match OR not in model: one hop of doubt (Q17a).
+            # Ungrounded match OR not in model: one hop of doubt.
             slot_values.append(decay(1))
 
     if not slot_values:
