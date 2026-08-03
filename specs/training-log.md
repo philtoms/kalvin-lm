@@ -61,7 +61,7 @@ S2/S3 slow-path events:
 Where:
 - `KIND` is `GROUND` or `FRAME` (uppercased)
 - `decompiled_query` and `decompiled_proposal` are produced by `kalvin.kline.kline_display`
-- `normalised_significance` is `significance / D_MAX`, formatted to 2 decimal places
+- `normalised_significance` is `byte / 0xFF`, formatted to 2 decimal places (the byte is already the grade; this is a trivial rescale for display)
 
 ### Lesson Submit Log Format
 

@@ -50,7 +50,7 @@ This spec depends on the following concepts, defined elsewhere:
   connotations and terminal significance.
 - Provides `QueryCandidate` named tuple with `.significance` field
   (pre-computed by the model).
-- Provides constants `D_MAX` and `MASK64` for significance values.
+- Provides the 8-bit significance scheme: SIG_MASK/SIG8_MAX/SIG8_MIN, BandLayout, and the SIG_S1..SIG_S4 sentinels.
 - Provides `is_countersigned(kline)` to check if a kline is countersigned by any kline in the model.
 - Manages a four-tier memory internally (STM → Frame → LTM → Base). The
   agent selects the appropriate write method based on significance outcome;
@@ -307,7 +307,7 @@ Routing distinguishes only **S2** (at least one overlapping node) from
 
 All candidates are submitted as work items for expansion. The Cogitator
 classifies each expansion yield against the significance boundaries; a
-yield that computes to S1 (distance 0, significance `D_MAX`) is a genuine
+yield that computes to S1 (significance `SIG_S1` / `0xFF`, full account) is a genuine
 structural exact match and triggers `handler.on_s1()` (see §Cogitation).
 Distance 1 is the top of S2, not S1.
 

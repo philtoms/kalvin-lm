@@ -25,8 +25,10 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Model (@model spec §Significance Semantics)
 
-- Owns the significance constants `D_MAX` and `MASK64`, the inversion rule,
-  the boundaries, and the **band-representative values** this spec consumes.
+- Owns the 8-bit significance scheme: `SIG_MASK`/`SIG8_MAX`/`SIG8_MIN`,
+  `BandLayout`, `distance_to_byte`, and the band-representative sentinels
+  `SIG_S1`/`SIG_S2`/`SIG_S3`/`SIG_S4` this spec consumes (see @model spec
+  §Significance Semantics).
 - Provides the structural predicates (`is_identity`, `is_canon`,
   `is_countersigned`) used to re-derive significance on retrieval. The model
   also exposes `is_s1` — `is_canon OR is_countersigned` — but the retrieval
@@ -90,9 +92,8 @@ inverted scale (higher = more grounded):
    | CONNOTES / DENOTES | S3   |
    | UNKNOWN                | S4   |
 
-2. **Computed value** — a full 64-bit inverted distance produced by
-   `expand()` (Kalvin's method). Any value within a band, not just the
-   representative.
+2. **Computed value** — an 8-bit grade produced by `expand()` (Kalvin's
+   method). Any value within a band, not just the representative.
 
 A consumer cannot, from the value alone, tell which producer kind it came
 from; both are plain integers on the same scale. How Kalvin consumes the
@@ -106,7 +107,7 @@ Every participant that emits a KValue sets its significance:
 | Producer            | KLine source               | significance                                |
 | ------------------- | -------------------------- | ------------------------------------------- |
 | Compiler            | compiled entry             | band-representative, derived from the entry's structural relationship (COUNTERSIGNS→S1, CANONIZES→S2, CONNOTES/DENOTES→S3, UNKNOWN→S4) |
-| Countersign         | the reciprocal kline       | `D_MAX` (S1) — the act of countersigning is an S1 ratification             |
+| Countersign         | the reciprocal kline       | `SIG_S1` (`0xFF`, S1) — the act of countersigning is an S1 ratification             |
 | Cogitation / expand | expansion proposal kline   | the computed value yielded by `expand()`    |
 | Kalvin fast path    | the inbound kline          | the computed/structural value Kalvin assigns during rationalisation |
 
@@ -118,7 +119,7 @@ receives the band-representative value for its structural relationship.
 
 ### KP-2 — Countersign produces an S1 KValue
 
-The reciprocal produced by a countersign carries `D_MAX`. Countersign does not
+The reciprocal produced by a countersign carries `SIG_S1` (`0xFF`). Countersign does not
 go through the compiler; its significance is fixed at S1 by definition of the
 act.
 
@@ -239,7 +240,7 @@ The following are explicitly **out of scope** for this spec:
 | KV-2  | Equality ignores significance: same KLine, different significance → equal  | §Equality |
 | KV-3  | Hash ignores significance: same KLine, different significance → equal hash | §Equality |
 | KV-4  | Compiler attaches S1 for `==`, S2 for `=>`, S3 for `=`/`>`, S4 for UNKNOWN | §KP-1 |
-| KV-5  | Countersign reciprocal KValue carries `D_MAX`                              | §KP-2 |
+| KV-5  | Countersign reciprocal KValue carries `SIG_S1` (`0xFF`)                              | §KP-2 |
 | KV-6  | Cogitation proposal KValue carries the `expand()`-computed significance    | §KP-3 |
 | KV-7  | Codec persists `{signature, nodes}` only; significance not serialised      | §Storage |
 | KV-8  | Re-derivation: Unknown ask (empty nodes) → S4                                | §KV-1 |

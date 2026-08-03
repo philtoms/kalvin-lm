@@ -509,9 +509,9 @@ QueryCandidate(query: Kline, candidate: Kline, significance: int)
 
 A named tuple representing a single query-candidate-significance result.
 Yielded by `expand()` for both intermediate connotations and the
-terminal significance. The model computes significance internally as
-`(~packed_distance) & MASK64`, where `packed_distance` encodes S2 and S3
-components. Callers never see raw distance.
+terminal significance. The model computes an 8-bit compositional grade
+internally via compose-on-return aggregation (see §Significance
+Semantics). Callers never see raw distance or hops.
 
 ### Is S1
 
@@ -693,6 +693,14 @@ value within a band, not only the representative. Classification
 quantity (Q7: one quantity, two uses — routing classifies; cogitation
 computes).
 
+The module-level sentinels `SIG_S1`/`SIG_S2`/`SIG_S3`/`SIG_S4`
+(`0xFF`/`0xFE`/`0x7F`/`0x00`) are the **fixed** band representatives at the
+default boundary — used by `structural_significance()` and `band_significance()`
+to stamp a structure's claimed band. They are fixed (not derived from a
+`BandLayout`) because structural significance marks *which band a structure
+claims*, independent of where the configurable `S2_S3_BOUNDARY` is drawn for
+computed grades.
+
 ### Byte Conversion (Q3)
 
 `distance_to_byte(distance)` maps a linear inverted distance to a byte in
@@ -855,7 +863,7 @@ The total number of yields never exceeds MAX_HOP.
 | MOD-41 | `expand` S2 before S3: signifies short-circuits connotation recording           | —                     |
 | MOD-42 | `expand` S3 route: S3 bias ensures S3 distances exceed S2                       | —                     |
 | MOD-43 | `expand` connotation: indirect path → S3 connotation yield + terminal           | —                     |
-| MOD-44 | `expand` significance always in valid uint64 range `[1, D_MAX]`                 | —                     |
+| MOD-44 | `expand` significance always a valid byte in `[0x00, 0xFF]`            | —                     |
 | MOD-45 | `expand` bidirectional: both sides contribute connotations + terminal           | —                     |
 | MOD-46 | `is_countersigned`: mutual node reference detected                              | —                     |
 | MOD-47 | Not countersigned: one-way reference → False                                    | —                     |
