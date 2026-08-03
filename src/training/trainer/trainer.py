@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import D_MAX, normalise_significance
+from kalvin.expand import SIG8_MAX, SIG_MASK
 from kalvin.kline import kline_display
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 # S1 significance boundary for frame events. A frame event with
 # significance at or above this threshold is considered S1 (fast path).
-_S1_FRAME_THRESHOLD = D_MAX
+_S1_FRAME_THRESHOLD = SIG8_MAX
 
 
 @lru_cache(maxsize=1)
@@ -293,10 +293,11 @@ class Trainer:
             proposal_src = repr(event.proposal)
 
         if event.proposal.significance:
-            distance = (~event.proposal.significance) & D_MAX
-            sig_norm = normalise_significance(event.proposal.significance)
+            # Under the 8-bit scheme the byte IS the grade (Q19); sig_norm is
+            # a trivial byte/255 rescale for the log line, distance is dropped
+            # (it was the old 64-bit inversion, meaningless on a byte).
+            sig_norm = (event.proposal.significance & SIG_MASK) / SIG8_MAX
         else:
-            distance = 0
             sig_norm = 0.0
 
         if self._is_s1(event):
@@ -308,11 +309,10 @@ class Trainer:
             )
         else:
             logger.info(
-                "%s %s → %.2f (d=%d) | proposal: %s",
+                "%s %s → %.2f | proposal: %s",
                 event.kind.upper(),
                 query_src,
                 sig_norm,
-                distance,
                 proposal_src,
             )
 

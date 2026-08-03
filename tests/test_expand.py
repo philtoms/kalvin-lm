@@ -3,11 +3,10 @@
 import pytest
 
 from kalvin.expand import (
-    _S3_BIAS,
     D_MAX,
     DEFAULT_AGGREGATOR,
+    DEFAULT_S2_S3_BOUNDARY,
     MASK64,
-    S2_S3_DISTANCE,
     SIG8_MAX,
     SIG8_MIN,
     SIG_MASK,
@@ -15,9 +14,8 @@ from kalvin.expand import (
     SIG_S2,
     SIG_S3,
     SIG_S4,
+    BandLayout,
     band_significance,
-    boundaries,
-    classify,
     edge_hops,
     expand,
     is_canon,
@@ -664,73 +662,60 @@ class TestPromoteParticipating:
 # ── Significance Boundary Tests ───────────────────────────────────────
 
 
-class TestBoundaries:
-    """Verify boundaries() returns correct (S1|S2, S2|S3, S3|S4) thresholds."""
+class TestBandLayout:
+    """Verify BandLayout.classify maps bytes to S1/S2/S3/S4 bands (Q4/Q5).
 
-    def test_boundaries_values(self):
-        """Boundaries are D_MAX, ~S2_S3_DISTANCE masked, and 0."""
-        s12, s23, s34 = boundaries()
-        assert s12 == D_MAX
-        assert s23 == (~S2_S3_DISTANCE) & MASK64
-        assert s34 == 0
+    Replaces the old TestBoundaries/TestClassify (removed: the 64-bit
+    boundaries()/classify() functions are gone; BandLayout is the new path).
+    """
 
-    def test_all_values_valid_uint64(self):
-        """All boundary values are non-negative and within uint64 range."""
-        for val in boundaries():
-            assert 0 <= val <= MASK64
+    def test_default_boundary(self):
+        layout = BandLayout()
+        assert layout.s2_s3_boundary == DEFAULT_S2_S3_BOUNDARY == 0x80
 
-    def test_s23_sits_between_max_hop_and_min_s3(self):
-        """S2|S3 boundary sits between MAX_HOP and linear S3 min distance.
+    def test_fixed_sentinels(self):
+        layout = BandLayout()
+        assert layout.sig_s1 == 0xFF
+        assert layout.sig_s4 == 0x00
 
-        S2_S3_DISTANCE (100) < S2_S3_DISTANCE + 1 (101), ensuring S2 and S3
-        significance tiers are cleanly separated with linear S3 distance.
-        """
-        min_s3_distance = S2_S3_DISTANCE + _S3_BIAS  # 100 + 1 = 101
-        assert S2_S3_DISTANCE < min_s3_distance
+    def test_representatives(self):
+        layout = BandLayout()
+        assert layout.sig_s2 == 0xFE
+        assert layout.sig_s3 == 0x7F  # boundary - 1
 
+    def test_strict_ordering(self):
+        layout = BandLayout()
+        assert layout.sig_s1 > layout.sig_s2 > layout.sig_s3 > layout.sig_s4
 
-class TestClassify:
-    """Verify classify() returns correct significance bands."""
+    def test_boundary_is_only_knob(self):
+        # Moving the boundary reshuffles S2/S3 but leaves S1/S4 fixed.
+        lo = BandLayout(s2_s3_boundary=0x20)
+        hi = BandLayout(s2_s3_boundary=0xC0)
+        assert lo.sig_s1 == hi.sig_s1 == 0xFF
+        assert lo.sig_s4 == hi.sig_s4 == 0x00
+        assert lo.sig_s3 < hi.sig_s3
 
-    @pytest.fixture()
-    def bounds(self):
-        return boundaries()
+    def test_boundary_must_leave_nonempty_bands(self):
+        with pytest.raises(ValueError):
+            BandLayout(s2_s3_boundary=0x01)
+        with pytest.raises(ValueError):
+            BandLayout(s2_s3_boundary=0xFF)
 
-    def test_classify_at_s1_boundary(self, bounds):
-        """sig = D_MAX → S1 (maximum significance)."""
-        s12, s23, s34 = bounds
-        assert classify(D_MAX, s12, s23, s34) == "S1"
+    @pytest.mark.parametrize("boundary", [0x02, 0x40, 0x80, 0xC0, 0xFE])
+    def test_classify_covers_all_bands(self, boundary):
+        layout = BandLayout(s2_s3_boundary=boundary)
+        assert layout.classify(0xFF) == "S1"
+        assert layout.classify(0xFE) == "S2"
+        assert layout.classify(boundary) == "S2"
+        assert layout.classify(boundary - 1) == "S3"
+        assert layout.classify(0x01) == "S3"
+        assert layout.classify(0x00) == "S4"
 
-    def test_classify_at_s12_exact(self, bounds):
-        """sig = D_MAX - 1 (distance 1) → S2 (top of S2, not S1)."""
-        s12, s23, s34 = bounds
-        assert classify(D_MAX - 1, s12, s23, s34) == "S2"
-
-    def test_classify_just_below_s12(self, bounds):
-        """sig = D_MAX - 1 and D_MAX - 2 → S2 (top of S2 and just below S1|S2)."""
-        s12, s23, s34 = bounds
-        assert classify(D_MAX - 1, s12, s23, s34) == "S2"
-        assert classify(D_MAX - 2, s12, s23, s34) == "S2"
-
-    def test_classify_at_s23_boundary(self, bounds):
-        """sig = S2|S3 boundary value → S2."""
-        s12, s23, s34 = bounds
-        assert classify(s23, s12, s23, s34) == "S2"
-
-    def test_classify_in_s3_range(self, bounds):
-        """sig = 1 → S3 (above S3|S4)."""
-        s12, s23, s34 = bounds
-        assert classify(1, s12, s23, s34) == "S3"
-
-    def test_classify_at_s34_boundary(self, bounds):
-        """sig = 0 → S3 (0 >= 0 is True, S4 is unreachable for uint64).
-
-        Note: S4 is never produced by classify() since significance values
-        are always non-negative uint64 and s34 = 0. S4 only comes from
-        the routing path in KAgent._route().
-        """
-        s12, s23, s34 = bounds
-        assert classify(0, s12, s23, s34) == "S3"
+    def test_classify_uses_low_byte_only(self):
+        # Q7: classification is the routing use; it sees only the low byte.
+        layout = BandLayout()
+        assert layout.classify(0xDEAD_BEEF) == layout.classify(0xEF)
+        assert layout.classify(0x0000_0000) == "S4"
 
 
 class TestProposeExpansions:

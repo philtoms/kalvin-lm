@@ -6,8 +6,8 @@ pipeline:
 
   1. **Significance computation** — expand() computes packed distances and
      yields QueryCandidate objects with connotation and terminal significance.
-  2. **Boundary constants** — S2_S3_DISTANCE, boundaries(), classify() map
-     significance values to S1/S2/S3/S4 bands.
+  2. **Boundary constants** — BandLayout maps bytes to S1/S2/S3/S4 bands
+     (the routing use; Q7). Only S2_S3_BOUNDARY is configurable (Q4/Q5).
   3. **Expansion proposals** — propose_expansions() classifies misfits and
      generates (proposal, significance) tuples for the caller to dispatch.
   4. **Structural grounding** — is_s1(), is_countersigned() verify S1 status;
@@ -23,7 +23,7 @@ Module-level constants and types:
   SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative significance)
 
 Band-anchored normalization:
-  normalise_significance, S2_TOP, S2_FLOOR, S3_K
+  normalise_significance was removed (Q19): the byte is already the grade.
 
 Producer significance:
   band_significance — op → band-representative integer (KP-1)
@@ -371,69 +371,6 @@ class Aggregator:
 #: mean compose. cogitator uses this unless constructed otherwise.
 DEFAULT_AGGREGATOR = Aggregator()
 
-
-# Band-anchored normalization constants. Each band owns a fixed
-# sub-range of [0.0, 1.0]; S3 is asymptotic, mapping its unbounded distance
-# range injectively into an open interval without clamping.
-S2_TOP = 0.99  # S2 anchor at distance 2 (closest S2 is now distance 1, ≈ 0.9950)
-S2_FLOOR = 0.50  # S2|S3 boundary (distance 100); S3 asymptote
-S3_K = 50  # decay rate (smaller compresses deep S3 faster)
-
-
-# Significance Boundaries
-
-
-def boundaries() -> tuple[int, int, int]:
-    """Return the three significance boundaries.
-
-    S1|S2 = D_MAX       (only exact S1 — distance 0 — qualifies)
-    S2|S3 = ~S2_S3_DISTANCE
-    S3|S4 = 0           (only a complete unresolvable is S4)
-    """
-    s12 = D_MAX
-    s23 = (~S2_S3_DISTANCE) & MASK64
-    s34 = 0
-    return s12, s23, s34
-
-
-def classify(sig: int, s12: int, s23: int, s34: int) -> str:
-    """Classify a significance value against three boundaries.
-
-    Returns "S1", "S2", "S3", or "S4".
-    """
-    if sig >= s12:
-        return "S1"
-    elif sig >= s23:
-        return "S2"
-    elif sig >= s34:
-        return "S3"
-    else:
-        return "S4"
-
-
-def normalise_significance(raw_sig: int) -> float:
-    """Normalise a raw significance value to a band-anchored float in [0.0, 1.0].
-
-    The single source of truth for significance normalization.
-    Each band owns a fixed sub-range so S1/S2/S3/S4 are always ordered and
-    visible; S3 uses an asymptotic curve so its unbounded distance range
-    maps injectively into an open interval without ever being clamped.
-
-    - S1 (distance 0)    -> 1.0
-    - S2 (1..100)        -> linear in [0.50, 0.99] (closest S2 is distance 1)
-    - S3 (>100)          -> asymptotic 0.50 * S3_K / (S3_K + (distance-100)),
-                           never 0.0
-    - raw 0 (S4)         -> 0.0
-    """
-    if raw_sig == 0:
-        return 0.0
-    distance = (~raw_sig) & MASK64
-    if distance == 0:
-        return 1.0
-    if distance <= S2_S3_DISTANCE:
-        return S2_FLOOR + (S2_TOP - S2_FLOOR) * (S2_S3_DISTANCE - distance) / (S2_S3_DISTANCE - 2)
-    delta = distance - S2_S3_DISTANCE
-    return S2_FLOOR * S3_K / (S3_K + delta)
 
 
 class QueryCandidate:

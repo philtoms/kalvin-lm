@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import D_MAX, SIG_S1
+from kalvin.expand import SIG_S1
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
@@ -29,9 +29,8 @@ from training.trainer.trainer import Trainer
 
 # ── Significance constants ────────────────────────────────────────────
 
-_S1_SIGNIFICANCE = D_MAX  # S1 threshold (distance 0)
-_S2_SIGNIFICANCE = (~100) & 0xFFFF_FFFF_FFFF_FFFF  # S2 at distance 100
-_S2_DISTANCE = 100  # raw distance for assertions
+_S1_SIGNIFICANCE = 0xFF  # S1 sentinel byte (exact match; Q5/Q9)
+_S2_SIGNIFICANCE = 0x80  # S2 byte at the S2_S3_BOUNDARY (sig_norm = 0x80/0xFF ≈ 0.501)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
@@ -216,7 +215,7 @@ class TestTrainerLogging:
         trainer.on_message(Message(role=TRAINEE_ROLE, action="frame", message=event))
 
         assert any(
-            "→ 0.50" in r.message and f"(d={_S2_DISTANCE})" in r.message for r in caplog.records
+            "→ 0.50" in r.message for r in caplog.records
         )
 
     @requires_tokenizer_data
