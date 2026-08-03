@@ -11,7 +11,7 @@ pair resolution.
 
 from kalvin.rationaliser import Rationaliser
 from kalvin.events import EventBus
-from kalvin.significance import SIG_S1, SIG_S2, is_countersigned, structural_significance
+from kalvin.significance import SIG_S1, SIG_S2, structural_sig
 from kalvin.kline import KLine, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -36,8 +36,8 @@ def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
     band: the structural band with the model-state S2→S1 countersigned fork
     Rationaliser applies."""
-    band = structural_significance(kline, signifier)
-    if band == SIG_S2 and is_countersigned(model, kline, signifier):
+    band = structural_sig(sig_level(kline, signifier))
+    if band == SIG_S2 and model.is_countersigned(kline):
         band = SIG_S1
     return KValue(kline, band)
 
@@ -49,7 +49,7 @@ pytestmark = requires_tokenizer_data
 
 
 class TestCountersignPairResolution:
-    """CR-1: Countersign pair both resolve S1 via is_countersigned()."""
+    """CR-1: Countersign pair both resolve S1 via model.is_countersigned()."""
 
     def test_countersign_pair_both_resolve_s1(self):
         bus = EventBus()

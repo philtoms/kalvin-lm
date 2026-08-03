@@ -344,6 +344,32 @@ class Model:
         with self._lock:
             return self._chain.contains_excluding_first(kline)
 
+    def is_countersigned(self, kline: KLine) -> bool:
+        """Check if *kline* is countersigned by another kline in the model.
+
+        A kline is countersigned if its ``signature_of(nodes)`` exists as a
+        countersigning kline with one node — the countersigned kline's
+        signature::
+
+            Query = {Q: [A, B]}
+            Countersigner = {AB: [Q]}
+
+        A self-referential kline ``{S: [S]}`` is excluded: its nodes_signature
+        is ``S`` and it is itself a one-node kline whose node is ``S``, so it
+        would otherwise count as its own countersigner.
+        """
+        if is_terminal(kline):
+            return False
+        nodes_signature = self._signifier.signature_of(kline.nodes)
+        with self._lock:
+            for countersigner in self._chain.find_all(nodes_signature):
+                if (
+                    len(countersigner.nodes) == 1
+                    and countersigner.nodes[0] == kline.signature
+                ):
+                    return True
+        return False
+
     def _exists_any(self, kline: KLine) -> bool:
         """Check STM, Frame, LTM, then Base. Runs under the caller's lock."""
         return self._chain.contains(kline)

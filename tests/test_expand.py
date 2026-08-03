@@ -7,7 +7,7 @@ from kalvin.expand import (
     expand,
 )
 from kalvin.proposals import propose_expansions
-from kalvin.kline import KLine, is_canon
+from kalvin.kline import KLine, is_canon, sig_level
 from kalvin.significance import (
     DEFAULT_AGGREGATOR,
     DEFAULT_S2_S3_BOUNDARY,
@@ -20,9 +20,7 @@ from kalvin.significance import (
     SIG_S4,
     BandLayout,
     band_significance,
-    is_countersigned,
-    is_s1,
-    structural_significance,
+    structural_sig,
 )
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import COMPOUND_TOKEN
@@ -348,12 +346,12 @@ class TestExpand:
         # terminal + top-level terminal.
         assert len(results) == 2
 
-        # Nested terminal (recursive expand(2, 8)): node 8 matched-ungrounded
-        # (identity is not S1) -> [decay(1)].
+        # Nested terminal (recursive expand(2, 8)): node 8 is grounded
+        # (identity in frame) -> [1.0].
         nested = results[0]
         assert nested.kline.signature == 8
         assert nested.significance == DEFAULT_AGGREGATOR.compose_terminal(
-            [DEFAULT_AGGREGATOR.decay(1)]
+            [1.0]
         )
 
         # Top-level terminal: q-4 does not resolve directly (0.0); c-2 bridges
@@ -497,44 +495,6 @@ class TestExpand:
 # ── Structural Grounding Tests ───────────────────────────────────────
 
 
-class TestIsS1:
-    def test_canonical_kline(self):
-        """Genuine canon (sig == signature_of(nodes), non-self-referential) → S1."""
-        m = Model()
-        # sig 0b110 = OR(0b100, 0b010); a genuine canon.
-        k = KLine(0b110, [0b100, 0b010])
-        assert is_s1(m, k, signifier) is True
-
-    def test_self_referential_is_not_s1(self):
-        """{S: [S]} is identity, not canon → not S1 by canon."""
-        m = Model()
-        k = KLine(10, [10])
-        assert is_s1(m, k, signifier) is False
-
-    def test_countersigned_in_model(self):
-        """Two klines with mutual node references → S1."""
-        m = Model()
-        a = KLine(5, [10])
-        b = KLine(10, [5])
-        m.add_to_frame(a)
-        m.add_to_frame(b)
-        # a is countersigned: a.nodes has 10, model.find(10)=b, b.nodes has 5=a.signature
-        assert is_s1(m, a, signifier) is True
-
-    def test_neither_canonical_nor_countersigned(self):
-        """Non-canonical, non-countersigned kline → not S1."""
-        m = Model()
-        k = KLine(5, [10])  # not canonical (make_sig([10])=10≠5)
-        assert is_s1(m, k, signifier) is False
-
-    def test_countersigned_skips_unresolved_nodes(self):
-        """Unresolved nodes in kline.nodes are skipped in countersigned search."""
-        m = Model()
-        a = KLine(5, [99])  # node 99 not in model
-        m.add_to_frame(a)
-        assert is_s1(m, a, signifier) is False  # not canonical, no resolved nodes to check
-
-
 class TestIsCountersigned:
     def test_countersigned_in_model(self):
         """Query = {5: [10, 20]}, Countersigner = {make_sig([10,20]): [5]}"""
@@ -544,7 +504,7 @@ class TestIsCountersigned:
         countersigner = KLine(30, [5])
         m.add_to_frame(query)
         m.add_to_frame(countersigner)
-        assert is_countersigned(m, query, signifier) is True
+        assert m.is_countersigned(query) is True
 
     def test_one_way_only(self):
         m = Model()
@@ -552,12 +512,12 @@ class TestIsCountersigned:
         b = KLine(10, [20, 30])  # sig doesn't match make_sig(a.nodes)
         m.add_to_frame(a)
         m.add_to_frame(b)
-        assert is_countersigned(m, a, signifier) is False
+        assert m.is_countersigned(a) is False
 
     def test_no_model_match(self):
         m = Model()
         a = KLine(5, [10])
-        assert is_countersigned(m, a, signifier) is False
+        assert m.is_countersigned(a) is False
 
     def test_countersigner_wrong_node(self):
         """Countersigner has matching sig but wrong node → not countersigned."""
@@ -566,7 +526,7 @@ class TestIsCountersigned:
         countersigner = KLine(30, [99])  # make_sig([10,20])=30, but node != query.sig
         m.add_to_frame(query)
         m.add_to_frame(countersigner)
-        assert is_countersigned(m, query, signifier) is False
+        assert m.is_countersigned(query) is False
 
     def test_countersigner_multiple_nodes(self):
         """Countersigner has matching sig but more than one node → not countersigned."""
@@ -575,46 +535,42 @@ class TestIsCountersigned:
         countersigner = KLine(30, [5, 99])  # make_sig([10,20])=30, node has 5 but len>1
         m.add_to_frame(query)
         m.add_to_frame(countersigner)
-        assert is_countersigned(m, query, signifier) is False
+        assert m.is_countersigned(query) is False
 
 
-class TestStructuralSignificance:
-    """structural_significance — the pure-structural band, no model state.
+class TestSigLevel:
+    """sig_level — the pure-structural band string, no model state.
 
-    Composed from the kline predicates (is_terminal, is_unknown, is_identity,
-    is_canon, is_misfit) and node count; the compound-word identity form is a
-    terminal and never named here. The sole model-state adjustment (the S2→S1
-    countersigned fork) is applied at the call site, not here.
+    The sole model-state adjustment (the S2→S1 countersigned fork) is
+    applied at the call site, not here.
     """
 
     def test_empty_identity_ask_is_s4(self):
-        assert structural_significance(KLine(42, []), signifier) == SIG_S4
+        assert sig_level(KLine(42, []), signifier) == "S4"
 
     def test_self_referential_identity_is_s1(self):
         # {S: [S]} is identity, with nodes → self-grounded S1.
-        assert structural_significance(KLine(42, [42]), signifier) == SIG_S1
+        assert sig_level(KLine(42, [42]), signifier) == "S1"
 
     def test_compound_word_is_s1(self):
         # A §11.3 compound-word: COMPOUND_TOKEN is among the nodes.
-        # It is an Identity terminal with nodes → self-grounded S1; its
-        # subwords are opaque and never re-enter the band logic here.
+        # Signature equals signature_of(nodes), so structurally a canon → S1.
         nodes = [0b100, 0b010, COMPOUND_TOKEN]
         kl = KLine(0b110 | COMPOUND_TOKEN, nodes)
-        assert structural_significance(kl, signifier) == SIG_S1
+        assert sig_level(kl, signifier) == "S1"
 
     def test_canon_is_s1(self):
-        # A canon is a grounded aggregation by structure → S1. (A canon whose
-        # reciprocal countersigner is in the model is also S1, trivially.)
+        # A canon is a grounded aggregation by structure → S1.
         kl = KLine(0b110, [0b100, 0b010])  # sig == signature_of(nodes)
-        assert structural_significance(kl, signifier) == SIG_S1
+        assert sig_level(kl, signifier) == "S1"
 
     def test_single_node_relationship_is_s3(self):
         # {A: [B]} (A ≠ B) — connotation / denotation.
-        assert structural_significance(KLine(0xFF, [0x01]), signifier) == SIG_S3
+        assert sig_level(KLine(0xFF, [0x01]), signifier) == "S3"
 
     def test_multi_node_misfit_is_s2(self):
         # {AB: [A, C]} — multi-node, not identity, not canon → misfit.
-        assert structural_significance(KLine(0b110, [0b100, 0b001]), signifier) == SIG_S2
+        assert sig_level(KLine(0b110, [0b100, 0b001]), signifier) == "S2"
 
 
 # ── Significance Boundary Tests ───────────────────────────────────────

@@ -19,7 +19,8 @@ _SYS_SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SYS_SRC) not in sys.path:
     sys.path.insert(0, str(_SYS_SRC))
 
-from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4, structural_significance
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
+from kalvin.kline import sig_level
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
@@ -92,10 +93,10 @@ def main() -> None:
         op = d.op if d else "?"
         lab = labels.get(query.kline.signature, query.kline.signature)
         nodes = [labels.get(n, n) for n in query.kline.nodes]
-        struct = structural_significance(query.kline, sigf)
+        struct = sig_level(query.kline, sigf)
         print(f"  incoming: {op:12s} {lab!s:20s} nodes={nodes}  "
               f"declared={_BAND.get(query.significance,'?')}  "
-              f"structural={_BAND.get(struct,'?')}")
+              f"structural={struct}")
         batch, obs = engine.rationalise(state, [query])
         _show_batch("K batch", batch, labels)
         _show_obs(obs, labels)

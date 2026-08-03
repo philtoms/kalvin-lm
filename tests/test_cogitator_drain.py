@@ -13,8 +13,8 @@ import time
 from kalvin.rationaliser import Rationaliser
 from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
-from kalvin.significance import SIG_S1, SIG_S2, is_countersigned, structural_significance
-from kalvin.kline import KLine
+from kalvin.significance import SIG_S1, SIG_S2, structural_sig
+from kalvin.kline import KLine, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
@@ -27,8 +27,8 @@ def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
     band: the structural band with the model-state S2→S1 countersigned fork
     Rationaliser applies. Identity klines still declare S4."""
-    band = structural_significance(kline, signifier)
-    if band == SIG_S2 and is_countersigned(model, kline, signifier):
+    band = structural_sig(sig_level(kline, signifier))
+    if band == SIG_S2 and model.is_countersigned(kline):
         band = SIG_S1
     return KValue(kline, band)
 
@@ -236,7 +236,7 @@ class TestNoCrossLessonSpillover:
             # signatures (5 | 30 = 31 = 0b11111), so it routes S4 (an empty
             # identity ask — no candidates, no S2/S3 cogitation): a clean
             # frame event. (A self-referential {S:[S]} is now S1 under
-            # structural_significance, so the empty form is the genuine S4.)
+            # sig_level, so the empty form is the genuine S4.)
             events.clear()
             agent.rationalise(KValue(KLine(t(64), []), 0))
 

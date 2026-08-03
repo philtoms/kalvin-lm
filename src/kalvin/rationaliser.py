@@ -34,11 +34,9 @@ from kalvin.significance import (
     SIG_S1,
     SIG_S2,
     SIG_S4,
-    is_countersigned,
-    is_s1,
-    structural_significance,
+    structural_sig,
 )
-from kalvin.kline import KLine, is_canon
+from kalvin.kline import KLine, is_canon, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
@@ -183,7 +181,7 @@ class Rationaliser:
           - S3: no node overlap.
 
         S1 (full overlap) is intentionally NOT routed here — true S1 is a
-        structural property established by ``expand()`` / ``is_s1()``, not
+        structural property established by ``expand()`` / ``model.grounded()``, not
         by node membership. S4 (empty query) never reaches routing because
         Unknown klines are resolved on the fast path in ``rationalise``
         before any candidate is submitted to the cogitator.
@@ -234,13 +232,13 @@ class Rationaliser:
         # S4 is the sentinel SIG_S4 (= 0), detected by value: classify()
         # collapses the S3|S4 boundary (0 classifies as S3), so the band
         # function cannot be used to detect S4. The derived band is the
-        # structural band (structural_significance) with the one model-state
+        # structural band (sig_level → structural_sig) with the one model-state
         # fork: a structurally-S2 misfit whose reciprocal countersigner is
         # present upgrades to S1. Only an Unknown ask (empty-nodes Unknown)
         # derives SIG_S4, so an Unknown kline declared S4 agrees here and is
         # never dropped.
-        derived_sig = structural_significance(kline, self._signifier)
-        if derived_sig == SIG_S2 and is_countersigned(self._model, kline, self._signifier):
+        derived_sig = structural_sig(sig_level(kline, self._signifier))
+        if derived_sig == SIG_S2 and self._model.is_countersigned(kline):
             derived_sig = SIG_S1
         if value.significance == SIG_S4 and derived_sig != SIG_S4:
             return True  # drop — sender declares S4; Kalvin derives otherwise
@@ -269,13 +267,13 @@ class Rationaliser:
 
         # Register in STM before the ratification check so sequential
         # countersign pairs (e.g. from `M == H` compiling to {M: H} and
-        # {H: M}) can find each other via is_countersigned.
+        # {H: M}) can find each other via model.is_countersigned.
         self._model.add_to_stm(kline)
 
         # Ratification — countersigned in the model → S1. Only countersign
         # produces reciprocal klines; denote/connote share a structure
         # (a single node entry in opposite directions) and are handled below.
-        if is_countersigned(self._model, kline, self._signifier):
+        if self._model.is_countersigned(kline):
             self._model.add_to_ltm(kline)
             self._publish("frame", value, KValue(kline, SIG_S1))  # S1
             return True
@@ -367,15 +365,14 @@ class Rationaliser:
     # CogitationHandler protocol
 
     def on_s1(self, query_value: KValue, candidate: KLine) -> None:
-        """CogitationHandler.on_s1: structural check, promote, publish frame event.
+        """CogitationHandler.on_s1: promote, publish frame event.
 
         ``query_value`` is the original inbound KValue (KE-2); its kline is the
         query voice for promotion. The candidate kline becomes the proposal,
         wrapped at ``SIG_S1`` (S1 ratification).
         """
         query = query_value.kline
-        if is_s1(self._model, candidate, self._signifier):
-            self._promote_participating(query, candidate)
+        self._promote_participating(query, candidate)
         self._publish("frame", query_value, KValue(candidate, SIG_S1))
 
     def on_expansion(

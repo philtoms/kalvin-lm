@@ -19,7 +19,6 @@ from kalvin.significance import (
     SIG_S2,
     SIG_S3,
     SIG_S4,
-    structural_significance,
 )
 from kalvin.kline import (
     COMPOUND_TOKEN,
@@ -30,6 +29,7 @@ from kalvin.kline import (
     is_misfit,
     is_terminal,
     is_unknown,
+    sig_level,
 )
 from kalvin.kvalue import KValue
 
@@ -414,9 +414,9 @@ class _Turn:
         bucket = self._state.frame.get(kline.signature, [])
         if is_terminal(kline):
             return any(is_terminal(framed) for framed in bucket)
-        target = structural_significance(kline, self._signifier)
+        target = sig_level(kline, self._signifier)
         return any(
-            structural_significance(framed, self._signifier) == target
+            sig_level(framed, self._signifier) == target
             for framed in bucket
         )
 

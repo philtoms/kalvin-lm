@@ -18,10 +18,9 @@ Two clusters live here:
      ``ComposeFunction`` protocols with default implementations, and the
      ``Aggregator`` that bundles layout + the two seams and composes a
      terminal byte via ``compose_terminal``.
-  3. **Structural grounding** — ``structural_significance`` (derive a kline's
-     band from its structure alone), ``is_s1`` / ``is_countersigned`` (verify
-     S1 status; ``is_s1`` applies the model-state S2→S1 countersigned fork
-     that ``structural_significance`` deliberately leaves to the call site).
+  3. **Structural grounding** — structural band derivation lives in
+     ``kline.sig_level``; model-state grounding queries (``is_countersigned``)
+     live on :class:`kalvin.model.Model`.
 
 Significance occupies the LOW 8 BITS of an int; access is always via
 masking: ``sig & SIG_MASK``. It is a global linear inverted distance in
@@ -40,7 +39,7 @@ Module-level constants and types:
 
 Producer significance:
   band_significance — op → band-representative integer (KP-1)
-  structural_significance — derive a KLine's structural band
+  LEVEL_TO_SIG — map sig_level string to band-representative byte
 """
 
 from __future__ import annotations
@@ -49,11 +48,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from kalvin.kline import KLine, is_canon, is_terminal, is_unknown
+from kalvin.kline import KLine
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
-    from kalvin.model import Model
 
 # ─────────────────────────────────────────────────────────────────────
 # 8-bit compositional significance.
@@ -83,7 +81,7 @@ _MAX_INTERIOR_DISTANCE: int = 0xFE
 
 # Band-representative significance values — the canonical bytes a producer
 # stamps when asserting a band rather than computing a grade (the compiler,
-# the countersign reciprocal, structural_significance). Single source of
+# the countersign reciprocal, band_significance). Single source of
 # truth per @model spec §Band-representative Values. Computed values from
 # expand() may be any byte within a band, not only the representative.
 #
@@ -95,6 +93,15 @@ SIG_S1 = 0xFF  # exact match  (== SIG8_MAX; the S1|S2 boundary)
 SIG_S2 = 0xFE  # top of S2
 SIG_S3 = 0x7F  # top of S3 at the default boundary (DEFAULT_S2_S3_BOUNDARY - 1)
 SIG_S4 = 0x00  # the S4 sentinel  (== SIG8_MIN; structural unresolvable)
+
+#: Map ``kline.sig_level`` strings to band-representative bytes.
+#: Inverse of ``BandLayout.classify``.
+LEVEL_TO_SIG: dict[str, int] = {
+    "S1": SIG_S1,
+    "S2": SIG_S2,
+    "S3": SIG_S3,
+    "S4": SIG_S4,
+}
 
 # Compile-time structural relationship (@CONTEXT.md §Structural Relationship) → band-
 # representative significance. Producers that assert a band rather than compute
@@ -356,61 +363,10 @@ DEFAULT_AGGREGATOR = Aggregator()
 # Structural Grounding
 
 
-def is_s1(model: Model, kline: KLine, signifier: KSignifier) -> bool:
-    """Determine if a kline is structurally grounded (S1).
+def structural_sig(level: str) -> int:
+    """Map a ``sig_level`` string ("S1"–"S4") to its band-representative byte.
 
-    A kline is S1 if:
-    1. Its signature fully describes its nodes (canonical), OR
-    2. It is countersigned by another kline in the model.
+    Inverse of ``BandLayout.classify``; used by callers that need the int byte
+    (e.g. ``KValue`` construction) from a ``sig_level`` result.
     """
-    if is_canon(kline, signifier):
-        return True
-    return is_countersigned(model, kline, signifier)
-
-
-def is_countersigned(model: Model, kline: KLine, signifier: KSignifier) -> bool:
-    """Check if kline is countersigned by any kline in the model.
-
-    A kline is countersigned if its nodes_signature exists as a
-    countersigning kline with one node — the countersigned kline's signature.
-
-    Query = {Q: [A, B]}
-    Countersigner = {AB: [Q]}
-
-    A self-referential kline ``{S: [S]}`` is excluded: its nodes_signature
-    is ``S`` and it is itself a one-node kline whose node is ``S``, so it
-    would otherwise count as its own countersigner.
-    """
-    if is_terminal(kline):
-        return False
-    nodes_signature = signifier.signature_of(kline.nodes)
-    for countersigner in model.find_all(nodes_signature):
-        if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
-            return True
-    return False
-
-
-def structural_significance(kline: KLine, signifier: KSignifier) -> int:
-    """Derive a kline's significance band from its structure alone.
-
-    No model state — structure is an emergent property of the kline — this
-    function composes the predicates rather than re-deriving structure inline.
-
-    Mapping (@CONTEXT.md §Structural Relationship):
-
-    - **S1** — a grounded Identity terminal or a canon. An Identity
-      (self-referential ``{A:[A]}`` or a compound-word) is self-grounded;
-      the empty form ``{A:[]}`` is an Unknown (S4), not S1. A canon
-      ``{AB:[A, B]}`` is a grounded aggregation.
-    - **S3** — a single-node, non-terminal relationship ``{A:[B]}``
-      (connotation / denotation).
-    - **S2** — a multi-node misfit (underfit / overfit / misfit).
-    - **S4** — the empty Unknown frame ``{A:[]}``.
-    """
-    if is_terminal(kline):
-        return SIG_S4 if is_unknown(kline) else SIG_S1
-    if len(kline.nodes) == 1:
-        return SIG_S3
-    if is_canon(kline, signifier):
-        return SIG_S1
-    return SIG_S2
+    return LEVEL_TO_SIG[level]

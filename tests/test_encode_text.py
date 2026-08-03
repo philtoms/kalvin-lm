@@ -10,8 +10,8 @@ import pytest
 
 from kalvin.rationaliser import Rationaliser
 from kalvin.events import EventBus
-from kalvin.significance import SIG_S1, SIG_S2, is_countersigned, structural_significance
-from kalvin.kline import KLine
+from kalvin.significance import SIG_S1, SIG_S2, structural_sig
+from kalvin.kline import KLine, sig_level
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
@@ -24,8 +24,8 @@ def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
     band (kvalue spec KP-1): the structural band with the model-state S2→S1
     countersigned fork Rationaliser applies. Empty/identity klines declare S4."""
-    band = structural_significance(kline, signifier)
-    if band == SIG_S2 and is_countersigned(model, kline, signifier):
+    band = structural_sig(sig_level(kline, signifier))
+    if band == SIG_S2 and model.is_countersigned(kline):
         band = SIG_S1
     return KValue(kline, band)
 

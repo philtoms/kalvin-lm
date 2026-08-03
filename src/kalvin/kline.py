@@ -222,15 +222,13 @@ _OP_SYMBOLS = {
 
 
 def sig_level(kline: KLine, signifier: KSignifier) -> str:
-    """Return significance level (S1–S4) for a KLine.
-
-    Uses dbg.op when available, infers from structure otherwise.
+    """Return structural significance level (S1–S4) for a KLine.
     """
     nodes = kline.nodes
     if not nodes:
         return "S4"
     if len(nodes) == 1:
-        return "S3"
+        return "S1" if kline.signature == kline.nodes[0] else "S3"
     return "S1" if kline.signature == signifier.signature_of(kline.nodes) else "S2"
 
 
