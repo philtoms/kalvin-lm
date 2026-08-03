@@ -60,7 +60,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1
+from kalvin.significance import SIG_S1
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.paths import agent_bin

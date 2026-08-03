@@ -170,6 +170,7 @@ The kline spec is self-contained with respect to node classification.
 
 ## Referenced By
 
-- **Significance** (@significance spec) — compares query and candidate Klines.
+- **Significance** (@model spec §Significance Semantics) — compares query
+  and candidate Klines.
 - **Model** (@model spec) — stores and retrieves Klines by signature.
 - **Agent** (@agent spec) — encodes input into Klines, retrieves candidates.

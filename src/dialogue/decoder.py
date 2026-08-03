@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import COMPOUND_TOKEN

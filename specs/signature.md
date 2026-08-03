@@ -104,5 +104,5 @@ in the @signifier spec (SIG-1 … SIG-16).
   retrieval via overlap matching (@signifier).
 - **Agent** (@agent spec) — creates signatures during the prepare phase of
   rationalisation.
-- **Significance** (@significance spec) — signatures are the basis for
-  candidate retrieval but significance computation is separate.
+- **Significance** (@model spec §Significance Semantics) — signatures are
+  the basis for candidate retrieval but significance computation is separate.

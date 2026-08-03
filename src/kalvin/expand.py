@@ -1,44 +1,43 @@
-"""Expand — graph expansion, significance computation, classification, and
-expansion proposal pipeline.
+"""Expand — graph expansion and expansion-proposal pipeline.
 
-This module owns the full significance → classification → expansion proposal
-pipeline:
+This module owns the *graph* layer: traversing the model to expand a
+query|candidate pair into connotations and a terminal significance byte
+(``expand``), promoting structurally-participating klines after ratification
+(``promote_participating``), and generating expansion proposals for misfit
+candidates (``propose_expansions`` plus the misfit-comprehension helpers).
 
-  1. **Significance computation** — expand() composes an 8-bit grade per
-     query|candidate pair and yields KValue objects.
-  2. **Band classification** — BandLayout maps bytes to S1/S2/S3/S4 bands.
-     Only S2_S3_BOUNDARY is configurable.
-  3. **Expansion proposals** — propose_expansions() classifies misfits and
-     generates (proposal, significance) tuples for the caller to dispatch.
-  4. **Structural grounding** — is_s1(), is_countersigned() verify S1 status;
-     structural_significance() derives a stored KLine's band from its
-     structure alone (the model-state S2→S1 countersigned fork is applied at
-     the call site, e.g. KAgent).
+It builds on the significance topology layer (``kalvin.significance``), which
+owns the 8-bit distance algebra, the band layout, the decay/compose seams and
+the ``Aggregator``, and the structural-grounding predicates. The dependency
+is strictly one-way: expand → significance, never the reverse.
+
+Misfit comprehension (underfit / overfit / dual expansion generation) lives
+in the ``generate_expansions`` helpers at the bottom of this module — a kline
+is a misfit when its signature and its nodes' signature disagree, and the
+helpers reshape what is already there (no invention, no orphan nodes).
 
 The module reads from the Model (storage) but is a separate responsibility:
-Model indexes and retrieves; Expand computes how far apart two KLines are.
+Model indexes and retrieves; Expand walks the graph and proposes reshapes.
 
 Module-level constants and types:
-  MAX_HOP,
-  SIG_MASK, SIG8_MAX, SIG8_MIN, DEFAULT_S2_S3_BOUNDARY,
-  SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative sentinels),
-  BandLayout, distance_to_byte, Aggregator, DEFAULT_AGGREGATOR
-
-Producer significance:
-  band_significance — op → band-representative integer (KP-1)
-  structural_significance — derive a KLine's structural band
+  MAX_HOP, edge_hops, expand, promote_participating, propose_expansions,
+  generate_expansions
 """
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator, Sequence
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from kalvin.kline import KLine, is_canon, is_terminal, is_unknown
 from kalvin.kvalue import KValue
-from kalvin.misfit import generate_expansions
+from kalvin.significance import (
+    DEFAULT_AGGREGATOR,
+    SIG_S4,
+    Aggregator,
+    is_s1,
+)
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
@@ -48,312 +47,6 @@ _log = logging.getLogger(__name__)
 
 # Upper bound on edge hop chain depth (edge_hops's traversal bound).
 MAX_HOP = 100
-
-# ─────────────────────────────────────────────────────────────────────
-# 8-bit compositional significance.
-#
-# Significance occupies the LOW 8 BITS of an int; access is always via
-# masking: ``sig & SIG_MASK``. It is a global linear inverted distance in
-# ``(0x00, 0xFF)``: higher byte = closer match, no reshape at the S2|S3
-# boundary. Saturation guards: ``0xFF`` is reachable ONLY by exact match
-# (distance 0); ``0x00`` is reachable ONLY by a structural unresolvable;
-# the interior ``(0x01..0xFE)`` is the open band of graded distance.
-#
-# Only ``S2_S3_BOUNDARY`` is configurable; S1|S2 and S3|S4 are fixed
-# sentinels.
-# ─────────────────────────────────────────────────────────────────────
-
-#: Low-byte mask isolating the 8-bit significance.
-SIG_MASK: int = 0xFF
-
-#: The S1 sentinel / exact-match byte. Reachable only at distance 0.
-SIG8_MAX: int = 0xFF
-
-#: The S4 sentinel / structural-unresolvable byte. A computed (resolvable)
-#: distance never yields this — only a structural unresolvable path does,
-#: which does not go through ``distance_to_byte``.
-SIG8_MIN: int = 0x00
-
-#: Default for the one configurable boundary. S2 = [0x80, 0xFE];
-#: S3 = [0x01, 0x7F]. Must be in [0x02, 0xFE] so both interior bands are
-#: non-empty (see ``BandLayout.validate``).
-DEFAULT_S2_S3_BOUNDARY: int = 0x80
-
-#: Distance at which ``distance_to_byte`` floors at 0x01. Distances >= this
-#: saturate to 0x01, never 0x00.
-_MAX_INTERIOR_DISTANCE: int = 0xFE
-
-# Band-representative significance values — the canonical bytes a producer
-# stamps when asserting a band rather than computing a grade (the compiler,
-# the countersign reciprocal, structural_significance). Single source of
-# truth per @model spec §Band-representative Values. Computed values from
-# expand() may be any byte within a band, not only the representative.
-#
-# Fixed (not derived from a BandLayout): structural significance marks *which
-# band a structure claims*, independent of where the configurable
-# S2_S3_BOUNDARY is drawn for computed grades. BandLayout exposes matching
-# layout-derived representatives for classification.
-SIG_S1 = 0xFF  # exact match  (== SIG8_MAX; the S1|S2 boundary)
-SIG_S2 = 0xFE  # top of S2
-SIG_S3 = 0x7F  # top of S3 at the default boundary (DEFAULT_S2_S3_BOUNDARY - 1)
-SIG_S4 = 0x00  # the S4 sentinel  (== SIG8_MIN; structural unresolvable)
-
-# Compile-time structural relationship (@CONTEXT.md §Structural Relationship) → band-
-# representative significance. Producers that assert a band rather than compute
-# a distance (the compiler, per @kvalue spec KP-1) look up here. CONNOTES and
-# DENOTES both map to SIG_S3; unknown ops default to SIG_S4.
-_OP_TO_SIG: dict[str, int] = {
-    "COUNTERSIGNS": SIG_S1,
-    "CANONIZES": SIG_S2,
-    "CONNOTES": SIG_S3,
-    "DENOTES": SIG_S3,
-    "UNKNOWN": SIG_S4,
-}
-
-
-def band_significance(op: str) -> int:
-    """Compile-time structural relationship → band-representative significance.
-
-    Maps the closed set of structural relationships (@CONTEXT.md §Structural Relationship)
-    to the maximal significance of each band. Used by producers that assert a
-    band rather than compute a distance (the compiler, per @kvalue spec KP-1).
-    Unknown ops default to ``SIG_S4``.
-    """
-    return _OP_TO_SIG.get(op, SIG_S4)
-
-
-# ── Byte conversion (linear inverted distance) ──────────────────────
-
-
-def distance_to_byte(distance: int) -> int:
-    """Linear inverted ``distance`` → byte in ``[0x01, 0xFF]``.
-
-    - ``distance == 0``        → ``0xFF`` (exact match — the only path to 0xFF)
-    - ``1 <= distance <= 0xFE`` → ``0xFE..0x01`` (linear, monotone decreasing)
-    - ``distance >= 0xFE``      → ``0x01`` (floors; never reaches 0x00)
-
-    This function never emits ``0x00``: a *computed* distance is by definition
-    resolvable, and only a structural unresolvable yields the ``SIG8_MIN``
-    sentinel — that path does not go through here.
-    """
-    if distance < 0:
-        raise ValueError(f"distance must be non-negative; got {distance}")
-    if distance == 0:
-        return SIG8_MAX
-    if distance >= _MAX_INTERIOR_DISTANCE:
-        return 0x01
-    # Linear: distance 1 → 0xFE, ..., distance 0xFD → 0x02, distance 0xFE → 0x01.
-    return SIG8_MAX - distance  # in [0x01, 0xFE] for distance in [1, 0xFE]
-
-
-class BandLayout:
-    """The four bands over the linear byte, derived from one boundary.
-
-    Only ``s2_s3_boundary`` is configurable; S1|S2 and S3|S4 are fixed
-    sentinels exposed as named constants.
-
-        S1 = [0xFF]                       (only exact match — distance 0)
-        S2 = [s2_s3_boundary, 0xFE]       (close, direct)
-        S3 = [0x01, s2_s3_boundary - 1]    (indirect, decayed)
-        S4 = [0x00]                       (only structural unresolvable)
-
-    Band-representative values (the canonical bytes a producer stamps when
-    it asserts a band rather than computes a distance)::
-
-        sig_s1 = 0xFF
-        sig_s2 = 0xFE                  (the top of S2)
-        sig_s3 = s2_s3_boundary - 1     (the top of S3)
-        sig_s4 = 0x00
-    """
-
-    __slots__ = ("s2_s3_boundary",)
-
-    def __init__(self, s2_s3_boundary: int = DEFAULT_S2_S3_BOUNDARY) -> None:
-        self.validate_boundary(s2_s3_boundary)
-        self.s2_s3_boundary = s2_s3_boundary
-
-    @staticmethod
-    def validate_boundary(s2_s3_boundary: int) -> None:
-        """Interior guard: the boundary must split the open band cleanly.
-
-        ``[0x02, 0xFE]`` leaves room for non-empty S2 ``[b, 0xFE]`` and
-        non-empty S3 ``[0x01, b-1]``.
-        """
-        if not isinstance(s2_s3_boundary, int) or not (
-            0x02 <= s2_s3_boundary <= 0xFE
-        ):
-            raise ValueError(
-                f"S2_S3_BOUNDARY must be an int in [0x02, 0xFE] to leave room "
-                f"for non-empty S2 and S3 bands; got {s2_s3_boundary!r}"
-            )
-
-    # Fixed sentinels, as lowercase properties (ruff N802). The module-level
-    # SIG_S1/SIG_S4 constants are uppercase (constants, not functions); these
-    # are the layout-internal accessors.
-    @property
-    def sig_s1(self) -> int:
-        return 0xFF
-
-    @property
-    def sig_s4(self) -> int:
-        return 0x00
-
-    # Boundary-derived representatives.
-    @property
-    def sig_s2(self) -> int:
-        return 0xFE  # top of S2
-
-    @property
-    def sig_s3(self) -> int:
-        return self.s2_s3_boundary - 1  # top of S3
-
-    def classify(self, sig: int) -> str:
-        """Classify a raw byte into S1/S2/S3/S4. Operates on the low byte only."""
-        b = sig & SIG_MASK
-        if b == self.sig_s1:
-            return "S1"
-        if b >= self.s2_s3_boundary:
-            return "S2"
-        if b >= 0x01:
-            return "S3"
-        return "S4"
-
-
-# ── Pluggable seams for compositional significance ───────────────────
-#
-# A compositional significance has two functions:
-#   1. DecayFunction  — leaf decay: reentrant hop count -> accountedness.
-#   2. ComposeFunction — how per-node accountedness values combine.
-# Both are Protocols with default implementations; expand() is parameterised
-# over them via Aggregator.
-
-
-@runtime_checkable
-class DecayFunction(Protocol):
-    """Leaf decay: reentrant hop count -> accountedness contribution in [0, 1].
-
-    The caller (expand) supplies the boundary cases directly:
-      - matched AND grounded     -> 1.0  (decay is never called)
-      - matched but ungrounded   -> decay(1)  (one hop of doubt)
-      - resolvable in h hops      -> decay(h)
-      - unresolvable              -> 0.0  (decay is never called)
-    """
-
-    def __call__(self, hops: int) -> float: ...
-
-
-@runtime_checkable
-class ComposeFunction(Protocol):
-    """Composition: per-slot accountedness values -> aggregate in [0, 1].
-
-    The result is the accounted fraction consumed by the byte encoder.
-    Implementations should be count-invariant (scaling the same accountedness
-    distribution leaves the byte unchanged) unless they deliberately trade
-    that property away.
-    """
-
-    def __call__(self, slot_values: Sequence[float]) -> float: ...
-
-
-# ── Default decay functions ──────────────────────────────────────────
-
-
-def asymptotic_decay(hops: int, k: int = 50) -> float:
-    """The default decay curve: ``k / (k + hops)``.
-
-    hops 0 -> 1.0, monotone decreasing, asymptotes to 0 as hops -> inf.
-    Larger ``k`` decays more slowly (more tolerance for deep resolution).
-    """
-    if hops < 0:
-        raise ValueError(f"hops must be non-negative; got {hops}")
-    return k / (k + hops)
-
-
-def harmonic_decay(hops: int) -> float:
-    """``1 / (1 + hops)``. A standard harmonic decay; slower than small-k asymptote."""
-    if hops < 0:
-        raise ValueError(f"hops must be non-negative; got {hops}")
-    return 1.0 / (1.0 + hops)
-
-
-def linear_decay(hops: int, reach: int = 100) -> float:
-    """Linear decay to 0 at ``hops == reach``; clamps at 0 beyond.
-
-    ``reach`` is the hop count at which a node is considered fully unaccounted.
-    """
-    if hops < 0:
-        raise ValueError(f"hops must be non-negative; got {hops}")
-    if reach <= 0:
-        raise ValueError(f"reach must be positive; got {reach}")
-    return max(0.0, 1.0 - hops / reach)
-
-
-def make_asymptotic_decay(k: int = 50) -> DecayFunction:
-    """Curry ``k`` into an asymptotic_decay callable."""
-
-    def _decay(hops: int) -> float:
-        return asymptotic_decay(hops, k=k)
-
-    return _decay
-
-
-# ── Default compose functions ────────────────────────────────────────
-
-
-def mean_compose(slot_values: Sequence[float]) -> float:
-    """Default composition: arithmetic mean of per-slot accountedness.
-
-    Count-invariant by construction: scaling the same accountedness
-    distribution (repeating it) leaves the mean — and thus the byte —
-    unchanged.
-    """
-    n = len(slot_values)
-    if n == 0:
-        # No slots — vacuously unaccounted. Callers only invoke compose when
-        # there is at least one slot; this guard is defensive.
-        return 0.0
-    return sum(slot_values) / n
-
-
-@dataclass(frozen=True)
-class Aggregator:
-    """The compose-on-return policy, bundling layout + the two seams.
-
-    ``expand()`` is parameterised over a single ``Aggregator`` (keyword-only,
-    defaulting to :data:`DEFAULT_AGGREGATOR`) so the call site stays readable
-    while the recursion threads one object. Freezing makes it safe to share
-    across recursive calls and threads.
-    """
-
-    layout: BandLayout = field(default_factory=BandLayout)
-    decay: DecayFunction = field(default_factory=make_asymptotic_decay)
-    compose: ComposeFunction = field(default=mean_compose)
-
-    def compose_terminal(self, slot_values: list[float]) -> int:
-        """Compose per-slot accountedness into the terminal significance byte.
-
-        Maps the compose() of per-slot accountedness through the linear
-        inverted-distance byte, with the two saturation guards:
-
-          accounted_fraction == 1.0 -> 0xFF  (exact match only)
-          accounted_fraction == 0.0 -> 0x00  (only total non-account)
-          otherwise                 -> byte in (0x00, 0xFF)
-        """
-        frac = max(0.0, min(1.0, self.compose(slot_values)))  # clamp float noise
-        if frac >= 1.0:
-            return SIG8_MAX
-        if frac <= 0.0:
-            return SIG8_MIN
-        # Map the unaccounted fraction (1 - frac) to an interior distance in
-        # [1, 0xFE] so every resolvable pair lands strictly inside (0x00, 0xFF).
-        interior_distance = 1 + round((1.0 - frac) * (_MAX_INTERIOR_DISTANCE - 1))
-        return distance_to_byte(interior_distance)
-
-
-#: Module-level default aggregator: default layout, asymptotic decay (k=50),
-#: mean compose. cogitator uses this unless constructed otherwise.
-DEFAULT_AGGREGATOR = Aggregator()
-
 
 
 # Helper Functions
@@ -378,67 +71,10 @@ def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[i
         sig = signifier.signature_of(kline.nodes)
         yield hop_count, sig
 
-# Structural Grounding
-
-
-def is_s1(model: Model, kline: KLine, signifier: KSignifier) -> bool:
-    """Determine if a kline is structurally grounded (S1).
-
-    A kline is S1 if:
-    1. Its signature fully describes its nodes (canonical), OR
-    2. It is countersigned by another kline in the model.
-    """
-    if is_canon(kline, signifier):
-        return True
-    return is_countersigned(model, kline, signifier)
-
-
-def is_countersigned(model: Model, kline: KLine, signifier: KSignifier) -> bool:
-    """Check if kline is countersigned by any kline in the model.
-
-    A kline is countersigned if its nodes_signature exists as a
-    countersigning kline with one node — the countersigned kline's signature.
-
-    Query = {Q: [A, B]}
-    Countersigner = {AB: [Q]}
-
-    A self-referential kline ``{S: [S]}`` is excluded: its nodes_signature
-    is ``S`` and it is itself a one-node kline whose node is ``S``, so it
-    would otherwise count as its own countersigner.
-    """
-    if is_terminal(kline):
-        return False
-    nodes_signature = signifier.signature_of(kline.nodes)
-    for countersigner in model.find_all(nodes_signature):
-        if len(countersigner.nodes) == 1 and countersigner.nodes[0] == kline.signature:
-            return True
-    return False
-
-
-def structural_significance(kline: KLine, signifier: KSignifier) -> int:
-    """Derive a kline's significance band from its structure alone.
-
-    No model state — structure is an emergent property of the kline — this
-    function composes the predicates rather than re-deriving structure inline.
-
-    Mapping (@CONTEXT.md §Structural Relationship):
-
-    - **S1** — a grounded Identity terminal or a canon. An Identity
-      (self-referential ``{A:[A]}`` or a compound-word) is self-grounded;
-      the empty form ``{A:[]}`` is an Unknown (S4), not S1. A canon
-      ``{AB:[A, B]}`` is a grounded aggregation.
-    - **S3** — a single-node, non-terminal relationship ``{A:[B]}``
-      (connotation / denotation).
-    - **S2** — a multi-node misfit (underfit / overfit / misfit).
-    - **S4** — the empty Unknown frame ``{A:[]}``.
-    """
-    if is_terminal(kline):
-        return SIG_S4 if is_unknown(kline) else SIG_S1
-    if len(kline.nodes) == 1:
-        return SIG_S3
-    if is_canon(kline, signifier):
-        return SIG_S1
-    return SIG_S2
+# Structural Grounding re-export
+#
+# is_s1 / is_countersigned / structural_significance live in kalvin.significance.
+# expand() calls is_s1 directly; the others are imported by callers from there.
 
 
 # Graph Expansion
@@ -676,3 +312,95 @@ def propose_expansions(
             if is_terminal(companion):
                 continue
             yield (companion, significance)
+
+
+# Expansion Proposal Helpers (misfit comprehension)
+#
+# These back propose_expansions(). A kline is a misfit when its signature
+# and its nodes' signature disagree; the helpers below classify the misfit
+# type (underfitting, overfitting, or both) and generate expansion proposals
+# that satisfy:
+#   - No invention: every signature used exists in the model.
+#   - No orphan nodes: removed nodes form a companion kline.
+
+
+def generate_expansions(
+    model: Model,
+    kline: KLine,
+    underfit_gap: int,
+    overfit_mask: int,
+    signifier: KSignifier,
+) -> Iterator[tuple[KLine, list[KLine]]]:
+    """Generate expansion proposals for a misfit kline.
+
+    Each yield is (proposal_kline, companion_klines) where:
+    - proposal_kline is the expanded version of the input
+    - companion_klines are klines formed from removed nodes (may be empty)
+
+    Expansion proposals satisfy:
+    - No invention: every signature used exists in the model
+    - No orphan nodes: removed nodes form a companion kline
+    """
+    if underfit_gap and overfit_mask:
+        yield from _dual_expansions(model, kline, underfit_gap, overfit_mask, signifier)
+    else:
+        if underfit_gap:
+            yield from _underfit_expansions(model, kline, underfit_gap, signifier)
+
+        if overfit_mask:
+            yield from _overfit_expansions(kline, overfit_mask, signifier)
+
+
+def _underfit_expansions(
+    model: Model, kline: KLine, gap: int, signifier: KSignifier
+) -> Iterator[tuple[KLine, list[KLine]]]:
+    """Add nodes whose signatures overlap and thus reduce the gap."""
+    contributors = model.where(lambda k: signifier.signifies(k.signature, gap))
+
+    for contributor in contributors:
+        expanded_nodes = list(kline.nodes) + list(contributor.nodes)
+        expanded_sig = kline.signature
+        proposal = KLine(expanded_sig, expanded_nodes, kline.dbg)
+
+        new_nodes_sig = signifier.signature_of(expanded_nodes)
+        if signifier.signifies(new_nodes_sig, expanded_sig):
+            yield (proposal, [])
+
+
+def _split_excess(kline: KLine, excess: int, signifier: KSignifier) -> tuple[list[int], list[int]]:
+    """Split kline nodes into (excess_nodes, remaining) by excess residual."""
+    excess_nodes = [n for n in kline.nodes if signifier.signifies(n, excess)]
+    remaining = [n for n in kline.nodes if n not in excess_nodes]
+    return excess_nodes, remaining
+
+
+def _overfit_expansions(kline: KLine, excess: int, signifier: KSignifier) -> Iterator[tuple[KLine, list[KLine]]]:
+    """Remove nodes whose bits contribute to the excess."""
+    excess_nodes, remaining = _split_excess(kline, excess, signifier)
+
+    if not excess_nodes:
+        return
+    trimmed = KLine(kline.signature, remaining, kline.dbg)
+
+    companion_sig = signifier.signature_of(excess_nodes)
+    companion = KLine(companion_sig, excess_nodes)
+
+    yield (trimmed, [companion])
+
+
+def _dual_expansions(
+    model: Model, kline: KLine, gap: int, excess: int, signifier: KSignifier
+) -> Iterator[tuple[KLine, list[KLine]]]:
+    """Atomic replacement: swap excess nodes for gap-filling nodes."""
+    excess_nodes, remaining = _split_excess(kline, excess, signifier)
+
+    contributors = model.where(lambda k: signifier.signifies(k.signature, gap))
+
+    for contributor in contributors:
+        replacement_nodes = remaining + list(contributor.nodes)
+        replacement = KLine(kline.signature, replacement_nodes, kline.dbg)
+
+        companion_sig = signifier.signature_of(excess_nodes)
+        companion = KLine(companion_sig, excess_nodes)
+
+        yield (replacement, [companion])

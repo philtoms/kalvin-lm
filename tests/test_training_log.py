@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1
+from kalvin.significance import SIG_S1
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data

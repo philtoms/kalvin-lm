@@ -11,7 +11,7 @@ from kalvin.agent import KAgent
 from kalvin.agent_codec import AgentCodec
 from kalvin.cogitator import CogitationHandler, Cogitator, WorkItem
 from kalvin.events import EventBus, RationaliseEvent
-from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4, is_countersigned, structural_significance
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4, is_countersigned, structural_significance
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -1138,7 +1138,8 @@ class TestKValueExchangeCriteria:
         equals the value ``expand()`` computed for that proposal (KP-3), not a
         band-representative value.
         """
-        from kalvin.expand import BandLayout, expand, propose_expansions
+        from kalvin.expand import expand, propose_expansions
+        from kalvin.significance import BandLayout
 
         m = Model(signifier=signifier)
         k1 = KLine(t(0b100), [t(0b100)])  # identity

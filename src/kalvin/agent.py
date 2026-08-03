@@ -28,13 +28,13 @@ from kalvin.cogitator import (
     WorkItem,
 )
 from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
-from kalvin.expand import (
+from kalvin.expand import promote_participating
+from kalvin.significance import (
     SIG_S1,
     SIG_S2,
     SIG_S4,
     is_countersigned,
     is_s1,
-    promote_participating,
     structural_significance,
 )
 from kalvin.kline import KLine

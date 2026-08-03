@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG8_MAX, SIG_MASK
+from kalvin.significance import SIG8_MAX, SIG_MASK
 from kalvin.kline import kline_display
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer

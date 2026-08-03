@@ -14,7 +14,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S4
+from kalvin.significance import SIG_S4
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
@@ -159,7 +159,7 @@ class TestAutoCountersign:
         equality ignores significance, so the match succeeds and the proposal
         KValue is posted on the countersign bus.
         """
-        from kalvin.expand import SIG_S1
+        from kalvin.significance import SIG_S1
 
         reactor, capture = _make_reactor()
         entry = _make_entry(100, [10, 20])  # KValue at _S2_SIGNIFICANCE

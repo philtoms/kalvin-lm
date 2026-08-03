@@ -2,7 +2,7 @@
 
 The model provides storage, deduplication, lookup by signature, and
 graph traversal. Significance computation and misfit classification
-live in expand.py and misfit.py respectively.
+both live in expand.py.
 
 See specs/model.md for the full specification.
 
@@ -267,7 +267,7 @@ class Model:
     - klines(), iter_stm(), stm_contains(kl)
 
     The caller sees a single unified API. Significance and misfit logic
-    live in expand.py and misfit.py respectively.
+    both live in expand.py.
 
     Frame and LTM storage are backed by ``KLineStore`` — a reusable indexed list
     with dedup set.

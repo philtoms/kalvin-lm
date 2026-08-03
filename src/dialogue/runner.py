@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1
+from kalvin.significance import SIG_S1
 
 # A burst: the events one actor publishes in a single ``accept`` reply, and
 # the list it receives as the other role's reply.

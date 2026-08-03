@@ -566,7 +566,7 @@ def test_mutual_pass_terminates():
 def test_pass_event_builder_has_sentinel_signature_at_s1():
     """pass_event() builds {PASS:[]} at S1 — the sentinel signature on an
     identity kline, top-band significance."""
-    from kalvin.expand import SIG_S1
+    from kalvin.significance import SIG_S1
 
     ev = pass_event("K")
     assert ev.role == "K"

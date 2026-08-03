@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from kalvin.expand import SIG8_MAX, SIG_MASK, BandLayout
+from kalvin.significance import SIG8_MAX, SIG_MASK, BandLayout
 from kalvin.kline import KLine, kline_display
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier

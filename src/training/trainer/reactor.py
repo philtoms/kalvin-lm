@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S4
+from kalvin.significance import SIG_S4
 from kalvin.kvalue import KValue
 from training.harness.bus import MessageBus
 from training.harness.constants import TRAINEE_ROLE

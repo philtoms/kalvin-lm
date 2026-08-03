@@ -22,13 +22,13 @@ Encoding rules (spec §11):
     are opaque per §11.5.
 
 Significance levels (compile-time intent) — each emitted KValue carries
-kalvin.expand.band_significance(op), computed from the production op at
+kalvin.significance.band_significance(op), computed from the production op at
 encode time (never from dbg):
     COUNTERSIGNS → S1    DENOTES → S3    CANONIZES → S2
     CONNOTES → S3      UNKNOWN → S4
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
-              kalvin.expand.band_significance, kalvin.abstract.KTokenizer,
+              kalvin.significance.band_significance, kalvin.abstract.KTokenizer,
               kalvin.signifier.NLPSignifier, ks.ast_emitter.SymbolicEntry.
 
 Output ordering: compiled source (operator + identity klines from the
@@ -40,7 +40,7 @@ See ``encode_entries``.
 from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
-from kalvin.expand import band_significance
+from kalvin.significance import band_significance
 from kalvin.kline import KDbg, KLine
 from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.kvalue import KValue

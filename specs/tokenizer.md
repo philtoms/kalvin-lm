@@ -144,7 +144,8 @@ The following are explicitly **out of scope** for this spec:
 - **Signature creation.** Signature construction (`signature_of`) is
   defined in the @signifier spec.
 - **Significance computation.** Significance is defined in the
-  @significance spec. The tokenizer does not compute or store significance.
+  @model spec §Significance Semantics. The tokenizer does not compute or
+  store significance.
 - **Model operations.** Storing, retrieving, and querying klines are model
   concerns.
 - **Training data format.** How training data is sourced and preprocessed
@@ -157,7 +158,7 @@ The following are explicitly **out of scope** for this spec:
 - **Kline** (@kline spec) — klines contain nodes produced by the tokenizer.
 - **Agent** (@agent spec) — uses the tokenizer to encode input and
   construct klines.
-- **Significance** (@significance spec) — consumes nodes produced by the
-  tokenizer (nodes are opaque to significance).
+- **Significance** (@model spec §Significance Semantics) — consumes nodes
+  produced by the tokenizer (nodes are opaque to significance).
 - **NLP Tokenizer** (@nlp_tokenizer spec) — the production tokenizer;
   owns the node layout, type dictionary, and the BPE-engine foundation.

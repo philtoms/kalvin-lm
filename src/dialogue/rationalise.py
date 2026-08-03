@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kalvin.expand import (
+from kalvin.significance import (
     SIG_S1,
     SIG_S2,
     SIG_S3,

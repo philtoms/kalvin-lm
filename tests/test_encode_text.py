@@ -10,7 +10,7 @@ import pytest
 
 from kalvin.agent import KAgent
 from kalvin.events import EventBus
-from kalvin.expand import SIG_S1, SIG_S2, is_countersigned, structural_significance
+from kalvin.significance import SIG_S1, SIG_S2, is_countersigned, structural_significance
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer

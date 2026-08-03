@@ -48,10 +48,10 @@ This spec depends on the following concepts, defined elsewhere:
 - Structurally identical to Frame — the distinction is semantic.
 - Persisted across sessions, loaded at session start. Monotonic.
 
-### Significance (@significance spec)
+### Significance
 
-- Significance calls the `expand` function (defined in `kalvin.expand`), which
-  yields `KValue` results with pre-computed significance values.
+- Significance is computed via the `expand` generator, which yields
+  `KValue` results with pre-computed significance values.
 - Significance does not manage model state.
 
 ### Agent (@agent spec)
@@ -496,10 +496,11 @@ reads the model from `on_event` on the calling thread).
 
 ## Significance Functions
 
-The following functions live in `kalvin.expand` — they are **not** `Model`
-methods and take the model as their first argument. They are consumed by
-the significance pipeline (@significance spec) and by cogitation
-(@agent spec). Their semantics are defined here.
+The following are free functions (not `Model` methods) that take the model
+as their first argument. They are consumed by the significance pipeline
+(@model spec §Significance Semantics) and by cogitation (@agent spec).
+Their semantics are defined here; their module homes are an implementation
+concern tracked by the plans, not this spec.
 
 ### Is S1
 
@@ -576,9 +577,6 @@ carried per-yield.
     resolved via `model.find()` rather than asserted to exist. If resolution
     returns None the recursive branch is silently skipped (no exception).
     Unresolvable match signatures are normal graph topology, not errors.
-
-The implementation algorithm and pseudocode are in
-`plans/impl/model.md` §2.
 
 #### Per-node contributions
 
@@ -905,6 +903,7 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Significance** (@significance spec) — calls `is_s1`, `expand`.
+- **Significance** (@model spec §Significance Semantics) — calls `is_s1`,
+  `expand`.
 - **Agent** (@agent spec) — stores encoded Klines, retrieves candidates,
   traverses the graph, promotes significant Klines.

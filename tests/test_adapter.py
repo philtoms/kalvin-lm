@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1, SIG_S4
+from kalvin.significance import SIG_S1, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model

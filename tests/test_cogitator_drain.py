@@ -13,7 +13,7 @@ import time
 from kalvin.agent import KAgent
 from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
-from kalvin.expand import SIG_S1, SIG_S2, is_countersigned, structural_significance
+from kalvin.significance import SIG_S1, SIG_S2, is_countersigned, structural_significance
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model

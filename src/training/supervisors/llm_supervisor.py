@@ -166,7 +166,7 @@ def _classify_significance(significance: int) -> str:
     Uses the shared BandLayout so the LLM sees a meaningful band label
     instead of a raw byte.
     """
-    from kalvin.expand import BandLayout
+    from kalvin.significance import BandLayout
 
     return BandLayout().classify(significance)
 

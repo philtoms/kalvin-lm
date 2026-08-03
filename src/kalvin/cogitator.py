@@ -23,7 +23,8 @@ import time as _time
 from typing import TYPE_CHECKING, NamedTuple, Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S4, BandLayout, expand, propose_expansions
+from kalvin.expand import expand, propose_expansions
+from kalvin.significance import SIG_S4, BandLayout
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer

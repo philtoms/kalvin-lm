@@ -14,7 +14,7 @@ _SYS_SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SYS_SRC) not in sys.path:
     sys.path.insert(0, str(_SYS_SRC))
 
-from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source

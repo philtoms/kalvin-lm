@@ -139,7 +139,8 @@ assessment is re-made, not recorded.
 ### Retrieval re-derives significance
 
 Materialising a KValue from a stored KLine re-derives its significance from
-the KLine's structure via `structural_significance` (@expand), composed from
+the KLine's structure via `structural_significance` (@model spec §Significance
+Functions), composed from
 the structural predicates (@kline spec) and the node count:
 
 | Structure (composed from predicates)                                  | significance |

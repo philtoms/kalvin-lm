@@ -8,7 +8,7 @@ word and classify trivially as canonical. See specs/signifier.md
 """
 
 from kalvin.kline import KLine
-from kalvin.misfit import generate_expansions
+from kalvin.expand import generate_expansions
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
 

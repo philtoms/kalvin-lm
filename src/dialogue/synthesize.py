@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from kalvin.expand import SIG_S1, SIG_S2, SIG_S4
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S4
 from kalvin.kline import KLine, is_canon, is_compound_word, is_unknown
 from kalvin.kvalue import KValue
 

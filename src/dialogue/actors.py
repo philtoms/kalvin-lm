@@ -7,7 +7,7 @@ from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S1, SIG_S2, SIG_S3, SIG_S4
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import is_canon
 from kalvin.kvalue import KValue
 from dialogue.decoder import DecodedTurn, turn_content_key

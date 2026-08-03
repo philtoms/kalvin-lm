@@ -3,6 +3,13 @@
 import pytest
 
 from kalvin.expand import (
+    edge_hops,
+    expand,
+    promote_participating,
+    propose_expansions,
+)
+from kalvin.kline import KLine, is_canon
+from kalvin.significance import (
     DEFAULT_AGGREGATOR,
     DEFAULT_S2_S3_BOUNDARY,
     SIG8_MAX,
@@ -14,16 +21,10 @@ from kalvin.expand import (
     SIG_S4,
     BandLayout,
     band_significance,
-    edge_hops,
-    expand,
-    is_canon,
     is_countersigned,
     is_s1,
-    promote_participating,
-    propose_expansions,
     structural_significance,
 )
-from kalvin.kline import KLine
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.signifier import NLPSignifier

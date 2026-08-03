@@ -13,7 +13,7 @@ The system has two components:
 
 - `src/training/harness/` — message bus, WebSocket protocol, harness server
 - `src/training/supervisors/commands.py` — `parse_command()` for mapping simplified commands to bus messages
-- `src/kalvin/expand.py` — `SIG8_MAX` for the 8-bit significance grade
+- `src/kalvin/significance.py` — `SIG8_MAX` for the 8-bit significance grade
 - `specs/harness-server.md` — harness configuration and participant architecture
 - `specs/supervisor-decision.md` — the decision contract the CLI supervisor participates in
 - `specs/curriculum.md` — curriculum state persistence format
