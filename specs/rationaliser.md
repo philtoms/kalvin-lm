@@ -53,7 +53,7 @@ This spec depends on the following concepts, defined elsewhere:
 - Provides the 8-bit significance scheme: SIG_MASK/SIG8_MAX/SIG8_MIN, BandLayout, and the SIG_S1..SIG_S4 sentinels.
 - Provides `is_countersigned(kline)` to check if a kline is countersigned by any kline in the model.
 - Manages a four-tier memory internally (STM → Frame → LTM → Base). The
-  agent selects the appropriate write method based on significance outcome;
+  Rationaliser selects the appropriate write method based on significance outcome;
   tier cascade semantics are handled by the model.
 - The model decides how and where Klines are stored. The Rationaliser is
   responsible for calling model operations; the model is responsible
@@ -138,7 +138,7 @@ Rationalise(Q):
   │                                                              │
   │ process(KValue(kline, significance)):                        │
   │   S2 expansion: reshape misfit klines toward canonical,     │
-  │   emit proposals for agent ratification.                    │
+  │   emit proposals for Rationaliser ratification.              │
   └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -374,7 +374,7 @@ performed by the model's `expand()` method. This eliminates the
 abstractions.
 
 **Rationale**: Routing is a fast, model-free operation that directly
-determines agent control flow. Significance inversion is now internalized in
+determines Rationaliser control flow. Significance inversion is now internalized in
 the model, keeping the cogitation path simple — it consumes
 `KValue.significance` directly.
 
@@ -386,7 +386,7 @@ independently (S2/S3) and submits all to the Cogitator as work items for
 expansion; an S1 discovered during expansion terminates the pair.
 
 **Rationale**: Best-candidate selection forced full computation before the
-agent could act. The per-candidate routing model with S1-first ordering
+Rationaliser could act. The per-candidate routing model with S1-first ordering
 enables immediate S1 resolution and parallel processing of S2/S3.
 
 ## Test Matrix
@@ -473,7 +473,7 @@ See @cogitator spec §Test Matrix.
 | ------ | ------------------------------------------------- | ---------- |
 | AGT-58 | JSON round-trip: save/load preserves KLines        | — |
 | AGT-59 | Binary round-trip: save/load preserves KLines      | — |
-| AGT-60 | Empty agent: serializes and deserializes correctly | — |
+| AGT-60 | Empty Rationaliser: serializes and deserializes correctly | — |
 
 ## Open Questions
 
@@ -500,7 +500,7 @@ through routing, with the model's `is_s1` function handling these cases
 internally. `is_s1` now performs grounding (canonical or
 countersigned — the model's mechanism for realising S1), which subsumes the earlier resolve-only check.
 
-**Recommendation:** Keep as agent-level fast paths. Grounding is about
+**Recommendation:** Keep as Rationaliser-level fast paths. Grounding is about
 structural properties of a single Kline, not about comparison between two
 Klines.
 

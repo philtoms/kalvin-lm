@@ -8,7 +8,7 @@
 ## Spec References
 
 - `@specs/harness-server.md` — HRNS-1 through HRNS-24
-- `@specs/agent.md` — KAgent rationalisation API, events (AGT-1..AGT-28, AGT-58..AGT-60)
+- `@specs/rationaliser.md` — KAgent rationalisation API, events (AGT-1..AGT-28, AGT-58..AGT-60)
 - `@specs/kscript.md` — compilation pipeline (KS-1..KS-33)
 - `CONTEXT.md` — Agents and the Harness section
 

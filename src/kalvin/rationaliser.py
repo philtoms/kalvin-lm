@@ -11,7 +11,7 @@ expansion-proposal logic in :mod:`kalvin.proposals`.
 
 Serialization is delegated to the AgentCodec module (see agent_codec.py).
 
-See specs/agent.md for the agent specification.
+See specs/rationaliser.md for the Rationaliser specification.
 See specs/cogitator.md for the cogitator specification.
 """
 
@@ -205,7 +205,7 @@ class Rationaliser:
         ``value.significance`` (the sender's declared assessment) is the
         counterpart to Kalvin's own assessment in a two-way significance
         dialog. It is consumed by the significance-comparison gate below
-        (MVP: an S4 disagreement drops the query); see @agent spec
+        (MVP: an S4 disagreement drops the query); see @rationaliser spec
         §Rationalisation. The query voice on published events also carries
         it (KE-2).
 
@@ -215,7 +215,7 @@ class Rationaliser:
         Returns True if significant (S1, S4), False if rational (S2, S3).
         """
         kline = value.kline
-        # Prepare — callers must provide a set signature (see @specs/agent.md
+        # Prepare — callers must provide a set signature (see @specs/rationaliser.md
         # §Phase 1). This is a presence check, not a value-test: 0 is an
         # ordinary signature value (the empty node set's signature).
         assert kline.signature is not None, (
@@ -228,7 +228,7 @@ class Rationaliser:
         # sender declares S4 and Kalvin derives otherwise, Kalvin drops the
         # query (returns True, no STM write, no event). This sits before the
         # ground check because a recurring proposal is already in Frame, so a
-        # post-ground gate would be inert against its target. See @agent spec
+        # post-ground gate would be inert against its target. See @rationaliser spec
         # §Rationalisation.
         #
         # S4 is the sentinel SIG_S4 (= 0), detected by value: classify()

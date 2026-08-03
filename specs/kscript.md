@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-KScript is a domain-specific language for constructing **klines** — ordered sequences of identified nodes (each called a **KLine**). It compiles declarative scripts into a list of compiled entries that can be loaded into a Kalvin Agent for rationalisation.
+KScript is a domain-specific language for constructing **klines** — ordered sequences of identified nodes (each called a **KLine**). It compiles declarative scripts into a list of compiled entries that can be loaded into a Kalvin Rationaliser for rationalisation.
 
 ### 1.1 Compilation Pipeline
 

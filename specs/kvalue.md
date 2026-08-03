@@ -157,7 +157,7 @@ spec §Significance Semantics › Band-representative Values.
 The sole model-state adjustment to this structural band is the
 **countersigned upgrade**: a structurally-S2 misfit whose reciprocal
 countersigner is present in the model upgrades to S1. This fork is applied
-at the call site that needs model state (e.g. @agent spec §Phase 1b),
+at the call site that needs model state (e.g. @rationaliser spec §Phase 1b),
 keeping `structural_significance` itself model-free. A retrieved KLine's
 re-derived significance therefore reflects the model as it currently is —
 consistent with significance being re-made rather than recorded.
@@ -218,7 +218,7 @@ to what it is deciding.
 The following are explicitly **out of scope** for this spec:
 
 - **Consumption of an inbound KValue's significance.** Rationalisation
-  *does* consume the sender's declared significance — see @agent spec
+  *does* consume the sender's declared significance — see @rationaliser spec
   §Rationalisation (the significance-comparison gate). This spec owns only the
   exchange unit: it guarantees the declared significance is present and
   addressable on the inbound KValue; the consumption contract (how Kalvin
@@ -255,7 +255,7 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Rationaliser** (@agent spec §Events) — the RationaliseEvent query and proposal
+- **Rationaliser** (@rationaliser spec §Events) — the RationaliseEvent query and proposal
   are KValues; rationalisation consumes KValues.
 - **Model** (@model spec §Significance Semantics) — owns the
   band-representative values and the re-derivation predicates this spec uses.

@@ -7,7 +7,7 @@ The training log provides a structured, human-readable server-side trace of trai
 ## Dependencies
 
 - `specs/harness-server.md` — Trainer, Reactor, RationaliserAdapter, harness server
-- `specs/agent.md` — rationalise events, significance levels
+- `specs/rationaliser.md` — rationalise events, significance levels
 - `specs/kline.md` — `kline_display` for KLine → source rendering
 
 ## Definition

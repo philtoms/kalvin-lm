@@ -1,4 +1,4 @@
-"""Event bus for Agent pub/sub pattern.
+"""Event bus for Rationaliser pub/sub pattern.
 
 EventBus is a test-friendly adapter that satisfies the RationaliserAdapter protocol
 (defined in ``kalvin.rationaliser``).  It provides ``on_event(event)`` for the

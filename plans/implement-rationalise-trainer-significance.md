@@ -14,5 +14,5 @@ reactor's escalation safety net.
 
 ## Spec References
 
-- `@specs/agent.md` §Rationalisation (the significance gate).
+- `@specs/rationaliser.md` §Rationalisation (the significance gate).
 - Superseded by `@plans/implement-dialogue-driven-training.md`.

@@ -321,7 +321,7 @@ _conventions_ every curriculum follows.
     Expansion) MUST NOT use the `=>` CANONIZES operator. A CANONIZES compound
     definition sets its signature to `signature_of(nodes)` by construction
     (@kscript §11.4 canonical encoding), so the kline is canonical, never a
-    misfit, and resolves S1 via the canonical short-circuit (@agent AGT-14)
+    misfit, and resolves S1 via the canonical short-circuit (@rationaliser spec AGT-14)
     before any candidate is retrieved. Express an S2/S3 misfit with the `>`
     CONNOTES operator (or any operator) using a signature whose value differs
     from `signature_of(nodes)`. Note also that for a _compound_ (multi-char)

@@ -1,6 +1,6 @@
 """Tests for countersign resolution behaviour.
 
-Spec references: @specs/agent.md §Rationalisation (Phase 2–5),
+Spec references: @specs/rationaliser.md §Rationalisation (Phase 2–5),
 @specs/model.md (is_countersigned, grounded STM exclusion),
 @specs/kscript.md §7 (operator significance levels).
 

@@ -8,7 +8,7 @@
 
 - `@specs/curriculum.md` — CRS-1 through CRS-52
 - `@specs/harness-server.md` — HRNS-IDs for existing Trainer integration
-- `@specs/agent.md` — rationalise API, event bus
+- `@specs/rationaliser.md` — rationalise API, event bus
 
 ## Implementation Tasks
 

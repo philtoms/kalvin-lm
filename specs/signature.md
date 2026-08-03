@@ -87,8 +87,8 @@ The following are explicitly **out of scope** for this spec:
 - **Storage and indexing.** How the model indexes and retrieves klines by
   signature is defined in the @model spec.
 - **Kline construction.** How signatures are assigned to klines at build
-  time is defined in the @kline spec. How the agent prepares a kline's
-  signature during rationalisation is defined in the @agent spec.
+  time is defined in the @kline spec. How the Rationaliser prepares a kline's
+  signature during rationalisation is defined in the @rationaliser spec.
 
 ## Test Matrix
 
@@ -102,7 +102,7 @@ in the @signifier spec (SIG-1 … SIG-16).
 - **Signifier** (@signifier spec) — produces and compares signatures.
 - **Model** (@model spec) — indexes klines by signature, provides candidate
   retrieval via overlap matching (@signifier).
-- **Rationaliser** (@agent spec) — creates signatures during the prepare phase of
+- **Rationaliser** (@rationaliser spec) — creates signatures during the prepare phase of
   rationalisation.
 - **Significance** (@model spec §Significance Semantics) — signatures are
   the basis for candidate retrieval but significance computation is separate.

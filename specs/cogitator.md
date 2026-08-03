@@ -8,18 +8,18 @@ background thread that drains a backlog of pre-routed work items
 discover connotations, classifies yields against significance boundaries,
 and routes results to a `CogitationHandler`. It also performs S2 expansion
 — reshaping misfit candidate klines toward canonical status — emitting
-proposals for the agent to ratify.
+proposals for the Rationaliser to ratify.
 
 The Cogitator is a thin threading dispatcher. All significance computation
 lives in the model's `expand()`; all expansion-proposal logic is delegated.
-It receives pre-routed work items from the agent and emits proposals at any
+It receives pre-routed work items from the Rationaliser and emits proposals at any
 significance level.
 
 ## Dependencies
 
 This spec depends on the following concepts, defined elsewhere:
 
-### Rationaliser (@agent spec)
+### Rationaliser (@rationaliser spec)
 
 - Submits pre-routed `WorkItem`s to the Cogitator during Phase 5 of
   rationalisation. The Rationaliser is the primary `CogitationHandler`
@@ -77,7 +77,7 @@ WorkItem:
   level:      str   # routing level: "S2" or "S3"
 ```
 
-The agent submits one WorkItem per routed candidate (S2 or S3). The
+The Rationaliser submits one WorkItem per routed candidate (S2 or S3). The
 Cogitator expands each WorkItem into a sequence of KValues via
 `model.expand()`.
 
@@ -139,7 +139,7 @@ single WorkItem — every discovered relationship is evaluated.
 ## CogitationHandler
 
 CogitationHandler is a `@runtime_checkable` Protocol defining the seam
-between the Cogitator and its consumers. The Agent is the primary
+between the Cogitator and its consumers. The Rationaliser is the primary
 implementation.
 
 ```
@@ -150,11 +150,11 @@ CogitationHandler:
 
 ### Work Item Levels
 
-Work items arrive routed as **S2** or **S3** only (see @agent spec,
+Work items arrive routed as **S2** or **S3** only (see @rationaliser spec,
 §Routing). Routing does not produce S1 or S4: full node overlap is a
 necessary but insufficient condition for S1 (true S1 is structural —
 canonical structure or countersignature, established by `expand()` /
-`is_s1()`), and Unknown klines are resolved on the agent's fast path
+`is_s1()`), and Unknown klines are resolved on the Rationaliser's fast path
 before any candidate is submitted.
 
 ### Work Item Processing
@@ -206,7 +206,7 @@ When countersignature fails for an S2 result, the Cogitator attempts to
 **expand** the candidate kline toward canonical status by reshaping its
 nodes to match its signature. This is the mechanism for self-directed
 study — the Cogitator works through partial understanding and emits
-proposals for the agent to ratify.
+proposals for the Rationaliser to ratify.
 
 The conceptual description of S2 expansion (misfit types, templates,
 sequencers, guarantees) is defined in the vision document
@@ -279,7 +279,7 @@ removed nodes as independent `frame` events.
 | Removed nodes  | The trimmed kline **and** the companion kline from removed nodes     |
 | Dual misfit    | The replacement kline **and** the companion kline from removed nodes |
 
-Each proposal is an independent `frame` event. The agent ratifies (or
+Each proposal is an independent `frame` event. The Rationaliser ratifies (or
 rejects) each one individually. A terminal proposal or companion (empty
 nodes, self-referential `{S: [S]}`, or a compound-word) is not emitted (see Universal
 Constraint below).
@@ -288,7 +288,7 @@ Constraint below).
 
 Every signature generated during expansion must already exist in the model.
 This guarantees no invention, no data loss, and ratifiability. When the
-constraint cannot be satisfied, no proposal is emitted — the agent infers
+constraint cannot be satisfied, no proposal is emitted — the Rationaliser infers
 scaffolding is needed from the absence of a `frame` event.
 
 A second constraint governs proposal _shape_: **an expansion proposal must
@@ -302,7 +302,7 @@ dropped. (Note: `{S: [S]}` _is_ a legitimate kline state — it is an Identity t
 but it is not something the expander should produce, since the expander's
 purpose is to decompose.)
 
-All expansion proposals require agent ratification via countersignature.
+All expansion proposals require Rationaliser ratification via countersignature.
 
 ### S2 Klines from KScript
 
@@ -322,10 +322,10 @@ goal signature). The cogitator fills templates and decomposes sequencers.
 
 S2 expansion requires structural grounding for two reasons:
 
-1. **Promotion after ratification** — when the agent countersigns an
+1. **Promotion after ratification** — when the Rationaliser countersigns an
    expansion proposal, all participating klines must be cascaded to LTM
    via `add_to_ltm` (not just the ratified kline), including the added/removed node
-   groups and any S4 Unknown klines involved. The Agent's
+   groups and any S4 Unknown klines involved. The Rationaliser's
    `_promote_participating(query, candidate)` method calls `add_to_ltm`
    in a loop for each participating kline.
 
@@ -334,7 +334,7 @@ S2 expansion requires structural grounding for two reasons:
    frames hold S4–S1, giving the Cogitator more graph topology to traverse
    and more candidate signatures to match against.
 
-The Agent's `_promote_participating` method should be reviewed and made
+The Rationaliser's `_promote_participating` method should be reviewed and made
 fit for purpose — ensuring all participating klines are cascaded to LTM
 via `add_to_ltm` calls.
 
@@ -349,7 +349,7 @@ proposals are generated per work item.
 
 When the Cogitator discovers an S1 — via boundary classification during
 expand() (a terminal distance-0 yield) — it calls
-`handler.on_s1(query, candidate)` on the CogitationHandler. The Agent
+`handler.on_s1(query, candidate)` on the CogitationHandler. The Rationaliser
 implementation checks `is_s1(model, candidate)` as a structural guard — if
 the candidate is structurally S1 (canonical or countersigned), it calls
 `_promote_participating(query, candidate)` to cascade all participating
@@ -402,13 +402,13 @@ contract prevents this cross-lesson spillover.
 The Cogitator no longer retrieves candidates or expands graph context.
 It receives a WorkItem and computes distance for that single pair.
 
-**Rationale**: Separating routing (agent, fast) from graph expansion
+**Rationale**: Separating routing (Rationaliser, fast) from graph expansion
 (cogitator, slow) gives a clean workload split. Future iterations can
 evolve the Cogitator to perform additional graph expansion and re-routing.
 
 ## Test Matrix
 
-> These IDs are relocated from @agent spec and remain stable (cascade rule:
+> These IDs are relocated from @rationaliser spec and remain stable (cascade rule:
 > spec IDs are never renumbered). They keep their original `AGT-` prefix
 > for traceability to existing tests.
 
@@ -439,15 +439,15 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 
 The following are explicitly **out of scope** for this spec:
 
-- **Candidate retrieval and routing.** The agent retrieves candidates and
-  routes them before submitting work items (@agent spec).
+- **Candidate retrieval and routing.** The Rationaliser retrieves candidates and
+  routes them before submitting work items (@rationaliser spec).
 - **Significance computation.** Distance→significance inversion is internal
   to the model's `expand()` (@model spec).
 - **Persistence format, tokenisation, model internals.**
 
 ## Referenced By
 
-- **Rationaliser** (@agent spec) — owns and submits work items to the Cogitator,
+- **Rationaliser** (@rationaliser spec) — owns and submits work items to the Cogitator,
   and is the primary `CogitationHandler` implementation.
 - **Cogitator Drain** — see §Lifecycle › Inter-Lesson Drain in this spec.
 - **Model** (@model spec) — provides `expand()`, `generate_expansions()`,

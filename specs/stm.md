@@ -303,7 +303,7 @@ The following are explicitly **out of scope** for this spec:
   Frame and LTM. Normal session start loads an empty STM; session continuation
   (future feature) may reload it.
 - **Significance computation.** The STM provides indexing; significance is
-   computed by the Model and Agent.
+   computed by the Model and Rationaliser.
 - **Cross-tier consistency.** The Model owns the STM/Frame/Base
   relationship. The STM does not know about other tiers.
 - **Thread safety.** The synchronisation *mechanism* is an implementation
@@ -315,7 +315,7 @@ The following are explicitly **out of scope** for this spec:
 ## Referenced By
 
 - **Model** (@model spec) — owns and manages the STM as its first tier.
-- **Rationaliser** (@agent spec) — indirectly, via Model operations that populate
+- **Rationaliser** (@rationaliser spec) — indirectly, via Model operations that populate
   the STM.
 
 ## Code Location

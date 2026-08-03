@@ -30,7 +30,7 @@ significance. Grounding, not S1, is the satisfaction signal.
 ## Dependencies
 
 - `@specs/harness-server.md` — Trainer participant, bus actions, supervisor messages.
-- `@specs/agent.md` — RationaliseEvent shape, significance on the KValue.
+- `@specs/rationaliser.md` — RationaliseEvent shape, significance on the KValue.
 - `@specs/kscript.md` — compiled-entry declared bands (`op` field), structural
   states (COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, UNKNOWN).
 - `@specs/kline.md` — `is_canon`, `is_identity`, KLine equality.

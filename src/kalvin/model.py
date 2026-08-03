@@ -26,7 +26,7 @@ thread) is made safe by encapsulating all locking inside the data structures:
   ``Model``). ``Model`` always acquires its own lock first, then — via the tier
   chain/adapters or directly from ``add_to_*`` — the inner tier's lock. Inner
   tiers never call back into a ``Model``, so the ordering is acyclic and
-  deadlock-free. Cogitator/agent code therefore needs no locking of its own.
+  deadlock-free. Cogitator/Rationaliser code therefore needs no locking of its own.
 
 See specs/model.md §Thread Safety for the full contract.
 """

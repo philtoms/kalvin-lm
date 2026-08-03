@@ -54,11 +54,11 @@ This spec depends on the following concepts, defined elsewhere:
   `KValue` results with pre-computed significance values.
 - Significance does not manage model state.
 
-### Rationaliser (@agent spec)
+### Rationaliser (@rationaliser spec)
 
 - The Rationaliser calls model write operations (`add_to_stm`, `add_to_frame`, `add_to_ltm`)
   and read operations (`find`, `exists`, `query`, etc.).
-- The agent selects the appropriate write method based on the significance
+- The Rationaliser selects the appropriate write method based on the significance
   outcome of rationalisation.
 - The model is responsible for managing its internal memory tiers and the
   cascade semantics of write operations.
@@ -471,7 +471,7 @@ reads the model from `on_event` on the calling thread).
 - **Lock ordering.** Strictly **Model → inner tier** (STM / KLineStore / base
   `Model`). The Model always acquires its own lock first, then the inner
   tier's. Inner tiers never call back into a Model, so the ordering is acyclic
-  and deadlock-free. Cogitator/agent code therefore needs no locking of its
+  and deadlock-free. Cogitator/Rationaliser code therefore needs no locking of its
   own.
 - **Base tier.** The optional Base `Model` is read-only after construction, so
   the parent does **not** acquire the Base's lock on reads — unlocked reads are
@@ -492,13 +492,13 @@ reads the model from `on_event` on the calling thread).
 > the main-thread `rationalise` loop, and `expand()`'s node-resolution result
 > depends on the model state at the moment each work item is processed, so any
 > subscriber work (even a bare `time.sleep`) can perturb the interleaving and
-> change the count. Count-determinism is owned by the Cogitator/agent layer.
+> change the count. Count-determinism is owned by the Cogitator/Rationaliser layer.
 
 ## Significance Functions
 
 The following are free functions (not `Model` methods) that take the model
 as their first argument. They are consumed by the significance pipeline
-(@model spec §Significance Semantics) and by cogitation (@agent spec).
+(@model spec §Significance Semantics) and by cogitation (@rationaliser spec).
 Their semantics are defined here; their module homes are an implementation
 concern tracked by the plans, not this spec.
 
@@ -887,7 +887,7 @@ The following are explicitly **out of scope** for this spec:
 - **Significance computation.** The model computes significance internally
   via `expand()`. Routing is defined in the significance spec.
 - **Encoding.** Converting text or other input into Klines is the Rationaliser's
-  responsibility (@agent spec).
+  responsibility (@rationaliser spec).
 - **Tokenisation.** Producing nodes from input is defined in the
   @tokenizer spec. Producing signatures from nodes is defined in the
   @signifier spec.
@@ -905,5 +905,5 @@ The following are explicitly **out of scope** for this spec:
 
 - **Significance** (@model spec §Significance Semantics) — calls `is_s1`,
   `expand`.
-- **Rationaliser** (@agent spec) — stores encoded Klines, retrieves candidates,
+- **Rationaliser** (@rationaliser spec) — stores encoded Klines, retrieves candidates,
   traverses the graph, promotes significant Klines.

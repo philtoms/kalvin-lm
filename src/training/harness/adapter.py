@@ -148,8 +148,8 @@ class RationaliserAdapter:
     rationaliser:
         Optional Rationaliser instance.  Can also be set later via :meth:`bind`.
         This two-phase wiring avoids a circular construction dependency:
-        ``adapter = RationaliserAdapter(bus)`` → ``agent = Rationaliser(adapter=adapter)``
-        → ``adapter.bind(agent)``.
+        ``adapter = RationaliserAdapter(bus)`` → ``rationaliser = Rationaliser(adapter=adapter)``
+        → ``adapter.bind(rationaliser)``.
     """
 
     def __init__(
@@ -317,7 +317,7 @@ class RationaliserAdapter:
         for entry in entries:
             key: EntryKey = (entry.kline.signature, tuple(entry.kline.nodes))
             self._sender_map[key] = msg.sender or ""
-            # rationalise takes a KValue (KB-354); the agent reads value.kline.
+            # rationalise takes a KValue (KB-354); the Rationaliser reads value.kline.
             self._rationaliser.rationalise(entry)  # fire-and-forget; events come via on_event
 
     def _handle_countersign(self, msg: Message) -> None:
@@ -349,7 +349,7 @@ class RationaliserAdapter:
         ``countersign`` (which builds the reciprocal kline at SIG_S1), this
         action delivers the KValue as-is — the significance on the KValue is
         the sender's declared assessment, carried straight into the
-        significance-comparison gate (@agent spec §Rationalisation).
+        significance-comparison gate (@rationaliser spec §Rationalisation).
 
         Three payload forms are accepted, same as ``countersign`` (see
         :func:`_materialise_kvalue`): a live :class:`KValue`, a wire dict
