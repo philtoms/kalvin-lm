@@ -714,7 +714,7 @@ class TestCountersign:
         assert result is True
         mock_rationalise.assert_called_once()
         reciprocal_value = mock_rationalise.call_args[0][0]
-        # KV-5: countersign reciprocal KValue carries SIG_S1 (== D_MAX).
+        # KV-5: countersign reciprocal KValue carries SIG_S1 (== 0xFF).
         assert isinstance(reciprocal_value, KValue)
         assert reciprocal_value.significance == SIG_S1
         assert reciprocal_value.kline.signature == expected_reciprocal_sig
@@ -1129,7 +1129,7 @@ class TestKValueExchangeCriteria:
         mock_rationalise.assert_called_once()
         reciprocal_value = mock_rationalise.call_args[0][0]
         assert isinstance(reciprocal_value, KValue)
-        # The act of countersigning is an S1 ratification (== D_MAX).
+        # The act of countersigning is an S1 ratification (== 0xFF).
         assert reciprocal_value.significance == SIG_S1
         assert reciprocal_value.kline == expected_reciprocal
 

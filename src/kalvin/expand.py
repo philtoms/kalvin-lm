@@ -37,7 +37,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from kalvin.kline import KLine, is_canon, is_identity, is_misfit, is_terminal, is_unknown
+from kalvin.kline import KLine, is_canon, is_terminal, is_unknown
 from kalvin.misfit import generate_expansions
 
 if TYPE_CHECKING:
@@ -100,15 +100,22 @@ _MAX_INTERIOR_DISTANCE: int = 0xFE
 # hops start at S2_S3_DISTANCE + 1 = 101.
 S2_S3_DISTANCE = 100
 
-# Band-representative significance values — the maximal significance of each
-# band. Producers assert a band by stamping its representative; computed
-# values from expand() may be any value within a band, not only the
-# representative. Single source of truth per @model spec §Band-representative
-# Values.
-SIG_S1 = D_MAX  # distance 0   (= the S1|S2 boundary)
-SIG_S2 = D_MAX - 1  # distance 1
-SIG_S3 = D_MAX - 101  # distance 101  (first S3 distance: S2_S3_DISTANCE + _S3_BIAS)
-SIG_S4 = 0  # the S4 sentinel
+# Band-representative significance values — the canonical bytes a producer
+# stamps when asserting a band rather than computing a grade (the compiler,
+# the countersign reciprocal, structural_significance). Fixed 8-bit
+# sentinels at the DEFAULT boundary; single source of truth per @model spec
+# §Band-representative Values. Computed values from expand() may be any byte
+# within a band, not only the representative.
+#
+# These are fixed (not derived from a BandLayout) because structural
+# significance marks *which band a structure claims*, independent of where
+# the configurable S2_S3_BOUNDARY is drawn for computed grades (Q19: routing
+# logic unchanged; only the constant width is aligned with the 8-bit byte).
+# BandLayout exposes matching layout-derived representatives for classification.
+SIG_S1 = 0xFF  # exact match  (== SIG8_MAX; the S1|S2 boundary)
+SIG_S2 = 0xFE  # top of S2
+SIG_S3 = 0x7F  # top of S3 at the default boundary (DEFAULT_S2_S3_BOUNDARY - 1)
+SIG_S4 = 0x00  # the S4 sentinel  (== SIG8_MIN; structural unresolvable)
 
 # Compile-time structural relationship (@CONTEXT.md §Structural Relationship) → band-
 # representative significance. Producers that assert a band rather than compute

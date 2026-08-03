@@ -3,10 +3,8 @@
 import pytest
 
 from kalvin.expand import (
-    D_MAX,
     DEFAULT_AGGREGATOR,
     DEFAULT_S2_S3_BOUNDARY,
-    MASK64,
     SIG8_MAX,
     SIG8_MIN,
     SIG_MASK,
@@ -50,30 +48,41 @@ class TestBandRepresentativeConstants:
     """Verify the four band-representative constants match @model spec."""
 
     def test_constants_are_spec_values(self):
-        """SIG_S1..SIG_S4 are D_MAX, D_MAX-1, D_MAX-101, 0 (@model spec)."""
-        assert SIG_S1 == D_MAX
-        assert SIG_S2 == D_MAX - 1
-        assert SIG_S3 == D_MAX - 101
-        assert SIG_S4 == 0
+        """SIG_S1..SIG_S4 are the fixed 8-bit sentinels (0xFF/0xFE/0x7F/0x00)."""
+        assert SIG_S1 == 0xFF
+        assert SIG_S2 == 0xFE  # top of S2
+        assert SIG_S3 == 0x7F  # top of S3 at the default boundary (Q5: boundary - 1)
+        assert SIG_S4 == 0x00
 
-    def test_constants_are_inverted_distances(self):
-        """Each representative equals (~distance) & MASK64 for its distance.
+    def test_constants_align_with_sig8_and_layout(self):
+        """S1/S4 coincide with SIG8_MAX/MIN; S2/S3 match BandLayout's defaults.
 
-        Confirms significance inversion (@model spec §Significance Inversion):
-        distance 0 → SIG_S1, distance 1 → SIG_S2, distance 101 → SIG_S3.
+        Cross-checks the fixed sentinels against BandLayout (which derives the
+        same representatives from the configurable boundary at its default).
         """
-        assert (~0) & MASK64 == SIG_S1
-        assert (~1) & MASK64 == SIG_S2
-        assert (~101) & MASK64 == SIG_S3
+        assert SIG_S1 == SIG8_MAX
+        assert SIG_S4 == SIG8_MIN
+        layout = BandLayout()  # default boundary 0x80
+        assert SIG_S2 == layout.sig_s2
+        assert SIG_S3 == layout.sig_s3
+
+    def test_constants_coherent_with_expand_exact_match(self):
+        """Structural S1 (SIG_S1) equals expand's exact-match byte (0xFF).
+
+        The mixed-width incoherence (structural 64-bit vs expand 8-bit) is
+        resolved by this migration: a canon's structural S1 claim and an
+        expand exact-match grade now agree.
+        """
+        assert SIG_S1 == DEFAULT_AGGREGATOR.compose_terminal([1.0])
 
     def test_strict_ordering(self):
         """Unsigned ordering holds: SIG_S1 > SIG_S2 > SIG_S3 > SIG_S4."""
         assert SIG_S1 > SIG_S2 > SIG_S3 > SIG_S4
 
-    def test_all_valid_uint64(self):
-        """All band-representative values are non-negative uint64."""
+    def test_all_valid_byte(self):
+        """All band-representative values are valid bytes in [0x00, 0xFF]."""
         for val in (SIG_S1, SIG_S2, SIG_S3, SIG_S4):
-            assert 0 <= val <= MASK64
+            assert 0 <= (val & SIG_MASK) <= SIG8_MAX
 
 
 class TestBandSignificance:
