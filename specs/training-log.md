@@ -6,7 +6,7 @@ The training log provides a structured, human-readable server-side trace of trai
 
 ## Dependencies
 
-- `specs/harness-server.md` — Trainer, Reactor, KAgentAdapter, harness server
+- `specs/harness-server.md` — Trainer, Reactor, RationaliserAdapter, harness server
 - `specs/agent.md` — rationalise events, significance levels
 - `specs/kline.md` — `kline_display` for KLine → source rendering
 
@@ -18,14 +18,14 @@ The training log provides a structured, human-readable server-side trace of trai
 |----------|--------|-------|------|
 | Session start | `trainer.trainer` | INFO | Training session begins |
 | Session end | `trainer.trainer` | INFO | Training session ends (not yet implemented) |
-| Lesson submit | `trainer.trainer` | INFO | Lesson submitted to KAgent |
+| Lesson submit | `trainer.trainer` | INFO | Lesson submitted to Rationaliser |
 | Lesson compile | `trainer.trainer` | INFO | Entries compiled from lesson KScript |
 | Lesson complete | `trainer.trainer` | INFO | All entries in a lesson satisfied |
 | Curriculum complete | `trainer.trainer` | INFO | All lessons in curriculum submitted |
-| Rationalise event | `trainer.trainer` | INFO | KAgent ground or frame event received |
+| Rationalise event | `trainer.trainer` | INFO | Rationaliser ground or frame event received |
 | Supervisor decision applied | `trainer.trainer` | INFO | A pending decision resolved: ratify / scaffold / continue (SD-9/10/11) |
-| Entry submit | `harness.adapter` | INFO | Compiled entries submitted to KAgent |
-| Countersign | `harness.adapter` | INFO | Countersign sent to KAgent |
+| Entry submit | `harness.adapter` | INFO | Compiled entries submitted to Rationaliser |
+| Countersign | `harness.adapter` | INFO | Countersign sent to Rationaliser |
 | Auto-countersign match | `trainer.reactor` | INFO | Proposal structurally matched expectation |
 | Auto-countersign miss | `trainer.reactor` | DEBUG | No structural match found |
 | Auto-countersign dup | `trainer.reactor` | DEBUG | Already-satisfied entry re-matched |
@@ -87,7 +87,7 @@ When running under auto-tune, the harness server's stderr is redirected to `<ses
 2. On lesson submission, log the lesson label and progress (n/total) at INFO level.
 3. On lesson submission, log the raw KScript source at DEBUG level.
 4. After compilation, log the number of compiled entries at INFO level.
-5. On each KAgent event, decompile the query and (if present) the proposal for log readability. If decompilation fails, fall back to `repr()`.
+5. On each Rationaliser event, decompile the query and (if present) the proposal for log readability. If decompilation fails, fall back to `repr()`.
 6. S1 events log with `→ S1 (fast path)` and the proposal (if any).
 7. S2/S3 events log with the normalised significance and the proposal (if any).
 8. On lesson completion, log the satisfaction counts at INFO level.

@@ -19,10 +19,10 @@ significance level.
 
 This spec depends on the following concepts, defined elsewhere:
 
-### Agent (@agent spec)
+### Rationaliser (@agent spec)
 
 - Submits pre-routed `WorkItem`s to the Cogitator during Phase 5 of
-  rationalisation. The agent is the primary `CogitationHandler`
+  rationalisation. The Rationaliser is the primary `CogitationHandler`
   implementation.
 
 ### Model (@model spec)
@@ -59,7 +59,7 @@ A Cogitator consists of:
 | Component | Type              | Description                                          |
 | --------- | ----------------- | ---------------------------------------------------- |
 | model     | Model             | For `expand()`, expansions, tiered writes.           |
-| adapter   | KAgentAdapter     | Receives `RationaliseEvent`s (`on_event`).           |
+| adapter   | RationaliserAdapter | Receives `RationaliseEvent`s (`on_event`).           |
 | handler   | CogitationHandler | Receives S1 results and expansion proposals.         |
 | timeout   | float             | Idle seconds before emitting `"done"` (default 2.0). |
 | backlog   | queue of WorkItem | Pending work items.                                  |
@@ -379,7 +379,7 @@ reactive budget and corrupting entry satisfaction tracking. The drain
 contract prevents this cross-lesson spillover.
 
 - **DRN-1.** Before submitting each lesson, the Trainer MUST drain the
-  Cogitator backlog. A drain request is sent via the bus to the KAgent
+  Cogitator backlog. A drain request is sent via the bus to the Rationaliser
   adapter. The adapter calls `Cogitator.drain()` which blocks until the
   backlog is empty and the current work item finishes.
 - **DRN-2.** While a drain is pending, the Trainer MUST NOT submit lesson
@@ -447,7 +447,7 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Agent** (@agent spec) — owns and submits work items to the Cogitator,
+- **Rationaliser** (@agent spec) — owns and submits work items to the Cogitator,
   and is the primary `CogitationHandler` implementation.
 - **Cogitator Drain** — see §Lifecycle › Inter-Lesson Drain in this spec.
 - **Model** (@model spec) — provides `expand()`, `generate_expansions()`,

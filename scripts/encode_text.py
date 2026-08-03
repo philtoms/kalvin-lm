@@ -21,7 +21,7 @@ from tqdm import tqdm
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kalvin.agent import KAgent
+from kalvin.rationaliser import Rationaliser
 from kalvin.events import EventBus
 from kalvin.kline import KLine
 
@@ -131,12 +131,12 @@ def main():
     agent_size = 0
     if agent_path and agent_path.exists():
         print(f"\nLoading agent from: {agent_path}")
-        agent = KAgent.load(agent_path, format=args.format, adapter=EventBus())
+        agent = Rationaliser.load(agent_path, format=args.format, adapter=EventBus())
         agent_size = agent.frame_size()
         print(f"Loaded agent size: {agent_size:,} KLines")
     else:
         print("\nInitializing new agent...")
-        agent = KAgent(adapter=EventBus())
+        agent = Rationaliser(adapter=EventBus())
         print(f"Initial agent size: {agent.frame_size():,} KLines")
 
     for text in stream_text(input_file):

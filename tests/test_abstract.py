@@ -1,4 +1,4 @@
-"""Tests for abstract.py — verify remaining ABCs are intact after KModel/KAgent deletion."""
+"""Tests for abstract.py — verify remaining ABCs are intact after KModel/Rationaliser deletion."""
 
 import pytest
 
@@ -6,7 +6,7 @@ from kalvin.abstract import KTokenizer
 
 
 class TestExports:
-    """Verify __all__ no longer exports KModel or KAgent."""
+    """Verify __all__ no longer exports KModel or Rationaliser."""
 
     def test_kmodel_not_in_all(self):
         from kalvin import abstract

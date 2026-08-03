@@ -285,7 +285,7 @@ participants:
   # Embedded participants — loaded in-process by the harness
   - role: trainee
     type: embedded
-    class: KAgent
+    class: Rationaliser
 
   - role: trainer
     type: embedded
@@ -323,7 +323,7 @@ participants:
 | `trainer`        | `llm.model`           | `"glm-5.1"`   | Model name for LLM calls (curriculum generation)                        |
 | `participants[]` | `role`                | —             | Bus role for this participant (used for routing)                        |
 | `participants[]` | `type`                | —             | `"embedded"` (loaded in-process) or `"client"` (connects via WebSocket) |
-| `participants[]` | `class`               | —             | Registered class name (e.g. `KAgent`, `Trainer`, `SlackParticipant`)    |
+| `participants[]` | `class`               | —             | Registered class name (e.g. `Rationaliser`, `Trainer`, `SlackParticipant`)    |
 
 ### Validation Rules
 
@@ -409,7 +409,7 @@ options:
 1. **Config loaded** — `training.harness.yaml` is read and validated.
 2. **Bus created** — A `MessageBus` is instantiated.
 3. **Embedded participants wired** — Kalvin and Trainer factories are called:
-   - `KAgentAdapter` subscribes to role `"trainee"` on the bus.
+   - `RationaliserAdapter` subscribes to role `"trainee"` on the bus.
    - `Trainer` subscribes to role `"trainer"` on the bus.
 4. **Bus thread started** — The bus event loop runs on a daemon thread.
 5. **WebSocket server started** — Listens on the configured host:port for client participants.
@@ -429,7 +429,7 @@ After startup, the Trainer checks for saved state. If found, it resumes the prev
 | `server.py`    | `HarnessServer` — loads config, instantiates embedded participants, starts WebSocket server, runs the bus. Also contains `load_config()` and `ConfigError`.                           |
 | `bus.py`       | `MessageBus` — thread-safe role-based message router with single-dispatch event loop. Supports wildcard (`"*"`) subscribers for diagnostics.                                          |
 | `message.py`   | `Message` — immutable dataclass: `role`, `action`, `message`, `sender`. The bus routes by `role` only; `action` and `message` are interpreted by the recipient.                       |
-| `adapter.py`   | `KAgentAdapter` — bridge between Kalvin's rationalisation pipeline and the bus. Compiles KScript source, submits entries to KAgent, and routes events back to the original sender.    |
+| `adapter.py`   | `RationaliserAdapter` — bridge between Kalvin's rationalisation pipeline and the bus. Compiles KScript source, submits entries to the Rationaliser, and routes events back to the original sender.    |
 | `protocol.py`  | `WebSocketProtocol` — handles WebSocket client connections: registration, bidirectional JSON frame routing, silent-drop disconnect semantics. Supports multiple connections per role. |
 | `protocols.py` | `Participant` protocol — the interface every participant must implement: `role` + `on_message(msg)`.                                                                                  |
 | `constants.py` | Canonical role constants: `TRAINEE_ROLE`, `TRAINER_ROLE`, `SUPERVISOR_ROLE`.                                                                                                          |
@@ -442,7 +442,7 @@ Main Thread (asyncio)          Bus Thread (sync)
 WebSocket server               MessageBus.run()
   handle_connection()            _dispatch()
   _send_to_client_sync()         → handler.on_message()
-  asyncio event loop               → KAgentAdapter.on_message()
+  asyncio event loop               → RationaliserAdapter.on_message()
                                    → Trainer.on_message()
 ```
 
@@ -460,12 +460,12 @@ These are loaded in-process and wired directly to the bus at startup.
 
 #### Kalvin (`role: "trainee"`)
 
-The rationalisation engine. The `KAgentAdapter` receives bus messages and delegates to the core `KAgent`:
+The rationalisation engine. The `RationaliserAdapter` receives bus messages and delegates to the core `Rationaliser`:
 
 | Incoming Action | Behaviour                                                                                                                                         |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `submit`        | Compile KScript source from `msg.message`, record sender per entry, call `kagent.rationalise(entry)` for each. Events flow back via `on_event()`. |
-| `countersign`   | Call `kagent.countersign(kline)` with the KLine in `msg.message`.                                                                                 |
+| `submit`        | Compile KScript source from `msg.message`, record sender per entry, call `rationaliser.rationalise(entry)` for each. Events flow back via `on_event()`. |
+| `countersign`   | Call `rationaliser.countersign(kline)` with the KLine in `msg.message`.                                                                                 |
 
 Events from Kalvin are routed back to the original sender (stored in a sender map keyed by entry identity).
 
@@ -793,7 +793,7 @@ uv run pytest tests/test_harness_run.py -v
 | `test_bus.py`                 | MessageBus subscribe, send, dispatch, wildcard, stop         |
 | `test_harness.py`             | Config loading, validation, ParticipantConfig                |
 | `test_server.py`              | HarnessServer setup, embedded participant wiring             |
-| `test_adapter.py`             | KAgentAdapter submit, countersign, event routing             |
+| `test_adapter.py`             | RationaliserAdapter submit, countersign, event routing             |
 | `test_protocol.py`            | WebSocketProtocol registration, frame parsing                |
 | `test_protocols.py`           | Participant protocol compliance                              |
 | `test_harness_run.py`         | End-to-end: start harness, route messages through full stack |

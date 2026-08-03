@@ -102,7 +102,7 @@ in the @signifier spec (SIG-1 … SIG-16).
 - **Signifier** (@signifier spec) — produces and compares signatures.
 - **Model** (@model spec) — indexes klines by signature, provides candidate
   retrieval via overlap matching (@signifier).
-- **Agent** (@agent spec) — creates signatures during the prepare phase of
+- **Rationaliser** (@agent spec) — creates signatures during the prepare phase of
   rationalisation.
 - **Significance** (@model spec §Significance Semantics) — signatures are
   the basis for candidate retrieval but significance computation is separate.

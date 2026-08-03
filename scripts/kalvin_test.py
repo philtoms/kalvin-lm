@@ -1,6 +1,6 @@
 """Quick smoke test for the Kalvin agent pipeline.
 
-Compiles the MHALL-SVO curriculum, feeds it to KAgent, and prints
+Compiles the MHALL-SVO curriculum, feeds it to Rationaliser, and prints
 a summary of rationalisation events. Uses EventBus (no harness)
 for lightweight testing.
 
@@ -17,7 +17,7 @@ from collections import Counter
 
 sys.path.insert(0, "src")
 
-from kalvin.agent import KAgent
+from kalvin.rationaliser import Rationaliser
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import D_MAX, SIG_S4, boundaries, classify
 from kalvin.kline import is_identity
@@ -174,7 +174,7 @@ def main() -> None:
     kvalues = compile_source(SOURCE, tokenizer, dev=True)
 
     adapter = EventBus()
-    agent = KAgent(tokenizer=tokenizer, adapter=adapter)
+    agent = Rationaliser(tokenizer=tokenizer, adapter=adapter)
 
     done_event = threading.Event()
     counts: Counter = Counter()

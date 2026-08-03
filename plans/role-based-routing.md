@@ -101,7 +101,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
   - `HarnessServer.__init__`: update internal references
 - **Test mapping:** HRNS-5, HRNS-30 → `tests/test_server.py`
 
-### Task T6: KAgent Adapter — rename `address` to `role`, default `"trainee"`
+### Task T6: Rationaliser Adapter — rename `address` to `role`, default `"trainee"`
 
 - **Spec ref:** @specs/harness-server.md §Kalvin Adapter — HRNS-7, HRNS-8, HRNS-9, HRNS-10
 - **Files:** `src/training/harness/adapter.py`
@@ -126,7 +126,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
   - Update `_emit_polling_status`: `Message(role=SUPERVISOR_ROLE, ...)`
   - Update `_submit_next_lesson`: `Message(role=TRAINEE_ROLE, ...)`, `sender=self._role`
   - Update `bus.subscribe(self._role, ...)`
-  - Add event relay: after `_handle_kagent_event`, relay the event to role `supervisor` as `event` action (HRNS-33)
+  - Add event relay: after `_handle_rationaliser_event`, relay the event to role `supervisor` as `event` action (HRNS-33)
   - Add `ratify_request`: when a frame event (S2/S3) is handled, send `ratify_request` to role `supervisor` (HRNS-33)
 - **Test mapping:** HRNS-12, HRNS-14, HRNS-16, HRNS-31, HRNS-33 → `tests/test_trainer.py`, `tests/test_harness*.py`
 
@@ -196,7 +196,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 - **Details:**
   - `tests/test_bus.py`: `Message(address=...)` → `Message(role=...)`, handler parameter name
   - `tests/test_protocol.py`: registration frames, message frames, `address` → `role`
-  - `tests/test_adapter.py`: `KAgentAdapter(bus, address=...)` → `KAgentAdapter(bus, role=...)`
+  - `tests/test_adapter.py`: `RationaliserAdapter(bus, address=...)` → `RationaliserAdapter(bus, role=...)`
   - `tests/test_trainer.py`: `Trainer(bus, ..., address=...)` → `Trainer(bus, ..., role=...)`
   - `tests/test_reactor.py`: `Reactor(bus, state, address=...)` → `Reactor(bus, state, role=...)`
   - `tests/test_tui_client.py`: `HarnessClient(url, address=...)` → `HarnessClient(url, role=...)`
@@ -207,7 +207,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
     - HRNS-29: `test_fan_out_dispatch` — two handlers same role both receive
     - HRNS-30: `test_multiple_clients_same_role` — two WebSocket connections same role
     - HRNS-31: `test_trainer_progress_to_all_supervisor_subscribers` — trainer sends progress, all `supervisor` subscribers receive
-    - HRNS-33: `test_trainer_relay_kagent_events_to_supervisor` — ground/frame events relayed
+    - HRNS-33: `test_trainer_relay_rationaliser_events_to_supervisor` — ground/frame events relayed
     - HRNS-34: `test_slack_ratify_command` — Slack sends `countersign` via `ratify` command
 
 ### Task T14: Shared command parser
@@ -257,7 +257,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 | HRNS-19 | tests/test_trainer.py     | test_session_pause                       | ⬜     |
 | HRNS-20 | tests/test_trainer.py     | test_session_stop                        | ⬜     |
 | HRNS-21 | tests/test_protocol.py    | test_disconnect_silent_drop              | ⬜     |
-| HRNS-22 | tests/test_adapter.py     | test_kagent_calls_adapter_directly       | ⬜     |
+| HRNS-22 | tests/test_adapter.py     | test_rationaliser_calls_adapter_directly       | ⬜     |
 | HRNS-23 | tests/test_bus.py         | test_single_dispatch_thread              | ⬜     |
 | HRNS-24 | tests/test_trainer.py     | test_entry_counting                      | ⬜     |
 | HRNS-25 | tests/test_tui_client.py  | test_renders_received_events             | ⬜     |
@@ -269,7 +269,7 @@ The role names reflect the training session domain: `trainee` (Kalvin), `trainer
 | HRNS-30 | tests/test_protocol.py    | test_multiple_clients_same_role          | 🆕     |
 | HRNS-31 | tests/test_trainer.py     | test_progress_to_all_supervisor_subscribers | 🆕  |
 | HRNS-32 | tests/test_commands.py    | test_command_parser                      | 🆕     |
-| HRNS-33 | tests/test_trainer.py     | test_relay_kagent_events_to_supervisor   | 🆕     |
+| HRNS-33 | tests/test_trainer.py     | test_relay_rationaliser_events_to_supervisor   | 🆕     |
 | HRNS-34 | tests/test_slack_agent.py | test_slack_ratify_command                | 🆕     |
 
 ## Design Decisions
@@ -312,7 +312,7 @@ T1: Message (rename field)
         │
         ├── T5: Harness Server (config)
         │
-        ├── T6: KAgent Adapter (role="trainee")
+        ├── T6: Rationaliser Adapter (role="trainee")
         │
         ├── T7: Trainer (target supervisor, event relay)
         │     │

@@ -315,7 +315,7 @@ The following are explicitly **out of scope** for this spec:
 ## Referenced By
 
 - **Model** (@model spec) — owns and manages the STM as its first tier.
-- **Agent** (@agent spec) — indirectly, via Model operations that populate
+- **Rationaliser** (@agent spec) — indirectly, via Model operations that populate
   the STM.
 
 ## Code Location

@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
 
 if TYPE_CHECKING:
-    from kalvin.agent import KAgentAdapter
+    from kalvin.rationaliser import RationaliserAdapter
 
 
 # Cogitation Handler Protocol
@@ -106,7 +106,7 @@ class Cogitator:
     handler:
         CogitationHandler implementation. Called when cogitation discovers
         significant results (S1 matches and S2/S3 expansion proposals).
-        The KAgent is the primary implementation.
+        The Rationaliser is the primary implementation.
     timeout:
         Idle seconds before emitting "done" so subscribers can realign.
         Does not halt the thread. Default 2.0.
@@ -115,7 +115,7 @@ class Cogitator:
     def __init__(
         self,
         model: Model,
-        adapter: KAgentAdapter,
+        adapter: RationaliserAdapter,
         handler: CogitationHandler,
         signifier: KSignifier,
         timeout: float = 2.0,
@@ -195,7 +195,7 @@ class Cogitator:
     def _run_work_item(self, item: WorkItem) -> None:
         """Expand a work item, classifying each yield against boundaries.
 
-        Work items arrive routed as S2 or S3 only (see KAgent._route). The
+        Work items arrive routed as S2 or S3 only (see Rationaliser._route). The
         pair is expanded and each yield classified; a terminal S1 (distance
         1) discovered during expansion is a genuine structural exact match
         and triggers ``on_s1``.

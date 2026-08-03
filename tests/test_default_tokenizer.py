@@ -17,11 +17,11 @@ from unittest.mock import patch
 
 import pytest
 
-from kalvin.agent import _default_tokenizer
+from kalvin.rationaliser import _default_tokenizer
 from kalvin.tokenizer import TiktokenNotInstalledError, Tokenizer
 from tests.conftest import requires_tokenizer_data
 
-_TARGET = "kalvin.agent.NLPTokenizer"
+_TARGET = "kalvin.rationaliser.NLPTokenizer"
 
 
 def test_raises_runtime_error_on_file_not_found():

@@ -42,7 +42,7 @@ def _sample_config() -> dict[str, Any]:
             {
                 "role": "kalvin",
                 "type": "embedded",
-                "class": "KAgent",
+                "class": "Rationaliser",
             },
             {
                 "role": TRAINER_ROLE,
@@ -90,7 +90,7 @@ class TestLoadConfigYamlAndJson:
         assert len(yaml_config.participants) == 3
         assert yaml_config.participants[0].role == "kalvin"
         assert yaml_config.participants[0].type == "embedded"
-        assert yaml_config.participants[0].class_name == "KAgent"
+        assert yaml_config.participants[0].class_name == "Rationaliser"
         assert yaml_config.participants[2].type == "client"
 
 
@@ -106,13 +106,13 @@ class TestConfigValidation:
             load_config(path)
 
     def test_participant_missing_role(self, tmp_path: Path) -> None:
-        data = {"participants": [{"type": "embedded", "class": "KAgent"}]}
+        data = {"participants": [{"type": "embedded", "class": "Rationaliser"}]}
         path = _write_yaml(tmp_path / "bad.yaml", data)
         with pytest.raises(ConfigError, match="missing required 'role'"):
             load_config(path)
 
     def test_participant_invalid_type(self, tmp_path: Path) -> None:
-        data = {"participants": [{"role": "kalvin", "type": "invalid", "class": "KAgent"}]}
+        data = {"participants": [{"role": "kalvin", "type": "invalid", "class": "Rationaliser"}]}
         path = _write_yaml(tmp_path / "bad.yaml", data)
         with pytest.raises(ConfigError, match="invalid type 'invalid'"):
             load_config(path)
@@ -120,7 +120,7 @@ class TestConfigValidation:
     def test_duplicate_embedded_roles(self, tmp_path: Path) -> None:
         data = {
             "participants": [
-                {"role": "kalvin", "type": "embedded", "class": "KAgent"},
+                {"role": "kalvin", "type": "embedded", "class": "Rationaliser"},
                 {"role": "kalvin", "type": "embedded", "class": "AnotherAgent"},
             ]
         }
@@ -157,7 +157,7 @@ class TestConfigValidation:
         """A client may share a role with an embedded participant."""
         data = {
             "participants": [
-                {"role": "kalvin", "type": "embedded", "class": "KAgent"},
+                {"role": "kalvin", "type": "embedded", "class": "Rationaliser"},
                 {"role": "kalvin", "type": "client", "class": "TUI"},
             ]
         }
@@ -178,7 +178,7 @@ class TestLoadEmbeddedParticipants:
                 {
                     "role": "kalvin",
                     "type": "embedded",
-                    "class": "MockKAgent",
+                    "class": "MockRationaliser",
                 },
             ]
         }
@@ -186,7 +186,7 @@ class TestLoadEmbeddedParticipants:
 
         bus = MessageBus()
         server = HarnessServer(path, bus)
-        server.register_participant_class("MockKAgent", MockParticipant)
+        server.register_participant_class("MockRationaliser", MockParticipant)
 
         # Run _setup to instantiate embedded participants.
         server._setup()

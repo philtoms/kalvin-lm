@@ -23,7 +23,7 @@ trainer:
 participants:
   - role: trainee
     type: embedded
-    class: KAgent
+    class: Rationaliser
 
   - role: trainer
     type: embedded

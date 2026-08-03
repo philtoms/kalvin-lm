@@ -5,7 +5,7 @@ Provides:
 - **HarnessClient**: async WebSocket client that handles registration
   (``{"register": "supervisor"}``) and bidirectional JSON message send/receive
   via asyncio queues.
-- **TUIApp**: Textual application that renders KAgent events and provides
+- **TUIApp**: Textual application that renders Rationaliser events and provides
   ratification (countersign) controls.
 
 Spec reference: specs/harness-server.md §TUI Participant
@@ -168,7 +168,7 @@ class HarnessClient:
 class TUIApp(App):
     """Textual TUI for the harness participant.
 
-    Displays KAgent events routed from the harness via ``EventLog`` and
+    Displays Rationaliser events routed from the harness via ``EventLog`` and
     provides ratification (countersign) controls via ``RatifyBar``.
 
     On mount: creates a ``HarnessClient``, connects to the harness, and

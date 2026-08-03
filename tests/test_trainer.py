@@ -342,7 +342,7 @@ class TestSessionStop:
 
         capture.reset()
 
-        # Subsequent KAgent events should be ignored
+        # Subsequent Rationaliser events should be ignored
         query = KLine(signature=100, nodes=[10])
         proposal = KLine(signature=100, nodes=[10])
         event = _make_event("ground", query, proposal, _S1_SIGNIFICANCE)
@@ -378,7 +378,7 @@ class TestEntryCountingLessonComplete:
         # Clear startup messages
         capture.reset()
 
-        # Simulate 3 KAgent response events (S1 ground events)
+        # Simulate 3 Rationaliser response events (S1 ground events)
         for entry in entries:
             event = _make_event(
                 "ground",
@@ -473,7 +473,7 @@ class TestFastPathAutoSatisfy:
 
 
 class TestCompilationErrorFromKalvin:
-    """A KAgent error abandons the lesson: pending entries are satisfied on error."""
+    """A Rationaliser error abandons the lesson: pending entries are satisfied on error."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_compilation_error_from_kalvin(self, mock_compile: MagicMock) -> None:
@@ -493,7 +493,7 @@ class TestCompilationErrorFromKalvin:
 
         capture.reset()
 
-        # Simulate error event from KAgent
+        # Simulate error event from Rationaliser
         trainer.on_message(
             Message(
                 role=TRAINER_ROLE,
@@ -510,7 +510,7 @@ class TestCompilationErrorFromKalvin:
         _drain(trainer)
 
         # Error is logged
-        error_events = [e for e in trainer.state.event_log if e["type"] == "kagent_error"]
+        error_events = [e for e in trainer.state.event_log if e["type"] == "rationaliser_error"]
         assert len(error_events) == 1
         assert "ParseError" in error_events[0]["data"]["message"]
 

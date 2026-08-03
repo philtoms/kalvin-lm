@@ -1,5 +1,5 @@
 """Tests for encode_text.py — verifies the script's core logic
-against the current KAgent API (tokenize → KLine → rationalise)."""
+against the current Rationaliser API (tokenize → KLine → rationalise)."""
 
 import importlib
 import sys
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from kalvin.agent import KAgent
+from kalvin.rationaliser import Rationaliser
 from kalvin.events import EventBus
 from kalvin.significance import SIG_S1, SIG_S2, is_countersigned, structural_significance
 from kalvin.kline import KLine
@@ -23,13 +23,13 @@ signifier = NLPSignifier()
 def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
     band (kvalue spec KP-1): the structural band with the model-state S2→S1
-    countersigned fork KAgent applies. Empty/identity klines declare S4."""
+    countersigned fork Rationaliser applies. Empty/identity klines declare S4."""
     band = structural_significance(kline, signifier)
     if band == SIG_S2 and is_countersigned(model, kline, signifier):
         band = SIG_S1
     return KValue(kline, band)
 
-# Encoding through KAgent uses the kalvin tokenizer; skip cleanly when the
+# Encoding through Rationaliser uses the kalvin tokenizer; skip cleanly when the
 # data assets are absent on a fresh clone.
 pytestmark = requires_tokenizer_data
 
@@ -62,7 +62,7 @@ class TestEncodeSentenceRationalises:
     pattern should grow the agent's frame."""
 
     def test_encode_sentence_rationalises(self):
-        agent = KAgent(adapter=EventBus())
+        agent = Rationaliser(adapter=EventBus())
         initial = agent.frame_size()
 
         sentence = "Hello world"
@@ -78,7 +78,7 @@ class TestEncodeEmptyString:
     gracefully (no crash)."""
 
     def test_encode_empty_string(self):
-        agent = KAgent(adapter=EventBus())
+        agent = Rationaliser(adapter=EventBus())
         initial = agent.frame_size()
 
         nodes = agent.tokenizer.encode("")
@@ -127,7 +127,7 @@ class TestEncodeMultipleSentences:
 
     def test_encode_multiple_sentences(self):
         # Use the kalvin NLPTokenizer (the sole production tokenizer).
-        agent = KAgent(adapter=EventBus(), tokenizer=NLPTokenizer())
+        agent = Rationaliser(adapter=EventBus(), tokenizer=NLPTokenizer())
         initial = agent.frame_size()
 
         text = "The cat sat. The dog ran."
@@ -154,7 +154,7 @@ class TestAgentLoadSaveRoundtrip:
     AgentCodec, verify model size matches."""
 
     def test_roundtrip_after_encoding(self):
-        agent = KAgent(adapter=EventBus())
+        agent = Rationaliser(adapter=EventBus())
 
         # Encode a sentence
         nodes = agent.tokenizer.encode("Test sentence for roundtrip")
@@ -169,11 +169,11 @@ class TestAgentLoadSaveRoundtrip:
         assert len(data) > 0
 
         # Load back
-        loaded = KAgent.from_bytes(data)
+        loaded = Rationaliser.from_bytes(data)
         assert loaded.frame_size() == size_before
 
     def test_roundtrip_json_after_encoding(self):
-        agent = KAgent(adapter=EventBus())
+        agent = Rationaliser(adapter=EventBus())
 
         # Encode a sentence
         nodes = agent.tokenizer.encode("JSON roundtrip test")
@@ -184,11 +184,11 @@ class TestAgentLoadSaveRoundtrip:
 
         # Save to dict (JSON)
         d = agent.to_dict()
-        loaded = KAgent.from_dict(d)
+        loaded = Rationaliser.from_dict(d)
         assert loaded.frame_size() == size_before
 
     def test_roundtrip_file_after_encoding(self):
-        agent = KAgent(adapter=EventBus())
+        agent = Rationaliser(adapter=EventBus())
 
         nodes = agent.tokenizer.encode("File roundtrip test")
         kline = KLine(signature=signifier.signature_of(nodes), nodes=nodes)
@@ -199,5 +199,5 @@ class TestAgentLoadSaveRoundtrip:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "test-agent.json"
             agent.save(path, format="json")
-            loaded = KAgent.load(path, format="json")
+            loaded = Rationaliser.load(path, format="json")
             assert loaded.frame_size() == size_before

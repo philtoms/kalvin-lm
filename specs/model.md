@@ -54,9 +54,9 @@ This spec depends on the following concepts, defined elsewhere:
   `KValue` results with pre-computed significance values.
 - Significance does not manage model state.
 
-### Agent (@agent spec)
+### Rationaliser (@agent spec)
 
-- The agent calls model write operations (`add_to_stm`, `add_to_frame`, `add_to_ltm`)
+- The Rationaliser calls model write operations (`add_to_stm`, `add_to_frame`, `add_to_ltm`)
   and read operations (`find`, `exists`, `query`, etc.).
 - The agent selects the appropriate write method based on the significance
   outcome of rationalisation.
@@ -476,7 +476,7 @@ reads the model from `on_event` on the calling thread).
 - **Base tier.** The optional Base `Model` is read-only after construction, so
   the parent does **not** acquire the Base's lock on reads — unlocked reads are
   safe and this sidesteps lock-ordering discipline.
-- **Publish outside the lock.** `KAgent._publish` (which synchronously
+- **Publish outside the lock.** `Rationaliser._publish` (which synchronously
   dispatches subscriber callbacks via `adapter.on_event`) is invoked only
   _after_ a Model method has acquired-and-released its own lock. Subscribers
   therefore run **outside** the Model lock and may re-enter the model (on the
@@ -886,7 +886,7 @@ The following are explicitly **out of scope** for this spec:
 
 - **Significance computation.** The model computes significance internally
   via `expand()`. Routing is defined in the significance spec.
-- **Encoding.** Converting text or other input into Klines is the agent's
+- **Encoding.** Converting text or other input into Klines is the Rationaliser's
   responsibility (@agent spec).
 - **Tokenisation.** Producing nodes from input is defined in the
   @tokenizer spec. Producing signatures from nodes is defined in the
@@ -905,5 +905,5 @@ The following are explicitly **out of scope** for this spec:
 
 - **Significance** (@model spec §Significance Semantics) — calls `is_s1`,
   `expand`.
-- **Agent** (@agent spec) — stores encoded Klines, retrieves candidates,
+- **Rationaliser** (@agent spec) — stores encoded Klines, retrieves candidates,
   traverses the graph, promotes significant Klines.

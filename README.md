@@ -116,7 +116,7 @@ src/
 │   ├── tokenizer.py      #   Tokenizer interface
 │   ├── mod_tokenizer.py  #   Mod32/Mod64 tokenizers
 │   ├── model.py          #   4-tier memory (STM → Frame → LTM → Base)
-│   ├── agent.py          #   KAgent — rationalisation pipeline + Cogitator
+│   ├── rationaliser.py  #   Rationaliser — rationalisation pipeline + Cogitator
 │   ├── events.py         #   Event definitions
 │   └── ...
 ├── ks/                  # KScript DSL (v3)
@@ -130,7 +130,7 @@ src/
     ├── harness/         #   Harness server
     │   ├── server.py    #     Harness server + config loading
     │   ├── bus.py       #     Addressed message bus
-    │   ├── adapter.py   #     KAgent ↔ bus adapter
+    │   ├── adapter.py   #     Rationaliser ↔ bus adapter
     │   ├── llm.py       #     Shared LLM client (LLMClient/OpenAICompatibleClient)
     │   └── protocol.py  #     WebSocket wire protocol
     ├── trainer/         #   Trainer participant

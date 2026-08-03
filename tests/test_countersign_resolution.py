@@ -9,7 +9,7 @@ sig_level propagation, denote=connote identity, and countersign
 pair resolution.
 """
 
-from kalvin.agent import KAgent
+from kalvin.rationaliser import Rationaliser
 from kalvin.events import EventBus
 from kalvin.significance import SIG_S1, SIG_S2, is_countersigned, structural_significance
 from kalvin.kline import KLine, sig_level
@@ -35,7 +35,7 @@ def t(bits: int) -> int:
 def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
     band: the structural band with the model-state S2→S1 countersigned fork
-    KAgent applies."""
+    Rationaliser applies."""
     band = structural_significance(kline, signifier)
     if band == SIG_S2 and is_countersigned(model, kline, signifier):
         band = SIG_S1
@@ -43,7 +43,7 @@ def _kv(kline, model):
 
 
 # Every test in this module drives ``compile_source`` (which builds a
-# ``NLPTokenizer()`` internally) or a ``KAgent`` (whose default
+# ``NLPTokenizer()`` internally) or a ``Rationaliser`` (whose default
 # tokenizer is the kalvin Tokenizer).  Gate the whole module so data-less clones skip cleanly.
 pytestmark = requires_tokenizer_data
 
@@ -53,7 +53,7 @@ class TestCountersignPairResolution:
 
     def test_countersign_pair_both_resolve_s1(self):
         bus = EventBus()
-        a = KAgent(adapter=bus)
+        a = Rationaliser(adapter=bus)
 
         # Add identities (derived from compile_source so signatures match the
         # tokenizer encoding used by the countersign compilation below)
@@ -117,7 +117,7 @@ class TestSelfFilterInCandidates:
 
     def test_rationalise_excludes_self_from_candidates(self):
         bus = EventBus()
-        a = KAgent(adapter=bus)
+        a = Rationaliser(adapter=bus)
 
         # Add a candidate that partially overlaps with query signature
         candidate = KLine(t(5), [t(10), t(30)])
@@ -136,7 +136,7 @@ class TestDenoteIsConnoteReversed:
     def test_denote_no_special_fast_path(self):
         """Denote {M: S} resolves as S3 (not S1), goes through slow path."""
         bus = EventBus()
-        a = KAgent(adapter=bus)
+        a = Rationaliser(adapter=bus)
 
         # Add identities (derived from compile_source so signatures match the
         # tokenizer encoding used by the denote compilation below)
@@ -167,7 +167,7 @@ class TestDenoteIsConnoteReversed:
     def test_connote_goes_through_slow_path(self):
         """Connote {A: D} should go through candidate retrieval -> slow path."""
         bus = EventBus()
-        a = KAgent(adapter=bus)
+        a = Rationaliser(adapter=bus)
 
         # Add identity A only (D is unknown).  Derived from compile_source so
         # its signature matches the tokenizer encoding used by the connote below.)

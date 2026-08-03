@@ -1,8 +1,8 @@
-"""Tests for KAgent adapter — HRNS-7, HRNS-8, HRNS-9, HRNS-10, HRNS-22.
+"""Tests for Rationaliser adapter — HRNS-7, HRNS-8, HRNS-9, HRNS-10, HRNS-22.
 
-The adapter bridges the KAgent rationalisation pipeline and the role-based
+The adapter bridges the Rationaliser rationalisation pipeline and the role-based
 message bus.  These tests verify compilation, sender-map routing,
-countersign forwarding, error handling, and direct KAgent→adapter callbacks.
+countersign forwarding, error handling, and direct Rationaliser→adapter callbacks.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from tests.conftest import requires_tokenizer_data
-from training.harness.adapter import KAgentAdapter, _materialise_kvalue
+from training.harness.adapter import RationaliserAdapter, _materialise_kvalue
 from training.harness.bus import MessageBus
 from training.harness.constants import TRAINEE_ROLE
 from training.harness.message import Message
@@ -26,8 +26,8 @@ from training.harness.message import Message
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 
-class FakeKAgent:
-    """Minimal KAgent stub for unit-testing the adapter."""
+class FakeRationaliser:
+    """Minimal Rationaliser stub for unit-testing the adapter."""
 
     def __init__(self) -> None:
         self.rationalise = MagicMock(return_value=True)
@@ -116,36 +116,36 @@ class TestMaterialiseKValue:
 
 
 class TestHRNS7SubmitCompilesAndSubmits:
-    """HRNS-7: KAgent adapter compiles KScript and submits entries one at a time."""
+    """HRNS-7: Rationaliser adapter compiles KScript and submits entries one at a time."""
 
     @requires_tokenizer_data
     def test_submit_compiles_and_submits(self) -> None:
         """Compile KScript source and call rationalise for each entry."""
         bus = MessageBus()
         BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender="trainer")
         )
 
         # compile_source("MHALL = SVO") produces multiple entries
-        assert kagent.rationalise.call_count > 0, "rationalise should be called at least once"
+        assert rationaliser.rationalise.call_count > 0, "rationalise should be called at least once"
 
     @requires_tokenizer_data
     def test_submit_passes_compiled_entries(self) -> None:
         """Each call to rationalise receives a KValue (compile_source returns KValues)."""
         bus = MessageBus()
         BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="MHALL = SVO", sender="trainer")
         )
 
-        for call in kagent.rationalise.call_args_list:
+        for call in rationaliser.rationalise.call_args_list:
             entry = call[0][0]
             assert isinstance(entry, KValue), f"Expected KValue, got {type(entry)}"
 
@@ -165,8 +165,8 @@ class TestHRNS7SubmitCompilesAndSubmits:
 
         bus = MessageBus()
         BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         adapter.on_message(
             Message(
@@ -177,8 +177,8 @@ class TestHRNS7SubmitCompilesAndSubmits:
             )
         )
 
-        assert kagent.rationalise.call_count == 2
-        for call in kagent.rationalise.call_args_list:
+        assert rationaliser.rationalise.call_count == 2
+        for call in rationaliser.rationalise.call_args_list:
             value = call[0][0]
             assert isinstance(value, KValue), f"Expected KValue, got {type(value)}"
 
@@ -193,14 +193,14 @@ class TestHRNS7SubmitCompilesAndSubmits:
 
 
 class TestHRNS8CompilationErrorResponse:
-    """HRNS-8: KAgent adapter sends compilation errors back to sender."""
+    """HRNS-8: Rationaliser adapter sends compilation errors back to sender."""
 
     def test_compilation_error_response(self) -> None:
         """Invalid KScript triggers an error message to the sender."""
         bus = MessageBus()
         capture = BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="!!! invalid !!", sender="trainer")
@@ -215,14 +215,14 @@ class TestHRNS8CompilationErrorResponse:
         """After a compilation error, rationalise is never called."""
         bus = MessageBus()
         BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="!!! bad !!", sender="trainer")
         )
 
-        kagent.rationalise.assert_not_called()
+        rationaliser.rationalise.assert_not_called()
 
 
 # ── HRNS-9: Sender map response routing ──────────────────────────────
@@ -230,14 +230,14 @@ class TestHRNS8CompilationErrorResponse:
 
 @requires_tokenizer_data
 class TestHRNS9SenderMapResponseRouting:
-    """HRNS-9: KAgent adapter maintains sender map; responses routed to sender."""
+    """HRNS-9: Rationaliser adapter maintains sender map; responses routed to sender."""
 
     def test_sender_map_response_routing(self) -> None:
         """Callback event is routed to the original sender."""
         bus = MessageBus()
         capture = BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         # Submit valid KScript from "trainer"
         adapter.on_message(
@@ -245,10 +245,10 @@ class TestHRNS9SenderMapResponseRouting:
         )
 
         # The rationalise mock captured the entries
-        assert kagent.rationalise.call_count > 0
-        first_entry = kagent.rationalise.call_args_list[0][0][0]
+        assert rationaliser.rationalise.call_count > 0
+        first_entry = rationaliser.rationalise.call_args_list[0][0][0]
 
-        # Simulate KAgent callback for this entry (query/proposal are KValues).
+        # Simulate Rationaliser callback for this entry (query/proposal are KValues).
         event = RationaliseEvent("frame", first_entry, first_entry)
         adapter.on_event(event)
 
@@ -261,14 +261,14 @@ class TestHRNS9SenderMapResponseRouting:
     def test_sender_map_records_entry_key(self) -> None:
         """Sender map correctly maps (sig, nodes) → sender."""
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
-        first_entry = kagent.rationalise.call_args_list[0][0][0]
+        first_entry = rationaliser.rationalise.call_args_list[0][0][0]
         key = (first_entry.kline.signature, tuple(first_entry.kline.nodes))
         assert adapter._sender_map[key] == "trainer"
 
@@ -276,21 +276,21 @@ class TestHRNS9SenderMapResponseRouting:
         """Entries from different senders map to their respective senders."""
         bus = MessageBus()
         capture = BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         # Submit from trainer
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
-        entry_a = kagent.rationalise.call_args_list[0][0][0]
+        entry_a = rationaliser.rationalise.call_args_list[0][0][0]
 
         # Submit from ui (reset mock to track separately)
-        kagent.rationalise.reset_mock()
+        rationaliser.rationalise.reset_mock()
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="X = Y", sender="ui")
         )
-        entry_x = kagent.rationalise.call_args_list[0][0][0]
+        entry_x = rationaliser.rationalise.call_args_list[0][0][0]
 
         # Callback for entry_a → trainer (query/proposal are KValues)
         adapter.on_event(RationaliseEvent("frame", entry_a, entry_a))
@@ -308,7 +308,7 @@ class TestHRNS9SenderMapResponseRouting:
 
 
 class TestHRNS10CountersignAction:
-    """HRNS-10: KAgent adapter handles countersign action."""
+    """HRNS-10: Rationaliser adapter handles countersign action."""
 
     def test_countersign_live_kvalue(self) -> None:
         """A live KValue payload is passed through unchanged to countersign.
@@ -318,33 +318,33 @@ class TestHRNS10CountersignAction:
         ``countersign`` as the same object — no wrapping or reconstruction.
         """
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         kv = KValue(KLine(0xABCD, [0x1234]), SIG_S1)
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="countersign", message=kv, sender="trainer")
         )
 
-        kagent.countersign.assert_called_once_with(kv)
+        rationaliser.countersign.assert_called_once_with(kv)
 
     def test_countersign_action(self) -> None:
-        """Countersign message triggers kagent.countersign with the payload.
+        """Countersign message triggers rationaliser.countersign with the payload.
 
         A legacy bare KLine is wrapped at SIG_S1 (KP-2: countersign is an S1
         ratification) before being handed to ``countersign`` as a KValue.
         """
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         kline = KLine(0xABCD, [0x1234])
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="countersign", message=kline, sender="trainer")
         )
 
-        kagent.countersign.assert_called_once()
-        call_arg = kagent.countersign.call_args[0][0]
+        rationaliser.countersign.assert_called_once()
+        call_arg = rationaliser.countersign.call_args[0][0]
         assert isinstance(call_arg, KValue), f"Expected KValue, got {type(call_arg)}"
         assert call_arg.kline == kline
         assert call_arg.significance == SIG_S1
@@ -352,15 +352,15 @@ class TestHRNS10CountersignAction:
     def test_countersign_does_not_rationalise(self) -> None:
         """Countersign action does not call rationalise."""
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         kline = KLine(0xABCD, [0x1234])
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="countersign", message=kline, sender="trainer")
         )
 
-        kagent.rationalise.assert_not_called()
+        rationaliser.rationalise.assert_not_called()
 
     def test_countersign_materialises_wire_dict(self) -> None:
         """A wire-dict payload is materialised to a KValue before countersign.
@@ -368,13 +368,13 @@ class TestHRNS10CountersignAction:
         Regression guard: a countersign frame that traversed the WebSocket
         arrives as a plain dict (the canonical KValue wire shape produced by
         the harness's outbound encoder). Without materialisation
-        ``KAgent.countersign`` would touch ``.kline`` on a ``dict`` and raise
+        ``Rationaliser.countersign`` would touch ``.kline`` on a ``dict`` and raise
         ``AttributeError``, killing the bus-dispatch thread and stalling the
         training run.
         """
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         sig = 0xCAFEBABE
         wire = {"signature": 0xABCD, "nodes": [0x1234, 0x5678], "significance": sig}
@@ -387,8 +387,8 @@ class TestHRNS10CountersignAction:
             )
         )
 
-        kagent.countersign.assert_called_once()
-        call_arg = kagent.countersign.call_args[0][0]
+        rationaliser.countersign.assert_called_once()
+        call_arg = rationaliser.countersign.call_args[0][0]
         assert isinstance(call_arg, KValue)
         # Compared via KLine.__eq__ (signature + nodes).
         assert call_arg.kline == KLine(0xABCD, [0x1234, 0x5678])
@@ -401,7 +401,7 @@ class TestHRNS10CountersignAction:
 
 class TestRationaliseAction:
     """The ``rationalise`` action delivers a participant-constructed KValue
-    straight to ``kagent.rationalise`` — the path a participant uses to hand
+    straight to ``rationaliser.rationalise`` — the path a participant uses to hand
     Kalvin a KValue with its own declared significance (the MVP uses it for a
     declared-S4 drop signal). Mirrors HRNS-10's countersign shape but routes
     to ``rationalise`` instead of ``countersign``.
@@ -416,16 +416,16 @@ class TestRationaliseAction:
         preserves the sender's declared value.
         """
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         kv = KValue(KLine(0xABCD, [0x1234]), SIG_S4)
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="rationalise", message=kv, sender="trainer")
         )
 
-        kagent.rationalise.assert_called_once_with(kv)
-        kagent.countersign.assert_not_called()
+        rationaliser.rationalise.assert_called_once_with(kv)
+        rationaliser.countersign.assert_not_called()
 
     def test_rationalise_materialises_wire_dict(self) -> None:
         """A wire-dict payload is materialised to a KValue before rationalise.
@@ -435,8 +435,8 @@ class TestRationaliseAction:
         preserve the declared significance.
         """
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         wire = {"signature": 0xABCD, "nodes": [0x1234, 0x5678], "significance": SIG_S4}
         adapter.on_message(
@@ -448,8 +448,8 @@ class TestRationaliseAction:
             )
         )
 
-        kagent.rationalise.assert_called_once()
-        call_arg = kagent.rationalise.call_args[0][0]
+        rationaliser.rationalise.assert_called_once()
+        call_arg = rationaliser.rationalise.call_args[0][0]
         assert isinstance(call_arg, KValue)
         assert call_arg.kline == KLine(0xABCD, [0x1234, 0x5678])
         assert call_arg.significance == SIG_S4
@@ -461,8 +461,8 @@ class TestRationaliseAction:
         so a malformed payload cannot silently become an S0/S4 drop.
         """
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         wire = {"signature": 0xABCD, "nodes": [0x1234]}
         with pytest.raises(TypeError):
@@ -478,20 +478,20 @@ class TestRationaliseAction:
     def test_rationalise_does_not_countersign(self) -> None:
         """Rationalise action does not call countersign."""
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         kv = KValue(KLine(0xABCD, [0x1234]), SIG_S4)
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="rationalise", message=kv, sender="trainer")
         )
 
-        kagent.countersign.assert_not_called()
+        rationaliser.countersign.assert_not_called()
 
-    def test_rationalise_no_kagent_is_safe(self) -> None:
-        """No bound KAgent → logs and returns, no crash."""
+    def test_rationalise_no_rationaliser_is_safe(self) -> None:
+        """No bound Rationaliser → logs and returns, no crash."""
         bus = MessageBus()
-        adapter = KAgentAdapter(bus, kagent=None)
+        adapter = RationaliserAdapter(bus, rationaliser=None)
 
         kv = KValue(KLine(0xABCD, [0x1234]), SIG_S4)
         # Must not raise.
@@ -509,8 +509,8 @@ class TestRationaliseAction:
         receive the events Kalvin emits about it.
         """
         bus = MessageBus()
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         kv = KValue(KLine(0xABCD, [0x1234]), SIG_S4)
         adapter.on_message(
@@ -521,24 +521,24 @@ class TestRationaliseAction:
         assert adapter._sender_map[key] == "trainer"
 
 
-# ── HRNS-22: KAgent calls adapter directly ───────────────────────────────
+# ── HRNS-22: Rationaliser calls adapter directly ───────────────────────────────
 
 
 @requires_tokenizer_data
-class TestHRNS22KAgentCallsAdapterDirectly:
-    """HRNS-22: KAgent calls adapter directly (no internal EventBus)."""
+class TestHRNS22RationaliserCallsAdapterDirectly:
+    """HRNS-22: Rationaliser calls adapter directly (no internal EventBus)."""
 
-    def test_kagent_calls_adapter_directly(self) -> None:
-        """Real KAgent with adapter as callback produces events via on_event."""
-        from kalvin.agent import KAgent
+    def test_rationaliser_calls_adapter_directly(self) -> None:
+        """Real Rationaliser with adapter as callback produces events via on_event."""
+        from kalvin.rationaliser import Rationaliser
 
         bus = MessageBus()
         capture = BusCapture(bus)
-        adapter = KAgentAdapter(bus)
+        adapter = RationaliserAdapter(bus)
 
-        # Create real KAgent with adapter as its adapter callback
-        kagent = KAgent(adapter=adapter)
-        adapter.bind(kagent)
+        # Create real Rationaliser with adapter as its adapter callback
+        rationaliser = Rationaliser(adapter=adapter)
+        adapter.bind(rationaliser)
 
         # Subscribe a handler on the bus to capture messages for "trainer"
         received: list[Message] = []
@@ -550,10 +550,10 @@ class TestHRNS22KAgentCallsAdapterDirectly:
             Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
-        # The KAgent may produce fast-path events synchronously (S4/S1)
+        # The Rationaliser may produce fast-path events synchronously (S4/S1)
         # or slow-path events via Cogitator thread.
         # Stop the cogitator to flush any pending work.
-        kagent.cogitate_join(timeout=5.0)
+        rationaliser.cogitate_join(timeout=5.0)
 
         # At least one event should have been routed back to "trainer"
         # through the adapter's on_event → bus.send path.
@@ -565,10 +565,10 @@ class TestHRNS22KAgentCallsAdapterDirectly:
 
     def test_no_eventbus_in_pipeline(self) -> None:
         """Verify the adapter's on_event is called (not an internal EventBus)."""
-        from kalvin.agent import KAgent
+        from kalvin.rationaliser import Rationaliser
 
         bus = MessageBus()
-        adapter = KAgentAdapter(bus)
+        adapter = RationaliserAdapter(bus)
 
         # Spy on adapter.on_event
         original_on_event = adapter.on_event
@@ -582,19 +582,19 @@ class TestHRNS22KAgentCallsAdapterDirectly:
 
         adapter.on_event = spying_on_event  # type: ignore[assignment]
 
-        kagent = KAgent(adapter=adapter)
-        adapter.bind(kagent)
+        rationaliser = Rationaliser(adapter=adapter)
+        adapter.bind(rationaliser)
 
         # Submit a KScript line — should trigger events
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
-        kagent.cogitate_join(timeout=5.0)
+        rationaliser.cogitate_join(timeout=5.0)
 
         with call_lock:
             assert len(events_received) > 0, (
-                "adapter.on_event should be called by KAgent (no internal EventBus)"
+                "adapter.on_event should be called by Rationaliser (no internal EventBus)"
             )
 
 
@@ -607,16 +607,16 @@ class TestUnknownAction:
     def test_unknown_action_ignored(self) -> None:
         bus = MessageBus()
         capture = BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         # Should not raise
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="unknown_action", message="data", sender="trainer")
         )
 
-        kagent.rationalise.assert_not_called()
-        kagent.countersign.assert_not_called()
+        rationaliser.rationalise.assert_not_called()
+        rationaliser.countersign.assert_not_called()
 
         # No error sent back
         errors = capture.with_action("error")
@@ -629,8 +629,8 @@ class TestOrphanEvent:
     def test_orphan_event_dropped(self) -> None:
         bus = MessageBus()
         capture = BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         # Simulate a callback with no matching sender
         orphan_kline = KLine(0xDEAD, [0xBEEF])
@@ -647,7 +647,7 @@ class TestAdapterRegistersOnBus:
 
     def test_registers_on_construction(self) -> None:
         bus = MessageBus()
-        adapter = KAgentAdapter(bus, kagent=FakeKAgent())
+        adapter = RationaliserAdapter(bus, rationaliser=FakeRationaliser())
 
         # The adapter should be registered for the trainee role
         assert TRAINEE_ROLE in bus._handlers
@@ -655,31 +655,31 @@ class TestAdapterRegistersOnBus:
 
     def test_custom_role(self) -> None:
         bus = MessageBus()
-        adapter = KAgentAdapter(bus, role="custom", kagent=FakeKAgent())
+        adapter = RationaliserAdapter(bus, role="custom", rationaliser=FakeRationaliser())
 
         assert adapter.role == "custom"
         assert "custom" in bus._handlers
 
 
-class TestNoKAgentBound:
-    """Operations without a bound KAgent are handled gracefully."""
+class TestNoRationaliserBound:
+    """Operations without a bound Rationaliser are handled gracefully."""
 
-    def test_submit_without_kagent(self) -> None:
+    def test_submit_without_rationaliser(self) -> None:
         bus = MessageBus()
         BusCapture(bus)
-        adapter = KAgentAdapter(bus)  # No kagent
+        adapter = RationaliserAdapter(bus)  # No rationaliser
 
         # Should not raise
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="submit", message="A = B", sender="trainer")
         )
 
-        # No error sent for submit (only compilation attempted if kagent exists)
-        # Actually, with no kagent, the adapter returns early
+        # No error sent for submit (only compilation attempted if rationaliser exists)
+        # Actually, with no rationaliser, the adapter returns early
 
-    def test_countersign_without_kagent(self) -> None:
+    def test_countersign_without_rationaliser(self) -> None:
         bus = MessageBus()
-        adapter = KAgentAdapter(bus)  # No kagent
+        adapter = RationaliserAdapter(bus)  # No rationaliser
 
         kline = KLine(0xABCD, [0x1234])
         # Should not raise
@@ -694,24 +694,24 @@ class TestNoKAgentBound:
 class TestSaveAction:
     """Save action persists Kalvin's model via agent_codec."""
 
-    def test_save_calls_kagent_save(self, tmp_path) -> None:
+    def test_save_calls_rationaliser_save(self, tmp_path) -> None:
         bus = MessageBus()
         BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         save_path = str(tmp_path / "model.bin")
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="save", message=save_path, sender="supervisor")
         )
 
-        kagent.save.assert_called_once_with(save_path)
+        rationaliser.save.assert_called_once_with(save_path)
 
     def test_save_sends_confirmation(self, tmp_path) -> None:
         bus = MessageBus()
         capture = BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         save_path = str(tmp_path / "model.bin")
         adapter.on_message(
@@ -725,8 +725,8 @@ class TestSaveAction:
     def test_save_uses_default_path(self) -> None:
         bus = MessageBus()
         BusCapture(bus)
-        kagent = FakeKAgent()
-        adapter = KAgentAdapter(bus, kagent=kagent)
+        rationaliser = FakeRationaliser()
+        adapter = RationaliserAdapter(bus, rationaliser=rationaliser)
 
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="save", message=None, sender="supervisor")
@@ -734,11 +734,11 @@ class TestSaveAction:
 
         from kalvin.paths import agent_bin
 
-        kagent.save.assert_called_once_with(str(agent_bin()))
+        rationaliser.save.assert_called_once_with(str(agent_bin()))
 
-    def test_save_without_kagent(self) -> None:
+    def test_save_without_rationaliser(self) -> None:
         bus = MessageBus()
-        adapter = KAgentAdapter(bus)  # No kagent
+        adapter = RationaliserAdapter(bus)  # No rationaliser
 
         # Should not raise
         adapter.on_message(
@@ -751,28 +751,28 @@ class TestLoadAction:
 
     @requires_tokenizer_data
     def test_load_replaces_model(self, tmp_path) -> None:
-        from kalvin.agent import KAgent
+        from kalvin.rationaliser import Rationaliser
 
         bus = MessageBus()
         BusCapture(bus)
-        adapter = KAgentAdapter(bus)
-        kagent = KAgent(adapter=adapter)
-        adapter.bind(kagent)
+        adapter = RationaliserAdapter(bus)
+        rationaliser = Rationaliser(adapter=adapter)
+        adapter.bind(rationaliser)
 
         # Teach the agent something so the model is non-empty.
         # rationalise takes a KValue (KB-354); an empty-nodes KLine is an
         # identity/S4 entry — wrap it at SIG_S1.
-        kagent.rationalise(KValue(KLine(0xFF, []), SIG_S1))
-        old_model = kagent._model
+        rationaliser.rationalise(KValue(KLine(0xFF, []), SIG_S1))
+        old_model = rationaliser._model
         assert len(old_model) > 0
 
         # Save to file
         save_path = tmp_path / "model.bin"
-        kagent.save(str(save_path))
+        rationaliser.save(str(save_path))
 
         # Clear model to prove load restores it
-        kagent._model = Model()
-        assert len(kagent._model) == 0
+        rationaliser._model = Model()
+        assert len(rationaliser._model) == 0
 
         # Load via adapter
         adapter.on_message(
@@ -780,21 +780,21 @@ class TestLoadAction:
         )
 
         # Model should be restored
-        assert len(kagent._model) > 0
+        assert len(rationaliser._model) > 0
 
     @requires_tokenizer_data
     def test_load_sends_confirmation(self, tmp_path) -> None:
-        from kalvin.agent import KAgent
+        from kalvin.rationaliser import Rationaliser
 
         bus = MessageBus()
         capture = BusCapture(bus)
-        adapter = KAgentAdapter(bus)
-        kagent = KAgent(adapter=adapter)
-        adapter.bind(kagent)
+        adapter = RationaliserAdapter(bus)
+        rationaliser = Rationaliser(adapter=adapter)
+        adapter.bind(rationaliser)
 
         # Save a model first
         save_path = tmp_path / "model.bin"
-        kagent.save(str(save_path))
+        rationaliser.save(str(save_path))
 
         adapter.on_message(
             Message(role=TRAINEE_ROLE, action="load", message=str(save_path), sender="supervisor")
@@ -807,13 +807,13 @@ class TestLoadAction:
 
     @requires_tokenizer_data
     def test_load_sends_error_on_bad_path(self) -> None:
-        from kalvin.agent import KAgent
+        from kalvin.rationaliser import Rationaliser
 
         bus = MessageBus()
         capture = BusCapture(bus)
-        adapter = KAgentAdapter(bus)
-        kagent = KAgent(adapter=adapter)
-        adapter.bind(kagent)
+        adapter = RationaliserAdapter(bus)
+        rationaliser = Rationaliser(adapter=adapter)
+        adapter.bind(rationaliser)
 
         adapter.on_message(
             Message(
@@ -828,9 +828,9 @@ class TestLoadAction:
         assert len(error_msgs) == 1
         assert "Load failed" in error_msgs[0].message
 
-    def test_load_without_kagent(self) -> None:
+    def test_load_without_rationaliser(self) -> None:
         bus = MessageBus()
-        adapter = KAgentAdapter(bus)  # No kagent
+        adapter = RationaliserAdapter(bus)  # No rationaliser
 
         # Should not raise
         adapter.on_message(

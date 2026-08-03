@@ -2,7 +2,7 @@
 
 These tests exercise the ``Cogitator`` → ``CogitationHandler`` dispatch seam
 (``on_s1`` / ``on_expansion``) using a recording fake handler wired to a bare
-``Model()`` + ``Cogitator()``.  They do **not** instantiate ``KAgent`` and
+``Model()`` + ``Cogitator()``.  They do **not** instantiate ``Rationaliser`` and
 therefore require **no tokenizer data** — they run in standard CI.
 """
 

@@ -255,7 +255,7 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Agent** (@agent spec §Events) — the RationaliseEvent query and proposal
+- **Rationaliser** (@agent spec §Events) — the RationaliseEvent query and proposal
   are KValues; rationalisation consumes KValues.
 - **Model** (@model spec §Significance Semantics) — owns the
   band-representative values and the re-derivation predicates this spec uses.

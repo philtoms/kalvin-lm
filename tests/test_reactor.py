@@ -405,7 +405,7 @@ class TestAutoCountersignStructuralMatch:
         # Clear startup messages
         capture.reset()
 
-        # Simulate KAgent frame event with matching proposal (non-S1)
+        # Simulate Rationaliser frame event with matching proposal (non-S1)
         proposal = KLine(signature=100, nodes=[10, 20])
         query = KLine(signature=999, nodes=[1])
         event = _make_event("frame", query, proposal, _S2_SIGNIFICANCE)

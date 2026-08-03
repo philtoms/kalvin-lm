@@ -285,7 +285,7 @@ The following are explicitly **out of scope** for this spec:
   node values (data flow); the NLP pair additionally share a packing
   agreement (see §NLPSignifier).
 - **Model** (@model spec) — candidate retrieval uses `signifies`.
-- **Agent** (@agent spec) — prepares signatures via `signature_of`.
+- **Rationaliser** (@agent spec) — prepares signatures via `signature_of`.
 - **STM** (@stm spec) — computes nodes signatures via `signature_of`.
 - **Cogitator** (@cogitator spec) — uses `signature_of` during S2 misfit
   classification.

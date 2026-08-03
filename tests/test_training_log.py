@@ -18,7 +18,7 @@ from kalvin.significance import SIG_S1
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from tests.conftest import requires_tokenizer_data
-from training.harness.adapter import KAgentAdapter
+from training.harness.adapter import RationaliserAdapter
 from training.harness.bus import MessageBus
 from training.harness.constants import TRAINEE_ROLE, TRAINER_ROLE
 from training.harness.message import Message
@@ -346,9 +346,9 @@ class TestReactorLogging:
 class TestAdapterLogging:
     """TL-16 through TL-18: Adapter log output."""
 
-    def _make_adapter(self, bus: MessageBus) -> KAgentAdapter:
-        adapter = KAgentAdapter(bus, role=TRAINEE_ROLE)
-        # Bind a fake KAgent
+    def _make_adapter(self, bus: MessageBus) -> RationaliserAdapter:
+        adapter = RationaliserAdapter(bus, role=TRAINEE_ROLE)
+        # Bind a fake Rationaliser
         fake = MagicMock()
         fake.rationalise = MagicMock(return_value=True)
         fake.countersign = MagicMock(return_value=True)

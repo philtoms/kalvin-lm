@@ -52,7 +52,7 @@ The flag `trainer.llm.enabled` and the `delegate_reactive` parameter are removed
 - **Spec ref:** @specs/supervisor-decision.md §Decision gate, §API
 - **Files:** `src/training/trainer/trainer.py`, `src/training/trainer/reactor.py`
 - **Details:**
-  - In `Trainer._handle_kagent_event`, remove the `if self._delegate_reactive` guard around misfit/context computation and around arming `_pending_decision`: the enrichment and the gate now run on every proposal the Trainer cannot auto-ratify (per G3 — there is no request/proposal distinction; an ungrounded S4 Unknown request is escalated like any other unresolvable proposal).
+  - In `Trainer._handle_rationaliser_event`, remove the `if self._delegate_reactive` guard around misfit/context computation and around arming `_pending_decision`: the enrichment and the gate now run on every proposal the Trainer cannot auto-ratify (per G3 — there is no request/proposal distinction; an ungrounded S4 Unknown request is escalated like any other unresolvable proposal).
   - The held-event queue, `_handle_supervisor_decision`, and the replay loop already implement SD-4/5/6/7; they become the only path (no parallel inline path).
 
 ### Task T4: Strip the Reactor to surface-and-gate support (SD-1, SD-3, SD-13, SD-14)

@@ -1,13 +1,13 @@
-# Agent Specification
+# Rationaliser Specification
 
 ## Overview
 
-The Agent is the orchestrator of the Kalvin rationalisation pipeline. It
+The Rationaliser is the orchestrator of the Kalvin rationalisation pipeline. It
 receives input, encodes it into Klines, retrieves candidates from the Model,
 routes each query-candidate pair, and integrates results back into the
 model.
 
-The Agent's principal function is **rationalisation**: determining how a new
+The Rationaliser's principal function is **rationalisation**: determining how a new
 Kline relates to existing knowledge and deciding what action to take. The
 pipeline is split into a **fast path** (routing — no model calls) and a
 **slow path** (cogitation — background graph expansion).
@@ -55,26 +55,26 @@ This spec depends on the following concepts, defined elsewhere:
 - Manages a four-tier memory internally (STM → Frame → LTM → Base). The
   agent selects the appropriate write method based on significance outcome;
   tier cascade semantics are handled by the model.
-- The model decides how and where Klines are stored. The agent is
+- The model decides how and where Klines are stored. The Rationaliser is
   responsible for calling model operations; the model is responsible
   for managing its internal memory tiers.
 
 ## Definition
 
-An Agent consists of:
+A Rationaliser consists of:
 
 | Component | Type      | Description                            |
 | --------- | --------- | -------------------------------------- |
 | tokenizer | Tokenizer | Encodes text ↔ nodes.                  |
 | model     | Model     | Layered memory (STM → Frame → |
-|           |           | LTM → Base). Agent sees a single API. |
+|           |           | LTM → Base). Rationaliser sees a single API. |
 | cogitator | Cogitator | Background slow-path processor. See    |
 |           |           | @cogitator spec.                       |
 
 ## Construction
 
 ```
-Agent(
+Rationaliser(
     tokenizer      = None,   # defaults to the kalvin Tokenizer; data is mandatory
     model          = None,   # defaults to empty Model
 )
@@ -84,7 +84,7 @@ Agent(
 - `model` — a Model instance serving as the base memory. Defaults
   to an empty Model.
 
-A newly constructed Agent contains zero Klines in its model. The Cogitator
+A newly constructed Rationaliser contains zero Klines in its model. The Cogitator
 is created internally and starts its background thread immediately.
 
 ## Rationalisation
@@ -316,14 +316,14 @@ Return `False`.
 The slow path — background processing of pre-routed work items, S2/S3
 expansion, significance-boundary classification, and the
 Cogitator/CogitationHandler/WorkItem contracts — is defined
-in the **@cogitator spec**. This spec owns only the agent's role in the
+in the **@cogitator spec**. This spec owns only the Rationaliser's role in the
 seam: it submits one `WorkItem` per routed candidate during Phase 5, and
 it is the primary `CogitationHandler` implementation (`on_s1`,
 `on_expansion`).
 
 ## Events
 
-The Agent publishes events during rationalisation for observers to consume.
+The Rationaliser publishes events during rationalisation for observers to consume.
 
 ### Event Types
 
@@ -365,9 +365,9 @@ Subscribers receive events synchronously in publication order.
 
 ## Resolved Questions
 
-### 1. Routing in Agent vs Significance Module
+### 1. Routing in Rationaliser vs Significance Module
 
-Routing (node-membership classification) is now performed by the agent
+Routing (node-membership classification) is now performed by the Rationaliser
 directly. The significance computation (distance→significance inversion) is
 performed by the model's `expand()` method. This eliminates the
 `significance_pipeline`, `compute_significance`, and `SignificanceResult`
@@ -504,16 +504,16 @@ countersigned — the model's mechanism for realising S1), which subsumes the ea
 structural properties of a single Kline, not about comparison between two
 Klines.
 
-## What an Agent is Not
+## What a Rationaliser is Not
 
 The following are explicitly **out of scope** for this spec:
 
-- **Graph expansion.** The Agent delegates graph expansion to
+- **Graph expansion.** The Rationaliser delegates graph expansion to
   the Model's `expand()` generator. The Cogitator invokes it in the background.
 - **Tokenization internals.** How text is segmented into tokens is defined
-  in the @tokenizer spec. The Agent consumes the tokenizer's output.
+  in the @tokenizer spec. The Rationaliser consumes the tokenizer's output.
 - **Model internals.** How Klines are stored, indexed, and retrieved is
-  defined in the @model spec. The Agent uses the model's API.
+  defined in the @model spec. The Rationaliser uses the model's API.
 - **Persistence format.** Binary and JSON serialization formats are
   implementation-level concerns.
 - **Thread management.** How cogitation runs asynchronously (threads,
@@ -523,14 +523,14 @@ The following are explicitly **out of scope** for this spec:
 
 ## Referenced By
 
-- **Model** (@model spec) — the Agent stores and retrieves Klines, and
+- **Model** (@model spec) — the Rationaliser stores and retrieves Klines, and
   calls the model's expand and countersignature API. The model computes
   significance internally.
-- **Signature** (@signature spec) — the Agent creates signatures during
+- **Signature** (@signature spec) — the Rationaliser creates signatures during
   the prepare phase and uses bitwise AND matching for candidate retrieval.
-- **Tokenizer** (@tokenizer spec) — the Agent uses the tokenizer for
+- **Tokenizer** (@tokenizer spec) — the Rationaliser uses the tokenizer for
   encoding and decoding.
-- **Kline** (@kline spec) — the Agent constructs, compares, and stores
+- **Kline** (@kline spec) — the Rationaliser constructs, compares, and stores
   Klines.
-- **Cogitator** (@cogitator spec) — the Agent owns the Cogitator, submits
+- **Cogitator** (@cogitator spec) — the Rationaliser owns the Cogitator, submits
   pre-routed work items, and is the primary CogitationHandler.

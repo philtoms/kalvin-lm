@@ -156,7 +156,7 @@ The following are explicitly **out of scope** for this spec:
 - **Signature** (@signature spec) — signature creation consumes nodes
   produced by the tokenizer.
 - **Kline** (@kline spec) — klines contain nodes produced by the tokenizer.
-- **Agent** (@agent spec) — uses the tokenizer to encode input and
+- **Rationaliser** (@agent spec) — uses the tokenizer to encode input and
   construct klines.
 - **Significance** (@model spec §Significance Semantics) — consumes nodes
   produced by the tokenizer (nodes are opaque to significance).

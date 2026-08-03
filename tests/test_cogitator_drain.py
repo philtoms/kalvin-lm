@@ -10,7 +10,7 @@ from __future__ import annotations
 import threading
 import time
 
-from kalvin.agent import KAgent
+from kalvin.rationaliser import Rationaliser
 from kalvin.cogitator import Cogitator, WorkItem
 from kalvin.events import EventBus
 from kalvin.significance import SIG_S1, SIG_S2, is_countersigned, structural_significance
@@ -26,7 +26,7 @@ signifier = NLPSignifier()
 def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
     band: the structural band with the model-state S2→S1 countersigned fork
-    KAgent applies. Identity klines still declare S4."""
+    Rationaliser applies. Identity klines still declare S4."""
     band = structural_significance(kline, signifier)
     if band == SIG_S2 and is_countersigned(model, kline, signifier):
         band = SIG_S1
@@ -200,7 +200,7 @@ class TestNoCrossLessonSpillover:
         """
         events: list = []
         bus = EventBus()
-        agent = KAgent(adapter=bus)
+        agent = Rationaliser(adapter=bus)
         bus.subscribe(lambda e: events.append(e))
 
         try:
@@ -274,15 +274,15 @@ class TestDrainEmptiesBacklog:
             cog.join(timeout=2.0)
 
 
-# ── KAgent.cogitate_drain ────────────────────────────────────────────
+# ── Rationaliser.cogitate_drain ────────────────────────────────────────────
 
 
 @requires_tokenizer_data
-class TestKAgentDrain:
+class TestRationaliserDrain:
     def test_cogitate_drain_on_fresh_agent(self):
         """cogitate_drain returns True on fresh agent (no work items)."""
         bus = EventBus()
-        agent = KAgent(adapter=bus)
+        agent = Rationaliser(adapter=bus)
         try:
             result = agent.cogitate_drain(timeout=2.0)
             assert result is True
@@ -292,7 +292,7 @@ class TestKAgentDrain:
     def test_cogitate_drain_after_rationalise(self):
         """cogitate_drain returns True after all rationalise work completes."""
         bus = EventBus()
-        agent = KAgent(adapter=bus)
+        agent = Rationaliser(adapter=bus)
 
         # Add identities
         agent.rationalise(KValue(KLine(0x2, []), 0))  # A

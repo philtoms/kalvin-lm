@@ -1,6 +1,6 @@
-"""KAgent — orchestrator of the rationalisation pipeline.
+"""Rationaliser — orchestrator of the rationalisation pipeline.
 
-The KAgent rationalises KLines against the Model using a fast/slow split:
+The Rationaliser rationalises KLines against the Model using a fast/slow split:
   - Fast path: routing (node membership) — no model calls. S1/S4 resolve instantly.
   - Slow path: cogitation — expand() per work item in a background thread.
 
@@ -51,8 +51,8 @@ __all__ = [
     "CogitationHandler",
     "Cogitator",
     "WorkItem",
-    "KAgent",
-    "KAgentAdapter",
+    "Rationaliser",
+    "RationaliserAdapter",
     "Agent",
 ]
 
@@ -87,29 +87,29 @@ def _default_signifier() -> KSignifier:
     return NLPSignifier()
 
 
-# KAgentAdapter Protocol
+# RationaliserAdapter Protocol
 
 
 @runtime_checkable
-class KAgentAdapter(Protocol):
-    """Protocol for receiving rationalisation events from KAgent.
+class RationaliserAdapter(Protocol):
+    """Protocol for receiving rationalisation events from Rationaliser.
 
     Any object with an ``on_event(RationaliseEvent)`` method satisfies this
-    protocol.  The concrete ``KAgentAdapter`` in ``harness/adapter.py`` is
+    protocol.  The concrete ``RationaliserAdapter`` in ``harness/adapter.py`` is
     the canonical production implementation; ``EventBus`` (in ``events.py``)
     is the standard test/dev adapter.
 
-    Note: the name ``KAgentAdapter`` intentionally mirrors the concrete class
+    Note: the name ``RationaliserAdapter`` intentionally mirrors the concrete class
     in ``harness/adapter.py`` — that class satisfies this protocol implicitly.
     """
 
     def on_event(self, event: RationaliseEvent) -> None: ...
 
 
-# KAgent
+# Rationaliser
 
 
-class KAgent:
+class Rationaliser:
     """Orchestrator of the rationalisation pipeline.
 
     Parameters
@@ -122,7 +122,7 @@ class KAgent:
     adapter:
         Adapter for receiving events. Must implement ``on_event(event)``.
         Required — pass an ``EventBus`` for test/dev use, or a
-        ``KAgentAdapter`` (from ``harness.adapter``) for production.
+        ``RationaliserAdapter`` (from ``harness.adapter``) for production.
     """
 
     def __init__(
@@ -131,14 +131,14 @@ class KAgent:
         model: Model | None = None,
         signifier: KSignifier | None = None,
         *,
-        adapter: KAgentAdapter,
+        adapter: RationaliserAdapter,
     ):
         self._tokenizer = tokenizer if tokenizer else _default_tokenizer()
         self._signifier = signifier if signifier is not None else _default_signifier()
         self._model = model if model is not None else Model(signifier=self._signifier)
         self._activity: Counter = Counter()
 
-        self._adapter: KAgentAdapter = adapter
+        self._adapter: RationaliserAdapter = adapter
 
         self._cogitator = Cogitator(
             model=self._model,
@@ -163,7 +163,7 @@ class KAgent:
         return self._signifier
 
     @property
-    def events(self) -> KAgentAdapter:
+    def events(self) -> RationaliserAdapter:
         """The adapter, exposed for event inspection (e.g. ``.subscribe()`` on EventBus)."""
         return self._adapter
 
@@ -448,7 +448,7 @@ class KAgent:
         return self.codec().to_bytes()
 
     @classmethod
-    def from_bytes(cls, data: bytes, adapter: KAgentAdapter | None = None) -> KAgent:
+    def from_bytes(cls, data: bytes, adapter: RationaliserAdapter | None = None) -> Rationaliser:
         model, activity = AgentCodec.from_bytes(data)
         agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
@@ -458,7 +458,7 @@ class KAgent:
         return self.codec().to_dict()
 
     @classmethod
-    def from_dict(cls, data: dict, adapter: KAgentAdapter | None = None) -> KAgent:
+    def from_dict(cls, data: dict, adapter: RationaliserAdapter | None = None) -> Rationaliser:
         model, activity = AgentCodec.from_dict(data)
         agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
@@ -472,8 +472,8 @@ class KAgent:
         cls,
         path: str | Path | None = None,
         format: Literal["bin", "json"] | None = None,
-        adapter: KAgentAdapter | None = None,
-    ) -> KAgent:
+        adapter: RationaliserAdapter | None = None,
+    ) -> Rationaliser:
         model, activity = AgentCodec.load(path, format)
         agent = cls(model=model, adapter=adapter or EventBus())
         agent._activity = activity
@@ -481,4 +481,4 @@ class KAgent:
 
 
 # Backward-compatible alias
-Agent = KAgent
+Agent = Rationaliser
