@@ -5,8 +5,9 @@ The KAgent rationalises KLines against the Model using a fast/slow split:
   - Slow path: cogitation — expand() per work item in a background thread.
 
 The Cogitator (slow path) lives in :mod:`kalvin.cogitator`; this module
-imports and wires it. All significance computation and expansion-proposal
-logic lives in :mod:`kalvin.expand`.
+imports and wires it. All significance computation lives in
+:mod:`kalvin.significance`; graph expansion in :mod:`kalvin.expand`; and
+expansion-proposal logic in :mod:`kalvin.proposals`.
 
 Serialization is delegated to the AgentCodec module (see agent_codec.py).
 
@@ -16,6 +17,7 @@ See specs/cogitator.md for the cogitator specification.
 
 from __future__ import annotations
 
+import logging
 from collections import Counter
 from pathlib import Path
 from typing import Any, Literal, Protocol, runtime_checkable
@@ -28,7 +30,6 @@ from kalvin.cogitator import (
     WorkItem,
 )
 from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
-from kalvin.expand import promote_participating
 from kalvin.significance import (
     SIG_S1,
     SIG_S2,
@@ -37,7 +38,7 @@ from kalvin.significance import (
     is_s1,
     structural_significance,
 )
-from kalvin.kline import KLine
+from kalvin.kline import KLine, is_canon
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
@@ -54,6 +55,8 @@ __all__ = [
     "KAgentAdapter",
     "Agent",
 ]
+
+_log = logging.getLogger(__name__)
 
 # Default tokenizer factory
 
@@ -305,6 +308,60 @@ class KAgent:
 
         return False
 
+    # Promotion
+
+    def _promote_participating(self, query: KLine, candidate: KLine) -> None:
+        """Promote klines that structurally participated in a ratification event.
+
+        After S1 ratification between query and candidate, promote:
+        1. The query and candidate themselves (always)
+        2. Any STM kline whose signature is a node value in the query or
+           candidate AND whose nodes are empty (Unknown frame), a single
+           non-literal node (countersign/denote pair), or a canonical
+           composition (canonization entry).
+
+        Does NOT promote cogitator expansion proposals (multi-node non-
+        canonical klines) that merely share signature bits.
+        """
+        model = self._model
+        signifier = self._signifier
+
+        # Signatures of node values participating in query/candidate.
+        node_sigs: set[int] = set()
+        for n in query.nodes:
+            node_sigs.add(n)
+        for n in candidate.nodes:
+            node_sigs.add(n)
+        node_sigs.add(query.signature)
+        node_sigs.add(candidate.signature)
+
+        to_promote: list[KLine] = []
+        for kl in model.iter_stm():
+            if kl.signature not in node_sigs:
+                continue
+            # Promote structural klines: Unknown frames, single-node entries,
+            # or canonical compositions.
+            if not kl.nodes:
+                to_promote.append(kl)
+            elif isinstance(kl.nodes, int):
+                to_promote.append(kl)
+            elif isinstance(kl.nodes, list) and len(kl.nodes) == 1:
+                to_promote.append(kl)
+            elif is_canon(kl, signifier):
+                to_promote.append(kl)
+
+        _log.info(
+            "_promote_participating: query=%#x candidate=%#x promoting %d structural + 2",
+            query.signature,
+            candidate.signature,
+            len(to_promote),
+        )
+
+        to_promote.extend([query, candidate])
+
+        for kl in to_promote:
+            model.add_to_ltm(kl)
+
     # Graph Expansion Resolution
 
     # CogitationHandler protocol
@@ -318,7 +375,7 @@ class KAgent:
         """
         query = query_value.kline
         if is_s1(self._model, candidate, self._signifier):
-            promote_participating(self._model, query, candidate, self._signifier)
+            self._promote_participating(query, candidate)
         self._publish("frame", query_value, KValue(candidate, SIG_S1))
 
     def on_expansion(

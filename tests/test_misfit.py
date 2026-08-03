@@ -1,4 +1,4 @@
-"""Tests for misfit module — direct function calls, not Model forwarding.
+"""Tests for proposals module — direct function calls, not Model forwarding.
 
 Test values use ``t(bits) = bits << 32`` so the type word (upper 32 bits) is
 populated. Misfit classification operates on the type word only (masked,
@@ -8,7 +8,7 @@ word and classify trivially as canonical. See specs/signifier.md
 """
 
 from kalvin.kline import KLine
-from kalvin.expand import generate_expansions
+from kalvin.proposals import generate_expansions
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
 

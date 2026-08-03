@@ -5,9 +5,8 @@ import pytest
 from kalvin.expand import (
     edge_hops,
     expand,
-    promote_participating,
-    propose_expansions,
 )
+from kalvin.proposals import propose_expansions
 from kalvin.kline import KLine, is_canon
 from kalvin.significance import (
     DEFAULT_AGGREGATOR,
@@ -616,57 +615,6 @@ class TestStructuralSignificance:
     def test_multi_node_misfit_is_s2(self):
         # {AB: [A, C]} — multi-node, not identity, not canon → misfit.
         assert structural_significance(KLine(0b110, [0b100, 0b001]), signifier) == SIG_S2
-
-
-class TestPromoteParticipating:
-    def test_promotes_query_and_candidate(self):
-        """Both query and candidate are promoted to LTM."""
-        m = Model(stm_bound=256)
-        q = KLine(5, [10, 20])
-        c = KLine(10, [5, 30])
-        m.add_to_frame(q)
-        m.add_to_frame(c)
-        promote_participating(m, q, c, signifier)
-        assert m.find(q.signature) is not None
-        assert m.find(c.signature) is not None
-
-    def test_promotes_stm_klines_with_matching_signatures(self):
-        """STM klines whose signatures appear in the node set are also promoted."""
-        m = Model(stm_bound=256)
-        # Identity kline (S4) with sig that appears in query nodes
-        identity = KLine(10, [100])  # sig=10 appears in query.nodes
-        m.add_to_frame(identity)
-        q = KLine(5, [10, 20])
-        c = KLine(20, [5, 30])
-        m.add_to_frame(q)
-        m.add_to_frame(c)
-        promote_participating(m, q, c, signifier)
-        # identity (sig=10) is in q.nodes, should also be promoted via LTM cascade
-        assert m.find(10) is not None
-
-    def test_no_double_promote(self):
-        """Calling promote_participating on already-LTM klines is safe (idempotent)."""
-        m = Model(stm_bound=256)
-        q = KLine(5, [10, 20])
-        c = KLine(10, [5, 30])
-        m.add_to_frame(q)
-        m.add_to_frame(c)
-        m.add_to_ltm(q)  # promote to LTM first
-        m.add_to_ltm(c)
-        promote_participating(m, q, c, signifier)
-        # Klines still exist in the model after double promotion
-        assert m.find(q.signature) is not None
-        assert m.find(c.signature) is not None
-
-    def test_promote_participating_returns_none(self):
-        """promote_participating returns None (void)."""
-        m = Model(stm_bound=256)
-        q = KLine(5, [10, 20])
-        c = KLine(10, [5, 30])
-        m.add_to_frame(q)
-        m.add_to_frame(c)
-        result = promote_participating(m, q, c, signifier)
-        assert result is None
 
 
 # ── Significance Boundary Tests ───────────────────────────────────────

@@ -3,9 +3,10 @@
 The Cogitator is the slow-path of the rationalisation pipeline (see
 @agent spec, §Cogitation). It is a thin threading dispatcher: it dequeues
 ``WorkItem`` instances, invokes functions from :mod:`kalvin.expand`
-(boundaries, classify, expand, propose_expansions), and routes results to a
-``CogitationHandler``. All significance computation and expansion-proposal
-logic lives in :mod:`kalvin.expand`.
+(expand) and :mod:`kalvin.proposals` (propose_expansions), and routes
+results to a ``CogitationHandler``. All significance computation lives in
+:mod:`kalvin.significance`; graph expansion in :mod:`kalvin.expand`; and
+expansion-proposal logic in :mod:`kalvin.proposals`.
 
 Split out of ``agent.py`` so the fast-path (agent routing) and slow-path
 (cogitation) live in their own modules while sharing the seam defined here.
@@ -23,7 +24,8 @@ import time as _time
 from typing import TYPE_CHECKING, NamedTuple, Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import expand, propose_expansions
+from kalvin.expand import expand
+from kalvin.proposals import propose_expansions
 from kalvin.significance import SIG_S4, BandLayout
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue

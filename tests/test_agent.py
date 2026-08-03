@@ -683,6 +683,66 @@ class TestCogitationHandlerProtocol:
         assert handler.expansion_calls == [(qv, p, 42)]
 
 
+# ── Promotion Tests ──────────────────────────────────────────────
+
+
+class TestPromoteParticipating:
+    """KAgent._promote_participating: promote structurally-participating klines."""
+
+    def test_promotes_query_and_candidate(self):
+        """Both query and candidate are promoted to LTM."""
+        m = Model(stm_bound=256)
+        a = KAgent(model=m, signifier=signifier, adapter=EventBus())
+        q = KLine(5, [10, 20])
+        c = KLine(10, [5, 30])
+        m.add_to_frame(q)
+        m.add_to_frame(c)
+        a._promote_participating(q, c)
+        assert m.find(q.signature) is not None
+        assert m.find(c.signature) is not None
+
+    def test_promotes_stm_klines_with_matching_signatures(self):
+        """STM klines whose signatures appear in the node set are also promoted."""
+        m = Model(stm_bound=256)
+        a = KAgent(model=m, signifier=signifier, adapter=EventBus())
+        # Identity kline (S4) with sig that appears in query nodes
+        identity = KLine(10, [100])  # sig=10 appears in query.nodes
+        m.add_to_frame(identity)
+        q = KLine(5, [10, 20])
+        c = KLine(20, [5, 30])
+        m.add_to_frame(q)
+        m.add_to_frame(c)
+        a._promote_participating(q, c)
+        # identity (sig=10) is in q.nodes, should also be promoted via LTM cascade
+        assert m.find(10) is not None
+
+    def test_no_double_promote(self):
+        """Calling _promote_participating on already-LTM klines is safe (idempotent)."""
+        m = Model(stm_bound=256)
+        a = KAgent(model=m, signifier=signifier, adapter=EventBus())
+        q = KLine(5, [10, 20])
+        c = KLine(10, [5, 30])
+        m.add_to_frame(q)
+        m.add_to_frame(c)
+        m.add_to_ltm(q)  # promote to LTM first
+        m.add_to_ltm(c)
+        a._promote_participating(q, c)
+        # Klines still exist in the model after double promotion
+        assert m.find(q.signature) is not None
+        assert m.find(c.signature) is not None
+
+    def test_promote_participating_returns_none(self):
+        """_promote_participating returns None (void)."""
+        m = Model(stm_bound=256)
+        a = KAgent(model=m, signifier=signifier, adapter=EventBus())
+        q = KLine(5, [10, 20])
+        c = KLine(10, [5, 30])
+        m.add_to_frame(q)
+        m.add_to_frame(c)
+        result = a._promote_participating(q, c)
+        assert result is None
+
+
 # ── Countersign Tests ────────────────────────────────────────────────
 
 
@@ -876,9 +936,9 @@ class TestCascadeWriteMethods:
         candidate = KLine(0b110, [0b100, 0b010])  # canon → is_s1 returns True
         query = KLine(5, [1, 2])
         m.add_to_stm(query)
-        with patch("kalvin.agent.promote_participating") as mock_promote:
+        with patch.object(a, "_promote_participating") as mock_promote:
             a.on_s1(_kv(query, a.model), candidate)
-        mock_promote.assert_called_once_with(m, query, candidate, a.signifier)
+        mock_promote.assert_called_once_with(query, candidate)
         # Frame event should be published
         assert any(e.kind == "frame" for e in events)
 
@@ -889,7 +949,7 @@ class TestCascadeWriteMethods:
         # Non-canonical, non-countersigned candidate
         candidate = KLine(99, [50, 60])  # not canonical, not countersigned
         query = KLine(5, [1, 2])
-        with patch("kalvin.agent.promote_participating") as mock_promote:
+        with patch.object(a, "_promote_participating") as mock_promote:
             a.on_s1(_kv(query, a.model), candidate)
         mock_promote.assert_not_called()
         # Frame event still published (unconditional)
@@ -1138,7 +1198,8 @@ class TestKValueExchangeCriteria:
         equals the value ``expand()`` computed for that proposal (KP-3), not a
         band-representative value.
         """
-        from kalvin.expand import expand, propose_expansions
+        from kalvin.expand import expand
+        from kalvin.proposals import propose_expansions
         from kalvin.significance import BandLayout
 
         m = Model(signifier=signifier)

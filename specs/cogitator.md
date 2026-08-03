@@ -325,17 +325,18 @@ S2 expansion requires structural grounding for two reasons:
 1. **Promotion after ratification** — when the agent countersigns an
    expansion proposal, all participating klines must be cascaded to LTM
    via `add_to_ltm` (not just the ratified kline), including the added/removed node
-   groups and any S4 Unknown klines involved. `promote_participating` calls
-   `add_to_ltm` in a loop for each participating kline.
+   groups and any S4 Unknown klines involved. The Agent's
+   `_promote_participating(query, candidate)` method calls `add_to_ltm`
+   in a loop for each participating kline.
 
 2. **Frame richness** — the expansion search requires a model populated
    with the signatures it needs to find. Structural grounding ensures that
    frames hold S4–S1, giving the Cogitator more graph topology to traverse
    and more candidate signatures to match against.
 
-The `promote_participating` function should be reviewed and made fit for
-purpose — ensuring all participating klines are cascaded to LTM via
-`add_to_ltm` calls.
+The Agent's `_promote_participating` method should be reviewed and made
+fit for purpose — ensuring all participating klines are cascaded to LTM
+via `add_to_ltm` calls.
 
 ### Exploration Depth
 
@@ -351,9 +352,9 @@ expand() (a terminal distance-0 yield) — it calls
 `handler.on_s1(query, candidate)` on the CogitationHandler. The Agent
 implementation checks `is_s1(model, candidate)` as a structural guard — if
 the candidate is structurally S1 (canonical or countersigned), it calls
-`promote_participating(model, query, candidate)` to cascade all
-participating STM klines to LTM via `add_to_ltm`. A frame event is always
-published (unconditional) with significance `SIG_S1` (`0xFF`). The `_run_work_item`
+`_promote_participating(query, candidate)` to cascade all participating
+STM klines to LTM via `add_to_ltm`. A frame event is always published
+(unconditional) with significance `SIG_S1` (`0xFF`). The `_run_work_item`
 S1 branch delegates entirely to `on_s1`, keeping the dispatcher thin.
 
 ## Lifecycle
