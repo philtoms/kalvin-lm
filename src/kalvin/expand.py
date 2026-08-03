@@ -33,8 +33,8 @@ Producer significance:
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from collections.abc import Iterator, Sequence
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from kalvin.kline import KLine, is_canon, is_identity, is_misfit, is_terminal, is_unknown
 from kalvin.misfit import generate_expansions
@@ -231,6 +231,102 @@ class BandLayout:
         if b >= 0x01:
             return "S3"
         return "S4"
+
+
+# ── Pluggable seams for compositional significance (Q12, Q16) ──────────
+#
+# A compositional significance has TWO functions, not one:
+#   1. DecayFunction  — leaf decay: reentrant hop count -> accountedness.
+#   2. ComposeFunction — how per-node accountedness values combine.
+# Both are Protocols with default implementations; expand() is parameterised
+# over them (step 3 wires them in).
+
+
+@runtime_checkable
+class DecayFunction(Protocol):
+    """Leaf decay: reentrant hop count -> accountedness contribution in [0, 1].
+
+    The caller (expand) supplies the boundary cases directly:
+      - matched AND grounded     -> 1.0  (decay is never called)
+      - matched but ungrounded   -> decay(1)  (Q17a: "+1 = one hop of doubt")
+      - resolvable in h hops      -> decay(h)
+      - unresolvable              -> 0.0  (decay is never called)
+    """
+
+    def __call__(self, hops: int) -> float: ...
+
+
+@runtime_checkable
+class ComposeFunction(Protocol):
+    """Composition: per-slot accountedness values -> aggregate in [0, 1].
+
+    The result is the accounted fraction (Q10) consumed by the byte encoder.
+    Implementations should be count-invariant (Q10's intent: scaling the same
+    accountedness distribution leaves the byte unchanged) unless they
+    deliberately trade that property away.
+    """
+
+    def __call__(self, slot_values: Sequence[float]) -> float: ...
+
+
+# ── Default decay functions (Q12) ─────────────────────────────────────
+
+
+def asymptotic_decay(hops: int, k: int = 50) -> float:
+    """The default decay curve: ``k / (k + hops)``.
+
+    hops 0 -> 1.0, monotone decreasing, asymptotes to 0 as hops -> inf.
+    Larger ``k`` decays more slowly (more tolerance for deep resolution).
+    """
+    if hops < 0:
+        raise ValueError(f"hops must be non-negative; got {hops}")
+    return k / (k + hops)
+
+
+def harmonic_decay(hops: int) -> float:
+    """``1 / (1 + hops)``. A standard harmonic decay; slower than small-k asymptote."""
+    if hops < 0:
+        raise ValueError(f"hops must be non-negative; got {hops}")
+    return 1.0 / (1.0 + hops)
+
+
+def linear_decay(hops: int, reach: int = 100) -> float:
+    """Linear decay to 0 at ``hops == reach``; clamps at 0 beyond.
+
+    ``reach`` is the hop count at which a node is considered fully unaccounted.
+    """
+    if hops < 0:
+        raise ValueError(f"hops must be non-negative; got {hops}")
+    if reach <= 0:
+        raise ValueError(f"reach must be positive; got {reach}")
+    return max(0.0, 1.0 - hops / reach)
+
+
+def make_asymptotic_decay(k: int = 50) -> DecayFunction:
+    """Curry ``k`` into an asymptotic_decay callable."""
+
+    def _decay(hops: int) -> float:
+        return asymptotic_decay(hops, k=k)
+
+    return _decay
+
+
+# ── Default compose functions (Q10 count-invariance) ──────────────────
+
+
+def mean_compose(slot_values: Sequence[float]) -> float:
+    """Default composition: arithmetic mean of per-slot accountedness.
+
+    Count-invariant by construction: scaling the same accountedness
+    distribution (repeating it) leaves the mean — and thus the byte —
+    unchanged (Q10).
+    """
+    n = len(slot_values)
+    if n == 0:
+        # No slots — vacuously unaccounted. Callers only invoke compose when
+        # there is at least one slot; this guard is defensive.
+        return 0.0
+    return sum(slot_values) / n
 
 
 # Band-anchored normalization constants. Each band owns a fixed
