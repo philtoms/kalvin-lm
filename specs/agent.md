@@ -50,7 +50,7 @@ This spec depends on the following concepts, defined elsewhere:
   connotations and terminal significance.
 - Provides `QueryCandidate` named tuple with `.significance` field
   (pre-computed by the model).
-- Provides constants `D_MAX` and `MASK64` for significance values.
+- Provides the 8-bit significance scheme: SIG_MASK/SIG8_MAX/SIG8_MIN, BandLayout, and the SIG_S1..SIG_S4 sentinels.
 - Provides `is_countersigned(kline)` to check if a kline is countersigned by any kline in the model.
 - Manages a four-tier memory internally (STM → Frame → LTM → Base). The
   agent selects the appropriate write method based on significance outcome;
@@ -180,11 +180,9 @@ if declared == SIG_S4 and derived != SIG_S4:
 (written by `on_expansion`), and `model.grounded()` excludes only STM, so a
 post-ground gate would be inert against its one real target.
 
-**S4 is a sentinel, not a band from `classify()`.** `classify()` collapses
-the S3|S4 boundary — `SIG_S4` (`0`) classifies as S3, since `0 >= s34(0)` —
-so the band function can never return S4. S4 is detected by value
-(`== SIG_S4`), matching how `normalise_significance` special-cases `raw_sig
-== 0`. The comparison is therefore value-based, not band-based.
+**S4 is detected by value.** `BandLayout.classify` returns `"S4"` for the
+`0x00` byte, but S4 is detected by value (`== SIG_S4`) for the agreement
+check, which is value-based rather than band-based.
 
 Three outcomes:
 
@@ -307,7 +305,7 @@ Routing distinguishes only **S2** (at least one overlapping node) from
 
 All candidates are submitted as work items for expansion. The Cogitator
 classifies each expansion yield against the significance boundaries; a
-yield that computes to S1 (distance 0, significance `D_MAX`) is a genuine
+yield that computes to S1 (significance `SIG_S1` / `0xFF`, full account) is a genuine
 structural exact match and triggers `handler.on_s1()` (see §Cogitation).
 Distance 1 is the top of S2, not S1.
 

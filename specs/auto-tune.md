@@ -13,7 +13,7 @@ The system has two components:
 
 - `src/training/harness/` — message bus, WebSocket protocol, harness server
 - `src/training/supervisors/commands.py` — `parse_command()` for mapping simplified commands to bus messages
-- `src/kalvin/expand.py` — `D_MAX` for significance normalisation
+- `src/kalvin/expand.py` — `SIG8_MAX` for the 8-bit significance grade
 - `specs/harness-server.md` — harness configuration and participant architecture
 - `specs/supervisor-decision.md` — the decision contract the CLI supervisor participates in
 - `specs/curriculum.md` — curriculum state persistence format
@@ -50,9 +50,9 @@ Each line is a JSON object with a monotonic `seq` counter.
 
 | Field      | Type    | Description                              |
 | ---------- | ------- | ---------------------------------------- |
-| raw        | `int`   | 64-bit significance integer              |
-| normalised | `float` | `significance / D_MAX` (0.0 S4 — 1.0 S1) |
-| level      | `str`   | `S1`, `S2`, `S3`, or `S4`                |
+| raw        | `int`   | 8-bit significance byte (low byte of an int) |
+| normalised | `float` | `byte / 0xFF` (0.0 S4 — 1.0 S1; trivial rescale for display) |
+| level      | `str`   | `S1`, `S2`, `S3`, or `S4` (via `BandLayout.classify`) |
 
 ### KLine Display Object
 
@@ -171,7 +171,7 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 23. Raw `RationaliseEvent` payloads are enriched with decompiled source before writing to the event stream.
 24. KLine objects are converted to the KLine Display Object format: `{raw: {signature, nodes}, source: <decompiled>}`.
 25. Significance values are converted to the Significance Object format: `{raw, normalised, level}`.
-26. The significance level (`S1`–`S4`) is derived from the raw significance and `D_MAX` using existing classification logic.
+26. The significance level (`S1`–`S4`) is derived from the raw byte via `BandLayout.classify`.
 27. Progress events are passed through with field renaming only (`lesson_label` → `lesson`, etc.).
 
 ### Run Completion

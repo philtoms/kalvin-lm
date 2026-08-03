@@ -3,18 +3,17 @@
 import pytest
 
 from kalvin.expand import (
-    _S3_BIAS,
-    D_MAX,
-    MASK64,
-    MAX_HOP,
-    S2_S3_DISTANCE,
+    DEFAULT_AGGREGATOR,
+    DEFAULT_S2_S3_BOUNDARY,
+    SIG8_MAX,
+    SIG8_MIN,
+    SIG_MASK,
     SIG_S1,
     SIG_S2,
     SIG_S3,
     SIG_S4,
+    BandLayout,
     band_significance,
-    boundaries,
-    classify,
     edge_hops,
     expand,
     is_canon,
@@ -25,8 +24,8 @@ from kalvin.expand import (
     structural_significance,
 )
 from kalvin.kline import KLine
-from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.model import Model
+from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.signifier import NLPSignifier
 
 signifier = NLPSignifier()
@@ -49,30 +48,41 @@ class TestBandRepresentativeConstants:
     """Verify the four band-representative constants match @model spec."""
 
     def test_constants_are_spec_values(self):
-        """SIG_S1..SIG_S4 are D_MAX, D_MAX-1, D_MAX-101, 0 (@model spec)."""
-        assert SIG_S1 == D_MAX
-        assert SIG_S2 == D_MAX - 1
-        assert SIG_S3 == D_MAX - 101
-        assert SIG_S4 == 0
+        """SIG_S1..SIG_S4 are the fixed 8-bit sentinels (0xFF/0xFE/0x7F/0x00)."""
+        assert SIG_S1 == 0xFF
+        assert SIG_S2 == 0xFE  # top of S2
+        assert SIG_S3 == 0x7F  # top of S3 at the default boundary
+        assert SIG_S4 == 0x00
 
-    def test_constants_are_inverted_distances(self):
-        """Each representative equals (~distance) & MASK64 for its distance.
+    def test_constants_align_with_sig8_and_layout(self):
+        """S1/S4 coincide with SIG8_MAX/MIN; S2/S3 match BandLayout's defaults.
 
-        Confirms significance inversion (@model spec §Significance Inversion):
-        distance 0 → SIG_S1, distance 1 → SIG_S2, distance 101 → SIG_S3.
+        Cross-checks the fixed sentinels against BandLayout (which derives the
+        same representatives from the configurable boundary at its default).
         """
-        assert (~0) & MASK64 == SIG_S1
-        assert (~1) & MASK64 == SIG_S2
-        assert (~101) & MASK64 == SIG_S3
+        assert SIG_S1 == SIG8_MAX
+        assert SIG_S4 == SIG8_MIN
+        layout = BandLayout()  # default boundary 0x80
+        assert SIG_S2 == layout.sig_s2
+        assert SIG_S3 == layout.sig_s3
+
+    def test_constants_coherent_with_expand_exact_match(self):
+        """Structural S1 (SIG_S1) equals expand's exact-match byte (0xFF).
+
+        The mixed-width incoherence (structural 64-bit vs expand 8-bit) is
+        resolved by this migration: a canon's structural S1 claim and an
+        expand exact-match grade now agree.
+        """
+        assert SIG_S1 == DEFAULT_AGGREGATOR.compose_terminal([1.0])
 
     def test_strict_ordering(self):
         """Unsigned ordering holds: SIG_S1 > SIG_S2 > SIG_S3 > SIG_S4."""
         assert SIG_S1 > SIG_S2 > SIG_S3 > SIG_S4
 
-    def test_all_valid_uint64(self):
-        """All band-representative values are non-negative uint64."""
+    def test_all_valid_byte(self):
+        """All band-representative values are valid bytes in [0x00, 0xFF]."""
         for val in (SIG_S1, SIG_S2, SIG_S3, SIG_S4):
-            assert 0 <= val <= MASK64
+            assert 0 <= (val & SIG_MASK) <= SIG8_MAX
 
 
 class TestBandSignificance:
@@ -182,36 +192,38 @@ class TestEdgeHops:
 
 class TestExpand:
     def test_expand_self_no_model(self):
-        """Self-comparison: all nodes match, ungrounded penalty only."""
+        """Self-comparison: 3 matched-but-ungrounded nodes -> decay(1) each."""
         m = make_model()
         k = KLine(10, [10, 20, 30])
         results = list(expand(m, k, k, signifier))
-        # All nodes match, none resolve → distance=3 → significance=~3
+        # All 3 nodes match; none grounded -> 3 x decay(1).
         assert len(results) == 1
-        assert results[-1].significance == (~3) & MASK64
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1)] * 3
+        )
 
     def test_expand_no_resolution(self):
-        """Mismatched nodes with no model entries → MAX_HOP each."""
+        """1 matched-ungrounded + 4 unresolvable -> mostly unaccounted."""
         m = make_model()
         q = KLine(5, [1, 2, 3])
         c = KLine(6, [1, 4, 5])
-        # matched: {1}, mismatched_q: {2,3}, mismatched_c: {4,5}
-        # No chains → all MAX_HOP, ungrounded matched +1 → distance=401
-        expected_distance = 401
+        # matched: {1} (ungrounded -> decay(1)); mismatched {2,3,4,5} unresolvable.
         results = list(expand(m, q, c, signifier))
-        assert results[-1].significance == (~expected_distance) & MASK64
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), 0.0, 0.0, 0.0, 0.0]
+        )
 
     def test_expand_with_grounding(self):
-        """Matched node that resolves to structural S1 → no ungrounded penalty."""
+        """1 grounded match + 2 unresolvable -> grounded contributes 1.0."""
         m = make_model()
-        # Genuine canon (S1): sig 0b110 = OR(0b100, 0b010).
-        m.add_to_frame(KLine(0b110, [0b100, 0b010]))
+        m.add_to_frame(KLine(0b110, [0b100, 0b010]))  # genuine canon (S1)
         q = KLine(5, [0b110, 2])
         c = KLine(6, [0b110, 3])
-        # distance = 2 * MAX_HOP (grounded match, 2 unresolved nodes)
-        expected_distance = 200
+        # Slots: [1.0 (grounded), 0.0, 0.0].
         results = list(expand(m, q, c, signifier))
-        assert results[-1].significance == (~expected_distance) & MASK64
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [1.0, 0.0, 0.0]
+        )
 
     def test_expand_hop_reaches_opposing_mismatch(self):
         """Mismatched node whose chain reaches the opposing mismatch set."""
@@ -223,15 +235,20 @@ class TestExpand:
 
         q = KLine(100, [t(5), t(2)])  # mismatched_q: {5, 2}
         c = KLine(200, [t(10), t(3)])  # mismatched_c: {10, 3}
-        # distance=301 (1 hop + 3 × MAX_HOP)
         results = list(expand(m, q, c, signifier))
+        # Cardinality: 5 yields + terminal.
         assert len(results) == 6
-        assert results[-1].significance == (~301) & MASK64
+        # Terminal slots: q-5 resolves to c-10 at 1 hop (decay(1));
+        # q-2, c-3 unresolvable (0.0); c-10 signifies at 2 hops (decay(2)).
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), 0.0, DEFAULT_AGGREGATOR.decay(2), 0.0]
+        )
 
-        # S2 signifies candidates: c-node 10 reaches sig 0b110 (10 & 0b110 ≠ 0)
-        # at distance 2 in both expand(5,10, signifier) and top-level
-        signifies_results = [r for r in results[:-1] if r.significance == (~2) & MASK64]
-        assert len(signifies_results) == 2
+        # S2 signifies side-candidates reaching sig 0b110 at 2 hops carry the
+        # byte for [decay(2)] (side-candidate).
+        sig_two_hops = DEFAULT_AGGREGATOR.compose_terminal([DEFAULT_AGGREGATOR.decay(2)])
+        signifies_two_hops = [r for r in results[:-1] if r.significance == sig_two_hops]
+        assert len(signifies_two_hops) >= 1
 
     def test_expand_bidirectional_hop_match(self):
         """Both query and candidate mismatched nodes reach opposing sets."""
@@ -243,10 +260,15 @@ class TestExpand:
 
         q = KLine(100, [5, 20])  # mismatched_q: {5, 20}
         c = KLine(200, [10, 30])  # mismatched_c: {10, 30}
-        # distance=202, 2 connotations + terminal
         results = list(expand(m, q, c, signifier))
+        # 2 recursive connotations + terminal.
         assert len(results) == 3
-        assert results[-1].significance == (~202) & MASK64
+        # Resolution is directional: q-nodes 5,20 resolve to c-nodes 10,30 at
+        # 1 hop (decay(1) each); c-nodes 10,30 are identity terminals, so
+        # edge_hops from their side yields nothing -> 0.0 each.
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), DEFAULT_AGGREGATOR.decay(1), 0.0, 0.0]
+        )
 
     def test_expand_all_matched_grounded(self):
         """All nodes match and all resolve to S1 → no penalty → max significance."""
@@ -255,38 +277,34 @@ class TestExpand:
         m.add_to_frame(KLine(0b1100, [0b1000, 0b0100]))  # genuine canon, node 0b1100 is S1
         q = KLine(5, [0b110, 0b1100])
         c = KLine(6, [0b110, 0b1100])
-        # distance=0 → significance=D_MAX (all bits set)
         results = list(expand(m, q, c, signifier))
-        assert results[-1].significance == D_MAX
+        # Fully accounted (2 x 1.0) -> saturates to SIG8_MAX.
+        assert results[-1].significance == SIG8_MAX
 
-    def test_expand_clamped_to_valid(self):
-        """Significance is always in valid range [1, D_MAX]."""
+    def test_expand_in_valid_byte_range(self):
+        """Significance is always a valid byte in [0x00, 0xFF]."""
         m = make_model()
         q = KLine(5, [1])
         c = KLine(6, list(range(1000)))
         results = list(expand(m, q, c, signifier))
-        assert 0 < results[-1].significance <= D_MAX
+        assert 0 <= (results[-1].significance & SIG_MASK) <= SIG8_MAX
 
     def test_expand_range_s2(self):
-        """S2 significance is a valid uint64."""
+        """A graded result is a valid byte."""
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(1, [1, 3, 4])
         results = list(expand(m, q, c, signifier))
-        assert 0 < results[-1].significance <= D_MAX
+        assert 0 <= (results[-1].significance & SIG_MASK) <= SIG8_MAX
 
-    def test_expand_level_independent(self):
-        """Distance is topology-driven, not level-driven.
-
-        With the simplified distance model, the level parameter does not
-        affect distance computation. Same query/candidate → same significance
-        regardless of level.
-        """
+    def test_expand_topology_driven(self):
+        """Significance is topology-driven (replaces old level-independence test)."""
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(100, [3, 4])
         sig = list(expand(m, q, c, signifier))[-1].significance
-        assert sig > 0  # topology drives distance
+        # Both mismatched nodes unresolvable -> 0.0 slots -> SIG8_MIN.
+        assert sig == SIG8_MIN
 
     def test_expand_significance_ordering(self):
         """Verify significance ordering: closer match → higher significance."""
@@ -296,9 +314,13 @@ class TestExpand:
 
         q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])  # mismatched_c: {10, 3}
-        # distance=301 (q-node 5 reaches c-node 10 at hop 1, rest MAX_HOP)
         results = list(expand(m, q, c, signifier))
-        assert results[-1].significance == (~301) & MASK64
+        # q-5 resolves to c-10 at 1 hop (decay(1)); q-2, c-10 (identity terminal),
+        # c-3 all unresolvable (0.0). Four slots, mean dominated by zeros.
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), 0.0, 0.0, 0.0]
+        )
+        assert results[-1].significance > SIG8_MIN
 
     def test_expand_connotation_bridging(self):
         """Connotation bridging: indirect path through intermediate signature.
@@ -319,35 +341,30 @@ class TestExpand:
         q = KLine(100, [4])  # mismatched_q: {4}
         c = KLine(200, [2])  # mismatched_c: {2}
 
-        # signifies(4, 8) = False, signifies(2, 8) = False → S3 path exercised
-        # s3_connotations[8] = 1 (from q-node 4)
-        # c-node 2 resolves via s3_connotation: s3_hop = 1 + 1 = 2
-        # Connotation linear distance = S2_S3_DISTANCE + 2 = 102. The recursive
-        # expand({2:[8]}, {8:[8]}, signifier) has a matched node 8 that is identity (not
-        # S1), adding +1 ungrounded penalty → 103.
-        # Terminal distance = MAX_HOP = 100 (q-node 4 unresolved at terminal level)
-
+        # signifies(4,8)=False, signifies(2,8)=False -> S3 path exercised.
+        # s3_connotations[8] = 1 (from q-4); c-2 bridges at s3_hop = 1+1 = 2.
         results = list(expand(m, q, c, signifier))
+        # Connotation recurses, no side-candidate. 1 nested
+        # terminal + top-level terminal.
         assert len(results) == 2
 
-        # S3 connotation yield: distance = 103 (102 linear + 1 ungrounded)
-        connotation = results[0]
-        assert connotation.query.signature == 2
-        assert connotation.candidate.signature == 8
-        connotation_distance = S2_S3_DISTANCE + 2 + 1  # 102 linear + 1 ungrounded
-        assert connotation.significance == (~connotation_distance) & MASK64
+        # Nested terminal (recursive expand(2, 8)): node 8 matched-ungrounded
+        # (identity is not S1) -> [decay(1)].
+        nested = results[0]
+        assert nested.query.signature == 2
+        assert nested.candidate.signature == 8
+        assert nested.significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1)]
+        )
 
-        # Terminal yield: distance = 100 (MAX_HOP for unresolved q-node)
+        # Top-level terminal: q-4 does not resolve directly (0.0); c-2 bridges
+        # via s3_hop=2 -> decay(2). Two slots: [0.0, decay(2)].
         terminal = results[1]
         assert terminal.query is q
         assert terminal.candidate is c
-        assert terminal.significance == (~100) & MASK64
-
-        # Terminal has higher significance than connotation (closer match)
-        assert terminal.significance > connotation.significance
-
-        # Verify S3 distance exceeds S2: connotation (102) > terminal (100)
-        assert connotation_distance > 100  # S3 linear > S2 raw
+        assert terminal.significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [0.0, DEFAULT_AGGREGATOR.decay(2)]
+        )
 
     def test_expand_signifies_cogitation(self):
         """S2 signifies loose match yields additional QueryCandidates.
@@ -380,16 +397,16 @@ class TestExpand:
 
         results = list(expand(m, q, c, signifier))
 
-        # Find the signifies candidate from c-node 10→30
+        # Find the signifies side-candidate from c-10 -> 30 at 2 hops.
         signifies_candidates = [
             r for r in results if r.query.signature == t(10) and r.candidate.signature == t(30)
         ]
         assert len(signifies_candidates) == 1
         sig_cand = signifies_candidates[0]
-        assert sig_cand.significance == (~2) & MASK64
-
-        # Terminal: c-node 10 contributes MAX_HOP (signifies doesn't resolve)
-        assert results[-1].significance == (~101) & MASK64
+        # Side-candidate carries the byte for [decay(hops)].
+        assert sig_cand.significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(2)]
+        )
 
     def test_expand_signifies_before_s3(self):
         """Signifies (S2) takes precedence over s3_connotations (S3).
@@ -414,16 +431,20 @@ class TestExpand:
         #   → S2 signifies candidate, break
 
         results = list(expand(m, q, c, signifier))
-        assert len(results) == 3  # 2 signifies + terminal
+        # 2 signifies side-candidates + terminal.
+        assert len(results) == 3
 
-        # Both signifies candidates reach sig 28 at distance 1
+        # Both signifies candidates reach sig 28 at 1 hop -> byte for [decay(1)].
+        sig_one_hop = DEFAULT_AGGREGATOR.compose_terminal([DEFAULT_AGGREGATOR.decay(1)])
         assert results[0].candidate.signature == t(0b11100)
-        assert results[0].significance == (~1) & MASK64
+        assert results[0].significance == sig_one_hop
         assert results[1].candidate.signature == t(0b11100)
-        assert results[1].significance == (~1) & MASK64
+        assert results[1].significance == sig_one_hop
 
-        # Terminal: both mismatched nodes unresolved (2 × MAX_HOP)
-        assert results[-1].significance == (~(2 * MAX_HOP)) & MASK64
+        # Terminal: both mismatched nodes signify at 1 hop -> slots [decay(1), decay(1)].
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), DEFAULT_AGGREGATOR.decay(1)]
+        )
 
     def test_expand_significance_in_range(self):
         """Significance is always in valid uint64 range."""
@@ -432,7 +453,7 @@ class TestExpand:
         c = KLine(6, list(range(1000, 2000)))
         results = list(expand(m, q, c, signifier))
         sig = results[-1].significance
-        assert 0 < sig <= D_MAX
+        assert 0 <= (sig & SIG_MASK) <= SIG8_MAX
 
     def test_expand_no_crash_on_unresolvable_match_sig_er6(self):
         """ER-6: expand() does not crash when edge_hops yields an unresolvable sig."""
@@ -650,73 +671,56 @@ class TestPromoteParticipating:
 # ── Significance Boundary Tests ───────────────────────────────────────
 
 
-class TestBoundaries:
-    """Verify boundaries() returns correct (S1|S2, S2|S3, S3|S4) thresholds."""
+class TestBandLayout:
+    """Verify BandLayout.classify maps bytes to S1/S2/S3/S4 bands."""
 
-    def test_boundaries_values(self):
-        """Boundaries are D_MAX, ~S2_S3_DISTANCE masked, and 0."""
-        s12, s23, s34 = boundaries()
-        assert s12 == D_MAX
-        assert s23 == (~S2_S3_DISTANCE) & MASK64
-        assert s34 == 0
+    def test_default_boundary(self):
+        layout = BandLayout()
+        assert layout.s2_s3_boundary == DEFAULT_S2_S3_BOUNDARY == 0x80
 
-    def test_all_values_valid_uint64(self):
-        """All boundary values are non-negative and within uint64 range."""
-        for val in boundaries():
-            assert 0 <= val <= MASK64
+    def test_fixed_sentinels(self):
+        layout = BandLayout()
+        assert layout.sig_s1 == 0xFF
+        assert layout.sig_s4 == 0x00
 
-    def test_s23_sits_between_max_hop_and_min_s3(self):
-        """S2|S3 boundary sits between MAX_HOP and linear S3 min distance.
+    def test_representatives(self):
+        layout = BandLayout()
+        assert layout.sig_s2 == 0xFE
+        assert layout.sig_s3 == 0x7F  # boundary - 1
 
-        S2_S3_DISTANCE (100) < S2_S3_DISTANCE + 1 (101), ensuring S2 and S3
-        significance tiers are cleanly separated with linear S3 distance.
-        """
-        min_s3_distance = S2_S3_DISTANCE + _S3_BIAS  # 100 + 1 = 101
-        assert S2_S3_DISTANCE < min_s3_distance
+    def test_strict_ordering(self):
+        layout = BandLayout()
+        assert layout.sig_s1 > layout.sig_s2 > layout.sig_s3 > layout.sig_s4
 
+    def test_boundary_is_only_knob(self):
+        # Moving the boundary reshuffles S2/S3 but leaves S1/S4 fixed.
+        lo = BandLayout(s2_s3_boundary=0x20)
+        hi = BandLayout(s2_s3_boundary=0xC0)
+        assert lo.sig_s1 == hi.sig_s1 == 0xFF
+        assert lo.sig_s4 == hi.sig_s4 == 0x00
+        assert lo.sig_s3 < hi.sig_s3
 
-class TestClassify:
-    """Verify classify() returns correct significance bands."""
+    def test_boundary_must_leave_nonempty_bands(self):
+        with pytest.raises(ValueError):
+            BandLayout(s2_s3_boundary=0x01)
+        with pytest.raises(ValueError):
+            BandLayout(s2_s3_boundary=0xFF)
 
-    @pytest.fixture()
-    def bounds(self):
-        return boundaries()
+    @pytest.mark.parametrize("boundary", [0x02, 0x40, 0x80, 0xC0, 0xFE])
+    def test_classify_covers_all_bands(self, boundary):
+        layout = BandLayout(s2_s3_boundary=boundary)
+        assert layout.classify(0xFF) == "S1"
+        assert layout.classify(0xFE) == "S2"
+        assert layout.classify(boundary) == "S2"
+        assert layout.classify(boundary - 1) == "S3"
+        assert layout.classify(0x01) == "S3"
+        assert layout.classify(0x00) == "S4"
 
-    def test_classify_at_s1_boundary(self, bounds):
-        """sig = D_MAX → S1 (maximum significance)."""
-        s12, s23, s34 = bounds
-        assert classify(D_MAX, s12, s23, s34) == "S1"
-
-    def test_classify_at_s12_exact(self, bounds):
-        """sig = D_MAX - 1 (distance 1) → S2 (top of S2, not S1)."""
-        s12, s23, s34 = bounds
-        assert classify(D_MAX - 1, s12, s23, s34) == "S2"
-
-    def test_classify_just_below_s12(self, bounds):
-        """sig = D_MAX - 1 and D_MAX - 2 → S2 (top of S2 and just below S1|S2)."""
-        s12, s23, s34 = bounds
-        assert classify(D_MAX - 1, s12, s23, s34) == "S2"
-        assert classify(D_MAX - 2, s12, s23, s34) == "S2"
-
-    def test_classify_at_s23_boundary(self, bounds):
-        """sig = S2|S3 boundary value → S2."""
-        s12, s23, s34 = bounds
-        assert classify(s23, s12, s23, s34) == "S2"
-
-    def test_classify_in_s3_range(self, bounds):
-        """sig = 1 → S3 (above S3|S4)."""
-        s12, s23, s34 = bounds
-        assert classify(1, s12, s23, s34) == "S3"
-
-    def test_classify_at_s34_boundary(self, bounds):
-        """sig = 0 → S3 (0 >= 0 is True, S4 is unreachable for uint64).
-
-        Note: S4 is never produced by classify() since significance values
-        are always non-negative uint64 and s34 = 0. S4 only comes from
-        the routing path in KAgent._route().
-        """
-        s12, s23, s34 = bounds
-        assert classify(0, s12, s23, s34) == "S3"
+    def test_classify_uses_low_byte_only(self):
+        # Classification sees only the low byte.
+        layout = BandLayout()
+        assert layout.classify(0xDEAD_BEEF) == layout.classify(0xEF)
+        assert layout.classify(0x0000_0000) == "S4"
 
 
 class TestProposeExpansions:

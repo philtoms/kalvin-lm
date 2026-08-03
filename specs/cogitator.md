@@ -33,7 +33,7 @@ This spec depends on the following concepts, defined elsewhere:
   companions.
 - Provides `generate_expansions(candidate)` for S2 expansion proposals and
   companion klines.
-- Provides constants `D_MAX` and `MASK64` for significance values.
+- Provides the 8-bit significance scheme: SIG_MASK/SIG8_MAX/SIG8_MIN, BandLayout, and the SIG_S1..SIG_S4 sentinels.
 - Computes significance internally; the Cogitator consumes
   `QueryCandidate.significance` directly without inversion.
 
@@ -90,7 +90,7 @@ A QueryCandidate is a single query-candidate-distance result yielded by
 QueryCandidate(query, candidate, significance):
   query:        KLine
   candidate:    KLine
-  significance: int     # pre-computed by the model (~packed_distance & MASK64)
+  significance: int     # an 8-bit grade pre-computed by the model (compose-on-return)
 ```
 
 Intermediate yields represent discovered connotations — indirect relationships
@@ -108,19 +108,23 @@ no further yields are evaluated. If no S1 is found, all yields are processed
 and S2/S3 expansion proposals are emitted as frame events regardless of
 their computed significance.
 
-### Significance Boundaries
+### Significance Bands
 
-Three boundaries classify yielded significance values:
+`BandLayout.classify` classifies each yielded byte against the four bands.
+Only `S2_S3_BOUNDARY` is configurable (default `0x80`); S1|S2 and S3|S4 are
+fixed sentinels:
 
 ```
-D_MAX ── S1|S2 ──────── S2|S3 ──────────── S3|S4 ── 0
+0xFF ── S1|S2 ──── S2|S3 ──────── S3|S4 ── 0x00
+                 (boundary)
 ```
 
-| Boundary | Position           | Meaning                                    |
-| -------- | ------------------ | ------------------------------------------ |
-| S1\|S2   | `D_MAX`            | Only exact S1 (distance 0) qualifies as S1 |
-| S2\|S3   | `~_S2_S3_DISTANCE` | Packed distance threshold (100)            |
-| S3\|S4   | `0`                | Only zero-significance is S4               |
+| Band | Range                        | Meaning                                    |
+| ---- | ---------------------------- | ------------------------------------------ |
+| S1   | `[0xFF]`                     | Only exact match (distance 0 / full account) |
+| S2   | `[boundary, 0xFE]`           | Close, direct                              |
+| S3   | `[0x01, boundary - 1]`       | Indirect, decayed                          |
+| S4   | `[0x00]`                     | Only structural unresolvable (total non-account) |
 
 Classification is a cascade: `sig ≥ S1|S2 → S1`, `sig ≥ S2|S3 → S2`,
 `sig ≥ S3|S4 → S3`, else S4. Raw significance values are never mutated.
@@ -168,7 +172,7 @@ run_work_item(WorkItem(query, candidate, routing_level)):
     # S4 yields are skipped
 ```
 
-An S1 (distance 0, significance `D_MAX`) discovered during expansion is a
+An S1 (significance `SIG_S1` / `0xFF`, full account) discovered during expansion is a
 genuine structural exact match and triggers `handler.on_s1()`, terminating
 the loop for that pair. Distance 1 is the top of S2, not S1, and is not
 classified as S1 by `classify()`. There is no routing-level S1 short-circuit.
@@ -348,7 +352,7 @@ implementation checks `is_s1(model, candidate)` as a structural guard — if
 the candidate is structurally S1 (canonical or countersigned), it calls
 `promote_participating(model, query, candidate)` to cascade all
 participating STM klines to LTM via `add_to_ltm`. A frame event is always
-published (unconditional) with significance `D_MAX`. The `_run_work_item`
+published (unconditional) with significance `SIG_S1` (`0xFF`). The `_run_work_item`
 S1 branch delegates entirely to `on_s1`, keeping the dispatcher thin.
 
 ## Lifecycle

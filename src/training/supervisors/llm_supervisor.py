@@ -161,16 +161,14 @@ confidence level (0.0–1.0), and a brief explanation of your reasoning.
 
 
 def _classify_significance(significance: int) -> str:
-    """Classify a raw significance value into a band label (S1–S4).
+    """Classify a raw significance byte into a band label (S1-S4).
 
-    Uses the same boundary constants as the KAgent expand module
-    so the LLM sees a meaningful band label instead of a raw 64-bit int.
+    Uses the shared BandLayout so the LLM sees a meaningful band label
+    instead of a raw byte.
     """
-    from kalvin.expand import boundaries
-    from kalvin.expand import classify as _classify
+    from kalvin.expand import BandLayout
 
-    s12, s23, s34 = boundaries()
-    return _classify(significance, s12, s23, s34)
+    return BandLayout().classify(significance)
 
 
 def build_prompt(request: CogitationRequest) -> list[dict]:

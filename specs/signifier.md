@@ -265,10 +265,10 @@ The following are explicitly **out of scope** for this spec:
 - **Node unpacking.** Extracting the BPE token id from a node
   (`& 0xFFFFFFFF`) is a Tokenizer-layout concern, to be addressed by a
   Tokenizer accessor — not a Signifier operation.
-- **Significance computation.** The distance↔significance inversion
-  (`~distance & MASK64`) operates on significance magnitude, not on the
-  node/signature algebra. It stays in the @model spec / `expand` and is
-  not a Signifier concern.
+- **Significance computation.** The compose-on-return aggregation
+  (per-node accountedness → 8-bit grade) operates on significance
+  magnitude, not on the node/signature algebra. It stays in the @model
+  spec / `expand` and is not a Signifier concern.
 - **The signature concept.** What a signature *is* (its role as a kline
   head value) is defined in the @signature spec. The Signifier defines
   only how signatures are produced and compared.

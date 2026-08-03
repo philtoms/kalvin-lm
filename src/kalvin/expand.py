@@ -4,10 +4,10 @@ expansion proposal pipeline.
 This module owns the full significance → classification → expansion proposal
 pipeline:
 
-  1. **Significance computation** — expand() computes packed distances and
-     yields QueryCandidate objects with connotation and terminal significance.
-  2. **Boundary constants** — S2_S3_DISTANCE, boundaries(), classify() map
-     significance values to S1/S2/S3/S4 bands.
+  1. **Significance computation** — expand() composes an 8-bit grade per
+     query|candidate pair and yields QueryCandidate objects.
+  2. **Band classification** — BandLayout maps bytes to S1/S2/S3/S4 bands.
+     Only S2_S3_BOUNDARY is configurable.
   3. **Expansion proposals** — propose_expansions() classifies misfits and
      generates (proposal, significance) tuples for the caller to dispatch.
   4. **Structural grounding** — is_s1(), is_countersigned() verify S1 status;
@@ -19,11 +19,10 @@ The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Module-level constants and types:
-  D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate,
-  SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative significance)
-
-Band-anchored normalization:
-  normalise_significance, S2_TOP, S2_FLOOR, S3_K
+  MAX_HOP, QueryCandidate,
+  SIG_MASK, SIG8_MAX, SIG8_MIN, DEFAULT_S2_S3_BOUNDARY,
+  SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative sentinels),
+  BandLayout, distance_to_byte, Aggregator, DEFAULT_AGGREGATOR
 
 Producer significance:
   band_significance — op → band-representative integer (KP-1)
@@ -33,10 +32,11 @@ Producer significance:
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from collections.abc import Iterator, Sequence
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-from kalvin.kline import KLine, is_canon, is_identity, is_misfit, is_terminal, is_unknown
+from kalvin.kline import KLine, is_canon, is_terminal, is_unknown
 from kalvin.misfit import generate_expansions
 
 if TYPE_CHECKING:
@@ -45,34 +45,57 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-# _S3_BIAS — S3 connotation tier bias. Connotation hop counts are biased by
-# this before linear distance addition, so S3 distances always exceed S2
-# distances. With _S3_BIAS=1, minimum S3 distance = S2_S3_DISTANCE + 1 = 101.
-_S3_BIAS = 1
-
-
-# Public significance constants
-D_MAX = 0xFFFF_FFFF_FFFF_FFFF  # maximum distance, also the significance of zero distance
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
-
-# Upper bound on edge hop chain depth; also the per-node distance penalty for
-# a mismatched node that does not resolve to an exact opposing match
-# (fully-unresolved OR S2 "signifies" loose case).
+# Upper bound on edge hop chain depth (edge_hops's traversal bound).
 MAX_HOP = 100
 
-# S2|S3 boundary — S2 direct hops stay below this threshold; S3 connotation
-# hops start at S2_S3_DISTANCE + 1 = 101.
-S2_S3_DISTANCE = 100
+# ─────────────────────────────────────────────────────────────────────
+# 8-bit compositional significance.
+#
+# Significance occupies the LOW 8 BITS of an int; access is always via
+# masking: ``sig & SIG_MASK``. It is a global linear inverted distance in
+# ``(0x00, 0xFF)``: higher byte = closer match, no reshape at the S2|S3
+# boundary. Saturation guards: ``0xFF`` is reachable ONLY by exact match
+# (distance 0); ``0x00`` is reachable ONLY by a structural unresolvable;
+# the interior ``(0x01..0xFE)`` is the open band of graded distance.
+#
+# Only ``S2_S3_BOUNDARY`` is configurable; S1|S2 and S3|S4 are fixed
+# sentinels.
+# ─────────────────────────────────────────────────────────────────────
 
-# Band-representative significance values — the maximal significance of each
-# band. Producers assert a band by stamping its representative; computed
-# values from expand() may be any value within a band, not only the
-# representative. Single source of truth per @model spec §Band-representative
-# Values.
-SIG_S1 = D_MAX  # distance 0   (= the S1|S2 boundary)
-SIG_S2 = D_MAX - 1  # distance 1
-SIG_S3 = D_MAX - 101  # distance 101  (first S3 distance: S2_S3_DISTANCE + _S3_BIAS)
-SIG_S4 = 0  # the S4 sentinel
+#: Low-byte mask isolating the 8-bit significance.
+SIG_MASK: int = 0xFF
+
+#: The S1 sentinel / exact-match byte. Reachable only at distance 0.
+SIG8_MAX: int = 0xFF
+
+#: The S4 sentinel / structural-unresolvable byte. A computed (resolvable)
+#: distance never yields this — only a structural unresolvable path does,
+#: which does not go through ``distance_to_byte``.
+SIG8_MIN: int = 0x00
+
+#: Default for the one configurable boundary. S2 = [0x80, 0xFE];
+#: S3 = [0x01, 0x7F]. Must be in [0x02, 0xFE] so both interior bands are
+#: non-empty (see ``BandLayout.validate``).
+DEFAULT_S2_S3_BOUNDARY: int = 0x80
+
+#: Distance at which ``distance_to_byte`` floors at 0x01. Distances >= this
+#: saturate to 0x01, never 0x00.
+_MAX_INTERIOR_DISTANCE: int = 0xFE
+
+# Band-representative significance values — the canonical bytes a producer
+# stamps when asserting a band rather than computing a grade (the compiler,
+# the countersign reciprocal, structural_significance). Single source of
+# truth per @model spec §Band-representative Values. Computed values from
+# expand() may be any byte within a band, not only the representative.
+#
+# Fixed (not derived from a BandLayout): structural significance marks *which
+# band a structure claims*, independent of where the configurable
+# S2_S3_BOUNDARY is drawn for computed grades. BandLayout exposes matching
+# layout-derived representatives for classification.
+SIG_S1 = 0xFF  # exact match  (== SIG8_MAX; the S1|S2 boundary)
+SIG_S2 = 0xFE  # top of S2
+SIG_S3 = 0x7F  # top of S3 at the default boundary (DEFAULT_S2_S3_BOUNDARY - 1)
+SIG_S4 = 0x00  # the S4 sentinel  (== SIG8_MIN; structural unresolvable)
 
 # Compile-time structural relationship (@CONTEXT.md §Structural Relationship) → band-
 # representative significance. Producers that assert a band rather than compute
@@ -98,68 +121,238 @@ def band_significance(op: str) -> int:
     return _OP_TO_SIG.get(op, SIG_S4)
 
 
-# Band-anchored normalization constants. Each band owns a fixed
-# sub-range of [0.0, 1.0]; S3 is asymptotic, mapping its unbounded distance
-# range injectively into an open interval without clamping.
-S2_TOP = 0.99  # S2 anchor at distance 2 (closest S2 is now distance 1, ≈ 0.9950)
-S2_FLOOR = 0.50  # S2|S3 boundary (distance 100); S3 asymptote
-S3_K = 50  # decay rate (smaller compresses deep S3 faster)
+# ── Byte conversion (linear inverted distance) ──────────────────────
 
 
-# Significance Boundaries
+def distance_to_byte(distance: int) -> int:
+    """Linear inverted ``distance`` → byte in ``[0x01, 0xFF]``.
 
+    - ``distance == 0``        → ``0xFF`` (exact match — the only path to 0xFF)
+    - ``1 <= distance <= 0xFE`` → ``0xFE..0x01`` (linear, monotone decreasing)
+    - ``distance >= 0xFE``      → ``0x01`` (floors; never reaches 0x00)
 
-def boundaries() -> tuple[int, int, int]:
-    """Return the three significance boundaries.
-
-    S1|S2 = D_MAX       (only exact S1 — distance 0 — qualifies)
-    S2|S3 = ~S2_S3_DISTANCE
-    S3|S4 = 0           (only a complete unresolvable is S4)
+    This function never emits ``0x00``: a *computed* distance is by definition
+    resolvable, and only a structural unresolvable yields the ``SIG8_MIN``
+    sentinel — that path does not go through here.
     """
-    s12 = D_MAX
-    s23 = (~S2_S3_DISTANCE) & MASK64
-    s34 = 0
-    return s12, s23, s34
+    if distance < 0:
+        raise ValueError(f"distance must be non-negative; got {distance}")
+    if distance == 0:
+        return SIG8_MAX
+    if distance >= _MAX_INTERIOR_DISTANCE:
+        return 0x01
+    # Linear: distance 1 → 0xFE, ..., distance 0xFD → 0x02, distance 0xFE → 0x01.
+    return SIG8_MAX - distance  # in [0x01, 0xFE] for distance in [1, 0xFE]
 
 
-def classify(sig: int, s12: int, s23: int, s34: int) -> str:
-    """Classify a significance value against three boundaries.
+class BandLayout:
+    """The four bands over the linear byte, derived from one boundary.
 
-    Returns "S1", "S2", "S3", or "S4".
+    Only ``s2_s3_boundary`` is configurable; S1|S2 and S3|S4 are fixed
+    sentinels exposed as named constants.
+
+        S1 = [0xFF]                       (only exact match — distance 0)
+        S2 = [s2_s3_boundary, 0xFE]       (close, direct)
+        S3 = [0x01, s2_s3_boundary - 1]    (indirect, decayed)
+        S4 = [0x00]                       (only structural unresolvable)
+
+    Band-representative values (the canonical bytes a producer stamps when
+    it asserts a band rather than computes a distance)::
+
+        sig_s1 = 0xFF
+        sig_s2 = 0xFE                  (the top of S2)
+        sig_s3 = s2_s3_boundary - 1     (the top of S3)
+        sig_s4 = 0x00
     """
-    if sig >= s12:
-        return "S1"
-    elif sig >= s23:
-        return "S2"
-    elif sig >= s34:
-        return "S3"
-    else:
+
+    __slots__ = ("s2_s3_boundary",)
+
+    def __init__(self, s2_s3_boundary: int = DEFAULT_S2_S3_BOUNDARY) -> None:
+        self.validate_boundary(s2_s3_boundary)
+        self.s2_s3_boundary = s2_s3_boundary
+
+    @staticmethod
+    def validate_boundary(s2_s3_boundary: int) -> None:
+        """Interior guard: the boundary must split the open band cleanly.
+
+        ``[0x02, 0xFE]`` leaves room for non-empty S2 ``[b, 0xFE]`` and
+        non-empty S3 ``[0x01, b-1]``.
+        """
+        if not isinstance(s2_s3_boundary, int) or not (
+            0x02 <= s2_s3_boundary <= 0xFE
+        ):
+            raise ValueError(
+                f"S2_S3_BOUNDARY must be an int in [0x02, 0xFE] to leave room "
+                f"for non-empty S2 and S3 bands; got {s2_s3_boundary!r}"
+            )
+
+    # Fixed sentinels, as lowercase properties (ruff N802). The module-level
+    # SIG_S1/SIG_S4 constants are uppercase (constants, not functions); these
+    # are the layout-internal accessors.
+    @property
+    def sig_s1(self) -> int:
+        return 0xFF
+
+    @property
+    def sig_s4(self) -> int:
+        return 0x00
+
+    # Boundary-derived representatives.
+    @property
+    def sig_s2(self) -> int:
+        return 0xFE  # top of S2
+
+    @property
+    def sig_s3(self) -> int:
+        return self.s2_s3_boundary - 1  # top of S3
+
+    def classify(self, sig: int) -> str:
+        """Classify a raw byte into S1/S2/S3/S4. Operates on the low byte only."""
+        b = sig & SIG_MASK
+        if b == self.sig_s1:
+            return "S1"
+        if b >= self.s2_s3_boundary:
+            return "S2"
+        if b >= 0x01:
+            return "S3"
         return "S4"
 
 
-def normalise_significance(raw_sig: int) -> float:
-    """Normalise a raw significance value to a band-anchored float in [0.0, 1.0].
+# ── Pluggable seams for compositional significance ───────────────────
+#
+# A compositional significance has two functions:
+#   1. DecayFunction  — leaf decay: reentrant hop count -> accountedness.
+#   2. ComposeFunction — how per-node accountedness values combine.
+# Both are Protocols with default implementations; expand() is parameterised
+# over them via Aggregator.
 
-    The single source of truth for significance normalization.
-    Each band owns a fixed sub-range so S1/S2/S3/S4 are always ordered and
-    visible; S3 uses an asymptotic curve so its unbounded distance range
-    maps injectively into an open interval without ever being clamped.
 
-    - S1 (distance 0)    -> 1.0
-    - S2 (1..100)        -> linear in [0.50, 0.99] (closest S2 is distance 1)
-    - S3 (>100)          -> asymptotic 0.50 * S3_K / (S3_K + (distance-100)),
-                           never 0.0
-    - raw 0 (S4)         -> 0.0
+@runtime_checkable
+class DecayFunction(Protocol):
+    """Leaf decay: reentrant hop count -> accountedness contribution in [0, 1].
+
+    The caller (expand) supplies the boundary cases directly:
+      - matched AND grounded     -> 1.0  (decay is never called)
+      - matched but ungrounded   -> decay(1)  (one hop of doubt)
+      - resolvable in h hops      -> decay(h)
+      - unresolvable              -> 0.0  (decay is never called)
     """
-    if raw_sig == 0:
+
+    def __call__(self, hops: int) -> float: ...
+
+
+@runtime_checkable
+class ComposeFunction(Protocol):
+    """Composition: per-slot accountedness values -> aggregate in [0, 1].
+
+    The result is the accounted fraction consumed by the byte encoder.
+    Implementations should be count-invariant (scaling the same accountedness
+    distribution leaves the byte unchanged) unless they deliberately trade
+    that property away.
+    """
+
+    def __call__(self, slot_values: Sequence[float]) -> float: ...
+
+
+# ── Default decay functions ──────────────────────────────────────────
+
+
+def asymptotic_decay(hops: int, k: int = 50) -> float:
+    """The default decay curve: ``k / (k + hops)``.
+
+    hops 0 -> 1.0, monotone decreasing, asymptotes to 0 as hops -> inf.
+    Larger ``k`` decays more slowly (more tolerance for deep resolution).
+    """
+    if hops < 0:
+        raise ValueError(f"hops must be non-negative; got {hops}")
+    return k / (k + hops)
+
+
+def harmonic_decay(hops: int) -> float:
+    """``1 / (1 + hops)``. A standard harmonic decay; slower than small-k asymptote."""
+    if hops < 0:
+        raise ValueError(f"hops must be non-negative; got {hops}")
+    return 1.0 / (1.0 + hops)
+
+
+def linear_decay(hops: int, reach: int = 100) -> float:
+    """Linear decay to 0 at ``hops == reach``; clamps at 0 beyond.
+
+    ``reach`` is the hop count at which a node is considered fully unaccounted.
+    """
+    if hops < 0:
+        raise ValueError(f"hops must be non-negative; got {hops}")
+    if reach <= 0:
+        raise ValueError(f"reach must be positive; got {reach}")
+    return max(0.0, 1.0 - hops / reach)
+
+
+def make_asymptotic_decay(k: int = 50) -> DecayFunction:
+    """Curry ``k`` into an asymptotic_decay callable."""
+
+    def _decay(hops: int) -> float:
+        return asymptotic_decay(hops, k=k)
+
+    return _decay
+
+
+# ── Default compose functions ────────────────────────────────────────
+
+
+def mean_compose(slot_values: Sequence[float]) -> float:
+    """Default composition: arithmetic mean of per-slot accountedness.
+
+    Count-invariant by construction: scaling the same accountedness
+    distribution (repeating it) leaves the mean — and thus the byte —
+    unchanged.
+    """
+    n = len(slot_values)
+    if n == 0:
+        # No slots — vacuously unaccounted. Callers only invoke compose when
+        # there is at least one slot; this guard is defensive.
         return 0.0
-    distance = (~raw_sig) & MASK64
-    if distance == 0:
-        return 1.0
-    if distance <= S2_S3_DISTANCE:
-        return S2_FLOOR + (S2_TOP - S2_FLOOR) * (S2_S3_DISTANCE - distance) / (S2_S3_DISTANCE - 2)
-    delta = distance - S2_S3_DISTANCE
-    return S2_FLOOR * S3_K / (S3_K + delta)
+    return sum(slot_values) / n
+
+
+@dataclass(frozen=True)
+class Aggregator:
+    """The compose-on-return policy, bundling layout + the two seams.
+
+    ``expand()`` is parameterised over a single ``Aggregator`` (keyword-only,
+    defaulting to :data:`DEFAULT_AGGREGATOR`) so the call site stays readable
+    while the recursion threads one object. Freezing makes it safe to share
+    across recursive calls and threads.
+    """
+
+    layout: BandLayout = field(default_factory=BandLayout)
+    decay: DecayFunction = field(default_factory=make_asymptotic_decay)
+    compose: ComposeFunction = field(default=mean_compose)
+
+    def compose_terminal(self, slot_values: list[float]) -> int:
+        """Compose per-slot accountedness into the terminal significance byte.
+
+        Maps the compose() of per-slot accountedness through the linear
+        inverted-distance byte, with the two saturation guards:
+
+          accounted_fraction == 1.0 -> 0xFF  (exact match only)
+          accounted_fraction == 0.0 -> 0x00  (only total non-account)
+          otherwise                 -> byte in (0x00, 0xFF)
+        """
+        frac = max(0.0, min(1.0, self.compose(slot_values)))  # clamp float noise
+        if frac >= 1.0:
+            return SIG8_MAX
+        if frac <= 0.0:
+            return SIG8_MIN
+        # Map the unaccounted fraction (1 - frac) to an interior distance in
+        # [1, 0xFE] so every resolvable pair lands strictly inside (0x00, 0xFF).
+        interior_distance = 1 + round((1.0 - frac) * (_MAX_INTERIOR_DISTANCE - 1))
+        return distance_to_byte(interior_distance)
+
+
+#: Module-level default aggregator: default layout, asymptotic decay (k=50),
+#: mean compose. cogitator uses this unless constructed otherwise.
+DEFAULT_AGGREGATOR = Aggregator()
+
 
 
 class QueryCandidate:
@@ -287,20 +480,33 @@ def expand(
     signifier: KSignifier,
     distance: int = 0,
     *,
+    aggregator: Aggregator | None = None,
     _visited: set[tuple[int, int]] | None = None,
 ) -> Iterator[QueryCandidate]:
-    """Expand a query-candidate pair, yielding connotations and terminal distance.
+    """Expand a query-candidate pair, yielding connotations and terminal byte.
 
-    For each discovered connotation (S2/S3 indirect relationship), recursively
-    yields QueryCandidate items for the connotation pair.  The final yield is
-    always the terminal QueryCandidate with the computed distance for the
-    original pair.
+    Compose-on-return aggregation: topology is captured on descent (per-node
+    accountedness retained as a float), and composition is applied on the
+    return phase.
 
-    Distance is a single integer. S3 connotation hops use linear distance
-    ``S2_S3_DISTANCE + hop_count`` to ensure S3 distances moderately
-    exceed S2 distances — close enough for temperature to bridge,
-    without the quadratic explosion of the previous packing function.
+    Per-node accountedness:
+      matched & grounded       -> 1.0
+      matched but ungrounded   -> decay(1)   (one hop of doubt)
+      resolvable in h hops      -> decay(h)
+      unresolvable              -> 0.0
+
+    Yield asymmetry: exact opposing matches and S3 connotation bridges
+    recurse; signifies matches emit a side-candidate and do not recurse.
+    The final yield is always the terminal QueryCandidate for the original
+    pair.
+
+    ``aggregator`` bundles the layout (S2_S3_BOUNDARY) and the two pluggable
+    seams (DecayFunction, ComposeFunction); defaults to
+    :data:`DEFAULT_AGGREGATOR`. ``distance`` is retained for call-signature
+    stability (used only as a hop hint when non-zero).
     """
+    if aggregator is None:
+        aggregator = DEFAULT_AGGREGATOR
     if _visited is None:
         _visited = set()
 
@@ -315,89 +521,90 @@ def expand(
     mismatched_c = c_set - q_set
     matched = q_set & c_set
 
-    s3_connotations: dict[int, int] = {}  # sig → min hops from any query node
+    s3_connotations: dict[int, int] = {}  # sig -> min hops from any query node
 
-    total_distance = 0
+    # Per-node accountedness, in slot order. One float per slot.
+    slot_values: list[float] = []
+
+    decay = aggregator.decay
 
     for n in mismatched_q:
-        hop_distance = MAX_HOP
+        accounted = 0.0  # unresolvable default (case F)
         q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n, signifier):
                 if match_sig in mismatched_c:
-                    hop_distance = hops
+                    # case C: exact opposing match (S2 direct) -> recurse.
+                    accounted = decay(hops)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model,
-                            q_kline,
-                            c_kline,
-                            signifier,
-                            hops,
-                            _visited=_visited,
+                            model, q_kline, c_kline, signifier, hops,
+                            aggregator=aggregator, _visited=_visited,
                         )
                     break
                 elif signifier.signifies(n, match_sig):
+                    # case D: signifies (S2 loose) -> side-candidate, no recurse.
+                    accounted = decay(hops)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
-                        sig_distance = distance + hops
-                        significance = (~min(sig_distance, D_MAX - 1)) & MASK64
-                        yield QueryCandidate(q_kline, c_kline, significance)
+                        sig_byte = aggregator.compose_terminal([decay(hops)])
+                        yield QueryCandidate(q_kline, c_kline, sig_byte)
                     break
                 elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
                     s3_connotations[match_sig] = hops
-        total_distance += hop_distance
+        slot_values.append(accounted)
 
     for n in mismatched_c:
-        hop_distance = MAX_HOP
+        accounted = 0.0
         q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n, signifier):
                 if match_sig in mismatched_q:
-                    hop_distance = hops
+                    # case C: exact opposing match (S2 direct) -> recurse.
+                    accounted = decay(hops)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model,
-                            q_kline,
-                            c_kline,
-                            signifier,
-                            hops,
-                            _visited=_visited,
+                            model, q_kline, c_kline, signifier, hops,
+                            aggregator=aggregator, _visited=_visited,
                         )
                     break
                 elif signifier.signifies(n, match_sig):
+                    # case D: signifies (S2 loose) -> side-candidate, no recurse.
+                    accounted = decay(hops)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
-                        sig_distance = distance + hops
-                        significance = (~min(sig_distance, D_MAX - 1)) & MASK64
-                        yield QueryCandidate(q_kline, c_kline, significance)
+                        sig_byte = aggregator.compose_terminal([decay(hops)])
+                        yield QueryCandidate(q_kline, c_kline, sig_byte)
                     break
                 elif match_sig in s3_connotations:
+                    # case E: S3 connotation bridge -> recurse (no side-candidate).
                     s3_hop = s3_connotations[match_sig] + hops
+                    accounted = decay(s3_hop)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model,
-                            q_kline,
-                            c_kline,
-                            signifier,
-                            S2_S3_DISTANCE + s3_hop + _S3_BIAS - 1,
-                            _visited=_visited,
+                            model, q_kline, c_kline, signifier, s3_hop,
+                            aggregator=aggregator, _visited=_visited,
                         )
-                    hop_distance = 0
                     break
-        total_distance += hop_distance
+        slot_values.append(accounted)
 
-    # Matched but ungrounded nodes incur a small S2 penalty.
+    # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1).
     for n in matched:
         kl = model.find(n)
-        if kl is None or not is_s1(model, kl, signifier):
-            total_distance += 1
+        if kl is not None and is_s1(model, kl, signifier):
+            slot_values.append(1.0)
+        else:
+            # Ungrounded match OR not in model: one hop of doubt.
+            slot_values.append(decay(1))
 
-    total_distance += distance
+    if not slot_values:
+        # Both klines node-less: vacuously fully accounted.
+        slot_values = [1.0]
 
-    significance = (~min(total_distance, D_MAX - 1)) & MASK64
+    significance = aggregator.compose_terminal(slot_values)
     yield QueryCandidate(query, candidate, significance)
 
 

@@ -19,10 +19,18 @@ from kalvin.expand import (
     SIG_S2,
     SIG_S3,
     SIG_S4,
-    boundaries,
     structural_significance,
 )
-from kalvin.kline import COMPOUND_TOKEN, KLine, is_canon, is_compound_word, is_identity, is_misfit, is_terminal, is_unknown
+from kalvin.kline import (
+    COMPOUND_TOKEN,
+    KLine,
+    is_canon,
+    is_compound_word,
+    is_identity,
+    is_misfit,
+    is_terminal,
+    is_unknown,
+)
 from kalvin.kvalue import KValue
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -108,14 +116,13 @@ class Rationaliser:
 
     def __init__(self, signifier: KSignifier) -> None:
         self._signifier = signifier
-        self._s12, self._s23, self._s34 = boundaries()
 
     def rationalise(
         self, state: RationaliserState, incoming: Sequence[KValue]
     ) -> tuple[list[KValue], list[KValue]]:
         """Route every incoming query, then cogitate. Returns ``(batch, observations)``."""
         state._dbg_step += 1
-        turn = _Turn(state, self._signifier, self._s12, self._s23, self._s34)
+        turn = _Turn(state, self._signifier)
         for query in incoming:
             turn.route(query)
         return turn.finish(turn.cogitate())
@@ -128,13 +135,9 @@ class _Turn:
         self,
         state: RationaliserState,
         signifier: KSignifier,
-        s12: int,
-        s23: int,
-        s34: int,
     ) -> None:
         self._state = state
         self._signifier = signifier
-        self._s12, self._s23, self._s34 = s12, s23, s34
         self.observations: list[KValue] = []
         # The incoming queries this turn, in arrival order, retained so
         # cogitation can reply to them. The engine always replies when it

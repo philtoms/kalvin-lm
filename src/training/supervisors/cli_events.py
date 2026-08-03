@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from kalvin.expand import boundaries, classify, normalise_significance
+from kalvin.expand import SIG8_MAX, SIG_MASK, BandLayout
 from kalvin.kline import KLine, kline_display
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
@@ -153,14 +153,12 @@ def _build_significance(raw_sig: int) -> dict:
 
     Returns dict with raw, normalised, and level fields.
 
-    Normalisation is band-anchored via the shared
-    ``normalise_significance`` helper: S1 → 1.0; S2 → linear in
-    [0.50, 0.99]; S3 → asymptotic in (0.0, 0.50), never clamped;
-    S4 → 0.0. The helper is the single source of truth.
+    The byte is the grade; ``normalised`` is a trivial ``byte / 255`` rescale
+    for human-readable display. ``level`` comes from BandLayout.
     """
-    s12, s23, s34 = boundaries()
-    level = classify(raw_sig, s12, s23, s34)
-    normalised = normalise_significance(raw_sig)
+    layout = BandLayout()
+    level = layout.classify(raw_sig)
+    normalised = (raw_sig & SIG_MASK) / SIG8_MAX
     return {
         "raw": raw_sig,
         "normalised": normalised,

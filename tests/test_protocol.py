@@ -553,7 +553,7 @@ class TestWireFrameRoundTrip:
         assert event["type"] == "rationalise"
         assert event["seq"] == 5
         assert event["kind"] == "frame"
-        # Significance 99 (well below D_MAX) classifies as S3.
+        # Significance 99 (below the S2_S3_BOUNDARY 0x80) classifies as S3.
         assert event["significance"]["raw"] == 99
         assert event["significance"]["level"] == "S3"
         assert "normalised" in event["significance"]
