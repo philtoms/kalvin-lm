@@ -27,15 +27,15 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Model (@model spec)
 
-- Provides `expand(Q, C)` generator yielding `QueryCandidate`s
-  (query, candidate, significance).
+- Provides `expand(Q, C)` generator yielding `KValue`s
+  (candidate-kline, significance).
 - Provides `add_to_frame` / `add_to_ltm` for tiered writes of proposals and
   companions.
 - Provides `generate_expansions(candidate)` for S2 expansion proposals and
   companion klines.
 - Provides the 8-bit significance scheme: SIG_MASK/SIG8_MAX/SIG8_MIN, BandLayout, and the SIG_S1..SIG_S4 sentinels.
 - Computes significance internally; the Cogitator consumes
-  `QueryCandidate.significance` directly without inversion.
+  `KValue.significance` directly without inversion.
 
 ### Signature (@signature spec)
 
@@ -78,24 +78,25 @@ WorkItem:
 ```
 
 The agent submits one WorkItem per routed candidate (S2 or S3). The
-Cogitator expands each WorkItem into a sequence of QueryCandidates via
+Cogitator expands each WorkItem into a sequence of KValues via
 `model.expand()`.
 
 ## Query Candidates
 
-A QueryCandidate is a single query-candidate-distance result yielded by
-`model.expand()`:
+Each yield is a `KValue` (@kvalue spec) — a single candidate-distance
+result yielded by `model.expand()`:
 
 ```
-QueryCandidate(query, candidate, significance):
-  query:        KLine
-  candidate:    KLine
-  significance: int     # an 8-bit grade pre-computed by the model (compose-on-return)
+KValue(kline, significance):
+  kline:        KLine    # the (possibly expanded) candidate
+  significance: int      # an 8-bit grade pre-computed by the model (compose-on-return)
 ```
 
-Intermediate yields represent discovered connotations — indirect relationships
-between nodes of the query and candidate. The final yield is always the
-terminal significance for the original pair.
+The query voice is not carried per-yield; it is supplied by the caller
+from the WorkItem's inbound KValue. Intermediate yields represent
+discovered connotations — indirect relationships between nodes of the
+query and candidate. The final yield is always the terminal significance
+for the original pair.
 
 The model computes significance internally; the Cogitator uses `.significance`
 directly without any inversion.
@@ -183,7 +184,7 @@ The Cogitator expands each WorkItem, processing all yields from
 `model.expand()`:
 
 ```
-process(QueryCandidate(query, candidate, significance)):
+process(KValue(kline, significance)):
   # S2 expansion only
   if candidate is canonical:
     return                        # nothing to expand

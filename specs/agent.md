@@ -48,7 +48,7 @@ This spec depends on the following concepts, defined elsewhere:
   significance outcome (STM only, STM+Frame, or STM+Frame+LTM).
 - Provides `expand(Q, C)` generator for graph expansion yielding
   connotations and terminal significance.
-- Provides `QueryCandidate` named tuple with `.significance` field
+- Yields `KValue` (@kvalue spec) with a `.significance` field
   (pre-computed by the model).
 - Provides the 8-bit significance scheme: SIG_MASK/SIG8_MAX/SIG8_MIN, BandLayout, and the SIG_S1..SIG_S4 sentinels.
 - Provides `is_countersigned(kline)` to check if a kline is countersigned by any kline in the model.
@@ -133,10 +133,10 @@ Rationalise(Q):
 
   ┌─── SLOW PATH (Cogitator, background thread) ────────────┐
   │ For each WorkItem(Q, C):                                  │
-  │   for qc in model.expand(Q, C):                             │
-  │     process(qc)                                              │
+  │   for kv in model.expand(Q, C):                             │
+  │     process(kv)                                              │
   │                                                              │
-  │ process(QueryCandidate(query, candidate, significance)):     │
+  │ process(KValue(kline, significance)):                        │
   │   S2 expansion: reshape misfit klines toward canonical,     │
   │   emit proposals for agent ratification.                    │
   └───────────────────────────────────────────────────────────────┘
@@ -315,7 +315,7 @@ Return `False`.
 
 The slow path — background processing of pre-routed work items, S2/S3
 expansion, significance-boundary classification, and the
-Cogitator/CogitationHandler/WorkItem/QueryCandidate contracts — is defined
+Cogitator/CogitationHandler/WorkItem contracts — is defined
 in the **@cogitator spec**. This spec owns only the agent's role in the
 seam: it submits one `WorkItem` per routed candidate during Phase 5, and
 it is the primary `CogitationHandler` implementation (`on_s1`,
@@ -376,7 +376,7 @@ abstractions.
 **Rationale**: Routing is a fast, model-free operation that directly
 determines agent control flow. Significance inversion is now internalized in
 the model, keeping the cogitation path simple — it consumes
-`QueryCandidate.significance` directly.
+`KValue.significance` directly.
 
 ### 2. No "Best Candidate" Selection
 

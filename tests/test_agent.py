@@ -1172,11 +1172,11 @@ class TestKValueExchangeCriteria:
         # expand() yields for this query|candidate pair.
         layout = BandLayout()
         computed: set[tuple[int, tuple[int, ...], int]] = set()
-        for qc in expand(m, q, k3, signifier):
-            band = layout.classify(qc.significance)
+        for kv in expand(m, q, k3, signifier):
+            band = layout.classify(kv.significance)
             if band in ("S4", "S1"):
                 continue
-            for proposal, sval in propose_expansions(m, qc.candidate, qc.significance, signifier):
+            for proposal, sval in propose_expansions(m, kv.kline, kv.significance, signifier):
                 computed.add((proposal.signature, tuple(proposal.nodes), sval))
 
         band_reps = {SIG_S1, SIG_S2, SIG_S3, SIG_S4}

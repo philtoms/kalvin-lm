@@ -51,7 +51,7 @@ This spec depends on the following concepts, defined elsewhere:
 ### Significance (@significance spec)
 
 - Significance calls the `expand` function (defined in `kalvin.expand`), which
-  yields `QueryCandidate` results with pre-computed significance values.
+  yields `KValue` results with pre-computed significance values.
 - Significance does not manage model state.
 
 ### Agent (@agent spec)
@@ -501,18 +501,6 @@ methods and take the model as their first argument. They are consumed by
 the significance pipeline (@significance spec) and by cogitation
 (@agent spec). Their semantics are defined here.
 
-### QueryCandidate
-
-```
-QueryCandidate(query: Kline, candidate: Kline, significance: int)
-```
-
-A named tuple representing a single query-candidate-significance result.
-Yielded by `expand()` for both intermediate connotations and the
-terminal significance. The model computes an 8-bit compositional grade
-internally via compose-on-return aggregation (see §Significance
-Semantics). Callers never see raw distance or hops.
-
 ### Is S1
 
 ```
@@ -536,19 +524,21 @@ Determines whether a kline is recognised (S1).
 ### Expand (Significance)
 
 ```
-expand(model, query, candidate) → Iterator[QueryCandidate]
+expand(model, query, candidate) → Iterator[KValue]
 ```
 
-A generator that expands a query-candidate pair, yielding `QueryCandidate`
+A generator that expands a query-candidate pair, yielding `KValue`
 results for each discovered connotation and a terminal yield with the
-computed significance.
+computed significance. Each yield is a `KValue` (@kvalue spec) whose
+`kline` is the (possibly expanded) candidate and whose `significance` is
+the computed grade; the query voice is supplied by the caller, not
+carried per-yield.
 
 - `query` — the query Kline.
 - `candidate` — a candidate Kline.
-- `distance` — accumulated hop distance for recursive calls (default 0).
-- **Yields** intermediate `QueryCandidate` items for each discovered
+- **Yields** intermediate `KValue` items for each discovered
   connotation (S2 and S3 indirect relationships), followed by a terminal
-  `QueryCandidate` with the computed significance for the original pair.
+  `KValue` with the computed significance for the original pair.
 - **Recursive**: intermediate connotations are discovered by recursively
   calling `expand()` via `yield from`. Cycle detection prevents infinite
   recursion via a visited set of `(query.signature, candidate.signature)`
@@ -573,14 +563,14 @@ computed significance.
    composed on the return phase into the terminal byte.
 2. **Significance is an 8-bit grade** — `byte & SIG_MASK` in `[0x00, 0xFF]`.
 3. **Accountedness is topology-driven** — derived from reentrant graph hops.
-4. **S2 signifies short-circuits before S3** — overlap match yields QC and
-   stops chain; `s3_connotations` not populated.
+4. **S2 signifies short-circuits before S3** — overlap match yields a
+   side-candidate KValue and stops chain; `s3_connotations` not populated.
 5. **Connotation is always S3** — indirect bridging recurses (case E).
 6. **Matched-ungrounded is `decay(1)`** — one hop of doubt.
 7. **Bidirectional** — both query and candidate mismatched nodes contribute.
 8. **Linear S3 distance** — `S2_S3_DISTANCE + hop_count + _S3_BIAS - 1`;
    `_S3_BIAS = 1`. No quadratic packing.
-9. **Recursive expansion** — connotations yielded as `QueryCandidate`.
+9. **Recursive expansion** — connotations yielded as `KValue`.
 10. **Cycle detection** — visited signature pairs prevent infinite recursion.
 11. **Null-safe resolution** — a `match_sig` yielded by `edge_hops` is
     resolved via `model.find()` rather than asserted to exist. If resolution
@@ -740,11 +730,11 @@ an optional `aggregator` keyword (default `DEFAULT_AGGREGATOR`).
 The three mismatch-resolution kinds keep distinct yield behaviour:
 
 - **C — exact opposing match (S2 direct):** recurses (`yield from expand`).
-- **D — signifies (S2 loose):** emits a side-candidate `QueryCandidate`
+- **D — signifies (S2 loose):** emits a side-candidate `KValue`
   carrying the byte for `[decay(hops)]`; does not recurse.
 - **E — connotation bridge (S3):** recurses; emits no side-candidate.
 
-The final yield is always the terminal `QueryCandidate` for the original
+The final yield is always the terminal `KValue` for the original
 pair.
 
 ### edge_hops Termination

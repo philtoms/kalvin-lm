@@ -5,7 +5,7 @@ This module owns the full significance → classification → expansion proposal
 pipeline:
 
   1. **Significance computation** — expand() composes an 8-bit grade per
-     query|candidate pair and yields QueryCandidate objects.
+     query|candidate pair and yields KValue objects.
   2. **Band classification** — BandLayout maps bytes to S1/S2/S3/S4 bands.
      Only S2_S3_BOUNDARY is configurable.
   3. **Expansion proposals** — propose_expansions() classifies misfits and
@@ -19,7 +19,7 @@ The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Module-level constants and types:
-  MAX_HOP, QueryCandidate,
+  MAX_HOP,
   SIG_MASK, SIG8_MAX, SIG8_MIN, DEFAULT_S2_S3_BOUNDARY,
   SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative sentinels),
   BandLayout, distance_to_byte, Aggregator, DEFAULT_AGGREGATOR
@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from kalvin.kline import KLine, is_canon, is_terminal, is_unknown
+from kalvin.kvalue import KValue
 from kalvin.misfit import generate_expansions
 
 if TYPE_CHECKING:
@@ -355,36 +356,6 @@ DEFAULT_AGGREGATOR = Aggregator()
 
 
 
-class QueryCandidate:
-    """A single query|candidate pair yielded by graph expansion.
-
-    Replaces the NamedTuple from model.py with a class for forward
-    compatibility. Still usable as a tuple: (query, candidate, significance).
-    """
-
-    __slots__ = ("query", "candidate", "significance")
-
-    def __init__(self, query: KLine, candidate: KLine, significance: int):
-        self.query = query
-        self.candidate = candidate
-        self.significance = significance
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, QueryCandidate):
-            return NotImplemented
-        return (
-            self.query is other.query
-            and self.candidate is other.candidate
-            and self.significance == other.significance
-        )
-
-    def __repr__(self) -> str:
-        return f"QueryCandidate(q={self.query!r}, c={self.candidate!r}, sig={self.significance:#x})"
-
-    def __iter__(self):
-        return iter((self.query, self.candidate, self.significance))
-
-
 # Helper Functions
 
 
@@ -481,7 +452,7 @@ def expand(
     *,
     aggregator: Aggregator | None = None,
     _visited: set[tuple[int, int]] | None = None,
-) -> Iterator[QueryCandidate]:
+) -> Iterator[KValue]:
     """Expand a query-candidate pair, yielding connotations and terminal byte.
 
     Compose-on-return aggregation: topology is captured on descent (per-node
@@ -496,7 +467,7 @@ def expand(
 
     Yield asymmetry: exact opposing matches and S3 connotation bridges
     recurse; signifies matches emit a side-candidate and do not recurse.
-    The final yield is always the terminal QueryCandidate for the original
+    The final yield is always the terminal KValue for the original
     pair.
 
     ``aggregator`` bundles the layout (S2_S3_BOUNDARY) and the two pluggable
@@ -547,7 +518,7 @@ def expand(
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         sig_byte = aggregator.compose_terminal([decay(hops)])
-                        yield QueryCandidate(q_kline, c_kline, sig_byte)
+                        yield KValue(c_kline, sig_byte)
                     break
                 elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
                     s3_connotations[match_sig] = hops
@@ -574,7 +545,7 @@ def expand(
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         sig_byte = aggregator.compose_terminal([decay(hops)])
-                        yield QueryCandidate(q_kline, c_kline, sig_byte)
+                        yield KValue(c_kline, sig_byte)
                     break
                 elif match_sig in s3_connotations:
                     # case E: S3 connotation bridge -> recurse (no side-candidate).
@@ -603,7 +574,7 @@ def expand(
         slot_values = [1.0]
 
     significance = aggregator.compose_terminal(slot_values)
-    yield QueryCandidate(query, candidate, significance)
+    yield KValue(candidate, significance)
 
 
 # Promotion Helpers
@@ -675,8 +646,8 @@ def propose_expansions(
     Yields nothing if the candidate is canonical or not a misfit.
 
     The caller is responsible for pairing proposals with the correct query kline
-    for handler dispatch — for connotation yields from ``expand()``, this is
-    ``qc.query``, not the original WorkItem's query.
+    for handler dispatch — for connotation yields from ``expand()``, the query
+    is the WorkItem's inbound query, not the yielded KValue's kline.
 
     Expansion proposals must carry decomposition information, so terminal
     klines (the empty Unknown, self-referential ``{S: [S]}``, or a

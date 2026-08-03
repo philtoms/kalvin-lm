@@ -205,8 +205,8 @@ class Cogitator:
 
         layout = BandLayout()
 
-        for qc in expand(self._model, query_kline, candidate, self._signifier):
-            band = layout.classify(qc.significance)
+        for kv in expand(self._model, query_kline, candidate, self._signifier):
+            band = layout.classify(kv.significance)
 
             if band == "S4":
                 continue
@@ -215,15 +215,15 @@ class Cogitator:
                 self._handler.on_s1(query_value, candidate)
                 break
             else:
-                # qc.candidate is the expanded (possibly misfit) candidate.
+                # kv.kline is the expanded (possibly misfit) candidate.
                 # The query voice on the published event is the WorkItem's
                 # original inbound KValue (KE-2).
                 for proposal, sig in propose_expansions(
-                    self._model, qc.candidate, qc.significance, self._signifier
+                    self._model, kv.kline, kv.significance, self._signifier
                 ):
                     self._handler.on_expansion(
                         query_value,
                         proposal,
                         sig,
-                        original_candidate=qc.candidate,
+                        original_candidate=kv.kline,
                     )

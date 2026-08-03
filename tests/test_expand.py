@@ -351,8 +351,7 @@ class TestExpand:
         # Nested terminal (recursive expand(2, 8)): node 8 matched-ungrounded
         # (identity is not S1) -> [decay(1)].
         nested = results[0]
-        assert nested.query.signature == 2
-        assert nested.candidate.signature == 8
+        assert nested.kline.signature == 8
         assert nested.significance == DEFAULT_AGGREGATOR.compose_terminal(
             [DEFAULT_AGGREGATOR.decay(1)]
         )
@@ -360,17 +359,16 @@ class TestExpand:
         # Top-level terminal: q-4 does not resolve directly (0.0); c-2 bridges
         # via s3_hop=2 -> decay(2). Two slots: [0.0, decay(2)].
         terminal = results[1]
-        assert terminal.query is q
-        assert terminal.candidate is c
+        assert terminal.kline is c
         assert terminal.significance == DEFAULT_AGGREGATOR.compose_terminal(
             [0.0, DEFAULT_AGGREGATOR.decay(2)]
         )
 
     def test_expand_signifies_cogitation(self):
-        """S2 signifies loose match yields additional QueryCandidates.
+        """S2 signifies loose match yields additional KValues.
 
         When a mismatched node's edge hop reaches a signature that shares bits
-        (signifies) but isn't an exact match, a QueryCandidate is yielded for
+        (signifies) but isn't an exact match, a KValue is yielded for
         cogitation. The mismatched node still contributes MAX_HOP to the
         terminal distance (signifies doesn't resolve the mismatch).
         """
@@ -390,23 +388,25 @@ class TestExpand:
         # c-node 10: edge_hops(10, signifier) = [(1,20), (2,30)]
         #   hop 1: match_sig=20 not in mismatched_q, signifies(10,20)=False
         #   hop 2: match_sig=30 not in mismatched_q, signifies(10,30)=True
-        #   → yields QueryCandidate(find(10), find(30), (~2) & MASK64)
+        #   → yields KValue(find(30), (~2) & MASK64)
         #   hop_distance stays MAX_HOP
         #
         # Terminal: distance = 1 (exact match hop) + MAX_HOP (c-node unresolved)
 
         results = list(expand(m, q, c, signifier))
 
-        # Find the signifies side-candidate from c-10 -> 30 at 2 hops.
+        # Find the signifies side-candidate reaching 30 at 2 hops. (The q-5
+        # exact-match recursion also yields klines whose nodes resolve to 30,
+        # so we discriminate by the expected 2-hop significance.)
+        sig_two_hops = DEFAULT_AGGREGATOR.compose_terminal([DEFAULT_AGGREGATOR.decay(2)])
         signifies_candidates = [
-            r for r in results if r.query.signature == t(10) and r.candidate.signature == t(30)
+            r for r in results
+            if r.kline.signature == t(30) and r.significance == sig_two_hops
         ]
         assert len(signifies_candidates) == 1
         sig_cand = signifies_candidates[0]
         # Side-candidate carries the byte for [decay(hops)].
-        assert sig_cand.significance == DEFAULT_AGGREGATOR.compose_terminal(
-            [DEFAULT_AGGREGATOR.decay(2)]
-        )
+        assert sig_cand.significance == sig_two_hops
 
     def test_expand_signifies_before_s3(self):
         """Signifies (S2) takes precedence over s3_connotations (S3).
@@ -436,9 +436,9 @@ class TestExpand:
 
         # Both signifies candidates reach sig 28 at 1 hop -> byte for [decay(1)].
         sig_one_hop = DEFAULT_AGGREGATOR.compose_terminal([DEFAULT_AGGREGATOR.decay(1)])
-        assert results[0].candidate.signature == t(0b11100)
+        assert results[0].kline.signature == t(0b11100)
         assert results[0].significance == sig_one_hop
-        assert results[1].candidate.signature == t(0b11100)
+        assert results[1].kline.signature == t(0b11100)
         assert results[1].significance == sig_one_hop
 
         # Terminal: both mismatched nodes signify at 1 hop -> slots [decay(1), decay(1)].
