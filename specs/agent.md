@@ -180,11 +180,11 @@ if declared == SIG_S4 and derived != SIG_S4:
 (written by `on_expansion`), and `model.grounded()` excludes only STM, so a
 post-ground gate would be inert against its one real target.
 
-**S4 is a sentinel, not a band from `classify()`.** `classify()` collapses
-the S3|S4 boundary — `SIG_S4` (`0`) classifies as S3, since `0 >= s34(0)` —
-so the band function can never return S4. S4 is detected by value
-(`== SIG_S4`), matching how `normalise_significance` special-cases `raw_sig
-== 0`. The comparison is therefore value-based, not band-based.
+**S4 is detected by value.** Under the 8-bit scheme `BandLayout.classify`
+does return `"S4"` for the `0x00` byte (unlike the old 64-bit `classify`,
+which collapsed the S3|S4 boundary). Nonetheless S4 is still detected by
+value (`== SIG_S4`) for the agreement check, which is value-based rather
+than band-based.
 
 Three outcomes:
 

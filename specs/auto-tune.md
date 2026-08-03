@@ -50,9 +50,9 @@ Each line is a JSON object with a monotonic `seq` counter.
 
 | Field      | Type    | Description                              |
 | ---------- | ------- | ---------------------------------------- |
-| raw        | `int`   | 64-bit significance integer              |
-| normalised | `float` | `significance / D_MAX` (0.0 S4 — 1.0 S1) |
-| level      | `str`   | `S1`, `S2`, `S3`, or `S4`                |
+| raw        | `int`   | 8-bit significance byte (low byte of an int) |
+| normalised | `float` | `byte / 0xFF` (0.0 S4 — 1.0 S1; trivial rescale for display) |
+| level      | `str`   | `S1`, `S2`, `S3`, or `S4` (via `BandLayout.classify`) |
 
 ### KLine Display Object
 

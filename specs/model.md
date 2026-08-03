@@ -553,28 +553,30 @@ computed significance.
   calling `expand()` via `yield from`. Cycle detection prevents infinite
   recursion via a visited set of `(query.signature, candidate.signature)`
   pairs.
-- **Significance** — the model computes significance internally by
-  accumulating a single linear distance, then inverting:
-  `(~distance) & MASK64`. Higher significance means closer match.
+- **Significance** — the model computes an 8-bit compositional grade via
+  compose-on-return aggregation (see §Significance Semantics). Higher
+  significance means closer match; `0xFF` is exact, `0x00` is unresolvable.
 
 #### Hyperparameters
 
-- **D_MAX** — maximum distance and maximum significance value
-  (`0xFFFF_FFFF_FFFF_FFFF`).
-- **MASK64** — 64-bit mask for bitwise inversion (`0xFFFF_FFFF_FFFF_FFFF`).
+- **`Aggregator`** — bundles `BandLayout` + the `DecayFunction` and
+  `ComposeFunction` seams; `expand()` takes an optional `aggregator`
+  keyword (default `DEFAULT_AGGREGATOR`: asymptotic decay k=50, mean compose,
+  boundary 0x80).
+- **`S2_S3_BOUNDARY`** — the one configurable band boundary (default 0x80).
 
 #### Behavioral Contract
 
 `expand()` must satisfy these properties:
 
-1. **Single distance** — accumulated integer. S3 connotation hops use
-   linear distance `S2_S3_DISTANCE + hop_count`. Callers receive significance.
-2. **Significance is inverted distance** — `(~distance) & MASK64`.
-3. **Distance is topology-driven** — hop distances from graph topology.
+1. **Compose-on-return** — per-node accountedness captured on descent,
+   composed on the return phase into the terminal byte (Q16).
+2. **Significance is an 8-bit grade** — `byte & SIG_MASK` in `[0x00, 0xFF]`.
+3. **Accountedness is topology-driven** — derived from reentrant graph hops.
 4. **S2 signifies short-circuits before S3** — overlap match yields QC and
    stops chain; `s3_connotations` not populated.
-5. **Connotation is always S3** — indirect bridging always uses linear distance.
-6. **Ungrounded penalty is always +1** — matched but ungrounded nodes.
+5. **Connotation is always S3** — indirect bridging recurses (case E).
+6. **Matched-ungrounded is `decay(1)`** — one hop of doubt (Q17a).
 7. **Bidirectional** — both query and candidate mismatched nodes contribute.
 8. **Linear S3 distance** — `S2_S3_DISTANCE + hop_count + _S3_BIAS - 1`;
    `_S3_BIAS = 1`. No quadratic packing.
@@ -645,60 +647,99 @@ would cause the STM to exceed its bound.
 The model computes significance internally via `expand()`. This section
 defines the semantics of the significance computation.
 
+Significance is an **8-bit compositional grade** occupying the low byte of
+an int (accessed via `& SIG_MASK`). It is a **global linear inverted
+distance** in `(0x00, 0xFF)`: higher byte = closer match, with no reshape
+at the S2|S3 boundary. Significance is **transient** — re-derived on
+retrieval, never persisted (carried on KValue/events only).
+
 ### Constants
 
 ```python
-D_MAX  = 0xFFFF_FFFF_FFFF_FFFF   # maximum distance and maximum significance
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF   # 64-bit mask for bitwise inversion
+SIG_MASK = 0xFF              # low-byte mask isolating the 8-bit significance
+SIG8_MAX = 0xFF              # the S1 sentinel / exact-match byte
+SIG8_MIN = 0x00              # the S4 sentinel / structural-unresolvable byte
+DEFAULT_S2_S3_BOUNDARY = 0x80  # the one configurable boundary (Q4/Q5)
 ```
 
-### Band-representative Values
+### Saturation Guards (Q9)
 
-Four fixed significance values — one per band — used by producers that
-assert a band rather than compute a distance (the compiler, the countersign
-reciprocal). Each is the maximal significance of its band:
+The two limits are reachable only by their defining cases:
 
-| Band | Value         | Definition                       |
-| ---- | ------------- | -------------------------------- |
-| S1   | `D_MAX`       | distance 0 (= the S1\|S2 boundary) |
-| S2   | `D_MAX - 1`   | distance 1                        |
-| S3   | `D_MAX - 101` | distance 101 (first S3 distance)  |
-| S4   | `0`           | the S4 sentinel                   |
+- `0xFF` — only **exact match** (distance 0 / fully accounted).
+- `0x00` — only a **structural unresolvable** (total non-account).
 
-These are distinct from the boundaries (which classify a *computed* value);
-they are the canonical integers a producer stamps when asserting a band. They
-are consumed by the @kvalue spec as the significance carried on an exchanged
-KValue. Computed values (from `expand()`) may be any value within a band, not
-only the representative.
+The interior `(0x01..0xFE)` is the open band of graded distance; a computed
+(resolvable) distance never yields either sentinel.
 
-### Significance Inversion
+### Band Layout (Q4/Q5)
 
-```
-significance = (~min(distance, D_MAX - 1)) & MASK64
-```
+Only `S2_S3_BOUNDARY` is configurable; S1|S2 and S3|S4 are fixed sentinels.
+`BandLayout` derives the four bands and the band-representative values:
 
-Higher significance = closer match. The ordering is strict:
-`S1 > S2 > S3 > S4` by unsigned integer comparison.
+| Band | Range                          | Representative           |
+| ---- | ------------------------------ | ------------------------ |
+| S1   | `[0xFF]`                       | `sig_s1 = 0xFF`          |
+| S2   | `[s2_s3_boundary, 0xFE]`       | `sig_s2 = 0xFE`          |
+| S3   | `[0x01, s2_s3_boundary - 1]`   | `sig_s3 = boundary - 1`  |
+| S4   | `[0x00]`                       | `sig_s4 = 0x00`          |
 
-- S1: distance = 0, significance = D_MAX (all bits set)
-- S4: distance = D_MAX, significance = 0 (no bits set)
+The representatives are the canonical bytes a producer stamps when asserting
+a band rather than computing a grade (the compiler, the countersign
+reciprocal). They are consumed by the @kvalue spec as the significance
+carried on an exchanged KValue. Computed values (from `expand()`) may be any
+value within a band, not only the representative. Classification
+(`BandLayout.classify`) is the **routing use** of the one significance
+quantity (Q7: one quantity, two uses — routing classifies; cogitation
+computes).
 
-### Distance Accumulation
+### Byte Conversion (Q3)
 
-Distance is a single accumulated integer from graph hops. For each
-mismatched node in the query and candidate, the hop chain is traversed
-with a three-tier priority:
+`distance_to_byte(distance)` maps a linear inverted distance to a byte in
+`[0x01, 0xFF]`: distance 0 → `0xFF`; distance in `[1, 0xFE]` → linear
+`[0xFE, 0x01]`; distance ≥ `0xFE` floors at `0x01` (never `0x00`).
 
-1. **Exact match (S2 direct):** Node resolves via `_edge_hops()` to a node
-   in the opposite mismatch set. Adds hop count directly.
-2. **Signifies match (S2 loose):** Node resolves to a signature sharing bits
-   with the node value. Yields a `QueryCandidate`. Node still contributes
-   `MAX_HOP` to terminal distance. Short-circuits before S3 connotation.
-3. **Connotation resolution (S3):** Node resolves to a signature found in
-   `s3_connotations`. Linear distance `S2_S3_DISTANCE + hop_count`.
-4. **Unresolved:** Adds `MAX_HOP` (default 100).
+### Aggregation Model (Q10–Q18)
 
-Matched-but-ungrounded nodes add 1 each.
+`expand()` uses **compose-on-return** aggregation: topology is captured on
+descent (per-node accountedness retained as a float), and composition is
+applied on the return phase. The per-node accountedness is:
+
+| Case                                    | Accountedness    |
+| --------------------------------------- | ---------------- |
+| matched AND grounded                    | `1.0`            |
+| matched but ungrounded (Q17a)           | `decay(1)`       |
+| resolvable in `h` reentrant hops         | `decay(h)`       |
+| unresolvable                            | `0.0`            |
+
+The aggregate is the **accounted fraction** — `compose(slot_values)` over
+the per-node floats — mapped through `distance_to_byte`. The default
+`compose` is `mean_compose` (count-invariant: scaling the same accountedness
+distribution leaves the byte unchanged, Q10).
+
+#### Two Pluggable Seams (Q12, Q16)
+
+- **`DecayFunction`** — leaf decay: `decay(hops) -> float in [0,1]`. Default
+  `asymptotic_decay` (`k / (k + hops)`, `k=50`). Also: `harmonic_decay`,
+  `linear_decay`.
+- **`ComposeFunction`** — composition: `compose(slot_values) -> float in
+  [0,1]`. Default `mean_compose`.
+
+Both are bundled on an `Aggregator` (with a `BandLayout`); `expand()` takes
+an optional `aggregator` keyword (default `DEFAULT_AGGREGATOR`).
+
+#### Yield Asymmetry (Q18)
+
+The three mismatch-resolution kinds keep distinct yield behaviour (unchanged
+from the prior traversal; the redesign changes only the bytes carried):
+
+- **C — exact opposing match (S2 direct):** recurses (`yield from expand`).
+- **D — signifies (S2 loose):** emits a side-candidate `QueryCandidate`
+  carrying the byte for `[decay(hops)]`; does not recurse.
+- **E — connotation bridge (S3):** recurses; emits no side-candidate.
+
+The final yield is always the terminal `QueryCandidate` for the original
+pair.
 
 ### edge_hops Termination
 
@@ -720,49 +761,23 @@ four conditions without raising:
 
 The total number of yields never exceeds MAX_HOP.
 
-### S3 Bias and Linear Distance
-
-```
-_S3_BIAS = 1
-S3 connotation distance = S2_S3_DISTANCE + round_trip_hops + _S3_BIAS - 1
-```
-
-The bias ensures the minimum S3 distance (one connotation hop) is
-`S2_S3_DISTANCE + 1 = 101`, just above the S2|S3 boundary, so S3 distances
-always exceed S2 distances while remaining in the same order of magnitude.
-Distance grows **linearly** with hop count (settled by the `s3-distance`
-auto-tune; the previous quadratic `_pack(d) = d²` was removed).
-
-### Boundaries
-
-Three fixed boundaries classify yielded significance values:
-
-| Boundary | Position           | Meaning                                    |
-| -------- | ------------------ | ------------------------------------------ |
-| S1\|S2   | `D_MAX`            | Only exact S1 (distance 0) qualifies as S1 |
-| S2\|S3   | `~_S2_S3_DISTANCE` | Packed distance threshold (100)            |
-| S3\|S4   | `0`                | Only zero-significance is S4               |
-
-Classification cascade:
-
-```
-sig >= s12 → S1
-sig >= s23 → S2
-sig >= s34 → S3
-else       → S4
-```
-
 ### Properties
 
-1. **Inverted metric**: significance = `(~distance) & MASK64`. Higher is more
-   significant.
-2. **Pessimistic**: the presence of any unmatched node prevents S1.
-3. **Arithmetically comparable**: S1 > S2 > S3 > S4 by unsigned comparison.
-4. **Exhaustive**: every Kline with candidates is S1, S2, or S3.
-5. **S1 is trivial**: all nodes match → distance = 0 → significance = D_MAX.
-6. **Topology-driven**: distance accumulated from graph hops.
-7. **Boundary classification**: three fixed boundaries. Raw significance
-   values are never mutated.
+1. **8-bit grade**: significance is a byte in `[0x00, 0xFF]`; higher is
+   more significant. `0xFF` and `0x00` are the saturation sentinels (Q9).
+2. **Linear inverted distance**: the interior `(0x01, 0xFE)` is a global
+   linear axis; no reshape at the S2|S3 boundary (Q3).
+3. **Pessimistic**: any unaccounted slot prevents `0xFF` (full account).
+4. **Arithmetically comparable at a single slot**: S1 > S2 > S3 > S4 by
+   unsigned comparison **at a single contested node slot**. Under
+   aggregation the boundary is unstable, but it is only consulted by
+   routing (Q7), never by cogitation — so the instability is harmless.
+5. **Count-invariant (default compose)**: scaling the same accountedness
+   distribution leaves the byte unchanged (Q10).
+6. **Topology-driven**: accountedness is derived from reentrant graph hops;
+   the traversal (`expand`, `edge_hops`) is unchanged by this scheme.
+7. **One configurable boundary**: only `S2_S3_BOUNDARY` (Q4/Q5); S1|S2 and
+   S3|S4 are fixed sentinels.
 
 ## Test Matrix
 
