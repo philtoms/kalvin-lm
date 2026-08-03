@@ -536,7 +536,7 @@ Determines whether a kline is recognised (S1).
 ### Expand (Significance)
 
 ```
-expand(model, query, candidate, distance=0) → Iterator[QueryCandidate]
+expand(model, query, candidate) → Iterator[QueryCandidate]
 ```
 
 A generator that expands a query-candidate pair, yielding `QueryCandidate`

@@ -478,7 +478,6 @@ def expand(
     query: KLine,
     candidate: KLine,
     signifier: KSignifier,
-    distance: int = 0,
     *,
     aggregator: Aggregator | None = None,
     _visited: set[tuple[int, int]] | None = None,
@@ -502,8 +501,7 @@ def expand(
 
     ``aggregator`` bundles the layout (S2_S3_BOUNDARY) and the two pluggable
     seams (DecayFunction, ComposeFunction); defaults to
-    :data:`DEFAULT_AGGREGATOR`. ``distance`` is retained for call-signature
-    stability (used only as a hop hint when non-zero).
+    :data:`DEFAULT_AGGREGATOR`.
     """
     if aggregator is None:
         aggregator = DEFAULT_AGGREGATOR
@@ -539,7 +537,7 @@ def expand(
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model, q_kline, c_kline, signifier, hops,
+                            model, q_kline, c_kline, signifier,
                             aggregator=aggregator, _visited=_visited,
                         )
                     break
@@ -566,7 +564,7 @@ def expand(
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model, q_kline, c_kline, signifier, hops,
+                            model, q_kline, c_kline, signifier,
                             aggregator=aggregator, _visited=_visited,
                         )
                     break
@@ -585,7 +583,7 @@ def expand(
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model, q_kline, c_kline, signifier, s3_hop,
+                            model, q_kline, c_kline, signifier,
                             aggregator=aggregator, _visited=_visited,
                         )
                     break
