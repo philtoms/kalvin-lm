@@ -60,6 +60,41 @@ MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
 # (fully-unresolved OR S2 "signifies" loose case).
 MAX_HOP = 100
 
+# ─────────────────────────────────────────────────────────────────────
+# 8-bit compositional significance (Q1–Q19 redesign, in progress).
+#
+# Significance occupies the LOW 8 BITS of an int; access is always via
+# masking: ``sig & SIG_MASK``. It is a global linear inverted distance in
+# ``(0x00, 0xFF)`` (Q3): higher byte = closer match, no reshape at the
+# S2|S3 boundary. Saturation guards (Q9): ``0xFF`` is reachable ONLY by
+# exact match (distance 0); ``0x00`` is reachable ONLY by a structural
+# unresolvable; the interior ``(0x01..0xFE)`` is the open band of graded
+# distance.
+#
+# Only ``S2_S3_BOUNDARY`` is configurable (Q4/Q5); S1|S2 and S3|S4 are
+# fixed sentinels.
+# ─────────────────────────────────────────────────────────────────────
+
+#: Low-byte mask isolating the 8-bit significance (Q1).
+SIG_MASK: int = 0xFF
+
+#: The S1 sentinel / exact-match byte (Q5, Q9). Reachable only at distance 0.
+SIG8_MAX: int = 0xFF
+
+#: The S4 sentinel / structural-unresolvable byte (Q5, Q9). A computed
+#: (resolvable) distance never yields this — only a structural unresolvable
+#: path does, which does not go through ``distance_to_byte``.
+SIG8_MIN: int = 0x00
+
+#: Default for the one configurable boundary (Q4). S2 = [0x80, 0xFE];
+#: S3 = [0x01, 0x7F]. Must be in [0x02, 0xFE] so both interior bands are
+#: non-empty (see ``BandLayout.validate``).
+DEFAULT_S2_S3_BOUNDARY: int = 0x80
+
+#: Distance at which ``distance_to_byte`` floors at 0x01 (the open interior's
+#: bottom). Distances >= this saturate to 0x01, never 0x00 (Q9).
+_MAX_INTERIOR_DISTANCE: int = 0xFE
+
 # S2|S3 boundary — S2 direct hops stay below this threshold; S3 connotation
 # hops start at S2_S3_DISTANCE + 1 = 101.
 S2_S3_DISTANCE = 100
@@ -96,6 +131,106 @@ def band_significance(op: str) -> int:
     Unknown ops default to ``SIG_S4``.
     """
     return _OP_TO_SIG.get(op, SIG_S4)
+
+
+# ── 8-bit byte conversion (Q3 linear, Q9 saturation guards) ───────────
+
+
+def distance_to_byte(distance: int) -> int:
+    """Linear inverted ``distance`` → byte in ``[0x01, 0xFF]`` (Q3, Q9).
+
+    - ``distance == 0``        → ``0xFF`` (exact match — the only path to 0xFF)
+    - ``1 <= distance <= 0xFE`` → ``0xFE..0x01`` (linear, monotone decreasing)
+    - ``distance >= 0xFE``      → ``0x01`` (floors; never reaches 0x00 — Q9 guard)
+
+    This function never emits ``0x00``: a *computed* distance is by definition
+    resolvable, and only a structural unresolvable yields the ``SIG8_MIN``
+    sentinel — that path does not go through here.
+    """
+    if distance < 0:
+        raise ValueError(f"distance must be non-negative; got {distance}")
+    if distance == 0:
+        return SIG8_MAX
+    if distance >= _MAX_INTERIOR_DISTANCE:
+        return 0x01
+    # Linear: distance 1 → 0xFE, ..., distance 0xFD → 0x02, distance 0xFE → 0x01.
+    return SIG8_MAX - distance  # in [0x01, 0xFE] for distance in [1, 0xFE]
+
+
+class BandLayout:
+    """The four bands over the linear byte, derived from one boundary (Q4/Q5).
+
+    Only ``s2_s3_boundary`` is configurable; S1|S2 and S3|S4 are fixed
+    sentinels exposed as named constants.
+
+        S1 = [0xFF]                       (only exact match — distance 0)
+        S2 = [s2_s3_boundary, 0xFE]       (close, direct)
+        S3 = [0x01, s2_s3_boundary - 1]    (indirect, decayed)
+        S4 = [0x00]                       (only structural unresolvable)
+
+    Band-representative values (the canonical bytes a producer stamps when
+    it asserts a band rather than computes a distance)::
+
+        sig_s1 = 0xFF
+        sig_s2 = 0xFE                  (the top of S2)
+        sig_s3 = s2_s3_boundary - 1     (the top of S3)
+        sig_s4 = 0x00
+    """
+
+    __slots__ = ("s2_s3_boundary",)
+
+    def __init__(self, s2_s3_boundary: int = DEFAULT_S2_S3_BOUNDARY) -> None:
+        self.validate_boundary(s2_s3_boundary)
+        self.s2_s3_boundary = s2_s3_boundary
+
+    @staticmethod
+    def validate_boundary(s2_s3_boundary: int) -> None:
+        """Interior guard: the boundary must split the open band cleanly.
+
+        ``[0x02, 0xFE]`` leaves room for non-empty S2 ``[b, 0xFE]`` and
+        non-empty S3 ``[0x01, b-1]``.
+        """
+        if not isinstance(s2_s3_boundary, int) or not (
+            0x02 <= s2_s3_boundary <= 0xFE
+        ):
+            raise ValueError(
+                f"S2_S3_BOUNDARY must be an int in [0x02, 0xFE] to leave room "
+                f"for non-empty S2 and S3 bands; got {s2_s3_boundary!r}"
+            )
+
+    # Fixed sentinels (Q5), as lowercase properties (ruff N802).
+    # The module-level SIG_S1/SIG_S4 constants remain uppercase (they are
+    # constants, not functions); these are the layout-internal accessors.
+    @property
+    def sig_s1(self) -> int:
+        return 0xFF
+
+    @property
+    def sig_s4(self) -> int:
+        return 0x00
+
+    # Boundary-derived representatives (Q5).
+    @property
+    def sig_s2(self) -> int:
+        return 0xFE  # top of S2
+
+    @property
+    def sig_s3(self) -> int:
+        return self.s2_s3_boundary - 1  # top of S3
+
+    def classify(self, sig: int) -> str:
+        """Classify a raw byte into S1/S2/S3/S4. Operates on the low byte only.
+
+        This is the routing *use* of the one significance quantity (Q7).
+        """
+        b = sig & SIG_MASK
+        if b == self.sig_s1:
+            return "S1"
+        if b >= self.s2_s3_boundary:
+            return "S2"
+        if b >= 0x01:
+            return "S3"
+        return "S4"
 
 
 # Band-anchored normalization constants. Each band owns a fixed
