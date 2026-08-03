@@ -96,11 +96,15 @@ class TestCogitatorWithFakeHandler:
         event_bus = EventBus()
         cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder, signifier=signifier)
 
-        # Query with no overlapping type-word bits to k3 → S3 after expand,
-        # and k3 is misfit so propose_expansions triggers generate_expansions.
-        # q's type word (0b001) shares no bits with k3's (0b110).
-        q = KLine(0, [t(0b001)])
-        q.signature = signifier.signature_of([t(0b001)])
+        # Query sharing a resolvable node with k3 (t(0b100) is in k3.nodes and
+        # k1 grounds it) -> non-S4 after expand, so cogitation reaches
+        # propose_expansions. k3 is a misfit (sig t(0b110) promises more than
+        # nodes [t(0b100)] deliver) so generate_expansions yields proposals.
+        # Under the old distance scheme an unrelated query also reached S3;
+        # under the accounted-fraction scheme the pair must actually share
+        # resolvable structure to escape S4.
+        q = KLine(0, [t(0b100)])
+        q.signature = signifier.signature_of([t(0b100)])
         m.add_to_frame(q)
 
         cogitator.submit(WorkItem(KValue(q, 0x5678), k3, "S3"))

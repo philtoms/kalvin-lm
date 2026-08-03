@@ -23,7 +23,7 @@ import time as _time
 from typing import TYPE_CHECKING, NamedTuple, Protocol, runtime_checkable
 
 from kalvin.events import RationaliseEvent
-from kalvin.expand import SIG_S4, boundaries, classify, expand, propose_expansions
+from kalvin.expand import SIG_S4, BandLayout, expand, propose_expansions
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from kalvin.model import Model
@@ -203,10 +203,10 @@ class Cogitator:
         query_value, candidate, level = item
         query_kline = query_value.kline
 
-        s12, s23, s34 = boundaries()
+        layout = BandLayout()
 
         for qc in expand(self._model, query_kline, candidate, self._signifier):
-            band = classify(qc.significance, s12, s23, s34)
+            band = layout.classify(qc.significance)
 
             if band == "S4":
                 continue

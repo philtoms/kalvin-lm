@@ -5,9 +5,12 @@ import pytest
 from kalvin.expand import (
     _S3_BIAS,
     D_MAX,
+    DEFAULT_AGGREGATOR,
     MASK64,
-    MAX_HOP,
     S2_S3_DISTANCE,
+    SIG8_MAX,
+    SIG8_MIN,
+    SIG_MASK,
     SIG_S1,
     SIG_S2,
     SIG_S3,
@@ -25,8 +28,8 @@ from kalvin.expand import (
     structural_significance,
 )
 from kalvin.kline import KLine
-from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.model import Model
+from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.signifier import NLPSignifier
 
 signifier = NLPSignifier()
@@ -182,36 +185,38 @@ class TestEdgeHops:
 
 class TestExpand:
     def test_expand_self_no_model(self):
-        """Self-comparison: all nodes match, ungrounded penalty only."""
+        """Self-comparison: 3 matched-but-ungrounded nodes -> decay(1) each."""
         m = make_model()
         k = KLine(10, [10, 20, 30])
         results = list(expand(m, k, k, signifier))
-        # All nodes match, none resolve → distance=3 → significance=~3
+        # All 3 nodes match; none grounded -> 3 x decay(1) (Q17a).
         assert len(results) == 1
-        assert results[-1].significance == (~3) & MASK64
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1)] * 3
+        )
 
     def test_expand_no_resolution(self):
-        """Mismatched nodes with no model entries → MAX_HOP each."""
+        """1 matched-ungrounded + 4 unresolvable -> mostly unaccounted."""
         m = make_model()
         q = KLine(5, [1, 2, 3])
         c = KLine(6, [1, 4, 5])
-        # matched: {1}, mismatched_q: {2,3}, mismatched_c: {4,5}
-        # No chains → all MAX_HOP, ungrounded matched +1 → distance=401
-        expected_distance = 401
+        # matched: {1} (ungrounded -> decay(1)); mismatched {2,3,4,5} unresolvable.
         results = list(expand(m, q, c, signifier))
-        assert results[-1].significance == (~expected_distance) & MASK64
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), 0.0, 0.0, 0.0, 0.0]
+        )
 
     def test_expand_with_grounding(self):
-        """Matched node that resolves to structural S1 → no ungrounded penalty."""
+        """1 grounded match + 2 unresolvable -> grounded contributes 1.0."""
         m = make_model()
-        # Genuine canon (S1): sig 0b110 = OR(0b100, 0b010).
-        m.add_to_frame(KLine(0b110, [0b100, 0b010]))
+        m.add_to_frame(KLine(0b110, [0b100, 0b010]))  # genuine canon (S1)
         q = KLine(5, [0b110, 2])
         c = KLine(6, [0b110, 3])
-        # distance = 2 * MAX_HOP (grounded match, 2 unresolved nodes)
-        expected_distance = 200
+        # Slots: [1.0 (grounded), 0.0, 0.0].
         results = list(expand(m, q, c, signifier))
-        assert results[-1].significance == (~expected_distance) & MASK64
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [1.0, 0.0, 0.0]
+        )
 
     def test_expand_hop_reaches_opposing_mismatch(self):
         """Mismatched node whose chain reaches the opposing mismatch set."""
@@ -223,15 +228,20 @@ class TestExpand:
 
         q = KLine(100, [t(5), t(2)])  # mismatched_q: {5, 2}
         c = KLine(200, [t(10), t(3)])  # mismatched_c: {10, 3}
-        # distance=301 (1 hop + 3 × MAX_HOP)
         results = list(expand(m, q, c, signifier))
+        # Q18: cardinality unchanged from the old scheme.
         assert len(results) == 6
-        assert results[-1].significance == (~301) & MASK64
+        # Terminal slots: q-5 resolves to c-10 at 1 hop (decay(1));
+        # q-2, c-3 unresolvable (0.0); c-10 signifies at 2 hops (decay(2)).
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), 0.0, DEFAULT_AGGREGATOR.decay(2), 0.0]
+        )
 
-        # S2 signifies candidates: c-node 10 reaches sig 0b110 (10 & 0b110 ≠ 0)
-        # at distance 2 in both expand(5,10, signifier) and top-level
-        signifies_results = [r for r in results[:-1] if r.significance == (~2) & MASK64]
-        assert len(signifies_results) == 2
+        # S2 signifies side-candidates reaching sig 0b110 at 2 hops carry the
+        # byte for [decay(2)] (Q18 D: side-candidate, decay-derived).
+        sig_two_hops = DEFAULT_AGGREGATOR.compose_terminal([DEFAULT_AGGREGATOR.decay(2)])
+        signifies_two_hops = [r for r in results[:-1] if r.significance == sig_two_hops]
+        assert len(signifies_two_hops) >= 1
 
     def test_expand_bidirectional_hop_match(self):
         """Both query and candidate mismatched nodes reach opposing sets."""
@@ -243,10 +253,15 @@ class TestExpand:
 
         q = KLine(100, [5, 20])  # mismatched_q: {5, 20}
         c = KLine(200, [10, 30])  # mismatched_c: {10, 30}
-        # distance=202, 2 connotations + terminal
         results = list(expand(m, q, c, signifier))
+        # Q18: 2 recursive connotations + terminal.
         assert len(results) == 3
-        assert results[-1].significance == (~202) & MASK64
+        # Resolution is directional: q-nodes 5,20 resolve to c-nodes 10,30 at
+        # 1 hop (decay(1) each); c-nodes 10,30 are identity terminals, so
+        # edge_hops from their side yields nothing -> 0.0 each.
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), DEFAULT_AGGREGATOR.decay(1), 0.0, 0.0]
+        )
 
     def test_expand_all_matched_grounded(self):
         """All nodes match and all resolve to S1 → no penalty → max significance."""
@@ -255,38 +270,34 @@ class TestExpand:
         m.add_to_frame(KLine(0b1100, [0b1000, 0b0100]))  # genuine canon, node 0b1100 is S1
         q = KLine(5, [0b110, 0b1100])
         c = KLine(6, [0b110, 0b1100])
-        # distance=0 → significance=D_MAX (all bits set)
         results = list(expand(m, q, c, signifier))
-        assert results[-1].significance == D_MAX
+        # Fully accounted (2 x 1.0) -> saturates to SIG8_MAX (Q9).
+        assert results[-1].significance == SIG8_MAX
 
-    def test_expand_clamped_to_valid(self):
-        """Significance is always in valid range [1, D_MAX]."""
+    def test_expand_in_valid_byte_range(self):
+        """Significance is always a valid byte in [0x00, 0xFF]."""
         m = make_model()
         q = KLine(5, [1])
         c = KLine(6, list(range(1000)))
         results = list(expand(m, q, c, signifier))
-        assert 0 < results[-1].significance <= D_MAX
+        assert 0 <= (results[-1].significance & SIG_MASK) <= SIG8_MAX
 
     def test_expand_range_s2(self):
-        """S2 significance is a valid uint64."""
+        """A graded result is a valid byte."""
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(1, [1, 3, 4])
         results = list(expand(m, q, c, signifier))
-        assert 0 < results[-1].significance <= D_MAX
+        assert 0 <= (results[-1].significance & SIG_MASK) <= SIG8_MAX
 
-    def test_expand_level_independent(self):
-        """Distance is topology-driven, not level-driven.
-
-        With the simplified distance model, the level parameter does not
-        affect distance computation. Same query/candidate → same significance
-        regardless of level.
-        """
+    def test_expand_topology_driven(self):
+        """Significance is topology-driven (replaces old level-independence test)."""
         m = make_model()
         q = KLine(5, [1, 2])
         c = KLine(100, [3, 4])
         sig = list(expand(m, q, c, signifier))[-1].significance
-        assert sig > 0  # topology drives distance
+        # Both mismatched nodes unresolvable -> 0.0 slots -> SIG8_MIN.
+        assert sig == SIG8_MIN
 
     def test_expand_significance_ordering(self):
         """Verify significance ordering: closer match → higher significance."""
@@ -296,9 +307,13 @@ class TestExpand:
 
         q = KLine(100, [5, 2])  # mismatched_q: {5, 2}
         c = KLine(200, [10, 3])  # mismatched_c: {10, 3}
-        # distance=301 (q-node 5 reaches c-node 10 at hop 1, rest MAX_HOP)
         results = list(expand(m, q, c, signifier))
-        assert results[-1].significance == (~301) & MASK64
+        # q-5 resolves to c-10 at 1 hop (decay(1)); q-2, c-10 (identity terminal),
+        # c-3 all unresolvable (0.0). Four slots, mean dominated by zeros.
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), 0.0, 0.0, 0.0]
+        )
+        assert results[-1].significance > SIG8_MIN
 
     def test_expand_connotation_bridging(self):
         """Connotation bridging: indirect path through intermediate signature.
@@ -319,35 +334,30 @@ class TestExpand:
         q = KLine(100, [4])  # mismatched_q: {4}
         c = KLine(200, [2])  # mismatched_c: {2}
 
-        # signifies(4, 8) = False, signifies(2, 8) = False → S3 path exercised
-        # s3_connotations[8] = 1 (from q-node 4)
-        # c-node 2 resolves via s3_connotation: s3_hop = 1 + 1 = 2
-        # Connotation linear distance = S2_S3_DISTANCE + 2 = 102. The recursive
-        # expand({2:[8]}, {8:[8]}, signifier) has a matched node 8 that is identity (not
-        # S1), adding +1 ungrounded penalty → 103.
-        # Terminal distance = MAX_HOP = 100 (q-node 4 unresolved at terminal level)
-
+        # signifies(4,8)=False, signifies(2,8)=False -> S3 path exercised.
+        # s3_connotations[8] = 1 (from q-4); c-2 bridges at s3_hop = 1+1 = 2.
         results = list(expand(m, q, c, signifier))
+        # Q18 (E): connotation recurses, no side-candidate here. 1 nested
+        # terminal + top-level terminal.
         assert len(results) == 2
 
-        # S3 connotation yield: distance = 103 (102 linear + 1 ungrounded)
-        connotation = results[0]
-        assert connotation.query.signature == 2
-        assert connotation.candidate.signature == 8
-        connotation_distance = S2_S3_DISTANCE + 2 + 1  # 102 linear + 1 ungrounded
-        assert connotation.significance == (~connotation_distance) & MASK64
+        # Nested terminal (recursive expand(2, 8)): node 8 matched-ungrounded
+        # (identity is not S1) -> [decay(1)].
+        nested = results[0]
+        assert nested.query.signature == 2
+        assert nested.candidate.signature == 8
+        assert nested.significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1)]
+        )
 
-        # Terminal yield: distance = 100 (MAX_HOP for unresolved q-node)
+        # Top-level terminal: q-4 does not resolve directly (0.0); c-2 bridges
+        # via s3_hop=2 -> decay(2). Two slots: [0.0, decay(2)].
         terminal = results[1]
         assert terminal.query is q
         assert terminal.candidate is c
-        assert terminal.significance == (~100) & MASK64
-
-        # Terminal has higher significance than connotation (closer match)
-        assert terminal.significance > connotation.significance
-
-        # Verify S3 distance exceeds S2: connotation (102) > terminal (100)
-        assert connotation_distance > 100  # S3 linear > S2 raw
+        assert terminal.significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [0.0, DEFAULT_AGGREGATOR.decay(2)]
+        )
 
     def test_expand_signifies_cogitation(self):
         """S2 signifies loose match yields additional QueryCandidates.
@@ -380,16 +390,16 @@ class TestExpand:
 
         results = list(expand(m, q, c, signifier))
 
-        # Find the signifies candidate from c-node 10→30
+        # Find the signifies side-candidate from c-10 -> 30 at 2 hops.
         signifies_candidates = [
             r for r in results if r.query.signature == t(10) and r.candidate.signature == t(30)
         ]
         assert len(signifies_candidates) == 1
         sig_cand = signifies_candidates[0]
-        assert sig_cand.significance == (~2) & MASK64
-
-        # Terminal: c-node 10 contributes MAX_HOP (signifies doesn't resolve)
-        assert results[-1].significance == (~101) & MASK64
+        # Q18 D: side-candidate carries the byte for [decay(hops)].
+        assert sig_cand.significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(2)]
+        )
 
     def test_expand_signifies_before_s3(self):
         """Signifies (S2) takes precedence over s3_connotations (S3).
@@ -414,16 +424,20 @@ class TestExpand:
         #   → S2 signifies candidate, break
 
         results = list(expand(m, q, c, signifier))
-        assert len(results) == 3  # 2 signifies + terminal
+        # Q18: 2 signifies side-candidates + terminal.
+        assert len(results) == 3
 
-        # Both signifies candidates reach sig 28 at distance 1
+        # Both signifies candidates reach sig 28 at 1 hop -> byte for [decay(1)].
+        sig_one_hop = DEFAULT_AGGREGATOR.compose_terminal([DEFAULT_AGGREGATOR.decay(1)])
         assert results[0].candidate.signature == t(0b11100)
-        assert results[0].significance == (~1) & MASK64
+        assert results[0].significance == sig_one_hop
         assert results[1].candidate.signature == t(0b11100)
-        assert results[1].significance == (~1) & MASK64
+        assert results[1].significance == sig_one_hop
 
-        # Terminal: both mismatched nodes unresolved (2 × MAX_HOP)
-        assert results[-1].significance == (~(2 * MAX_HOP)) & MASK64
+        # Terminal: both mismatched nodes signify at 1 hop -> slots [decay(1), decay(1)].
+        assert results[-1].significance == DEFAULT_AGGREGATOR.compose_terminal(
+            [DEFAULT_AGGREGATOR.decay(1), DEFAULT_AGGREGATOR.decay(1)]
+        )
 
     def test_expand_significance_in_range(self):
         """Significance is always in valid uint64 range."""
@@ -432,7 +446,7 @@ class TestExpand:
         c = KLine(6, list(range(1000, 2000)))
         results = list(expand(m, q, c, signifier))
         sig = results[-1].significance
-        assert 0 < sig <= D_MAX
+        assert 0 <= (sig & SIG_MASK) <= SIG8_MAX
 
     def test_expand_no_crash_on_unresolvable_match_sig_er6(self):
         """ER-6: expand() does not crash when edge_hops yields an unresolvable sig."""

@@ -1138,7 +1138,7 @@ class TestKValueExchangeCriteria:
         equals the value ``expand()`` computed for that proposal (KP-3), not a
         band-representative value.
         """
-        from kalvin.expand import boundaries, classify, expand, propose_expansions
+        from kalvin.expand import BandLayout, expand, propose_expansions
 
         m = Model(signifier=signifier)
         k1 = KLine(t(0b100), [t(0b100)])  # identity
@@ -1147,8 +1147,11 @@ class TestKValueExchangeCriteria:
         m.add_to_ltm(k2)
         k3 = KLine(t(0b110), [t(0b100)])  # misfit (underfitting)
         m.add_to_ltm(k3)
-        q = KLine(0, [t(0b001)])
-        q.signature = signifier.signature_of([t(0b001)])
+        # Query shares resolvable node t(0b100) with k3 (grounded by k1) so the
+        # pair escapes S4 under the accounted-fraction scheme and reaches
+        # propose_expansions.
+        q = KLine(0, [t(0b100)])
+        q.signature = signifier.signature_of([t(0b100)])
         m.add_to_frame(q)
         q_value = _kv(q, m)
 
@@ -1168,10 +1171,10 @@ class TestKValueExchangeCriteria:
 
         # Independently recompute the (proposal, significance) pairs that
         # expand() yields for this query|candidate pair.
-        s12, s23, s34 = boundaries()
+        layout = BandLayout()
         computed: set[tuple[int, tuple[int, ...], int]] = set()
         for qc in expand(m, q, k3, signifier):
-            band = classify(qc.significance, s12, s23, s34)
+            band = layout.classify(qc.significance)
             if band in ("S4", "S1"):
                 continue
             for proposal, sval in propose_expansions(m, qc.candidate, qc.significance, signifier):

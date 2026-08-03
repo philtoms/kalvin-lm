@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator, Sequence
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from kalvin.kline import KLine, is_canon, is_identity, is_misfit, is_terminal, is_unknown
@@ -329,6 +330,48 @@ def mean_compose(slot_values: Sequence[float]) -> float:
     return sum(slot_values) / n
 
 
+@dataclass(frozen=True)
+class Aggregator:
+    """The compose-on-return policy, bundling layout + the two seams (Q16).
+
+    ``expand()`` is parameterised over a single ``Aggregator`` (keyword-only,
+    defaulting to :data:`DEFAULT_AGGREGATOR`) so the call site stays readable
+    while the recursion threads one object. Freezing makes it safe to share
+    across recursive calls and threads.
+    """
+
+    layout: BandLayout = field(default_factory=BandLayout)
+    decay: DecayFunction = field(default_factory=make_asymptotic_decay)
+    compose: ComposeFunction = field(default=mean_compose)
+
+    def compose_terminal(self, slot_values: list[float]) -> int:
+        """Compose per-slot accountedness into the terminal significance byte.
+
+        The replacement for the production pattern
+        ``(~min(total_distance, D_MAX - 1)) & MASK64``. Maps the compose() of
+        per-slot accountedness through the linear inverted-distance byte with
+        the two Q9 saturation guards.
+
+          accounted_fraction == 1.0 -> 0xFF  (exact match only)
+          accounted_fraction == 0.0 -> 0x00  (only total non-account)
+          otherwise                 -> byte in (0x00, 0xFF)
+        """
+        frac = max(0.0, min(1.0, self.compose(slot_values)))  # clamp float noise
+        if frac >= 1.0:
+            return SIG8_MAX
+        if frac <= 0.0:
+            return SIG8_MIN
+        # Map the unaccounted fraction (1 - frac) to an interior distance in
+        # [1, 0xFE] so every resolvable pair lands strictly inside (0x00, 0xFF).
+        interior_distance = 1 + round((1.0 - frac) * (_MAX_INTERIOR_DISTANCE - 1))
+        return distance_to_byte(interior_distance)
+
+
+#: Module-level default aggregator: default layout, asymptotic decay (k=50),
+#: mean compose. cogitator uses this unless constructed otherwise.
+DEFAULT_AGGREGATOR = Aggregator()
+
+
 # Band-anchored normalization constants. Each band owns a fixed
 # sub-range of [0.0, 1.0]; S3 is asymptotic, mapping its unbounded distance
 # range injectively into an open interval without clamping.
@@ -518,20 +561,34 @@ def expand(
     signifier: KSignifier,
     distance: int = 0,
     *,
+    aggregator: Aggregator | None = None,
     _visited: set[tuple[int, int]] | None = None,
 ) -> Iterator[QueryCandidate]:
-    """Expand a query-candidate pair, yielding connotations and terminal distance.
+    """Expand a query-candidate pair, yielding connotations and terminal byte.
 
-    For each discovered connotation (S2/S3 indirect relationship), recursively
-    yields QueryCandidate items for the connotation pair.  The final yield is
-    always the terminal QueryCandidate with the computed distance for the
-    original pair.
+    Compose-on-return aggregation (Q16-Q18): topology is captured on descent
+    (per-node accountedness retained as a float), and composition is applied
+    on the return phase, replacing the former sum-and-invert pattern.
 
-    Distance is a single integer. S3 connotation hops use linear distance
-    ``S2_S3_DISTANCE + hop_count`` to ensure S3 distances moderately
-    exceed S2 distances — close enough for temperature to bridge,
-    without the quadratic explosion of the previous packing function.
+    Per-node accountedness (Q11/12, Q17a):
+      matched & grounded       -> 1.0
+      matched but ungrounded   -> decay(1)   (Q17a: "+1 = one hop of doubt")
+      resolvable in h hops      -> decay(h)
+      unresolvable              -> 0.0
+
+    Yield asymmetry (Q18, unchanged from before): exact opposing matches (C)
+    and S3 connotation bridges (E) recurse; signifies matches (D) emit a
+    side-candidate and do not recurse. The redesign changes only the bytes
+    carried, not the shape or cardinality of the stream. The final yield is
+    always the terminal QueryCandidate for the original pair.
+
+    ``aggregator`` bundles the layout (S2_S3_BOUNDARY) and the two pluggable
+    seams (DecayFunction, ComposeFunction); defaults to
+    :data:`DEFAULT_AGGREGATOR`. ``distance`` is retained for call-signature
+    stability (used only as a hop hint when non-zero).
     """
+    if aggregator is None:
+        aggregator = DEFAULT_AGGREGATOR
     if _visited is None:
         _visited = set()
 
@@ -546,89 +603,90 @@ def expand(
     mismatched_c = c_set - q_set
     matched = q_set & c_set
 
-    s3_connotations: dict[int, int] = {}  # sig → min hops from any query node
+    s3_connotations: dict[int, int] = {}  # sig -> min hops from any query node
 
-    total_distance = 0
+    # Q17b: per-node accountedness, in slot order. One float per slot.
+    slot_values: list[float] = []
+
+    decay = aggregator.decay
 
     for n in mismatched_q:
-        hop_distance = MAX_HOP
+        accounted = 0.0  # unresolvable default (case F)
         q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n, signifier):
                 if match_sig in mismatched_c:
-                    hop_distance = hops
+                    # case C: exact opposing match (S2 direct) -> recurse.
+                    accounted = decay(hops)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model,
-                            q_kline,
-                            c_kline,
-                            signifier,
-                            hops,
-                            _visited=_visited,
+                            model, q_kline, c_kline, signifier, hops,
+                            aggregator=aggregator, _visited=_visited,
                         )
                     break
                 elif signifier.signifies(n, match_sig):
+                    # case D: signifies (S2 loose) -> side-candidate, no recurse.
+                    accounted = decay(hops)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
-                        sig_distance = distance + hops
-                        significance = (~min(sig_distance, D_MAX - 1)) & MASK64
-                        yield QueryCandidate(q_kline, c_kline, significance)
+                        sig_byte = aggregator.compose_terminal([decay(hops)])
+                        yield QueryCandidate(q_kline, c_kline, sig_byte)
                     break
                 elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
                     s3_connotations[match_sig] = hops
-        total_distance += hop_distance
+        slot_values.append(accounted)
 
     for n in mismatched_c:
-        hop_distance = MAX_HOP
+        accounted = 0.0
         q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n, signifier):
                 if match_sig in mismatched_q:
-                    hop_distance = hops
+                    # case C: exact opposing match (S2 direct) -> recurse.
+                    accounted = decay(hops)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model,
-                            q_kline,
-                            c_kline,
-                            signifier,
-                            hops,
-                            _visited=_visited,
+                            model, q_kline, c_kline, signifier, hops,
+                            aggregator=aggregator, _visited=_visited,
                         )
                     break
                 elif signifier.signifies(n, match_sig):
+                    # case D: signifies (S2 loose) -> side-candidate, no recurse.
+                    accounted = decay(hops)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
-                        sig_distance = distance + hops
-                        significance = (~min(sig_distance, D_MAX - 1)) & MASK64
-                        yield QueryCandidate(q_kline, c_kline, significance)
+                        sig_byte = aggregator.compose_terminal([decay(hops)])
+                        yield QueryCandidate(q_kline, c_kline, sig_byte)
                     break
                 elif match_sig in s3_connotations:
+                    # case E: S3 connotation bridge -> recurse (no side-candidate).
                     s3_hop = s3_connotations[match_sig] + hops
+                    accounted = decay(s3_hop)
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
-                            model,
-                            q_kline,
-                            c_kline,
-                            signifier,
-                            S2_S3_DISTANCE + s3_hop + _S3_BIAS - 1,
-                            _visited=_visited,
+                            model, q_kline, c_kline, signifier, s3_hop,
+                            aggregator=aggregator, _visited=_visited,
                         )
-                    hop_distance = 0
                     break
-        total_distance += hop_distance
+        slot_values.append(accounted)
 
-    # Matched but ungrounded nodes incur a small S2 penalty.
+    # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1) (Q17a).
     for n in matched:
         kl = model.find(n)
-        if kl is None or not is_s1(model, kl, signifier):
-            total_distance += 1
+        if kl is not None and is_s1(model, kl, signifier):
+            slot_values.append(1.0)
+        else:
+            # Ungrounded match OR not in model: one hop of doubt (Q17a).
+            slot_values.append(decay(1))
 
-    total_distance += distance
+    if not slot_values:
+        # Both klines node-less: vacuously fully accounted.
+        slot_values = [1.0]
 
-    significance = (~min(total_distance, D_MAX - 1)) & MASK64
+    significance = aggregator.compose_terminal(slot_values)
     yield QueryCandidate(query, candidate, significance)
 
 
