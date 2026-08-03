@@ -19,8 +19,10 @@ The module reads from the Model (storage) but is a separate responsibility:
 Model indexes and retrieves; Expand computes how far apart two KLines are.
 
 Module-level constants and types:
-  D_MAX, MASK64, MAX_HOP, _S3_BIAS, QueryCandidate,
-  SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative significance)
+  MAX_HOP, QueryCandidate,
+  SIG_MASK, SIG8_MAX, SIG8_MIN, DEFAULT_S2_S3_BOUNDARY (8-bit scheme),
+  SIG_S1, SIG_S2, SIG_S3, SIG_S4 (band-representative sentinels),
+  BandLayout, distance_to_byte, Aggregator, DEFAULT_AGGREGATOR
 
 Band-anchored normalization:
   normalise_significance was removed (Q19): the byte is already the grade.
@@ -46,17 +48,8 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-# _S3_BIAS — S3 connotation tier bias. Connotation hop counts are biased by
-# this before linear distance addition, so S3 distances always exceed S2
-# distances. With _S3_BIAS=1, minimum S3 distance = S2_S3_DISTANCE + 1 = 101.
-_S3_BIAS = 1
-
-
-# Public significance constants
-D_MAX = 0xFFFF_FFFF_FFFF_FFFF  # maximum distance, also the significance of zero distance
-MASK64 = 0xFFFF_FFFF_FFFF_FFFF  # 64-bit mask for bitwise inversion
-
-# Upper bound on edge hop chain depth; also the per-node distance penalty for
+# Upper bound on edge hop chain depth (the only live use is edge_hops's
+# traversal bound below).
 # a mismatched node that does not resolve to an exact opposing match
 # (fully-unresolved OR S2 "signifies" loose case).
 MAX_HOP = 100
@@ -95,10 +88,6 @@ DEFAULT_S2_S3_BOUNDARY: int = 0x80
 #: Distance at which ``distance_to_byte`` floors at 0x01 (the open interior's
 #: bottom). Distances >= this saturate to 0x01, never 0x00 (Q9).
 _MAX_INTERIOR_DISTANCE: int = 0xFE
-
-# S2|S3 boundary — S2 direct hops stay below this threshold; S3 connotation
-# hops start at S2_S3_DISTANCE + 1 = 101.
-S2_S3_DISTANCE = 100
 
 # Band-representative significance values — the canonical bytes a producer
 # stamps when asserting a band rather than computing a grade (the compiler,
@@ -354,8 +343,8 @@ class Aggregator:
     def compose_terminal(self, slot_values: list[float]) -> int:
         """Compose per-slot accountedness into the terminal significance byte.
 
-        The replacement for the production pattern
-        ``(~min(total_distance, D_MAX - 1)) & MASK64``. Maps the compose() of
+        The replacement for the former 64-bit sum-and-invert pattern
+        ``(~min(total_distance, ...)) & MASK64`` (now removed). Maps the compose() of
         per-slot accountedness through the linear inverted-distance byte with
         the two Q9 saturation guards.
 

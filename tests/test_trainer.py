@@ -1849,9 +1849,9 @@ class TestEventRelay:
     @patch("training.trainer.trainer.compile_source")
     def test_high_significance_frame_event_no_ratify_request(self, mock_compile: MagicMock) -> None:
         """High-significance frame event takes S1 path: relay but no ratify."""
-        from kalvin.expand import D_MAX
+        from kalvin.expand import SIG8_MAX
 
-        _s1_frame_threshold = D_MAX
+        _s1_frame_threshold = SIG8_MAX
         entry = _make_entry(100, [10])
         mock_compile.return_value = [entry]
 
@@ -2101,13 +2101,13 @@ class TestKV15ConsumesProposalSignificance:
 
     def test_is_s1_ignores_query_significance_when_proposal_low(self) -> None:
         """A maximal query significance does not flip S1 when the proposal is low."""
-        from kalvin.expand import D_MAX
+        from kalvin.expand import SIG8_MAX
 
         kline = KLine(signature=0xAB, nodes=[0x1], dbg=KDbg(label="kv15-b"))
-        # query at D_MAX (sender's max), proposal at 0 → not S1
+        # query at SIG8_MAX (sender's max), proposal at 0 → not S1
         event = RationaliseEvent(
             "frame",
-            KValue(kline, D_MAX),
+            KValue(kline, SIG8_MAX),
             KValue(kline, 0),
         )
         assert Trainer._is_s1(event) is False
