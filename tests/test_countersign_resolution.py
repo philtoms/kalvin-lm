@@ -151,7 +151,7 @@ class TestDenoteIsConnoteReversed:
         denote = [e for e in entries if e.kline.nodes]
         assert len(denote) == 1
         e = denote[0]
-        # Denote maps to S3 (not S1) in _SIG_LEVELS
+        # Denote is a single-node non-canonical kline → sig_level S3
         assert e.kline.dbg.op == "DENOTES"
         assert sig_level(e.kline, signifier) == "S3"
 

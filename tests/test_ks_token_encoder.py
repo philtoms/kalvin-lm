@@ -188,27 +188,35 @@ class TestNodeEncoding:
 
 
 class TestSignificanceLevels:
-    """Each op maps to the correct significance level in dbg.op."""
+    """Structural significance is derived from kline shape, not the op token.
+
+    The op (COUNTERSIGNS/CANONIZES/DENOTES/CONNOTES) is a compiler directive,
+    not a runtime significance input. ``sig_level`` classifies structurally:
+    a single-node non-canonical kline is S3, an empty-nodes kline is S4.
+    S1/S2 arise only from canonical structure / node overlap at expansion time,
+    not from the authored op. (See @specs/rationaliser.md §Routing — S1 is
+    established by structure or countersignature, never by node membership.)
+    """
 
     @pytest.mark.parametrize(
         "op,expected_level",
         [
-            ("COUNTERSIGNS", "S1"),
+            ("COUNTERSIGNS", "S3"),
             ("DENOTES", "S3"),
-            ("CANONIZES", "S2"),
+            ("CANONIZES", "S3"),
             ("CONNOTES", "S3"),
             ("UNKNOWN", "S4"),
         ],
     )
     def test_sig_level(self, dev_encoder: TokenEncoder, op: str, expected_level: str) -> None:
-        from kalvin.kline import _SIG_LEVELS
+        from kalvin.kline import sig_level
 
         entry = SymbolicEntry(sig="A", nodes=["B"] if op != "UNKNOWN" else [], op=op)
         results = dev_encoder.encode_entries([entry])
         # Find the main entry (last one with matching op)
         main = [r for r in results if r.kline.dbg and r.kline.dbg.op == op]
         assert len(main) >= 1
-        assert _SIG_LEVELS.get(main[-1].kline.dbg.op, "S4") == expected_level
+        assert sig_level(main[-1].kline, signifier) == expected_level
 
 
 # ── Signature is full uint64 (no masking) ────────────────────────────

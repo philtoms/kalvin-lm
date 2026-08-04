@@ -81,14 +81,20 @@ class TestCogitatorWithFakeHandler:
         assert recorder.s1_calls[0][1] is c
 
     def test_fake_handler_receives_expansion(self):
-        """Cogitator calls handler.on_expansion when a misfit kline expands."""
+        """Cogitator calls handler.on_expansion when a misfit pair expands.
+
+        The candidate is a genuine underfit misfit (sig t(0b110) promises
+        more than nodes [t(0b100)] deliver → classify_misfit (True, False)).
+        For ``on_expansion`` to fire, ``expand`` must route the pair as S2/S3,
+        *not* S1: a query that fully resolves against the candidate yields S1
+        (see ``test_fake_handler_receives_s1``) and breaks before proposals.
+        So the query carries an over-claimed signature (0b111) over the same
+        node (t(0b100)) — the pair is accounted but not exact, expand yields
+        S2, and ``propose_expansions`` reshapes the misfit candidate into
+        proposals that reach ``on_expansion``.
+        """
         m = Model(signifier=signifier)
-        # Build model with identity klines that resolve nodes
-        k1 = KLine(t(0b100), [t(0b100)])  # identity (self-referential since 040bc0c)
-        m.add_to_ltm(k1)
-        k2 = KLine(t(0b010), [t(0b010)])  # identity — resolves as a contributor
-        m.add_to_ltm(k2)
-        # A misfit kline — underfitting: sig=t(0b110) but nodes only give t(0b100)
+        # Underfit misfit candidate: sig t(0b110) vs nodes [t(0b100)].
         k3 = KLine(t(0b110), [t(0b100)])
         m.add_to_ltm(k3)
 
@@ -96,14 +102,10 @@ class TestCogitatorWithFakeHandler:
         event_bus = EventBus()
         cogitator = Cogitator(model=m, adapter=event_bus, handler=recorder, signifier=signifier)
 
-        # Query sharing a resolvable node with k3 (t(0b100) is in k3.nodes and
-        # k1 grounds it) -> non-S4 after expand, so cogitation reaches
-        # propose_expansions. k3 is a misfit (sig t(0b110) promises more than
-        # nodes [t(0b100)] deliver) so generate_expansions yields proposals.
-        # The query must share resolvable structure with k3 to escape S4
-        # (an unrelated pair is fully unaccounted -> S4 -> skipped).
+        # Query over the candidate's node but with an over-claimed signature
+        # (0b111) so the pair is non-exact → expand yields S2, not S1.
         q = KLine(0, [t(0b100)])
-        q.signature = signifier.signature_of([t(0b100)])
+        q.signature = t(0b100) | t(0b010) | t(0b001)
         m.add_to_frame(q)
 
         cogitator.submit(WorkItem(KValue(q, 0x5678), k3, "S3"))

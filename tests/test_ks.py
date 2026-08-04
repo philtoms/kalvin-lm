@@ -1018,17 +1018,22 @@ class TestComplexExamples:
         # Connote
         assert has_entry(entries, sig="L", op="CONNOTES")  # L connote [O]
 
-        # Verify significance levels
-        from kalvin.kline import _SIG_LEVELS
+        # Verify structural significance levels. Significance is derived
+        # from kline shape (sig_level), not the op token: a canonical kline
+        # (sig == signature_of(nodes)) is S1; a single-node non-canonical
+        # kline is S3; an empty-nodes kline is S4. See @specs/rationaliser.md.
+        from kalvin.kline import sig_level
+        from kalvin.signifier import NLPSignifier as _Sig
 
+        _sgf = _Sig()
         cs_entries = _find_entries(entries, op="COUNTERSIGNS")
-        assert all(_SIG_LEVELS.get(e.kline.dbg.op, "S4") == "S1" for e in cs_entries)
+        assert all(sig_level(e.kline, _sgf) == "S3" for e in cs_entries)
         us_entries = _find_entries(entries, op="DENOTES")
-        assert all(_SIG_LEVELS.get(e.kline.dbg.op, "S4") == "S3" for e in us_entries)
+        assert all(sig_level(e.kline, _sgf) == "S3" for e in us_entries)
         canon_entries = _find_entries(entries, op="CANONIZES")
-        assert all(_SIG_LEVELS.get(e.kline.dbg.op, "S4") == "S2" for e in canon_entries)
+        assert all(sig_level(e.kline, _sgf) == "S1" for e in canon_entries)
         con_entries = _find_entries(entries, op="CONNOTES")
-        assert all(_SIG_LEVELS.get(e.kline.dbg.op, "S4") == "S3" for e in con_entries)
+        assert all(sig_level(e.kline, _sgf) == "S3" for e in con_entries)
 
     # -- KS-36: §14.12 Word-bound example ---------------------------------
 
@@ -1082,9 +1087,9 @@ class TestComplexExamples:
                 f"Entry {e.kline.dbg.label!r} signature {e.kline.signature:#x} has no sig-word bits"
             )
 
-        # All entries should have a valid op via dbg
-        from kalvin.kline import _SIG_LEVELS
-
+        # All entries should have a valid op via dbg. (Significance is
+        # structural — derived via sig_level, not an op→level table — so no
+        # table lookup is asserted here.)
         for e in entries:
             assert e.kline.dbg and e.kline.dbg.op in (
                 "COUNTERSIGNS",
@@ -1093,4 +1098,3 @@ class TestComplexExamples:
                 "DENOTES",
                 "UNKNOWN",
             )
-            assert _SIG_LEVELS.get(e.kline.dbg.op, "S4") in ("S1", "S2", "S3", "S4")

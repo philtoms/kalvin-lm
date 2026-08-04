@@ -269,39 +269,42 @@ def test_over_budget_emission_is_exhaustion_divergence():
     assert res.unmatched[0].proposal.kline.signature == 2
 
 
-def test_exhaustion_divergence_stops_immediately_under_accept():
-    """Duplicate-key exhaustion is terminal under *both* policies: once the
-    budget is depleted, further over-budget copies in the same burst are not
-    recorded — the run stops at the first over-budget copy."""
+def test_exhaustion_divergence_recorded_and_continues_under_accept():
+    """Under ``accept``, an over-budget emission is recorded and the run
+    continues past it (DDT-4). The budget is consumed by the first matching
+    copy; every further copy in the burst is an ``exhausted`` divergence,
+    each recorded in ``unmatched`` — the run does not stop at the first."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
         trainer_bursts=_bursts(_ev("T", 9, 9)),
-        # K emits FOUR K(2,2) in one burst — two over budget. Only the first
-        # over-budget copy is recorded; the run halts there.
+        # K emits FOUR K(2,2) in one burst — budget is two, so the 3rd and 4th
+        # are over-budget ``exhausted`` divergences, both recorded.
         trainee_bursts=[
             [_ev("K", 2, 2), _ev("K", 2, 2), _ev("K", 2, 2), _ev("K", 2, 2)]
         ],
         on_divergence="accept",
     )
-    assert len(res.unmatched) == 1
-    assert res.unmatched[0].proposal.kline.signature == 2
+    assert len(res.unmatched) == 2
+    assert all(e.proposal.kline.signature == 2 for e in res.unmatched)
 
 
-def test_unmatched_divergence_stops_immediately_under_accept():
-    """An unmatched divergence also stops the run immediately under accept:
-    a second off-table emission in the same burst is not recorded. The
-    ``on_divergence`` policy governs raise-vs-record, not whether to stop."""
+def test_unmatched_divergence_recorded_and_continues_under_accept():
+    """Under ``accept``, an unmatched (off-table) emission is recorded and the
+    run continues past it (DDT-4). A second off-table emission in the same
+    burst is also recorded — ``on_divergence`` governs raise-vs-record, and
+    under ``accept`` the run keeps going to the close."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner, res = _run(
         decoded,
         trainer_bursts=_bursts(_ev("T", 9, 9)),
-        # K emits two off-table K(99) in one burst; only the first is recorded.
+        # K emits two off-table K(99) in one burst; both are ``unmatched``
+        # divergences and both are recorded.
         trainee_bursts=[[_ev("K", 99, 99), _ev("K", 99, 99)]],
         on_divergence="accept",
     )
-    assert len(res.unmatched) == 1
-    assert res.unmatched[0].proposal.kline.signature == 99
+    assert len(res.unmatched) == 2
+    assert all(e.proposal.kline.signature == 99 for e in res.unmatched)
 
 
 def test_exhaustion_divergence_under_fail_carries_reason():
