@@ -1,0 +1,14 @@
+{
+  "nextId": 374,
+  "settings": {
+    "globalPause": false,
+    "enginePaused": false,
+    "maxConcurrent": 4,
+    "maxWorktrees": 6,
+    "pollIntervalMs": 15000,
+    "groupOverlappingFiles": false,
+    "autoMerge": true,
+    "recycleWorktrees": false,
+    "includeTaskIdInCommit": true
+  }
+}

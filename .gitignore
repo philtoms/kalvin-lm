@@ -62,7 +62,7 @@ models/
 *.pt
 *.pth
 *.ckpt
-.kb
+.kb/tasks
 
 # OS
 .DS_Store
