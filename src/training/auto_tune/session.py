@@ -118,6 +118,16 @@ class SessionDir:
         return self._dir() / "runs"
 
     @property
+    def root(self) -> Path:
+        """The worktree root the session directory lives under."""
+        return self._root
+
+    @property
+    def summary_path(self) -> Path:
+        """Path to ``run-summary.json`` — the run verdict (see orchestrate.summarize)."""
+        return self._dir() / "run-summary.json"
+
+    @property
     def config(self) -> SessionConfig:
         """The loaded ``SessionConfig`` for the bound session."""
         if self._config is None:

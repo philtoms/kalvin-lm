@@ -102,6 +102,26 @@ A single JSON object, written by pi, consumed and deleted by the supervisor.
 | git_branch | `str`  | Branch at snapshot time                      |
 | git_dirty  | `bool` | Whether working tree had uncommitted changes |
 
+### Run Summary Object
+
+Written to `run-summary.json` by `summary`. The auto-tune arbiter: the
+machine-readable signal the agent reads to decide whether a run achieved
+its goal and, if not, where to look — replacing per-turn supervision prose
+(see SKILL.md §Pi-in-the-Loop Model).
+
+| Field                | Type             | Description                                                                                     |
+| -------------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
+| outcome              | `str`            | `completed`, `deadlocked`, `supervisor-stalled`, `crashed`, or `incomplete` (see §Run Summary)  |
+| diagnosis            | `str`            | One- to two-sentence pointer naming the file/concept to inspect first (diagnosis, not procedure) |
+| significance         | `object`         | S1–S4 band histogram over `rationalise` events, plus `ground` and `frame` counts                |
+| proposals_emitted    | `int`            | Count of `frame` rationalise events (expansion proposals surfaced)                              |
+| proposals_ratified   | `int \| null`    | Entries satisfied minus grounds (approximation); `null` when trainer state is absent            |
+| ratify_requests      | `int`            | Count of `ratify_request` events (decisions surfaced to the supervisor)                         |
+| entries_total        | `int \| null`    | Submitted entry count from trainer state; `null` when state is absent                           |
+| entries_satisfied    | `int \| null`    | Satisfied entry count from trainer state                                                        |
+| entries_deadlocked   | `int \| null`    | `entries_total − entries_satisfied`                                                             |
+| events_total         | `int`            | Total event count in the stream                                                                 |
+
 ### Session Layout
 
 Session artefacts are persisted to files inside the session's git worktree. The concrete directory layout and the concept→file mapping (which concept names which real file) are documented in `@plans/impl/auto-tune-session-layout.md` — file structure and code locations are Plan-owned per Structural Rule #5.
@@ -122,6 +142,7 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 | `auto-tune events --session <name> [--after <seq>]`                             | Print event-stream records after the given sequence (default: all)     |
 | `auto-tune step --session <name> --command <json>`                              | Write command, block until next event appears, print it                |
 | `auto-tune status --session <name>`                                             | Print the status object                                                |
+| `auto-tune summary --session <name>`                                          | Aggregate the current run into a verdict (`run-summary.json`) — the arbiter |
 | `auto-tune snapshot --session <name>`                                           | Capture state, events, model, git metadata to the run directory        |
 | `auto-tune restore --session <name> --run <n>`                                  | Restore curriculum state and model from run snapshot                   |
 | `auto-tune reset --session <name> [--fresh-model]`                              | Delete curriculum state file, truncate events, optionally delete model |
@@ -209,6 +230,15 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 44. `teardown` deletes the associated `auto-tune/<session>` branch.
 45. `teardown` must be run from the main repo (not from inside the worktree).
 
+### Run Summary
+
+46. `summary` aggregates the current run into a verdict written to `run-summary.json` in the session directory, and prints it. It is pure file aggregation (event stream + status + persisted trainer state) and is safe to run after any run, live or deadlocked — it does not touch the harness process.
+47. The summary's `outcome` field is one of: `completed` (terminal completion event fired), `deadlocked` (run ended with submitted-but-unsatisfied entries and no completion), `supervisor-stalled` (a `ratify_request` sat unanswered — the supervisor role did not enact a decision), `crashed` (an error surfaced in the stream), or `incomplete` (the run is still in progress with no pending decision).
+48. The summary's `significance` field is the S1–S4 band histogram over `rationalise` events, plus `ground`/`frame` counts. It is the analogue of dialogue-dev's displacement/escalation signals: the agent reads it to judge whether the run achieved the curriculum's goal.
+49. The summary's `entries_total`/`entries_satisfied`/`entries_deadlocked` are derived from the persisted trainer state when available; they are `null` when the state file is absent (the outcome is still inferred from the event stream alone).
+50. The summary's `diagnosis` field is a one- or two-sentence pointer naming the file or concept to inspect first. It is diagnosis, not procedure — it does not prescribe what to edit.
+51. `summary` is the auto-tune arbiter: the signal the agent reads to decide whether to stop, diagnose, or continue, replacing per-turn supervision prose (see SKILL.md §Pi-in-the-Loop Model).
+
 ## Test Matrix
 
 | ID    | Criterion                                                                                                                    | Origin ref              |
@@ -234,6 +264,11 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 | AT-19 | `reset --fresh-model` also deletes Kalvin model file                                                                         | §Reset                  |
 | AT-20 | Process lifecycle commands manage PIDs and enforce timeouts                                                                  | §Error Handling         |
 | AT-21 | `start-harness` kills orphan processes bound to the port (not just the PID-file process) and fails fast on a spawned-harness crash | §Harness Lifecycle     |
+| AT-22 | `summary` writes `run-summary.json` and prints the verdict                                                                  | §Run Summary            |
+| AT-23 | `summary` classifies `completed` / `deadlocked` / `supervisor-stalled` / `crashed` / `incomplete` from the event stream   | §Run Summary            |
+| AT-24 | `summary` aggregates the S1–S4 significance histogram and ground/frame counts                                              | §Run Summary            |
+| AT-25 | `summary` reports `entries_total`/`entries_satisfied`/`entries_deadlocked` from trainer state (null when absent)           | §Run Summary            |
+| AT-26 | `summary` degrades gracefully when the trainer state file is missing (outcome still inferred)                              | §Run Summary            |
 
 ## Out of Scope
 

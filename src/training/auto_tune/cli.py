@@ -1,6 +1,6 @@
 """Argparse-based CLI for auto-tune workflow.
 
-Provides 12 subcommands for session management, process lifecycle,
+Provides 13 subcommands for session management, process lifecycle,
 and the send/events/step interaction pattern.  Each subcommand resolves
 ``--session`` to a :class:`SessionDir` instance, then delegates to the
 appropriate handler module.
@@ -105,6 +105,13 @@ def _handle_snapshot(args: argparse.Namespace) -> None:
     snapshots.snapshot(sd)
 
 
+def _handle_summary(args: argparse.Namespace) -> None:
+    """Aggregate the current run into a verdict and print it."""
+    sd: SessionDir = args._session_dir
+    summary = orchestrate.summarize(sd)
+    print(json.dumps(summary, indent=2))
+
+
 def _handle_restore(args: argparse.Namespace) -> None:
     """Restore session state from a named run snapshot."""
     sd: SessionDir = args._session_dir
@@ -127,7 +134,7 @@ def _handle_teardown(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build and return the top-level argument parser with 12 subcommands."""
+    """Build and return the top-level argument parser with 13 subcommands."""
     parser = argparse.ArgumentParser(
         prog="auto-tune",
         description="Auto-tune CLI — session management for autonomous training",
@@ -186,6 +193,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_stat = sub.add_parser("status", help="Print session status")
     p_stat.add_argument("--session", required=True, help="Session codename")
     p_stat.set_defaults(func=_handle_status)
+
+    # -- summary -------------------------------------------------------------
+    p_sum = sub.add_parser(
+        "summary",
+        help="Aggregate the current run into a verdict (the auto-tune arbiter)",
+    )
+    p_sum.add_argument("--session", required=True, help="Session codename")
+    p_sum.set_defaults(func=_handle_summary)
 
     # -- snapshot ------------------------------------------------------------
     p_snap = sub.add_parser("snapshot", help="Capture state to runs/<n>/")

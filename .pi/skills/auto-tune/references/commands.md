@@ -32,6 +32,7 @@ AT_PYTHON="$(pwd)/.venv/bin/python"
 | `events --session <name> [--after <seq>]`                             | Print events after given sequence number                                       |
 | `step --session <name> --command '<json>'`                            | Write command, block until next event, print it                                |
 | `status --session <name>`                                             | Print status.json                                                              |
+| `summary --session <name>`                                            | Aggregate the current run into a verdict (`run-summary.json`) — the arbiter     |
 | `snapshot --session <name>`                                           | Capture state, events, model, git metadata to `runs/<n>/`                      |
 | `restore --session <name> --run <n>`                                  | Restore state and model from a snapshot                                        |
 | `reset --session <name> [--fresh-model]`                              | Delete curriculum state, truncate events, optionally delete model              |
