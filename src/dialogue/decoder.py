@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Literal
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from ks.compiler import compile_source
 
 if TYPE_CHECKING:
@@ -115,7 +114,6 @@ class _ResolvedScript:
 
     canon_by_label: dict[str, KLine] = field(default_factory=dict)
     relation_by_label: dict[str, KLine] = field(default_factory=dict)
-    compound_by_label: dict[str, KLine] = field(default_factory=dict)
     labels: dict[str, KLine] = field(default_factory=dict)
 
 
@@ -141,10 +139,6 @@ def _resolve_script(
         # CANONIZES with nodes) so node/signature resolution can prefer it.
         if d.op in ("CANONIZES", "COUNTERSIGNS") and kl.nodes and d.label:
             resolved.canon_by_label.setdefault(d.label, kl)
-        # Compound-by-label: the compound-word identity (CANONIZES whose nodes
-        # include COMPOUND_TOKEN), held separately from a same-label block-canon.
-        if d.op == "CANONIZES" and d.label and COMPOUND_TOKEN in kl.nodes:
-            resolved.compound_by_label.setdefault(d.label, kl)
         if d.op in ("COUNTERSIGNS", "CONNOTES", "DENOTES") and d.label:
             resolved.relation_by_label.setdefault(d.label, kl)
         # Label index: atom/compound dbg.label, and subword dbg.decoded.
@@ -196,12 +190,6 @@ def _resolve_kline(
             raise DecodeError(
                 f"CANONIZES signature {signature!r}: label not found in compiled source"
             )
-        # Compound catch-up: if the signature names a compound-word and the
-        # declared nodes are exactly its subwords, prepend COMPOUND_TOKEN so
-        # the kline is the compound identity (not a misfit against the CT-encoded
-        # signature). Gated on the subwords to avoid folding a same-label
-        # block-canon (e.g. ``had => did have``) into the compound identity.
-        node_sigs = _maybe_catch_up_compound(signature, node_sigs, resolved)
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
     if op == "UNKNOWN":
@@ -229,7 +217,6 @@ def _resolve_kline(
             # the UNKNOWN token cannot express.
             return KLine(kl.signature, [kl.signature], dbg=kl.dbg)
         node_sigs = _resolve_node_signatures(nodes, resolved, op="IDENTITY")
-        node_sigs = _maybe_catch_up_compound(signature, node_sigs, resolved)
         return KLine(kl.signature, node_sigs, dbg=kl.dbg)
 
     # Constructed relation (CONNOTES/DENOTES/COUNTERSIGNS).
@@ -244,19 +231,6 @@ def _resolve_kline(
             f"relation signature {signature!r}: label not found in compiled source"
         )
     return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
-
-
-def _maybe_catch_up_compound(
-    signature: str, node_sigs: list[int], resolved: _ResolvedScript
-) -> list[int]:
-    """Prepend COMPOUND_TOKEN when ``signature``'s compound identity's subwords
-    equal ``node_sigs``."""
-    compound = resolved.compound_by_label.get(signature)
-    if compound is not None and COMPOUND_TOKEN not in node_sigs:
-        subwords = [n for n in compound.nodes if n != COMPOUND_TOKEN]
-        if list(node_sigs) == subwords:
-            return [COMPOUND_TOKEN, *node_sigs]
-    return node_sigs
 
 
 def decode(

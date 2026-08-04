@@ -63,11 +63,6 @@ class NLPSignifier(KSignifier):
         Every node contributes its entire 64-bit value; the result
         accumulates the NLP type words of all nodes. Lossy of order and
         multiplicity (``{A, B}`` and ``{A, A, B}`` reduce identically).
-
-        Pure OR-reduce — no masking. A compound-word's marker token
-        (:data:`kalvin.nlp_tokenizer.COMPOUND_TOKEN`) is a real node and
-        participates like any other, so a compound's signature *encodes* the
-        marker naturally.
         """
         sig = 0
         for node in nodes:

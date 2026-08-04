@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S4
-from kalvin.kline import KLine, is_canon, is_compound_word, is_unknown
+from kalvin.kline import KLine, is_canon, is_unknown
 from kalvin.kvalue import KValue
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -55,8 +55,9 @@ def _reply_identity(
     1. canon — teach its parts (S1 if K grounded every node, else S2);
     2. CONNOTES — a teachable gloss at S2 (a DENOTES role-binding is left for
        the S3 phase, where K proposes and T ratifies);
-    3. compound identity ``{sig: [CT, x, y]}`` — the subword grounding at S1;
-    4. otherwise — forge the self-identity ``{sig: [sig]}`` at S1.
+    3. otherwise — forge the self-identity ``{sig: [sig]}`` at S1. A
+       §11.3 compound-word is a self-referential identity, so it is forged
+       by this same rule.
     """
     candidates = decompositions.get(signature, [])
 
@@ -68,10 +69,6 @@ def _reply_identity(
     connotes = _first_connotes(candidates)
     if connotes is not None:
         return KValue(connotes, SIG_S2)
-
-    compound = _first_compound(candidates, signifier)
-    if compound is not None:
-        return KValue(compound, SIG_S1)
 
     return KValue(KLine(signature, [signature]), SIG_S1)
 
@@ -101,14 +98,6 @@ def _first_connotes(candidates: list[KLine]) -> KLine | None:
     for kline in candidates:
         op = kline.dbg.op if kline.dbg else None
         if op == "CONNOTES":
-            return kline
-    return None
-
-
-def _first_compound(candidates: list[KLine], signifier: KSignifier) -> KLine | None:
-    """First compound-word identity ``{sig: [CT, x, y]}`` among ``candidates``."""
-    for kline in candidates:
-        if is_compound_word(kline):
             return kline
     return None
 

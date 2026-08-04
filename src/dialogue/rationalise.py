@@ -21,10 +21,8 @@ from kalvin.significance import (
     SIG_S4,
 )
 from kalvin.kline import (
-    COMPOUND_TOKEN,
     KLine,
     is_canon,
-    is_compound_word,
     is_identity,
     is_misfit,
     is_terminal,
@@ -297,12 +295,13 @@ class _Turn:
 
         An identity ask is answered only when the engine has a genuine
         grounding for the signature: a **canon** (teach its parts — S1 when
-        every node is grounded, else S2) or a **compound identity** (the
-        subword grounding that decodes back into text, at S1). A signature
-        merely seen (e.g. as a node) is not enough — its reply shape is the
-        author's to choose (a CONNOTES gloss, a pedagogical S2), so the ask
-        is left unanswered for the actor's other paths. Returns None when the
-        engine has no canon or compound for ``signature``.
+        every node is grounded, else S2) or a **self-referential identity**
+        (the text-recoverable grounding at S1 — a §11.3 compound-word is one
+        such, its signature carrying the subwords). A signature merely seen
+        (e.g. as a node) is not enough — its reply shape is the author's to
+        choose (a CONNOTES gloss, a pedagogical S2), so the ask is left
+        unanswered for the actor's other paths. Returns None when the engine
+        has no canon or self-ref identity for ``signature``.
         """
         # Canon — teach the parts. Significance is structural: S1 when every
         # node is grounded, else S2.
@@ -311,9 +310,10 @@ class _Turn:
             kline = KLine(signature, list(nodes))
             sig = SIG_S1 if all(n in self._state.grounded for n in nodes) else SIG_S2
             return KValue(kline, sig)
-        # Compound-word identity — the text-recoverable grounding.
+        # Self-referential identity — the text-recoverable grounding (a
+        # compound-word identity is one such).
         for kline in self._state.grounded.get(signature, []):
-            if is_compound_word(kline):
+            if is_identity(kline):
                 return KValue(kline, SIG_S1)
         return None
 
@@ -593,13 +593,7 @@ class _Turn:
         leftovers are passed through. Greedy is insufficient (a larger kline may
         block two smaller ones covering more), so this searches for a maximal
         disjoint cover.
-
-        ``COMPOUND_TOKEN`` is a structural marker (the compound-word system
-        flag), not a real node: two compound identities share it, so leaving it
-        in ``failed`` would make them falsely overlap and block one another. It
-        is stripped before covering and is never returned.
         """
-        failed = [n for n in failed if n != COMPOUND_TOKEN]
         failed_set = set(failed)
         covers: list[tuple[tuple[int, ...], int]] = []
         seen_sigs: set[int] = set()
@@ -607,9 +601,7 @@ class _Turn:
             for kline in bucket:
                 if kline.signature in seen_sigs or not kline.nodes:
                     continue
-                # Effective nodes carry no COMPOUND_TOKEN (see above); the
-                # disjoint-cover search and the cover accounting both use this.
-                effective = tuple(n for n in kline.nodes if n != COMPOUND_TOKEN)
+                effective = tuple(kline.nodes)
                 if set(effective).issubset(failed_set):
                     covers.append((effective, kline.signature))
                     seen_sigs.add(kline.signature)

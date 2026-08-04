@@ -121,10 +121,10 @@ not of the interface — a different Signifier need not understand any packing.
 
 OR-reduces the full 64-bit node values (`sig |= node` over the entire word).
 Every node contributes its full value; the resulting signature accumulates
-the `sig_word` words of all nodes. Pure OR-reduce — no masking. A
-compound-word's marker token (`COMPOUND_TOKEN`, @nlp_tokenizer spec) is a
-real node and participates like any other, so a compound's signature encodes
-the marker naturally; the signifier has no compound special-casing.
+the `sig_word` words of all nodes. Pure OR-reduce — no masking, no
+compound-word special-casing. A §11.3 compound-word's signature is the
+OR-reduction of its subword tokens (@kscript spec §11.3); the subwords live
+in the signature, and no marker token is involved.
 
 ### `signifies` — masked type-word overlap
 

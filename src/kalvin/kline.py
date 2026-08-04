@@ -123,33 +123,15 @@ KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 # module agrees on what counts as identity vs canon. See @kline spec and
 # @cogitator spec §Universal Constraint.
 
-#: The **compound marker token**, re-exported from the kalvin↔NLP boundary
-#: (:mod:`kalvin.nlp_tokenizer`). The compiler appends it to the nodes of a
-#: §11.3 compound-word kline (``Mary: [COMPOUND_TOKEN, M, ary]``); the token
-#: participates in the signature algebra, so the marker needs no masking.
-#: See :data:`kalvin.nlp_tokenizer.COMPOUND_TOKEN` for the full rationale.
-from kalvin.nlp_tokenizer import COMPOUND_TOKEN  # noqa: E402
-
-
-def is_compound_word(kline: KLine) -> bool:
-    """Test whether a kline is a §11.3 compound-word identity.
-
-    True iff :data:`COMPOUND_TOKEN` is among the kline's nodes. The compiler
-    appends the token only to a compound-word's nodes (a single word the
-    #: external tokenizer split into BPE subwords), so its presence is the
-    #: structural signal. Purely structural — no signifier, no provenance,
-    #: no bit masking.
-    """
-    return COMPOUND_TOKEN in kline.nodes
-
 
 def is_terminal(kline: KLine) -> bool:
     """Test whether a kline is a terminal — a leaf that stops traversal.
 
-    A terminal carries no further decomposition. Three shapes are terminal:
-      - empty nodes: ``{S: []}`` (an Unknown),
-      - self-referential: ``{S: [S]}``, or
-      - compound-word: ``{S: [COMPOUND_TOKEN, M, ary]}``.
+    A terminal carries no further decomposition. Two shapes are terminal:
+      - empty nodes: ``{S: []}`` (an Unknown), or
+      - self-referential: ``{S: [S]}`` (an Identity; this includes §11.3
+        compound-words, which are self-referential identities whose
+        signature is the OR-reduction of their subword tokens).
 
     Terminal is the genus of :func:`is_unknown` and :func:`is_identity`;
     the canon/misfit distinction applies only to non-terminals
@@ -157,9 +139,7 @@ def is_terminal(kline: KLine) -> bool:
     """
     if not kline.nodes:
         return True
-    if kline.nodes == [kline.signature]:
-        return True
-    return is_compound_word(kline)
+    return kline.nodes == [kline.signature]
 
 
 def is_unknown(kline: KLine) -> bool:
@@ -175,23 +155,19 @@ def is_identity(kline: KLine) -> bool:
     """Test whether a kline is a decodable Identity terminal.
 
     An Identity is a terminal that translates to a known value in the
-    outside world — directly decodable. Two shapes:
-      - self-referential: ``{S: [S]}`` — a value that decodes into itself, or
-      - compound-word: ``{S: [COMPOUND_TOKEN, M, ary]}`` — a single word
-        whose nodes include :data:`COMPOUND_TOKEN` because the external
-        tokenizer split it into multiple BPE subwords. The word is one
-        lexical item; the decomposition is an encoding artefact, not a
-        declared aggregation.
+    outside world — directly decodable. The sole structural shape is the
+    self-referential form ``{S: [S]}``: a value that decodes into itself.
+    A §11.3 compound-word is an identity by this same rule — its signature
+    is the OR-reduction of its subword tokens, so it is a self-ref with no
+    marker.
 
     The empty form ``{S: []}`` is an :func:`is_unknown`, not an Identity.
-    Both Identity shapes overrule any canon classification
-    (see :func:`is_canon` and @CONTEXT.md §Identity).
+    Identity overrules any canon classification (see :func:`is_canon` and
+    @CONTEXT.md §Identity).
     """
     if not kline.nodes:
         return False
-    if kline.nodes == [kline.signature]:
-        return True
-    return is_compound_word(kline)
+    return kline.nodes == [kline.signature]
 
 
 def is_canon(kline: KLine, signifier: KSignifier) -> bool:

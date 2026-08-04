@@ -41,10 +41,9 @@ A kline **structure**: a **Terminal** with empty nodes (`{S: []}`). Claims **S4*
 _Avoid_: empty kline (describes syntax, not the meaning), bare signature (describes syntax, not the structure), identity (the empty form is _not_ an identity — it is the opposite: unknown, not known)
 
 **Identity**:
-A kline **structure**: a **Terminal** that is directly decodable — a known value that translates to something in the outside world. Claims **S1** — _"I know this."_ Two structural shapes:
+A kline **structure**: a **Terminal** that is directly decodable — a known value that translates to something in the outside world. Claims **S1** — _"I know this."_ One structural shape:
 
 - self-referential (`{S: [S]}`)
-- compound-word (`{S: [COMPOUND_TOKEN, Token ID, ...]}`)
   _Avoid_: unsigned (implementation term), bare signature (describes syntax, not the structure), treating the empty kline as an Identity (it is an **Unknown**)
 
 **Canon**:
@@ -93,7 +92,7 @@ The unit of exchange between participants — a **KLine** (objective structure) 
 ### KScript
 
 **Token ID**:
-A value produced by the tokenizer. Includes the special token `COMPOUND_TOKEN`.
+A value produced by the tokenizer.
 
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.

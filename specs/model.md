@@ -878,7 +878,7 @@ The total number of yields never exceeds MAX_HOP.
 | MOD-57  | `generate_expansions` overfit: returns trimmed + companion                                                                                                                                                | —          |
 | MOD-58  | `generate_expansions` dual: returns replacement + companion (one atomic swap per gap-filling contributor; the dual path is exclusive — it does not also emit the underfit-only or overfit-only proposals) | —          |
 | MOD-59  | `generate_expansions` no gap: no expansion proposals emitted                                                                                                                                              | —          |
-| MOD-59b | `generate_expansions` never yields a terminal proposal (`{S: []}`, `{S: [S]}`, or a compound-word) — a terminal carries no decomposition, so it is never a valid _expansion_ proposal; see @cogitator spec §Universal Constraint                                          | —          |
+| MOD-59b | `generate_expansions` never yields a terminal proposal (`{S: []}` or `{S: [S]}` — the latter includes §11.3 compound-words) — a terminal carries no decomposition, so it is never a valid _expansion_ proposal; see @cogitator spec §Universal Constraint                                          | —          |
 
 ## What a Model is Not
 

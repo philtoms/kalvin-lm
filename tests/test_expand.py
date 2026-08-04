@@ -23,7 +23,6 @@ from kalvin.significance import (
     structural_sig,
 )
 from kalvin.model import Model
-from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.signifier import NLPSignifier
 
 signifier = NLPSignifier()
@@ -553,10 +552,10 @@ class TestSigLevel:
         assert sig_level(KLine(42, [42]), signifier) == "S1"
 
     def test_compound_word_is_s1(self):
-        # A §11.3 compound-word: COMPOUND_TOKEN is among the nodes.
-        # Signature equals signature_of(nodes), so structurally a canon → S1.
-        nodes = [0b100, 0b010, COMPOUND_TOKEN]
-        kl = KLine(0b110 | COMPOUND_TOKEN, nodes)
+        # A §11.3 compound-word is a self-referential identity: its signature
+        # is the OR-reduction of its subword tokens. A self-ref is S1.
+        packed = 0b110
+        kl = KLine(packed, [packed])
         assert sig_level(kl, signifier) == "S1"
 
     def test_canon_is_s1(self):

@@ -103,20 +103,20 @@ decoded separately (the sequencer decodes and runs each in turn). There is no
 `_collapse_to_single_close`: every run keeps its own `close` as its terminal
 content.
 
-**Compound catch-up.** A CANONIZES turn whose signature names a compound-word
-(a label with a compiled compound identity) is decoded with `COMPOUND_TOKEN`
-(@nlp_tokenizer spec) prepended to its nodes **only when the declared nodes
-are that compound's subwords**. The author writes the subwords
-(`Mary => M ary`); the decoder adds the system marker so the kline matches
-the compound identity the compiler produces.
+**Compound-words are single-token identities.** A compound-word (a label
+whose compiled identity is a §11.3 self-referential identity) decodes to
+that self-referential form directly — no marker, no node rewriting. The
+author writes the subwords (`Mary => M ary`) and the decoder resolves the
+signature to its compound identity; or writes `Mary IDENTITY` for the bare
+self-ref.
 
 A label may carry several CANONIZES — the §11.3 compound-word identity *plus*
 a §8 block-canon reference (e.g. `had => did have`, a semantic expansion under
-the same compound-word signature). The block-canon is a legitimate S2 misfit,
-not the compound identity: catch-up is gated on the declared nodes matching
-the compound's subwords (the compound's nodes minus the marker), so a
-declared misfit like `had CANONIZES [did, have]` decodes verbatim and is not
-folded into the compound-word identity.
+the same compound-word signature). The block-canon is a legitimate
+relationship kline (canon or misfit, whatever the operands yield), decoded
+verbatim; it no longer fuses with the compound identity, because there is no
+marker to catch up to. The two share a signature and are distinguished by
+their nodes, as ever.
 
 **UNKNOWN — the bare ask.** An UNKNOWN turn declares a signature with no
 nodes and decodes to the ask shape `X:[]` (S4) — the structural form of an
@@ -124,10 +124,10 @@ ask (@CONTEXT.md §Unknown).
 
 **IDENTITY — a scripted true identity.** An IDENTITY turn declares a
 decodable identity. With no declared nodes it is the self-referential form
-`{X: [X]}` (S1); when it declares subword nodes (`Mary IDENTITY [M, ary]` at S1) the decoder
-applies compound catch-up so the kline is the compound grounding
-(`Mary:[COMPOUND_TOKEN, M, ary]`), which is the shape that decodes back into
-text and must be grounded.
+`{X: [X]}` (S1); when it declares subword nodes (`Mary IDENTITY [M, ary]` at S1)
+the kline is the compound-word grounding (`Mary:[Mary]`), the self-referential
+identity whose signature is the OR-reduction of the subwords — the shape that
+decodes back into text and must be grounded.
 
 ```
 DecodedTurn:

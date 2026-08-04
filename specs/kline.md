@@ -80,33 +80,25 @@ non-terminal structures. The predicates below expose these kinds to
 rationalisation.
 
 A §11.3 **compound-word** — a single word the external tokenizer
-split into BPE subwords — carries the boundary marker token
-`COMPOUND_TOKEN` (@nlp_tokenizer spec) as an extra node: `Mary: [COMPOUND_TOKEN, M, ary]`.
-The token participates in the signature algebra like any other node, so the
-compound's signature _encodes_ the marker naturally
-(`signature == signature_of([M, ary, COMPOUND_TOKEN])`) — no bit masking
-anywhere.
+split into BPE subwords — is encoded as a self-referential identity
+`{S: [S]}` whose signature is the OR-reduction of the subword tokens
+(@kscript spec §11.3). It is structurally identical to any other
+self-referential identity; no marker token distinguishes it, and the
+kline's nodes never carry any compound-specific value.
 
-- **`is_compound_word(kline)`** — `True` iff `COMPOUND_TOKEN` is among the
-  kline's nodes. The compiler appends the token only to a compound-word's
-  nodes. The marker is confined to the kalvin↔NLP boundary: defined in
-  `nlp_tokenizer.py`, appended by `ks/token_encoder.py`, read here; no other
-  module names it, and the signifier treats it as an ordinary node (no
-  masking).
 - **`is_terminal(kline)`** — `True` for any kline that carries no further
-  decomposition: the empty form `{S: []}`, the self-referential form
-  `{S: [S]}` (sole node equals signature), or a compound-word
-  (`is_compound_word`). A terminal is a leaf that tells traversal to stop
-  (see @CONTEXT.md §Terminal). It is the genus of `is_unknown` and
-  `is_identity`.
+  decomposition: the empty form `{S: []}` or the self-referential form
+  `{S: [S]}` (sole node equals signature). A terminal is a leaf that tells
+  traversal to stop (see @CONTEXT.md §Terminal). It is the genus of
+  `is_unknown` and `is_identity`.
 - **`is_unknown(kline)`** — `True` for the empty form `{S: []}` only. An
   Unknown claims **S4** — nothing held for this signature; the structural
   form of an ask (see @CONTEXT.md §Unknown).
-- **`is_identity(kline)`** — `True` for a terminal that is directly decodable:
-  the self-referential form `{S: [S]}` (a value that decodes into itself), or
-  a compound-word (the word is one lexical item; its subwords are an
-  encoding artefact). An Identity claims **S1**. Both forms overrule any
-  canon classification (see `is_canon` and @CONTEXT.md §Identity).
+- **`is_identity(kline)`** — `True` for the self-referential form
+  `{S: [S]}`: a value that decodes into itself. An Identity claims **S1**.
+  It overrules any canon classification (see `is_canon` and
+  @CONTEXT.md §Identity). A compound-word identity is an `is_identity`
+  by this same self-referential rule — no special case.
 - **`is_canon(kline)`** — `True` when the kline is _not_ terminal AND
   `signature == signature_of(nodes)`. Canons are non-terminal: a terminal
   is never a canon.
@@ -139,9 +131,9 @@ and significance modules consume them.
 | KL-23 | `is_canon({S: [A, B]})` where `S == A\|B` and `S` not in nodes → True          |
 | KL-24 | `is_canon({S: [S]})` → False (terminal, not canon)                              |
 | KL-25 | `is_canon({S: []})` → False (terminal, not canon)                               |
-| KL-26 | `is_identity({S: [COMPOUND_TOKEN, A, B]})` → True (compound-word, decodable)    |
-| KL-26a | `is_terminal({S: [COMPOUND_TOKEN, A, B]})` → True                               |
-| KL-27 | `is_canon({S: [COMPOUND_TOKEN, A, B]})` → False (terminal, not canon)            |
+| KL-26 | `is_identity({S: [S]})` for a compound-word signature (self-referential identity) → True  |
+| KL-26a | `is_terminal({S: [S]})` for a compound-word signature → True                              |
+| KL-27 | `is_canon({S: [S]})` → False (terminal, not canon)            |
 | KL-28 | `is_misfit({AB: [C, D]})` (signature ≠ signature_of(nodes)) → True              |
 | KL-29 | `is_misfit({S: [A, B]})` where `S == A\|B` (canon) → False                     |
 | KL-30 | `is_misfit({S: []})` → False (terminal, not misfit)                              |

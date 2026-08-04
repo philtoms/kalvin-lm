@@ -282,7 +282,8 @@ removed nodes as independent `frame` events.
 
 Each proposal is an independent `frame` event. The Rationaliser ratifies (or
 rejects) each one individually. A terminal proposal or companion (empty
-nodes, self-referential `{S: [S]}`, or a compound-word) is not emitted (see Universal
+nodes, or self-referential `{S: [S]}` — which includes §11.3 compound-words)
+is not emitted (see Universal
 Constraint below).
 
 ### Universal Constraint
@@ -294,8 +295,8 @@ scaffolding is needed from the absence of a `frame` event.
 
 A second constraint governs proposal _shape_: **an expansion proposal must
 not be a terminal**. A terminal (@CONTEXT.md §Terminal) — empty nodes
-`{S: []}` (Unknown), self-referential `{S: [S]}` (Identity), or a
-compound-word — carries no decomposition, so it is never a valid
+`{S: []}` (Unknown) or self-referential `{S: [S]}` (Identity, which includes
+§11.3 compound-words) — carries no decomposition, so it is never a valid
 _expansion_ proposal. A single removed
 node `n` would form the companion `{n: [n]}` (an Identity terminal), which is dropped
 rather than emitted; likewise any proposal that reduces to a terminal is

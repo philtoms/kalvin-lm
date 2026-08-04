@@ -323,18 +323,18 @@ class TestKS36WordBound:
 
         The SVO canonize entry should have S patched to 'Subject'
         via Rule B4 override.  Under BPE, 'Subject' is a compound whose
-        signature encodes COMPOUND_TOKEN, so it is opaque under BPE decode
-        (§11.5/§11.6). The resolved word is verified via the dbg label of
-        the Subject compound identity the binding produces, not by decoding
-        the opaque compound node.
+        signature is the OR-reduction of its subword tokens, so it is opaque
+        under BPE decode (§11.5/§11.6). The resolved word is verified via
+        the dbg label of the Subject compound identity the binding produces,
+        not by decoding the opaque compound node.
         """
         tok = self._get_tokenizer()
         entries = compile_source(SOURCE_14_12, tokenizer=tok, dev=True)
 
         # The inline binding resolves S → 'Subject', producing a compound
         # identity whose dbg label is 'Subject'. Its signature is opaque
-        # (encodes COMPOUND_TOKEN), so decode cannot recover the text; the
-        # dbg label is the reliable provenance.
+        # (an OR-reduction of subword tokens), so decode cannot recover the
+        # text; the dbg label is the reliable provenance.
         labels = {e.kline.dbg.label for e in entries if e.kline.dbg.label}
         assert "Subject" in labels, (
             f"Expected 'Subject' compound identity from inline binding; "
@@ -539,37 +539,35 @@ class TestBlockCanonReusesPriorMtsSignature:
     def test_block_canon_sig_equals_mts_sig(self, tokenizer):
         """The WDMH `had` block canon shares MHALL's MTS `had` signature value.
 
-        Two `had` CANONIZES klines result:
-        - the §11.3 compound-word identity (``had`` → its BPE subwords +
-          COMPOUND_TOKEN), whose nodes include the marker token (it is an
-          identity, not a canon);
-        - the block-canon reference (``had => did have``), a deliberate misfit
-          that reuses the compound's signature value (the marker is encoded
-          in the shared signature, but the reference's own nodes omit it).
+        Two `had` klines result:
+        - the §11.3 compound-word identity (``had`` → its BPE subwords), a
+          self-referential identity ``{had_sig: [had_sig]}`` whose signature
+          is the OR-reduction of the subwords (no marker token);
+        - the block-canon reference (``had => did have``), a deliberate
+          misfit that reuses the compound's signature value, with its own
+          nodes ``[did, have]``.
         """
         from kalvin.kline import is_identity
-        from kalvin.nlp_tokenizer import COMPOUND_TOKEN
         from kalvin.signifier import NLPSignifier
 
         entries = self._entries(tokenizer)
         sig = NLPSignifier()
         h, ad = (tokenizer.encode(c)[0] for c in ("h", "ad"))
-        had_sig = sig.signature_of([h, ad, COMPOUND_TOKEN])
+        had_sig = sig.signature_of([h, ad])
 
-        had_canon = [
-            e for e in entries
-            if e.kline.dbg.label == "had" and e.kline.dbg.op == "CANONIZES"
-        ]
-        assert had_canon, "expected at least one had CANONIZES kline"
-        # The MTS compound-word identity kline carries the marker token in
-        # its nodes.
-        mts_identity = [e for e in had_canon if is_identity(e.kline)]
-        assert mts_identity, "expected the had MTS compound-word identity"
+        had_labeled = [e for e in entries if e.kline.dbg.label == "had"]
+        assert had_labeled, "expected at least one had kline"
+        # The §11.3 compound-word identity kline is a self-ref.
+        mts_identity = [e for e in had_labeled if is_identity(e.kline)]
+        assert mts_identity, "expected the had compound-word identity"
         for e in mts_identity:
             assert e.kline.signature == had_sig
-            assert COMPOUND_TOKEN in e.kline.nodes
-        # The block-canon reference reuses the same signature value.
-        block_refs = [e for e in had_canon if not is_identity(e.kline)]
+            assert e.kline.nodes == [had_sig]
+        # The block-canon reference (CANONIZES) reuses the same signature value.
+        block_refs = [
+            e for e in had_labeled
+            if e.kline.dbg.op == "CANONIZES" and not is_identity(e.kline)
+        ]
         assert block_refs, "expected the had block-canon reference"
         for e in block_refs:
             assert e.kline.signature == had_sig, (

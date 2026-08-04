@@ -43,8 +43,9 @@ is the source of truth for how.
 - **Two channels.** Each turn emits a dialogue **batch** (S4 asks, S3/S2
   proposals, S1/S2 replies) and **observations** of K's S1 groundings.
 - **Terminals for one lexical item.** The Unknown ask `X:[]` (S4) and the
-  two Identity shapes — self-referential `X:[X]` and compound
-  `X:[COMPOUND_TOKEN, x, y]` (S1) — all key by signature alone.
+  self-referential Identity `X:[X]` (S1) — including compound-words, which
+  are self-referential identities whose signature carries their subwords —
+  all key by signature alone.
 - **Identity forging.** A bare `X:[]` (an Unknown) the engine can't answer is forged
   by the supervisor (`synthesize`) as `X:[X]` at S1 — turning the Unknown ask
   into a self-referential Identity.
@@ -56,8 +57,8 @@ is the source of truth for how.
 - **S1 identity fast path.** An incoming S1 identity grounds whenever its
   signature has been seen (framed, pending, or grounded).
 - **Replies (role-neutral).** The engine answers an S4 ask with the canon
-  (S1 if all nodes grounded, else S2) or the compound identity (S1), and
-  ratifies an S3 proposal at S1. Actors filter their role's bands and may
+  (S1 if all nodes grounded, else S2) or a self-referential identity (S1),
+  and ratifies an S3 proposal at S1. Actors filter their role's bands and may
   apply kline-level protocol corrections.
 - **Cogitation pass.** One LIFO pass: ground promotable/groundable entries
   (observed, dropped); countersignable entries take the S3 path; multi-node

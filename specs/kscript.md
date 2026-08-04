@@ -498,25 +498,25 @@ encode("HELLO") → (sig_word << 32) | bpe_token_id
 
 ### 11.3 Compound-Words (Multi-Token Word Decomposition)
 
-**Compound-word decomposition** is the compiler mechanism that handles a resolved **word** the external BPE tokenizer splits into multiple subword tokens (e.g. `Mary` → `[mar, y]`). It is **orthogonal to MTS (§8)**: structurally the two emit the same shape (component identities + a CANONIZES over a packed signature), but their semantics are opposite. Where an MTS entry's decomposition is the _content_ (a real aggregation → canon/misfit), a compound-word's decomposition is an _encoding artefact_ of external tokenization — the word is one lexical item, so the kline must be recognised as an **identity**, not a canon.
+**Compound-word decomposition** is the compiler mechanism that handles a resolved **word** the external BPE tokenizer splits into multiple subword tokens (e.g. `Mary` → `[mar, y]`). The word is one lexical item; its subword decomposition is an _encoding artefact_ of external tokenization, not a declared aggregation. The compiler therefore represents the word as a single-token **identity**, exactly like a word the tokenizer emits as one token.
 
-The discriminator is the boundary marker token `COMPOUND_TOKEN` (@nlp_tokenizer spec): the compiler prepends it as an extra node, so a compound-word kline is `Mary: [COMPOUND_TOKEN, mar, y]`. The token participates in the signature algebra like any other node — the signature is `signature_of([COMPOUND_TOKEN, mar, y])` — and its presence in the nodes is the sole structural signal that the kline is a compound-word identity rather than a canon (@kline spec §Structural Predicates). `COMPOUND_TOKEN` is the **only** point at which the compiler's compound/MTS distinction leaks into kalvin; both terms are otherwise compiler-internal.
+The compound-word kline is the self-referential identity `{packed_sig → [packed_sig]}`. Its signature is the OR-reduction of the subword tokens — `packed_sig = signature_of([mar, y])` — so the subwords _live in the signature_. No marker token is used: the compound-word distinction is a compiler/NLP concern that does not appear in any kline's nodes, and `COMPOUND_TOKEN` does not exist.
 
 When a resolved word BPE-encodes to multiple tokens, the TokenEncoder emits:
 
 1. **Component identities:** One UNKNOWN entry per BPE subword token (each `{sig: []}` is structurally an Unknown, S4).
-2. **Compound-word identity:** One CANONIZES-shaped entry `{packed_sig → [COMPOUND_TOKEN, subwords...]}` carrying the marker. Structurally canon-shaped, semantically an identity (S1).
+2. **Compound-word identity:** One self-referential identity entry `{packed_sig → [packed_sig]}` (S1) — structurally identical to a single-token word identity.
 3. **Packed signature:** The compound-word's signature becomes the single `uint64` node used in the parent kline.
 
 ```
 "Mary" → tokens [mar, y]
-  emits: {mar: []}, {y: []}, {Mary: [COMPOUND_TOKEN, mar, y]}
+  emits: {mar: []}, {y: []}, {Mary: [Mary]}
   parent kline uses Mary's signature as its single node
 ```
 
 **Provenance (diagnostic).** Each component identity is named after its **own** subword token (the `mar` and `y` klines), not the compound word; only the compound-word identity carries `Mary`. (`dbg` is a non-spec'd diagnostic — this names the convention the compiler follows, not a contract.)
 
-**Semantics.** The compound-word kline is structurally an **identity** (S1) — `COMPOUND_TOKEN` in its nodes makes `is_identity` overrule any canon classification. This is the structural opposite of an MTS canonization entry (§8), which is a canon (S1-eligible) precisely because it carries no marker.
+**Signature sharing with canons.** A compound-word's signature is the OR-reduction of its subword tokens, so it occupies the same signature space as any canon whose nodes OR-reduce to the same value: a compound-word identity and a canon _may_ share a signature. This is accepted by design. Klines are classified by their own signature and nodes, never by their signature alone; rationalisation ranges over every kline under a signature and tests each on its own structure (@model spec, @kline spec §Structural Predicates). No disambiguation is required and none is performed.
 
 ### 11.4 Signature Construction
 

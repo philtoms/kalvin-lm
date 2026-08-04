@@ -1,7 +1,6 @@
 """Tests for KLine — specs/kline.md conformance."""
 
-from kalvin.kline import KDbg, KLine, is_canon, is_compound_word, is_identity, is_misfit, is_terminal, is_unknown
-from kalvin.nlp_tokenizer import COMPOUND_TOKEN
+from kalvin.kline import KDbg, KLine, is_canon, is_identity, is_misfit, is_terminal, is_unknown
 from kalvin.signifier import NLPSignifier
 
 signifier = NLPSignifier()
@@ -153,16 +152,18 @@ class TestStructuralPredicates:
     def test_kl20_is_unknown_false_for_self_referential(self):
         assert is_unknown(KLine(0xFF, [0xFF])) is False
 
-    # ── is_terminal (genus: empty Unknown / self-ref Identity / compound) ─
+    # ── is_terminal (genus: empty Unknown / self-ref Identity) ─
     def test_kl20a_is_terminal_empty(self):
         assert is_terminal(KLine(0xFF, [])) is True
 
     def test_kl21a_is_terminal_self_referential(self):
         assert is_terminal(KLine(0xFF, [0xFF])) is True
 
-    def test_kl26a_is_terminal_compound_word(self):
-        nodes = [0b100, 0b010, COMPOUND_TOKEN]
-        assert is_terminal(KLine(0b110 | COMPOUND_TOKEN, nodes)) is True
+    def test_kl26a_is_terminal_compound_word_self_ref(self):
+        # A §11.3 compound-word is a self-referential identity: its
+        # signature is the OR-reduction of its subword tokens.
+        packed = 0b110
+        assert is_terminal(KLine(packed, [packed])) is True
 
     def test_is_terminal_canon_shaped_is_not_terminal(self):
         assert is_terminal(KLine(0b110, [0b100, 0b010])) is False
@@ -178,18 +179,13 @@ class TestStructuralPredicates:
     def test_kl22_is_identity_single_different_node(self):
         assert is_identity(KLine(0xFF, [0x01])) is False
 
-    def test_is_identity_compound_word(self):
-        # A §11.3 compound-word: COMPOUND_TOKEN is among the nodes.
-        nodes = [0b100, 0b010, COMPOUND_TOKEN]
-        assert is_identity(KLine(0b110 | COMPOUND_TOKEN, nodes)) is True
+    def test_is_identity_compound_word_self_ref(self):
+        # A §11.3 compound-word is a self-referential identity.
+        packed = 0b110
+        assert is_identity(KLine(packed, [packed])) is True
 
-    def test_is_identity_compound_word_no_token_is_not_identity(self):
+    def test_is_identity_canon_shaped_is_not_identity(self):
         assert is_identity(KLine(0b110, [0b100, 0b010])) is False
-
-    def test_is_compound_word_predicate(self):
-        nodes = [0b100, 0b010, COMPOUND_TOKEN]
-        assert is_compound_word(KLine(0b110 | COMPOUND_TOKEN, nodes)) is True
-        assert is_compound_word(KLine(0b110, [0b100, 0b010])) is False
 
     # ── is_canon (non-terminal, signature == signature_of(nodes)) ───────
     def test_kl23_is_canon_genuine(self):
@@ -202,10 +198,11 @@ class TestStructuralPredicates:
     def test_kl25_is_canon_empty_is_not_canon(self):
         assert is_canon(KLine(0xFF, []), signifier) is False
 
-    def test_kl27_is_canon_compound_word_is_not_canon(self):
-        # A compound-word is a terminal, so it is not a canon.
-        nodes = [0b100, 0b010, COMPOUND_TOKEN]
-        assert is_canon(KLine(0b110 | COMPOUND_TOKEN, nodes), signifier) is False
+    def test_kl27_is_canon_compound_word_self_ref_is_not_canon(self):
+        # A compound-word is a self-referential identity (a terminal), so it
+        # is not a canon.
+        packed = 0b110
+        assert is_canon(KLine(packed, [packed]), signifier) is False
 
     def test_is_canon_mismatched_sig(self):
         assert is_canon(KLine(0b100, [0b110]), signifier) is False

@@ -10,8 +10,8 @@ Encoding rules (spec §11):
     OR-reduced via signature_of()).
   - Nodes → each encoded individually via _encode_node(); a multi-token
     word (a resolved word the tokenizer splits into ≥2 subwords) triggers
-    §11.3 compound-word decomposition, which emits a CANONIZES-shaped
-    identity carrying the COMPOUND_TOKEN boundary marker.
+    §11.3 compound-word decomposition, which emits a self-referential
+    identity whose signature is the OR-reduction of the subword tokens.
   - Canonical encoding (§11.4/§11.5): a declared compound identifier's
     signature is computed once at its MTS CANONIZES definition (OR of its
     resolved component node values) and reused by every reference via the
@@ -42,7 +42,6 @@ from __future__ import annotations
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.significance import band_significance
 from kalvin.kline import KDbg, KLine
-from kalvin.nlp_tokenizer import COMPOUND_TOKEN
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 
@@ -204,7 +203,7 @@ class TokenEncoder:
 
         # 5. A packed signature cannot head an empty-form `{S: []}`
         #    UNKNOWN kline (CONTEXT.md "Identity"); the §11.3 compound-word
-        #    decomposition (CANONIZES-shaped, carrying COMPOUND_TOKEN) or the
+        #    decomposition (a self-referential identity) or the
         #    §8 MTS entry is the sole representation. Operator entries with a
         #    packed sig are legitimate references and are emitted normally.
         if entry.op == "UNKNOWN" and sig_is_packed:
@@ -256,23 +255,25 @@ class TokenEncoder:
         A resolved word the external tokenizer splits into ≥2 subwords
         (e.g. ``Mary`` → ``[mar, y]``) is a *compound-word*: one lexical
         item whose decomposition is an encoding artefact, not a declared
-        aggregation. This is orthogonal to §8 MTS (declared compounds),
-        which shares the emit shape but produces a canon rather than an
-        identity. The two are distinguished structurally by COMPOUND_TOKEN:
-        only a compound-word's kline carries it.
+        aggregation. The word is represented as a single-token
+        self-referential identity whose signature is the OR-reduction of the
+        subword tokens — the subwords live in the signature. No marker token
+        is used; the compound-word distinction does not appear in any kline's
+        nodes. This is orthogonal to §8 MTS (declared compounds), which
+        produces a canon rather than a self-ref identity.
 
         Emits:
           1. One UNKNOWN KValue per BPE subword token.
-          2. One CANONIZES-shaped KValue whose nodes are the subword tokens
-             plus COMPOUND_TOKEN — canon-shaped but an identity (S1)
-             because of the marker.
+          2. One self-referential identity KValue ``{packed → [packed]}``
+             (S1) — structurally identical to a single-token word identity.
 
         Deduplicates: if this exact token tuple has been seen before,
         no entries are emitted (but the packed signature is still returned).
 
         Each emitted KValue carries the band-representative significance for
         its production op (subword UNKNOWN entries use ``op`` — always
-        "UNKNOWN" at call sites; the CANONIZES entry uses "CANONIZES").
+        "UNKNOWN" at call sites; the identity entry uses "UNKNOWN" too, the
+        band for a self-ref identity).
 
         Args:
             tokens: List of BPE token uint64 values.
@@ -283,27 +284,18 @@ class TokenEncoder:
             (packed_signature, extra_entries).
         """
         token_key = tuple(tokens)
-        # The compound-word identity kline carries COMPOUND_TOKEN as an extra
-        # node (e.g. ``Mary: [COMPOUND_TOKEN, M, ary]``). The token
-        # participates in the signature algebra like any other node, so the
-        # compound's signature is ``signature_of([COMPOUND_TOKEN] + tokens)``
-        # — the marker is *encoded* in the signature, not OR'd on as a bit.
-        # No masking anywhere: ``packed`` below is this full signature, and it
-        # is the value reused by references (a block-canon under the same
-        # word). See @kline spec §Structural Predicates.
-        compound_nodes = [COMPOUND_TOKEN] + list(tokens)
-        packed = self._signifier.signature_of(compound_nodes)
+        # The compound-word signature is the OR-reduction of the subword
+        # tokens — the subwords live in the signature. No marker token is
+        # involved; ``packed`` is reused by references (a block-canon under
+        # the same word). See @kline spec §Structural Predicates and
+        # @kscript spec §11.3.
+        packed = self._signifier.signature_of(tokens)
 
         # Register the compound-word's signature (§11.4: the compound-word
-        # CANONIZES — word → its subword tokens + marker — DEFINES the
-        # signature; a later block-canon entry with the same word id is a
-        # REFERENCE that must reuse this value, not recompute it from its
-        # own operands). Without this registration, a block canon
-        # (e.g. `had => did have`) falls into the defining branch and
-        # clobbers the compound-word's true signature with
-        # signature_of(block_nodes). Only register when ``dbg_label``
-        # names the compound-word (it is empty at internal call sites that
-        # have no id).
+        # DEFINES the signature; a later block-canon entry with the same
+        # word id is a REFERENCE that must reuse this value, not recompute it
+        # from its own operands). Only register when ``dbg_label`` names the
+        # compound-word (it is empty at internal call sites that have no id).
         if dbg_label:
             self._compound_sigs.setdefault(dbg_label, packed)
 
@@ -335,22 +327,22 @@ class TokenEncoder:
                     )
                 )
 
-            # CANONIZES: compound sig → COMPOUND_TOKEN + subword tokens.
+            # Self-referential identity: packed sig → [packed].
             # Packed values are opaque per §11.5 — _build_dbg skips decode
             # for them.
-            canon_dbg: KDbg | None = None
+            id_dbg: KDbg | None = None
             if self._dev:
-                canon_dbg = self._build_dbg(packed, dbg_label, op="CANONIZES", packed=True)
+                id_dbg = self._build_dbg(packed, dbg_label, op="UNKNOWN", packed=True)
             else:
-                canon_dbg = KDbg(op="CANONIZES")
+                id_dbg = KDbg(op="UNKNOWN")
             extras.append(
                 KValue(
                     KLine(
                         signature=packed,
-                        nodes=compound_nodes,
-                        dbg=canon_dbg,
+                        nodes=[packed],
+                        dbg=id_dbg,
                     ),
-                    band_significance("CANONIZES"),
+                    band_significance("UNKNOWN"),
                 )
             )
 
