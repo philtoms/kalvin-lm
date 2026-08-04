@@ -182,9 +182,13 @@ def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
 
     A kline is a misfit when it is a non-terminal whose signature does not
-    equal ``signature_of(nodes)`` (@CONTEXT.md §Misfit).
+    equal ``signature_of(nodes)`` (@CONTEXT.md §Misfit). This includes the
+    single-node connote/denote shape ``{A: [B]}``; multi-node and
+    single-node misfits differ in the band they claim (S2 vs S3), not in
+    whether they are misfits. Callers that route only multi-node misfits
+    (the S2 expansion path) gate on node count themselves.
     """
-    return len(kline.nodes) > 1 and not is_terminal(kline) and not is_canon(kline, signifier)
+    return not is_terminal(kline) and not is_canon(kline, signifier)
 
 
 def classify_misfit(

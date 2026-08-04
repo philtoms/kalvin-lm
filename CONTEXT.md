@@ -51,11 +51,12 @@ A kline **structure**: the signature equals `signature_of(nodes)`. Claims **S1**
 _Avoid_: canonical (ambiguous with Relational Tokens), treating `=>` (CANONIZES) as synonymous with being a Canon (the token declares an intent to compose; a CANONIZES statement need not construct a Canon), MTS (an example, not the concept)
 
 **Misfit**:
-A kline **structure**: the signature does not equal `signature_of(nodes)`. Claims **S2** — the signature diverges from its nodes, so Kalvin proposes similar klines. Structural shapes:
+A kline **structure**: the signature does not equal `signature_of(nodes)`. Structural shapes:
 
-- misfit (`{AB: [C, D]}`): signature attracts kline substitution
-- underfit (`{AB: [A]}`): signature attracts kline expansion
-- overfit (`{A: [A, B]}`): signature attracts kline contraction
+- no-fit (`{AB: [C, D]}`): signature attracts kline substitution. Claims **S2**
+- underfit (`{AB: [A]}`): signature attracts kline expansion. Claims **S2**
+- overfit (`{A: [A, B]}`): signature attracts kline contraction. Claims **S2**
+- connote/denote (`{A: [B]}`): signature attracts association. Claims **S3**
   _Avoid_: fabrication (informal), conjecture/hypothesis (a misfit is a structure, not a distinct emission kind)
 
 ### Rationalisation

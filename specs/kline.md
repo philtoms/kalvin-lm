@@ -104,8 +104,10 @@ kline's nodes never carry any compound-specific value.
   is never a canon.
 - **`is_misfit(kline)`** — `True` for a non-terminal kline whose
   `signature != signature_of(nodes)` (the residual case after terminal and
-  canon are excluded). A Misfit claims **S2** (@CONTEXT.md §Misfit); the
-  underfit/overfit/dual residuals are classified by `classify_misfit` below.
+  canon are excluded). This includes the single-node connote/denote shape
+  `{A: [B]}` (@CONTEXT.md §Misfit). A multi-node Misfit claims **S2**; the
+  connote/denote shape claims **S3** (the band CONNOTES/DENOTES declare).
+  The underfit/overfit/dual residuals are classified by `classify_misfit` below.
 - **`classify_misfit(kline)`** → `(underfit, overfit)` — classify whether a
   kline's signature faithfully covers its nodes. `underfit` is the signature
   over-claiming its nodes; `overfit` is the nodes over-delivering the
@@ -138,6 +140,7 @@ and significance modules consume them.
 | KL-29 | `is_misfit({S: [A, B]})` where `S == A\|B` (canon) → False                     |
 | KL-30 | `is_misfit({S: []})` → False (terminal, not misfit)                              |
 | KL-31 | `is_misfit({S: [S]})` → False (terminal, not misfit)                             |
+| KL-31a | `is_misfit({A: [B]})` (A ≠ B, signature ≠ signature_of(nodes)) → True (connote/denote shape) |
 | KL-32 | `classify_misfit({S: [A]})` (S over-claims, `residual(S, A) != 0`) → `(True, False)`  |
 | KL-33 | `classify_misfit({A: [S]})` (nodes over-deliver, `residual(S, A) != 0`) → `(False, True)` |
 | KL-34 | `classify_misfit({S: [A, B]})` where `S == A\|B` (canon) → `(False, False)`        |

@@ -219,3 +219,7 @@ class TestStructuralPredicates:
 
     def test_kl31_is_misfit_self_referential_is_false(self):
         assert is_misfit(KLine(0xFF, [0xFF]), signifier) is False
+
+    def test_kl31a_is_misfit_single_node_connote_denote(self):
+        # {A: [B]} — signature != signature_of([B]) → a connote/denote misfit.
+        assert is_misfit(KLine(0b100, [0b010]), signifier) is True

@@ -256,7 +256,7 @@ class _Turn:
                 self._promote(kline)
                 continue
 
-            if is_misfit(kline, self._signifier):
+            if is_misfit(kline, self._signifier) and len(kline.nodes) > 1:
                 batch = self._similar_fit_proposal(kline)
 
         return batch
