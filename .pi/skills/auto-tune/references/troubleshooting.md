@@ -2,7 +2,8 @@
 
 | Problem                                | Solution                                                                                           |
 | -------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `step` times out                       | Supervisor may be stuck. Check `status.json`. Kill stale processes: `lsof -ti :8765 \| xargs kill` |
+| `step` times out (once)            | Supervisor may be stuck. Check `status.json`. Kill stale processes: `lsof -ti :8765 \| xargs kill` |
+| `step` times out repeatedly        | The run is **stalled**, not busy. Run `summary` — `outcome: stalled` means the trainer's satisfaction accounting has deadlocked and no event will come. Stop driving; see SKILL.md §Stalled runs. Do not keep retrying `step` |
 | Port 8765 in use                       | Kill stale harness: `lsof -ti :8765 \| xargs kill`                                                 |
 | `lessons_completed` already 3 on start | Stale curriculum state file. Delete `curricula/<slug>.json` and reset                              |
 | Supervisor won't connect               | Harness not ready. Check `harness.pid`, wait, retry                                                |

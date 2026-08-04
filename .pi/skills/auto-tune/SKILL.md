@@ -32,7 +32,7 @@ Every run produces a verdict: `auto-tune summary --session <name>`. **Read it
 before reading code.** It aggregates the run into:
 
 - **`outcome`** — one of `completed`, `deadlocked`, `supervisor-stalled`,
-  `crashed`, `incomplete`. This is the termination signal.
+  `stalled`, `crashed`, `incomplete`. This is the termination signal.
 - **`significance`** — the S1–S4 histogram over the run's rationalise events,
   plus ground/frame counts. This is what Kalvin actually did.
 - **`entries_total` / `entries_satisfied` / `entries_deadlocked`** — whether
@@ -49,8 +49,9 @@ re-transcribe each loop.
 | `completed`         | Terminal completion fired                                          | Read the significance profile → judge whether the goal was actually met    |
 | `deadlocked`        | Run ended with submitted-but-unsatisfied entries, no completion    | The satisfaction model has no path for those entries — diagnose the gap    |
 | `supervisor-stalled`| A `ratify_request` sat unanswered (you didn't enact a decision)    | You abdicated the supervisor role — see §Supervisor decisions below       |
+| `stalled`           | Connected but frozen: unsatisfied work, no events for the stall threshold | **Stop driving.** The trainer's satisfaction accounting has deadlocked — `step` will only re-poll a dead stream. Stop the run, read `training.harness.log` + the last lesson's compiled entries, diagnose why submitted work isn't rationalised, fix the model, re-run |
 | `crashed`           | Error in the stream                                                | Reproduce, fix, re-run before interpreting anything else                   |
-| `incomplete`        | Run still in progress, no pending decision                         | Keep driving it                                                            |
+| `incomplete`        | Run still in progress and still moving                             | Keep driving it                                                            |
 
 ## Where things live
 
@@ -92,6 +93,9 @@ Spec and docs (read for what the code *means*; do not re-derive in comments):
      semantics, edit the model code **and** the owning spec together, re-run.
      This is the expected, primary path — a deadlock is a finding, not a stall.
    - `supervisor-stalled` → you stopped supervising (see below); resume properly.
+   - `stalled` → the run is frozen mid-stream (see §Stalled runs). Stop
+     driving, stop the processes, diagnose the satisfaction deadlock from
+     `training.harness.log` and the compiled entries, fix the model, re-run.
    - A real improvement to try → snapshot, edit, commit, re-run.
 
 3. **Commit each meaningful change** on the `auto-tune/<name>` branch. Never
@@ -109,6 +113,30 @@ PYTHONPATH=src $AT_PYTHON -m training.auto_tune snapshot --session <name>
 ```
 
 Snapshots give you before/after comparisons across runs.
+
+## Stalled runs
+
+A run can freeze without ending: the supervisor stays connected, the stream
+simply stops, and `step` blocks its full timeout on every call because no event
+is coming. This is a trainer-side satisfaction deadlock — submitted entries
+that never get rationalised, so the lesson can never complete (a catch-22:
+completion needs the events, the events never arrive). The arbiter surfaces
+this as `outcome: stalled` (connected + unsatisfied work + idle past the
+threshold) so you do **not** mistake it for a busy run and churn `step`.
+
+When you see `stalled`:
+
+1. **Stop driving.** Further `step`/`continue` calls re-poll a dead stream.
+2. **Snapshot** the frozen state for before/after evidence.
+3. **Read `training.harness.log`** — the last entries show what the trainer
+   emitted and where it went silent (e.g. a flood of auto-countersigns then
+   nothing, meaning some entries never produced a rationalise event).
+4. **Recompile the stuck lesson** (`compile_source` on its kscript) and
+   compare the compiled entries against the events that *did* fire — the
+   entries absent from the stream are the ones the rationaliser dropped.
+5. **Diagnose and fix the model** (the rationaliser / significance / reactor),
+   update the owning spec, `reset`, re-run. A stall is a finding about the
+   model, same as a deadlock.
 
 ## Supervisor decisions (Pi-in-the-Loop)
 

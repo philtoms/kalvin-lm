@@ -54,6 +54,7 @@ class CLISupervisor:
         self._ws: websockets.asyncio.client.ClientConnection | None = None
         self._latest_ratify_proposal: Any = None
         self._started_at: str | None = None
+        self._last_event_at: str | None = None
         self._last_command: dict | None = None
 
     # -- public API ----------------------------------------------------------
@@ -69,6 +70,7 @@ class CLISupervisor:
 
         # Write connected event (seq 1)
         self._seq = 1
+        self._last_event_at = self._started_at
         self._append_event({"seq": 1, "type": "connected"})
         self._write_status(state="waiting_for_event")
 
@@ -115,6 +117,7 @@ class CLISupervisor:
                     continue
 
                 self._seq += 1
+                self._last_event_at = datetime.now().isoformat()
                 event = enrich_event(frame, self._seq)
 
                 if event.get("type") == "ratify_request":
@@ -156,6 +159,7 @@ class CLISupervisor:
             "pid": os.getpid(),
             "connected": self._connected,
             "last_event_seq": self._seq,
+            "last_event_at": self._last_event_at,
             "last_command": self._last_command,
             "state": state,
             "started_at": self._started_at,
@@ -217,6 +221,7 @@ class CLISupervisor:
 
         if action == "shutdown":
             self._seq += 1
+            self._last_event_at = datetime.now().isoformat()
             self._append_event({"seq": self._seq, "type": "disconnected"})
             self._write_status(state="shutting_down")
             self._connected = False
@@ -298,6 +303,7 @@ class CLISupervisor:
     async def _handle_disconnect(self) -> None:
         """Handle unexpected WebSocket disconnect."""
         self._seq += 1
+        self._last_event_at = datetime.now().isoformat()
         self._append_event({"seq": self._seq, "type": "disconnected"})
         self._write_status(state="errored")
         self._connected = False

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from training.auto_tune.session import SessionDir
@@ -107,6 +108,12 @@ def read_status(session_dir: SessionDir) -> dict:
 # step
 
 _POLL_INTERVAL = 0.1  # seconds between polls
+
+# A connected run idle longer than this while holding unsatisfied work is
+# treated as stalled (frozen), not incomplete (busy). Long enough to ride
+# out a cogitation drain or a slow rationalise; short enough that the agent
+# does not waste a full ``step`` timeout churning a dead stream.
+STALL_THRESHOLD = 15.0  # seconds
 
 
 def step(
@@ -203,6 +210,7 @@ def _infer_outcome(
     events: list[dict],
     status: dict | None,
     trainer_state: dict | None,
+    last_event_age: float | None = None,
 ) -> tuple[str, str]:
     """Infer the run outcome and a one-line diagnosis pointer.
 
@@ -210,11 +218,15 @@ def _infer_outcome(
       - ``crashed``           — an error/traceback surfaced in the stream.
       - ``supervisor-stalled`` — a ratify_request sat unanswered (the
         supervisor role did not participate).
+      - ``stalled``            — the run is connected but frozen: it holds
+        submitted-but-unsatisfied work and has produced no event for longer
+        than ``STALL_THRESHOLD``. The trainer's satisfaction accounting has
+        deadlocked; driving it further will not move it.
       - ``deadlocked``         — the run ended with unsatisfied entries and
         no terminal completion.
       - ``completed``          — a terminal progress/complete event fired.
-      - ``incomplete``        — the run has not ended (still running / idle
-        mid-stream); caller should not yet summarise.
+      - ``incomplete``        — the run has not ended and is still moving;
+        caller should not yet summarise.
     """
     # Walk the stream once, gathering the signals that decide outcome.
     saw_complete = False
@@ -270,9 +282,15 @@ def _infer_outcome(
         )
 
     # A live run (still connected, no terminal event, no pending decision)
-    # is not summarisable — the agent should keep driving it.
+    # is either genuinely in progress or frozen. Distinguish them: a run
+    # that has submitted work it cannot satisfy and has gone quiet is
+    # *stalled*, not *incomplete* — the trainer's satisfaction accounting
+    # has deadlocked (e.g. entries whose rationalise events never arrive),
+    # and driving it further (``step``) only re-polls a stream that will
+    # never move. Surface the freeze so the agent stops churning and
+    # diagnoses the model gap instead.
     if connected and not terminal_stream and not saw_complete:
-        return "incomplete", "Run is still in progress — no verdict yet."
+        return _classify_live_run(status, trainer_state, last_event_age)
 
     if saw_complete:
         return (
@@ -306,6 +324,67 @@ def _infer_outcome(
     )
 
 
+def _parse_iso(value: object) -> datetime | None:
+    """Parse an ISO-8601 timestamp (naive or aware) into an aware datetime.
+
+    Returns ``None`` on any parse failure — callers treat a missing
+    timestamp as "unknown liveness" rather than a stall.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _classify_live_run(
+    status: dict | None,
+    trainer_state: dict | None,
+    last_event_age: float | None,
+) -> tuple[str, str]:
+    """Classify a connected, non-terminal run as ``stalled`` or ``incomplete``.
+
+    A run is *stalled* when it holds submitted-but-unsatisfied work **and**
+    has been idle longer than ``STALL_THRESHOLD`` (or liveness is unknown —
+    an older supervisor that never wrote ``last_event_at``). The satisfaction
+    gap is read from trainer state when available; when the state file is
+    absent or unreadable, any connected run idle past the threshold is
+    treated as stalled, since a busy run produces events.
+
+    Otherwise the run is *incomplete* — still moving, keep driving.
+    """
+    submitted: list = (trainer_state or {}).get("submitted", [])
+    satisfied: list = (trainer_state or {}).get("satisfied", [])
+    has_gap = trainer_state is not None and len(submitted) > len(satisfied)
+    idle = last_event_age is None or last_event_age >= STALL_THRESHOLD
+
+    if idle and (has_gap or trainer_state is None):
+        gap = (
+            f"{len(submitted) - len(satisfied)} of {len(submitted)} entries "
+            "submitted but unsatisfied, "
+            if has_gap
+            else ""
+        )
+        age = (
+            f"{last_event_age:.0f}s"
+            if isinstance(last_event_age, (int, float))
+            else "unknown liveness"
+        )
+        return (
+            "stalled",
+            f"Connected but frozen — no event for {age}. {gap}"
+            "The trainer's satisfaction accounting has deadlocked: driving it "
+            "further will not produce events. Stop the run, read the harness "
+            "log and the last lesson's compiled entries, and diagnose why "
+            "submitted work is not being rationalised. See SKILL.md §Stalled runs.",
+        )
+    return "incomplete", "Run is still in progress — no verdict yet."
+
+
 def summarize(session_dir: SessionDir, *, write: bool = True) -> dict:
     """Aggregate a run into a verdict the agent reads to decide what's next.
 
@@ -324,6 +403,16 @@ def summarize(session_dir: SessionDir, *, write: bool = True) -> dict:
     except FileNotFoundError:
         status = None
     trainer_state = _read_trainer_state(session_dir)
+
+    # Liveness: seconds since the supervisor appended its last event. A
+    # connected run that stops producing events while holding unsatisfied
+    # work is frozen, not busy (see ``_classify_live_run``).
+    last_event_at = _parse_iso(status.get("last_event_at")) if status else None
+    last_event_age = (
+        (datetime.now(timezone.utc) - last_event_at).total_seconds()
+        if last_event_at is not None
+        else None
+    )
 
     # Significance profile from rationalise events.
     bands: dict[str, int] = {"S1": 0, "S2": 0, "S3": 0, "S4": 0}
@@ -359,7 +448,7 @@ def summarize(session_dir: SessionDir, *, write: bool = True) -> dict:
         else None
     )
 
-    outcome, diagnosis = _infer_outcome(events, status, trainer_state)
+    outcome, diagnosis = _infer_outcome(events, status, trainer_state, last_event_age)
 
     # Ratifications: ratify_requests that received a non-continue answer are
     # not distinguishable from the stream alone (the answer is a bus message,

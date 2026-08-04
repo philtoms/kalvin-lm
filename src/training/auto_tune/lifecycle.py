@@ -324,12 +324,15 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
         The supervisor process PID.
 
     Raises:
+        RuntimeError: If the supervisor process exits before connecting.
         TimeoutError: If the supervisor doesn't connect within
             *poll_timeout* seconds.
     """
     pid_path = session_dir / "supervisor.pid"
     _kill_stale_process(pid_path)
 
+    log_path = session_dir / "supervisor.log"
+    log_file = open(log_path, "w", encoding="utf-8")
     proc = subprocess.Popen(
         [
             _resolve_python(),
@@ -339,7 +342,7 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
             str(session_dir),
         ],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stderr=log_file,
         env=_subprocess_env(session_dir),
     )
 
@@ -349,6 +352,14 @@ def start_supervisor(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     status_path = session_dir / "status.json"
     deadline = time.monotonic() + poll_timeout
     while time.monotonic() < deadline:
+        # Fail fast if the supervisor died before connecting (e.g. import
+        # error, missing data dir) rather than polling status.json — which
+        # will never appear — for the full timeout. Mirrors start_harness.
+        if proc.poll() is not None:
+            raise RuntimeError(
+                f"Supervisor process exited with code {proc.returncode} before "
+                f"connecting; see {log_path}"
+            )
         if status_path.exists():
             try:
                 data = json.loads(status_path.read_text(encoding="utf-8"))

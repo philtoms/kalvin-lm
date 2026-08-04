@@ -88,6 +88,7 @@ A single JSON object, written by pi, consumed and deleted by the supervisor.
 | pid            | `int`            | Supervisor process ID                                                                                |
 | connected      | `bool`           | WebSocket connection state                                                                           |
 | last_event_seq | `int`            | Sequence number of last written event                                                                |
+| last_event_at  | `str`            | ISO timestamp of the last written event; the liveness heartbeat for stall detection (see §Run Summary) |
 | last_command   | `object \| null` | Last consumed command                                                                                |
 | state          | `str`            | `connecting`, `waiting_for_event`, `waiting_for_command`, `run_complete`, `shutting_down`, `errored` |
 | started_at     | `str`            | ISO timestamp                                                                                        |
@@ -111,7 +112,7 @@ its goal and, if not, where to look — replacing per-turn supervision prose
 
 | Field                | Type             | Description                                                                                     |
 | -------------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
-| outcome              | `str`            | `completed`, `deadlocked`, `supervisor-stalled`, `crashed`, or `incomplete` (see §Run Summary)  |
+| outcome              | `str`            | `completed`, `deadlocked`, `supervisor-stalled`, `stalled`, `crashed`, or `incomplete` (see §Run Summary)  |
 | diagnosis            | `str`            | One- to two-sentence pointer naming the file/concept to inspect first (diagnosis, not procedure) |
 | significance         | `object`         | S1–S4 band histogram over `rationalise` events, plus `ground` and `frame` counts                |
 | proposals_emitted    | `int`            | Count of `frame` rationalise events (expansion proposals surfaced)                              |
@@ -174,6 +175,7 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 12. The supervisor connects to the harness WebSocket, sends registration frame `{"register": "supervisor"}`.
 13. On successful connection, writes `{"seq": 1, "type": "connected"}` to the event stream and sets the status object's state to `waiting_for_event`.
 14. `start-supervisor` polls the status object until `connected` is `true`, then returns.
+   14a. The readiness poll fails fast if the spawned supervisor exits before connecting, rather than polling until the timeout (which would mask an early crash — e.g. import error or missing data dir — behind a never-appearing status object). Mirrors rule 9b.
 15. `stop-supervisor` writes `{"action": "shutdown"}` to the command file, waits for process exit (SIGKILL on 5s timeout).
 
 ### Per-Event Blocking Model
@@ -233,7 +235,8 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 ### Run Summary
 
 46. `summary` aggregates the current run into a verdict written to `run-summary.json` in the session directory, and prints it. It is pure file aggregation (event stream + status + persisted trainer state) and is safe to run after any run, live or deadlocked — it does not touch the harness process.
-47. The summary's `outcome` field is one of: `completed` (terminal completion event fired), `deadlocked` (run ended with submitted-but-unsatisfied entries and no completion), `supervisor-stalled` (a `ratify_request` sat unanswered — the supervisor role did not enact a decision), `crashed` (an error surfaced in the stream), or `incomplete` (the run is still in progress with no pending decision).
+47. The summary's `outcome` field is one of: `completed` (terminal completion event fired), `deadlocked` (run ended with submitted-but-unsatisfied entries and no completion), `supervisor-stalled` (a `ratify_request` sat unanswered — the supervisor role did not enact a decision), `stalled` (the run is connected but frozen — submitted-but-unsatisfied work and no event for longer than the stall threshold, or liveness unknown), `crashed` (an error surfaced in the stream), or `incomplete` (the run is still in progress and still moving).
+   47a. A connected run is `stalled` rather than `incomplete` when it holds submitted-but-unsatisfied entries (or trainer state is absent) and has produced no event for longer than the stall threshold. This distinguishes a frozen run (the trainer's satisfaction accounting has deadlocked; driving it will not move it) from a busy one, so the agent stops churning `step` and diagnoses the model gap instead of being misdirected to "keep driving".
 48. The summary's `significance` field is the S1–S4 band histogram over `rationalise` events, plus `ground`/`frame` counts. It is the analogue of dialogue-dev's displacement/escalation signals: the agent reads it to judge whether the run achieved the curriculum's goal.
 49. The summary's `entries_total`/`entries_satisfied`/`entries_deadlocked` are derived from the persisted trainer state when available; they are `null` when the state file is absent (the outcome is still inferred from the event stream alone).
 50. The summary's `diagnosis` field is a one- or two-sentence pointer naming the file or concept to inspect first. It is diagnosis, not procedure — it does not prescribe what to edit.
@@ -265,10 +268,12 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 | AT-20 | Process lifecycle commands manage PIDs and enforce timeouts                                                                  | §Error Handling         |
 | AT-21 | `start-harness` kills orphan processes bound to the port (not just the PID-file process) and fails fast on a spawned-harness crash | §Harness Lifecycle     |
 | AT-22 | `summary` writes `run-summary.json` and prints the verdict                                                                  | §Run Summary            |
-| AT-23 | `summary` classifies `completed` / `deadlocked` / `supervisor-stalled` / `crashed` / `incomplete` from the event stream   | §Run Summary            |
+| AT-23 | `summary` classifies `completed` / `deadlocked` / `supervisor-stalled` / `stalled` / `crashed` / `incomplete` from the event stream   | §Run Summary            |
 | AT-24 | `summary` aggregates the S1–S4 significance histogram and ground/frame counts                                              | §Run Summary            |
 | AT-25 | `summary` reports `entries_total`/`entries_satisfied`/`entries_deadlocked` from trainer state (null when absent)           | §Run Summary            |
 | AT-26 | `summary` degrades gracefully when the trainer state file is missing (outcome still inferred)                              | §Run Summary            |
+| AT-28 | A connected run with submitted-but-unsatisfied entries and no event for longer than the stall threshold reports `stalled`, not `incomplete` | §Run Summary            |
+| AT-27 | `start-supervisor` fails fast if the spawned supervisor exits before connecting (does not poll status.json until timeout)  | §Supervisor Lifecycle   |
 
 ## Out of Scope
 
