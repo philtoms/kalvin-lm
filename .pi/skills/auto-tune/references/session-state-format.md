@@ -54,7 +54,7 @@ It is the **single source of truth** for resuming an auto-tune session. The agen
 ## Rules
 
 1. **Update after every observation.** Never leave the state file stale. The next reader must be able to continue seamlessly.
-2. **Keep run summaries compact.** 1-3 sentences per run. Detailed logs live in `harness.log` and `events.jsonl` — the state file points to them, it doesn't duplicate them.
+2. **Keep run summaries compact.** 1-3 sentences per run. Detailed logs live in `training.harness.log` and `events.jsonl` — the state file points to them, it doesn't duplicate them.
 3. **Next Action must be specific.** Not "continue tuning" but "start run 6, test whether increasing budget fixes the escalation at lesson 3."
 4. **Always move the latest run to the top.** The latest run gets the full template; older runs collapse to one-liners.
 5. **Patterns section accumulates insight.** This is where cross-run learning lives. Update it when you notice something.

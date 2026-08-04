@@ -1,7 +1,13 @@
 ## Objective
-Stress-test intra-lesson reactive cascade by creating high candidate density. Many identity atoms are established first, then compound entries that share signature patterns create overlapping candidate pools. The final lessons submit entries where the query signature matches many candidates simultaneously.
+
+Stress-test intra-lesson reactive cascade by creating high candidate density. Many identity atoms are established first, then compound entries that share signature patterns create overlapping candidate pools.
+
+## Goal
+
+The final lessons submit entries where the query signature matches many candidates simultaneously.
 
 ## Approach
+
 1. Build up a dense model with many identities and relationships
 2. Submit compound misfits whose compound signature signifies the established pair klines
 3. The goal is to observe how the reactor and cogitator handle high candidate counts within a single lesson
@@ -20,6 +26,7 @@ the established klines because `model.where(sig)` is bit-overlap based.
 ## Lessons
 
 ### 1
+
 Introduce ten identity atoms to create a dense signature space.
 
 ```
@@ -36,6 +43,7 @@ J(uliet)
 ```
 
 ### 2
+
 Establish bidirectional countersigns between pairs. This populates the kline space with structural relationships.
 
 ```
@@ -47,6 +55,7 @@ I(ndia) == J(uliet)
 ```
 
 ### 3
+
 Submit cross-group connoted misfits that bridge the pairs. Each entry is a
 single-node overfit misfit whose compound signature (e.g. `AB` = Alpha|Beta)
 signifies the established pair countersigns, while its single node (e.g. Charlie)
@@ -64,6 +73,7 @@ GH > I
 ```
 
 ### 4
+
 Submit compound misfits that combine multiple groups. Each compound signature
 (e.g. `ABCD` = Alpha|Beta|Charlie|Delta) signifies many established klines at
 once, so each single-node misfit retrieves a large candidate pool. The final
@@ -80,6 +90,7 @@ ACEGI > B D F H J
 ```
 
 ### 5
+
 The pressure test: submit misfits whose signature spans all ten atoms. The
 compound `ABCDEFGHIJ` signifies every established identity and countersign, so
 each single-node misfit creates maximum candidate overlap. The connoted nodes

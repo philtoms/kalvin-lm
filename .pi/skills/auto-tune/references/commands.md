@@ -49,6 +49,7 @@ AT_PYTHON="$(pwd)/.venv/bin/python"
 | `{"action": "stop"}`                    | End training session                     |
 | `{"action": "shutdown"}`                | Graceful supervisor exit                 |
 | `{"action": "guidance", "text": "..."}` | Send guidance to trainer                 |
+| `{"action": "scaffold", "text": "..."}` | Submit reactive scaffolding KScript  |
 | `{"action": "goal", "text": "..."}`     | Set a training goal                      |
 | `{"action": "save"}`                    | Persist Kalvin model                     |
 | `{"action": "load"}`                    | Load Kalvin model                        |

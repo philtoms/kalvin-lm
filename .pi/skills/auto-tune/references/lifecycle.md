@@ -34,7 +34,7 @@ PYTHONPATH=src $AT_PYTHON -m training.auto_tune step \
 PYTHONPATH=src $AT_PYTHON -m training.auto_tune snapshot --session <name>
 
 # 4. Observe
-cat auto-tune/<name>/harness.log
+cat auto-tune/<name>/training.harness.log
 
 # 5. Stop processes
 PYTHONPATH=src $AT_PYTHON -m training.auto_tune stop-supervisor --session <name>
