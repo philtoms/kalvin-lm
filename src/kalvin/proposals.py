@@ -22,8 +22,8 @@ both share the significance algebra (``kalvin.significance``) and the model
 (``kalvin.model``); the dependency on expand itself is one-way and
 conceptual: expand walks the graph and yields connotations, proposals
 reshapes misfits into self-consistent klines. The significance-model
-grounding predicates (``is_terminal``, ``is_canon``) and the signifier
-interface (``classify_misfit``, ``residual``, ``signifies``,
+grounding predicates (``is_terminal``, ``is_canon``, ``classify_misfit``) and the signifier
+interface (``residual``, ``signifies``,
 ``signature_of``) are consumed here as stable seams.
 
 Module-level types:
@@ -35,7 +35,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
-from kalvin.kline import KLine, is_canon, is_terminal
+from kalvin.kline import KLine, classify_misfit, is_canon, is_terminal
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
@@ -70,7 +70,7 @@ def propose_expansions(
     if is_terminal(candidate) or is_canon(candidate, signifier):
         return  # terminal or canonical — nothing to expand
 
-    underfit, overfit = signifier.classify_misfit(candidate.signature, candidate.nodes)
+    underfit, overfit = classify_misfit(candidate, signifier)
 
     if not underfit and not overfit:
         return

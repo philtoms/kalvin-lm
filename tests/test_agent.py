@@ -12,7 +12,7 @@ from kalvin.agent_codec import AgentCodec
 from kalvin.cogitator import CogitationHandler, Cogitator, WorkItem
 from kalvin.events import EventBus, RationaliseEvent
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4, structural_sig
-from kalvin.kline import KDbg, KLine, sig_level
+from kalvin.kline import KDbg, KLine, classify_misfit, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -644,7 +644,7 @@ class TestCogitatorStructuralGrounding:
         # sig == OR(nodes) is necessary but NOT sufficient for canon — the kline
         # is identity (self-referential), so is_canon() returns False since 040bc0c.
         assert k.signature == nodes_sig
-        underfit, overfit = signifier.classify_misfit(k.signature, k.nodes)
+        underfit, overfit = classify_misfit(k, signifier)
         assert not underfit and not overfit
 
 

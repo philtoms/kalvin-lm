@@ -210,6 +210,30 @@ def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """
     return len(kline.nodes) > 1 and not is_terminal(kline) and not is_canon(kline, signifier)
 
+
+def classify_misfit(
+    kline: KLine, signifier: KSignifier
+) -> tuple[bool, bool]:
+    """Classify whether a kline's signature faithfully covers its nodes.
+
+    A structural classification of the relationship between a kline's
+    signature and the signature of its nodes. Returns ``(underfit, overfit)``:
+
+    - underfit — the signature claims more than its nodes deliver
+      (``residual(signature, nodes_sig) != 0``).
+    - overfit — the nodes carry more than the signature captures
+      (``residual(nodes_sig, signature) != 0``).
+
+    The residual representation and its masking remain Signifier concerns
+    (``residual``); this function only orchestrates the two directions and
+    the emptiness test, like the other structural predicates here. Used by
+    the misfit/expansion pipeline during rationalisation.
+    """
+    nodes_sig = signifier.signature_of(kline.nodes)
+    underfit = signifier.residual(kline.signature, nodes_sig) != 0
+    overfit = signifier.residual(nodes_sig, kline.signature) != 0
+    return underfit, overfit
+
 # Display helper
 
 _OP_SYMBOLS = {

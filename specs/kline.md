@@ -113,8 +113,17 @@ anywhere.
 - **`is_misfit(kline)`** — `True` for a non-terminal kline whose
   `signature != signature_of(nodes)` (the residual case after terminal and
   canon are excluded). A Misfit claims **S2** (@CONTEXT.md §Misfit); the
-  underfit/overfit/dual residuals are classified by the @signifier spec
-  (`classify_misfit`).
+  underfit/overfit/dual residuals are classified by `classify_misfit` below.
+- **`classify_misfit(kline)`** → `(underfit, overfit)` — classify whether a
+  kline's signature faithfully covers its nodes. `underfit` is the signature
+  over-claiming its nodes; `overfit` is the nodes over-delivering the
+  signature. Both are computed as the non-emptiness of the two
+  `@signifier residual` directions (`residual(signature, nodes_sig)` and
+  `residual(nodes_sig, signature)`). The residual representation and its
+  masking remain a Signifier concern; this predicate only orchestrates the
+  two directions and the emptiness test, like the other structural
+  predicates here. Used by the misfit/expansion pipeline during
+  rationalisation.
 
 These live with the KLine because they are structural properties; the model
 and significance modules consume them.
@@ -137,6 +146,9 @@ and significance modules consume them.
 | KL-29 | `is_misfit({S: [A, B]})` where `S == A\|B` (canon) → False                     |
 | KL-30 | `is_misfit({S: []})` → False (terminal, not misfit)                              |
 | KL-31 | `is_misfit({S: [S]})` → False (terminal, not misfit)                             |
+| KL-32 | `classify_misfit({S: [A]})` (S over-claims, `residual(S, A) != 0`) → `(True, False)`  |
+| KL-33 | `classify_misfit({A: [S]})` (nodes over-deliver, `residual(S, A) != 0`) → `(False, True)` |
+| KL-34 | `classify_misfit({S: [A, B]})` where `S == A\|B` (canon) → `(False, False)`        |
 
 ## What a Kline is Not
 

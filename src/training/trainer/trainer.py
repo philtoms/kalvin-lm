@@ -25,7 +25,7 @@ from typing import Any
 
 from kalvin.events import RationaliseEvent
 from kalvin.significance import SIG8_MAX, SIG_MASK
-from kalvin.kline import kline_display
+from kalvin.kline import classify_misfit, kline_display
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.signifier import NLPSignifier
@@ -195,9 +195,7 @@ class Trainer:
         bit differences between the kline signature and its nodes.
         """
         target = event.proposal.kline
-        target_underfit, target_overfit = self._signifier.classify_misfit(
-            target.signature, target.nodes
-        )
+        target_underfit, target_overfit = classify_misfit(target, self._signifier)
         target_nodes_sig = self._signifier.signature_of(target.nodes)
         underfit_gap = self._signifier.residual(target.signature, target_nodes_sig)
         overfit_mask = self._signifier.residual(target_nodes_sig, target.signature)

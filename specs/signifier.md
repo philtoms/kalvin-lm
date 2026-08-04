@@ -91,21 +91,12 @@ between a kline's signature and its nodes' signature — e.g. whether the
 signature over- or under-claims its nodes.
 
 The interface does not specify the residual's representation (it is opaque
-to Kalvin), only that it can be passed back to the Signifier for emptiness
-queries (see `classify_misfit` below). No algebraic property of the result
-is guaranteed — not that it is a signature, not its value for equal inputs.
-
-### `classify_misfit(signature: uint64, nodes: Sequence[uint64]) → tuple[bool, bool]`
-
-Classify whether a signature faithfully covers its node set. Returns
-`(underfit, overfit)`:
-
-- `underfit` — the signature claims more than its nodes deliver.
-- `overfit` — the nodes carry more than the signature captures.
-
-Encapsulates the residual computation and its emptiness test, so callers
-receive booleans and never inspect a residual value's representation. Used
-by the misfit/expansion pipeline during rationalisation.
+to Kalvin), only that its emptiness can be tested. Kalvin core tests
+residuals for non-emptiness via the structural predicate
+`classify_misfit` (@kline spec), which orchestrates the two residual
+directions over a kline's signature and nodes. No algebraic property of the
+result is guaranteed — not that it is a signature, not its value for equal
+inputs.
 
 ## NLPSignifier (Production Concrete)
 
@@ -162,13 +153,6 @@ Masking to the type word is consistent with `signifies`: BPE-token-id
 residuals are excluded, so the residual captures type-dimension claims, not
 token-id differences.
 
-### `classify_misfit` — masked residual classification
-
-Computes `residual(signature, signature_of(nodes))` and
-`residual(signature_of(nodes), signature)` and tests each for non-zero,
-returning `(underfit, overfit)`. The emptiness test (`!= 0`) lives inside
-this method — callers receive booleans and never inspect a residual value.
-
 ### Properties (NLPSignifier-specific)
 
 Every property below is a consequence of the NLP bit-algebra. None of them is
@@ -204,13 +188,8 @@ required by the interface; each would be violated by a non-bit Signifier
 - **Type-only** — like `signifies`, masking excludes BPE-token-id residuals;
   two values differing only in BPE id have a zero residual.
 - **Directional** — `residual(a, b) != residual(b, a)` in general; the two
-  directions are the underfit/overfit residuals used by `classify_misfit`.
-
-**`classify_misfit`:**
-
-- **Encapsulates `residual` + `!= 0`** — the only operation Kalvin core uses
-  over a residual value; callers receive `(underfit, overfit)` bools and
-  never inspect the residual representation.
+  directions are the underfit/overfit residuals consumed by the structural
+  `classify_misfit` predicate (@kline spec).
 
 These constants, ranges, and the "type dimension" semantics are
 NLP-deployment details; they do not appear in the interface and are not
@@ -251,10 +230,9 @@ Every criterion below is a property of NLPSignifier's bit-algebra:
 | SIG-17 | `residual(T(0b110), T(0b010)) == T(0b100)` (type-word bits in a not in b) | — |
 | SIG-18 | `residual(a, a) == 0` for any a (empty residual) | — |
 | SIG-19 | `residual(T(0b110) \| 5, T(0b010) \| 7) == T(0b100)` (BPE-id bits masked off) | — |
-| SIG-20 | `classify_misfit(T(0b110), [T(0b010)]) == (True, False)` (signature over-claims) | — |
-| SIG-21 | `classify_misfit(T(0b010), [T(0b110)]) == (False, True)` (nodes over-deliver) | — |
-| SIG-22 | `classify_misfit(T(0b110), [T(0b110)]) == (False, False)` (faithful coverage) | — |
-| SIG-23 | `classify_misfit(T(0b100) \| 5, [T(0b100) \| 9]) == (False, False)` (BPE-id difference ignored) | — |
+
+`classify_misfit` conformance (formerly SIG-20..23) moved to the @kline spec
+(KL-32..34) when `classify_misfit` became a structural predicate.
 
 ## What a Signifier is Not
 

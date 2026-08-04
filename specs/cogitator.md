@@ -43,9 +43,10 @@ This spec depends on the following concepts, defined elsewhere:
 
 ### Signifier (@signifier spec)
 
-- Provides `signature_of(nodes)`, `signifies`, `residual`, and
-  `classify_misfit(signature, nodes)` used during S2 misfit classification
-  and expansion.
+- Provides `signature_of(nodes)`, `signifies`, and `residual` (the
+  Signifier interface). The structural `classify_misfit(kline)` predicate
+  (@kline spec) orchestrates `residual` for S2 misfit classification and
+  expansion.
 
 ### Kline (@kline spec)
 
@@ -215,9 +216,9 @@ the implementation detail.
 
 ### Misfit Classification
 
-Given a candidate kline, the Signifier classifies whether its signature
-faithfully covers its nodes (`@signifier §classify_misfit`, returning
-`(underfit, overfit)`):
+Given a candidate kline, the structural `classify_misfit` predicate
+(@kline spec) classifies whether its signature faithfully covers its nodes,
+returning `(underfit, overfit)`:
 
 | Condition      | Classification | Meaning                                         |
 | -------------- | -------------- | ----------------------------------------------- |

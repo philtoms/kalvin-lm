@@ -104,24 +104,16 @@ class TestResidual:
         assert signifier.residual(t(0b110), t(0b010)) != signifier.residual(t(0b010), t(0b110))
 
 
-class TestClassifyMisfit:
-    """classify_misfit: masked residual classification."""
+class TestClassifyMisfitRemoved:
+    """classify_misfit moved to kalvin.kline (structural concern).
 
-    def test_signature_over_claims(self):
-        """SIG-20: signature over-claims → (True, False)."""
-        assert signifier.classify_misfit(t(0b110), [t(0b010)]) == (True, False)
+    The SIG-20..23 conformance cases now live in tests/test_misfit.py as
+    TestClassifyMisfitConformance; NLPSignifier no longer defines the method.
+    """
 
-    def test_nodes_over_deliver(self):
-        """SIG-21: nodes over-deliver → (False, True)."""
-        assert signifier.classify_misfit(t(0b010), [t(0b110)]) == (False, True)
-
-    def test_faithful_coverage(self):
-        """SIG-22: faithful coverage → (False, False)."""
-        assert signifier.classify_misfit(t(0b110), [t(0b110)]) == (False, False)
-
-    def test_bpe_id_difference_ignored(self):
-        """SIG-23: BPE-id difference ignored → (False, False)."""
-        assert signifier.classify_misfit(t(0b100) | 5, [t(0b100) | 9]) == (False, False)
+    def test_no_method_on_signifier(self):
+        """classify_misfit is not a Signifier method (moved to kline)."""
+        assert not hasattr(signifier, "classify_misfit")
 
 
 class TestAbstractConformance:

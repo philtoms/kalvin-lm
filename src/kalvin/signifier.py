@@ -20,11 +20,14 @@ between the NLP Tokenizer and the NLP Signifier (see specs/signifier.md
   upper 32 bits (the NLP type word); non-zero means overlap.
 - :meth:`residual` — masked set-difference: the type-word bits of *a* not
   in *b*.
-- :meth:`classify_misfit` — masked residual classification of whether a
-  signature faithfully covers its nodes.
 
 The lower 32 bits (BPE token IDs) are masked off in :meth:`signifies` so two
 values are compared by NLP type-word overlap, not by token-ID collision.
+
+Misfit classification of a kline's signature against its nodes is a
+structural concern: see :func:`kalvin.kline.classify_misfit`, which
+orchestrates this class's :meth:`residual` (the residual representation and
+its masking stay here).
 
 See specs/signifier.md for the full specification, including the
 NLPSignifier-specific properties (determinism, commutativity, the empty→0
@@ -52,8 +55,6 @@ class NLPSignifier(KSignifier):
     - :meth:`signature_of` OR-reduces the full 64-bit node values.
     - :meth:`signifies` is ``(a & b & _TYPE_MASK) != 0``.
     - :meth:`residual` is ``(a & ~b) & _TYPE_MASK``.
-    - :meth:`classify_misfit` uses :meth:`residual` on both directions and
-      tests each for non-zero.
     """
 
     def signature_of(self, nodes: Sequence[int]) -> int:
@@ -89,17 +90,3 @@ class NLPSignifier(KSignifier):
         type-dimension claims, not token-id differences.
         """
         return (a & ~b) & _TYPE_MASK
-
-    def classify_misfit(self, signature: int, nodes: Sequence[int]) -> tuple[bool, bool]:
-        """Classify whether a signature faithfully covers its nodes.
-
-        Returns ``(underfit, overfit)``:
-        - underfit — the signature claims more than its nodes deliver
-          (``residual(signature, nodes_sig) != 0``).
-        - overfit — the nodes carry more than the signature captures
-          (``residual(nodes_sig, signature) != 0``).
-        """
-        nodes_sig = self.signature_of(nodes)
-        underfit = self.residual(signature, nodes_sig) != 0
-        overfit = self.residual(nodes_sig, signature) != 0
-        return underfit, overfit

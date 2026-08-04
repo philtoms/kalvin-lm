@@ -3,11 +3,11 @@
 Test values use ``t(bits) = bits << 32`` so the type word (upper 32 bits) is
 populated. Misfit classification operates on the type word only (masked,
 consistent with ``signifies``); low-bit-only values would have an empty type
-word and classify trivially as canonical. See specs/signifier.md
-§classify_misfit.
+word and classify trivially as canonical. See specs/kline.md §classify_misfit
+and specs/signifier.md §residual.
 """
 
-from kalvin.kline import KLine
+from kalvin.kline import KLine, classify_misfit
 from kalvin.proposals import generate_expansions
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
@@ -33,7 +33,7 @@ class TestClassifyMisfit:
         is_identity (KL-21) / is_canon (KL-24).
         """
         k = KLine(t(10), [t(10)])  # make_sig([t(10)]) = t(10)
-        assert signifier.classify_misfit(k.signature, k.nodes) == (False, False)
+        assert classify_misfit(k, signifier) == (False, False)
 
     def test_canonical(self):
         """Genuine canon {S: [A, B]} with S == A|B → (False, False).
@@ -42,7 +42,7 @@ class TestClassifyMisfit:
         non-zero. See is_canon (KL-23).
         """
         k = KLine(t(0b110), [t(0b100), t(0b010)])
-        assert signifier.classify_misfit(k.signature, k.nodes) == (False, False)
+        assert classify_misfit(k, signifier) == (False, False)
 
     def test_underfitting(self):
         """Signature over-claims → (True, False).
@@ -52,7 +52,7 @@ class TestClassifyMisfit:
         residual(nodes_sig, sig) = 0 → not overfit.
         """
         k = KLine(t(0b110), [t(0b100)])
-        assert signifier.classify_misfit(k.signature, k.nodes) == (True, False)
+        assert classify_misfit(k, signifier) == (True, False)
 
     def test_overfitting(self):
         """Nodes over-deliver → (False, True).
@@ -62,7 +62,7 @@ class TestClassifyMisfit:
         residual(nodes_sig, sig) = t(0b010) ≠ 0 → overfit.
         """
         k = KLine(t(0b100), [t(0b110)])
-        assert signifier.classify_misfit(k.signature, k.nodes) == (False, True)
+        assert classify_misfit(k, signifier) == (False, True)
 
     def test_dual_misfit(self):
         """Both residuals non-zero → (True, True).
@@ -72,7 +72,7 @@ class TestClassifyMisfit:
         residual(nodes_sig, sig) = t(0b010) ≠ 0 → overfit.
         """
         k = KLine(t(0b101), [t(0b110)])
-        assert signifier.classify_misfit(k.signature, k.nodes) == (True, True)
+        assert classify_misfit(k, signifier) == (True, True)
 
     def test_bpe_id_difference_ignored(self):
         """Same type word, differing BPE ids → (False, False).
@@ -82,7 +82,31 @@ class TestClassifyMisfit:
         """
         # type word 0b100 in both; BPE ids 5 and 9 differ.
         k = KLine(t(0b100) | 5, [t(0b100) | 9])
-        assert signifier.classify_misfit(k.signature, k.nodes) == (False, False)
+        assert classify_misfit(k, signifier) == (False, False)
+
+
+class TestClassifyMisfitConformance:
+    """classify_misfit raw-signature conformance (SIG-20..22).
+
+    These mirror the former signifier-level conformance cases, now expressed
+    through the structural :func:`kalvin.kline.classify_misfit` function.
+    SIG-23 is covered by TestClassifyMisfit.test_bpe_id_difference_ignored.
+    """
+
+    def test_sig20_signature_over_claims(self):
+        """SIG-20: signature over-claims → (True, False)."""
+        k = KLine(t(0b110), [t(0b010)])
+        assert classify_misfit(k, signifier) == (True, False)
+
+    def test_sig21_nodes_over_deliver(self):
+        """SIG-21: nodes over-deliver → (False, True)."""
+        k = KLine(t(0b010), [t(0b110)])
+        assert classify_misfit(k, signifier) == (False, True)
+
+    def test_sig22_faithful_coverage(self):
+        """SIG-22: faithful coverage → (False, False)."""
+        k = KLine(t(0b110), [t(0b110)])
+        assert classify_misfit(k, signifier) == (False, False)
 
 
 class TestGenerateExpansions:
