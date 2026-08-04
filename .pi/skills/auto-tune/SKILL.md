@@ -1,12 +1,42 @@
 ---
 name: auto-tune
-description: Drives an auto-tune session to improve the codebase using repeated training runs, observation, code edits, and documentation updates. Use when the user says "/auto-tune" or asks to auto-tune, tune, or iterate on the codebase using training runs. Establishes a goal, runs training sessions, observes results, edits code, and updates cascade documentation.
+description: Drives an auto-tune session to tune Kalvin's rationalisation behaviour (the significance model) using repeated training runs, observation, code edits, and documentation updates. Use when the user says "/auto-tune" or asks to auto-tune, tune, or iterate on the codebase using training runs. Establishes a goal, runs training sessions, observes results, edits the significance-model code and owning spec together, and re-runs to confirm.
 ---
 
 # Auto-Tune
 
 > **STOP. Do not read files, do not write code, do not address the user's request.
 > Your first and only action is to determine which entry point applies (New Session or Resume Session) and complete step 1.**
+
+## What Auto-Tune Is For
+
+Auto-tune is the project's **experimental loop for tuning Kalvin's rationalisation
+behaviour**. A curriculum exercises the reactor/cogitator/rationaliser under
+controlled conditions; you observe how Kalvin actually rationalises; then you
+change the system so it rationalises better — and re-run. The thing being tuned
+is **Kalvin's significance model**: how `expand()`, `significance.py`, the
+rationaliser, and the cascade produce significance and proposals from a kline
+and a candidate pool.
+
+This means the **primary** kind of change auto-tune exists to make is a change
+to the significance model itself — the code *and* the spec that defines its
+intended semantics, evolved together. When an observation shows Kalvin scoring
+something S4 that the curriculum intends to produce an S2/S3 proposal, that is
+not a dead end and not merely a curriculum bug to work around: it is the signal
+that the model's current semantics are the thing to change. State the intended
+semantics, edit `expand()`/`significance.py`/the rationaliser to realise them,
+update the owning spec, and re-run to confirm. **This is in scope — it is the
+core activity auto-tune was built for.**
+
+Incidental codebase polish (logging, ergonomics, harness bugs) is also valid
+but secondary. A session whose goal is a model-semantics change is the norm,
+not an exception that needs special permission.
+
+> **Terminology guard.** `CONTEXT.md` says auto-tune "improves the codebase, not
+> Kalvin's model." That caveat refers to the **trained `.bin` artifact**
+> (Kalvin's accumulated memory), which auto-tune never edits directly. It does
+> **not** mean the significance model is off-limits — the code and specs that
+> *define* that model live in the codebase and are auto-tune's central target.
 
 ## Entry Points
 
@@ -61,13 +91,13 @@ between them in the window, that is a process failure, not a result.
 
 You need all three elements before doing anything else:
 
-- **What** specific improvement you're targeting (e.g., "better server-side logging for training operations")
-- **Which curriculum** drives the runs (default: `curricula/first-steps.md`)
-- **How you'll know** the goal is met (observable outcome — e.g., "a developer can trace the full training pipeline from harness.log"), or the user specifies this is an "open" session
+- **Which curriculum** drives the runs (default: `curricula/first-steps.md`). This is often the first user prompt after this SKILL. Read it first - it may contain the next two elements:
+- **What (Curriculum Objective)** specific rationalisation behaviour you're targeting. Prefer a goal about *how Kalvin should rationalise* — a significance outcome the curriculum is designed to probe (e.g., "a misfit whose connoted node is node-disjoint from its candidate pool should still yield an S3 connotation proposal, not score S4 and be dropped"). Incidental goals (e.g., "better server-side logging for training operations") are valid but are not the centre of gravity.
+- **How you'll know** the goal is met — an observable outcome in the run events/log (e.g., "lessons 3–5 emit S3 frame events with expansion proposals, not silent S4 drops"), or the user specifies this is an "open" session.
 
 **Fast path:** If the user's prompt already contains all three elements, state them back in one sentence and proceed directly to step 2.
 
-**Slow path:** If elements are missing or vague, discuss with the user until the goal is clear and specific.
+**Slow path:** If elements are missing or vague, discuss with the user until the goal is clear and specific. When the goal is a model-semantics change, nail down the *intended* significance outcome before writing any code — the spec edit and the code edit are two halves of one change.
 
 ## Rules
 
@@ -81,7 +111,7 @@ These rules apply throughout the session:
 6. **Keep context lean.** Don't re-read old harness logs or events from previous runs. The state file has the summary. Only read the current run's artifacts. (This concerns _historical_ runs — it does **not** excuse skipping per-event reasoning on decision events; see §Pi-in-the-Loop Model.)
 7. **Work inside the worktree.** After init, all commands and file operations happen inside `.worktrees/auto-tune/<name>/`. Never modify files in the main repo.
 
-Auto-tune tunes the **codebase** AND the **project documentation**.
+Auto-tune tunes **Kalvin's significance model** — the code (`expand.py`, `significance.py`, `rationaliser.py`, `cogitator.py`, …) **and** the owning spec that defines its intended semantics, changed together — AND the surrounding project documentation. When you change model behaviour, update the owning spec in the same change: the spec states the intended semantics, the code realises them, and the next run is the experiment that confirms both.
 
 ## 2. Init Session (once, new sessions only)
 
@@ -196,8 +226,9 @@ Read `session-state.md` (your fresh update) and decide:
 
 - If the goal is met → go to step 4 (Document)
 - If there are crashes → fix (see Rule 1), update state, then go to f
-- If there's an improvement to try → snapshot, edit code, commit, update state (**Files Modified**), then go to f
-- If 3 runs pass with no meaningful improvement → surface this to the user and ask whether to continue
+- If there's an **improvement to try** → snapshot, edit code, commit, update state (**Files Modified**), then go to f
+- If the observation **reveals a model-semantics gap** (Kalvin rationalises differently than the curriculum intends, and the gap is in the significance model — not a crash, not a curriculum typo) → this is **the expected, primary path**, not a stall. State the intended semantics, edit the model code (`expand()`/`significance.py`/rationaliser) **and** the owning spec together, commit, update state, then go to f. Surface to the user only if the intended semantics are genuinely ambiguous and you need a decision about *what* Kalvin should do — not about *whether* you're allowed to change the model.
+- If 3 runs pass with no meaningful improvement **and** no semantics gap is identifiable → surface this to the user and ask whether to continue. (Do not use this branch to escape a semantics gap you have identified — that belongs in the branch above.)
 
 ### f. Reset for next run
 
@@ -213,9 +244,12 @@ Then return to step a.
 
 ## 4. Document (once, at end)
 
-Every auto-tune session must consolidate existing documentation:
+Every auto-tune session must consolidate existing documentation. For a
+model-semantics session this is not trailing busywork — the spec edit is half
+of the change (the intended semantics) and was likely already written during
+step 3e; here you finalise it alongside the plan and tests.
 
-1. **Spec** (`specs/<existing>.md`) — behavioural rules, test matrix, definitions derived from what you observed. Reference the auto-tune session directory as evidence.
+1. **Spec** (`specs/<existing>.md`) — the intended semantics of the behaviour you changed, plus behavioural rules, test matrix, and definitions. For a model-semantics change, the spec states what Kalvin *should* do (the new intended semantics you converged on), grounded in what you observed and confirmed across runs. Reference the auto-tune session directory as evidence.
 
 2. **Plan** (`plans/impl/<existing>.md`) — implementation tasks, test mapping, design decisions. Include:
    - A link to the auto-tune session directory as evidence
@@ -236,6 +270,7 @@ Update state: **Current Phase** → `complete`.
 
 ### Documentation Rules
 
-- The spec must be derivable from what you observed during auto-tune runs, not invented
-- The plan must reference the actual code changes made during the session
-- Tests must cover spec criteria (TL-1 through TL-N style IDs)
+- For a **model-semantics change**, the spec states the *intended* semantics (what Kalvin should do), and the code is edited to realise them; the post-change run is the experiment that confirms the two agree. The spec is therefore **authored from the intended semantics plus observed evidence**, not merely transcribed from old behaviour.
+- For an **incidental/observational change** (no semantics change), the spec must be derivable from what you observed during auto-tune runs, not invented.
+- The plan must reference the actual code changes made during the session.
+- Tests must cover spec criteria (TL-1 through TL-N style IDs).

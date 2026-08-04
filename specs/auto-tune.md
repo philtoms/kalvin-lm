@@ -2,7 +2,7 @@
 
 ## Overview
 
-Auto-tune is a CLI tool and supervisor participant that enables an LLM coding agent (pi) to autonomously control training sessions, observe results, modify the codebase, and re-run — converging on a code quality goal. Pi owns the full lifecycle: it starts the harness server, starts the CLI supervisor, drives training via commands, reads events, edits code, snapshots state, resets, and repeats.
+Auto-tune is a CLI tool and supervisor participant that enables an LLM coding agent (pi) to autonomously control training sessions, observe results, modify the codebase, and re-run — converging on a behavioural goal for Kalvin's rationalisation. The thing being tuned is Kalvin's significance model: pi observes how the reactor/cogitator/rationaliser actually behave under a curriculum, then changes the model code (`expand()`, `significance.py`, the rationaliser) together with the owning spec that defines its intended semantics, and re-runs to confirm. Incidental codebase goals are also valid. Pi owns the full lifecycle: it starts the harness server, starts the CLI supervisor, drives training via commands, reads events, edits code, snapshots state, resets, and repeats.
 
 The system has two components:
 
