@@ -10,8 +10,7 @@
 
 ## Coding activity
 
-- **Every ad-hoc coding request leads to a documentation maintenance phase.** An ad-hoc request is any code change that does not go through the full cascade (e.g. bug fixes, tweaks, small features, refactors, debugging). After the code change is complete ask user before:
-  1. **Locate** — find the cascade layer the change relates to: check `docs/kalvin-vision.md`, `specs/`, and `plans/` for affected concepts, contracts, or file locations.
-  2. **Assess** — determine whether the change contradicts, extends, or is already covered by the existing docs.
-  3. **Update only if needed** — edit the single owning layer (per the cascade's content-ownership table). Do not duplicate content across layers; cross-reference instead. If the docs already accurately describe the new state, make no change.
-  4. **Report** — state which doc(s) you checked and what (if anything) you changed.
+- read CONTEXT.md when you need to understand the domain.
+- read docs/kalvin-vision.md when feel you do not quite understand the user's request.
+- DocStrings and comments should be kept to the barest minimum. No repetition of specs and no historical connotations - just describe what is.
+- **Every ad-hoc coding request leads to a documentation maintenance phase.** After this has concluded (before the final commit) read docs/cascade-development.md.
