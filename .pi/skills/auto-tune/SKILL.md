@@ -20,12 +20,6 @@ the thing to change — state the intended semantics, edit the code and the spec
 together, re-run to confirm. This is the core activity; a session whose goal is
 a model-semantics change is the norm, not an exception.
 
-> **Terminology guard.** `CONTEXT.md` says auto-tune "improves the codebase,
-> not Kalvin's model." That refers to the **trained `.bin` artifact**
-> (Kalvin's accumulated memory), which auto-tune never edits directly. It does
-> **not** mean the significance model is off-limits — the code and specs that
-> define that model live in the codebase and are auto-tune's central target.
-
 ## The arbiter
 
 Every run produces a verdict: `auto-tune summary --session <name>`. **Read it
@@ -44,30 +38,30 @@ or deadlocked — without touching the harness. It replaces a hand-maintained
 state file: run-state is machine-produced, not something you re-derive or
 re-transcribe each loop.
 
-| Outcome             | Meaning                                                            | What you do                                                                |
-| ------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| `completed`         | Terminal completion fired                                          | Read the significance profile → judge whether the goal was actually met    |
-| `deadlocked`        | Run ended with submitted-but-unsatisfied entries, no completion    | The satisfaction model has no path for those entries — diagnose the gap    |
-| `supervisor-stalled`| A `ratify_request` sat unanswered (you didn't enact a decision)    | You abdicated the supervisor role — see §Supervisor decisions below       |
-| `stalled`           | Connected but frozen: unsatisfied work, no events for the stall threshold | **Stop driving.** The trainer's satisfaction accounting has deadlocked — `step` will only re-poll a dead stream. Stop the run, read `training.harness.log` + the last lesson's compiled entries, diagnose why submitted work isn't rationalised, fix the model, re-run |
-| `crashed`           | Error in the stream                                                | Reproduce, fix, re-run before interpreting anything else                   |
-| `incomplete`        | Run still in progress and still moving                             | Keep driving it                                                            |
+| Outcome              | Meaning                                                                   | What you do                                                                                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `completed`          | Terminal completion fired                                                 | Read the significance profile → judge whether the goal was actually met                                                                                                                                                                                                |
+| `deadlocked`         | Run ended with submitted-but-unsatisfied entries, no completion           | The satisfaction model has no path for those entries — diagnose the gap                                                                                                                                                                                                |
+| `supervisor-stalled` | A `ratify_request` sat unanswered (you didn't enact a decision)           | You abdicated the supervisor role — see §Supervisor decisions below                                                                                                                                                                                                    |
+| `stalled`            | Connected but frozen: unsatisfied work, no events for the stall threshold | **Stop driving.** The trainer's satisfaction accounting has deadlocked — `step` will only re-poll a dead stream. Stop the run, read `training.harness.log` + the last lesson's compiled entries, diagnose why submitted work isn't rationalised, fix the model, re-run |
+| `crashed`            | Error in the stream                                                       | Reproduce, fix, re-run before interpreting anything else                                                                                                                                                                                                               |
+| `incomplete`         | Run still in progress and still moving                                    | Keep driving it                                                                                                                                                                                                                                                        |
 
 ## Where things live
 
-| Artefact        | Path                                            | Role                                                                 |
-| ---------------- | ----------------------------------------------- | -------------------------------------------------------------------- |
-| Significance     | `src/kalvin/expand.py`                          | `expand()` — composes significance from query + candidate            |
-| Significance     | `src/kalvin/significance.py`                    | Band layout (S1–S4), `BandLayout.classify`                           |
-| Rationaliser     | `src/kalvin/rationaliser.py`                    | Candidate retrieval + slow-path cogitation fan-out                   |
-| Reactor          | `src/training/trainer/reactor.py`               | Mechanical S2/S3: auto-countersign, recurrence, decision escalation  |
-| Trainer          | `src/training/trainer/trainer.py`               | Lesson loop, satisfaction accounting, decision gate                  |
-| Harness adapter  | `src/training/harness/adapter.py`               | Rationaliser ↔ bus wiring                                            |
-| Curricula        | `curricula/*.md`                                | Authored curricula (first-steps, cascade-pressure, mhall-svo-equivalence) |
-| Auto-tune CLI    | `src/training/auto_tune/`                       | Session lifecycle, `summary` aggregation                             |
-| Run artefacts    | `auto-tune/<name>/{events.jsonl,run-summary.json,training.harness.log,runs/}` | Per-run evidence (run-summary is the arbiter)         |
+| Artefact        | Path                                                                          | Role                                                                                                                                                                            |
+| --------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Significance    | `src/kalvin/expand.py`                                                        | `expand()` — composes significance from query + candidate                                                                                                                       |
+| Significance    | `src/kalvin/significance.py`                                                  | Band layout (S1–S4), `BandLayout.classify`                                                                                                                                      |
+| Rationaliser    | `src/kalvin/rationaliser.py`                                                  | Candidate retrieval + slow-path cogitation fan-out                                                                                                                              |
+| Reactor         | `src/training/trainer/reactor.py`                                             | Mechanical S2/S3: auto-countersign, recurrence, decision escalation                                                                                                             |
+| Trainer         | `src/training/trainer/trainer.py`                                             | Lesson loop, satisfaction accounting, decision gate                                                                                                                             |
+| Harness adapter | `src/training/harness/adapter.py`                                             | Rationaliser ↔ bus wiring                                                                                                                                                       |
+| Curricula       | `curricula/*.md` (+ `.json`)                                                  | Authored curricula. **Read the chosen `.md` in full before step 1** — it states the Objective, Goal, Approach, and per-lesson intended routing that defines your done-criteria. |
+| Auto-tune CLI   | `src/training/auto_tune/`                                                     | Session lifecycle, `summary` aggregation                                                                                                                                        |
+| Run artefacts   | `auto-tune/<name>/{events.jsonl,run-summary.json,training.harness.log,runs/}` | Per-run evidence (run-summary is the arbiter)                                                                                                                                   |
 
-Spec and docs (read for what the code *means*; do not re-derive in comments):
+Spec and docs (read for what the code _means_; do not re-derive in comments):
 
 - `specs/model.md`, `specs/rationaliser.md` — the significance model's intended semantics
 - `specs/auto-tune.md` — the harness/CLI contract (subcommands, run-summary object, rules)
@@ -76,18 +70,23 @@ Spec and docs (read for what the code *means*; do not re-derive in comments):
 
 ## Workflow
 
-1. **Establish the goal.** Which curriculum, what rationalisation behaviour
-   you're targeting, and how you'll know it's met (an observable outcome in the
-   summary — e.g. "lessons 3–5 produce S3 proposals with zero deadlocks"). If
-   the goal is a model-semantics change, nail down the *intended* significance
-   outcome before writing code — the spec edit and the code edit are two halves
-   of one change. Open sessions (explore, no fixed target) are valid.
+1. **Establish the goal — read the curriculum first.** Read the chosen
+   `curricula/<name>.md` in full **before** deciding anything else. Its
+   Objective, Goal, and Approach already state the intended rationalisation
+   behaviour; lift your goal and done-criteria from there (an observable
+   outcome in the summary — e.g. "lessons 3–5 produce S3 proposals with zero
+   deadlocks") rather than authoring them from the filename. Note the per-lesson
+   intended routing — that is the ground truth you'll judge the significance
+   histogram against.
 
 2. **Run → read the summary → act.** Drive a run (see
    [lifecycle.md](references/lifecycle.md)); when it ends, read `summary`. The
    `outcome` tells you what to do next:
-
-   - `completed` and the significance profile matches the goal → Document.
+   - `completed` and the significance profile matches the curriculum's
+     intended routing → Document. Judge the histogram against the per-lesson
+     expectations you noted in step 1, not against a remembered number — watch
+     in particular for everything collapsing to S1 fast-path (the curriculum
+     exercised nothing).
    - `crashed` → reproduce with a minimal test, fix, verify, re-run.
    - `deadlocked` → the diagnosis pointer names the gap; state the intended
      semantics, edit the model code **and** the owning spec together, re-run.
@@ -132,7 +131,7 @@ When you see `stalled`:
    emitted and where it went silent (e.g. a flood of auto-countersigns then
    nothing, meaning some entries never produced a rationalise event).
 4. **Recompile the stuck lesson** (`compile_source` on its kscript) and
-   compare the compiled entries against the events that *did* fire — the
+   compare the compiled entries against the events that _did_ fire — the
    entries absent from the stream are the ones the rationaliser dropped.
 5. **Diagnose and fix the model** (the rationaliser / significance / reactor),
    update the owning spec, `reset`, re-run. A stall is a finding about the
@@ -143,9 +142,12 @@ When you see `stalled`:
 You are the supervisor participant. The CLI supervisor process is a protocol
 relay — it does not think. A `ratify_request` event is a decision the model
 cannot make mechanically (auto-countersign didn't match; recurrence didn't
-apply): it surfaces a proposal and asks *you* whether to ratify, scaffold, or
+apply): it surfaces a proposal and asks _you_ whether to ratify, scaffold, or
 skip. Each carries the proposal, the misfit diagnosis, and the curriculum
-context — read those, decide, and emit one command. Routine observation events
+context — read those, decide, and emit one command. Decide against the
+curriculum's stated intent (e.g. `s3-auto-countersign` asserts "zero LLM,
+zero ratify" as its whole point — ratifying there corrupts the measurement),
+not against the histogram alone. Routine observation events
 (`rationalise`, `progress`, `ground`) need no action; advance them.
 
 The arbiter makes supervision observable: `supervisor-stalled` means a
@@ -163,22 +165,23 @@ See [commands.md](references/commands.md) for the command vocabulary.
   the goal — then Document.
 - **Ask the user** only on a genuine fork the arbiter surfaces but cannot
   resolve: the intended semantics are ambiguous and you need a decision about
-  *what* Kalvin should do. Do not ask about *whether* you're allowed to change
+  _what_ Kalvin should do. Do not ask about _whether_ you're allowed to change
   the model — that is auto-tune's core activity.
 - If 3 runs pass with no movement in the summary **and** no identifiable
   semantics gap, surface this and ask whether to continue. Do not use this
-  branch to escape a gap you *have* identified.
+  branch to escape a gap you _have_ identified.
 
 ## Entry points
 
-**New session.** `init` a worktree, establish the goal, create a one-line
-session record (goal + curriculum + done-criteria) at
-`auto-tune/<name>/session-state.md`. See [lifecycle.md](references/lifecycle.md)
-for setup commands.
+**New session.** `init` a worktree (see [lifecycle.md](references/lifecycle.md)
+for setup commands), then **read the curriculum `.md` in full** and establish
+the goal from it (Workflow step 1). Create a one-line session record (goal +
+curriculum + done-criteria) at `auto-tune/<name>/session-state.md`.
 
-**Resume session.** `cd .worktrees/auto-tune/<name>/`, read `session-state.md`
-for the goal, run `summary` for the current run's verdict. Continue from the
-outcome.
+**Resume session.** `cd .worktrees/auto-tune/<name>/`, read
+`session-state.md` for the goal, **re-read the curriculum `.md`** to recover
+the per-lesson intended routing, run `summary` for the current run's verdict.
+Continue from the outcome.
 
 **Context handoff.** If context is large, update `session-state.md` (goal +
 latest run's summary verdict + next action) and run `/auto-tune-handoff` or
