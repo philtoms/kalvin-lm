@@ -170,8 +170,12 @@ submitted`), where `submitted` now spans all four bands, not just S1.
 ### Lesson Completion
 
 13. The lesson is complete when `satisfied ⊇ submitted` (every compiled entry
-    grounded at its declared band). The trainer emits `progress: lesson_complete`
-    and submits the next lesson.
+    grounded at its declared band) **and the current lesson has been
+    submitted**. The submitted-lesson guard prevents a late cogitation event
+    from lesson N (arriving after N is satisfied and the position has advanced
+    to N+1, but before N+1's drain returns and `_do_submit_lesson` compiles
+    it) from spuriously completing N+1 against N's counts. The trainer emits
+    `progress: lesson_complete` and submits the next lesson.
 
 ### Subword Canons
 

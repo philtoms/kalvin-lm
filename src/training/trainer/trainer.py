@@ -877,6 +877,16 @@ class Trainer:
                 return False
             if not current_lesson:
                 return False
+            # Guard against late cogitation events from lesson N completing
+            # lesson N+1 before it is submitted. After lesson N is satisfied
+            # the curriculum position advances to N+1, but N+1's entries are
+            # not compiled/added to ``submitted`` until its drain returns and
+            # ``_do_submit_lesson`` runs. A late ground from N would otherwise
+            # see ``satisfied >= submitted`` (still N's counts) with
+            # ``current_lesson`` already N+1, and spuriously mark N+1 (and
+            # every subsequent lesson) complete without ever running it.
+            if not self._state.is_lesson_submitted(current_lesson.label):
+                return False
 
             completed_label = current_lesson.label
             self._state.mark_lesson_satisfied(current_lesson.label)

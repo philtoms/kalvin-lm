@@ -512,11 +512,16 @@ Determines whether a kline is recognised (S1).
 
 - `kline` — a KLine to test.
 - A kline is S1 if:
-  1. It is a canon (`is_canon` — a non-terminal kline whose
+  1. It is an identity (`is_identity` — the self-referential form
+     `{S: [S]}`), OR
+  2. It is a canon (`is_canon` — a non-terminal kline whose
      `signature_of(kline.nodes) == kline.signature`), OR
-  2. It is countersigned by another kline in the model.
-- A self-referential kline `{S: [S]}` is an Identity, not a canon, and is not
-  counted as its own countersigner, so it is not S1 by structure.
+  3. It is countersigned by another kline in the model.
+- A self-referential identity `{S: [S]}` is recognised (S1) by its own
+  structure: its sole node is itself, so it is self-defining (kline spec
+  KL-21). It is not a canon (a canon is non-terminal and decomposes into
+  *other* signatures), and it is not counted as its own countersigner, but
+  it is S1 by the identity path above.
 - This is a stateful test: adding or removing klines changes the result.
 - S1 represents a **recognised kline** — one whose signature
   and nodes are fully accounted for (by its own structure or by

@@ -40,7 +40,7 @@ See ``encode_entries``.
 from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
-from kalvin.significance import band_significance
+from kalvin.significance import SIG_S1, band_significance
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
@@ -329,12 +329,13 @@ class TokenEncoder:
 
             # Self-referential identity: packed sig → [packed].
             # Packed values are opaque per §11.5 — _build_dbg skips decode
-            # for them.
+            # for them. An identity claims S1 (kline spec KL-21; sig_level
+            # returns S1 for {S:[S]}; kscript §11.3).
             id_dbg: KDbg | None = None
             if self._dev:
-                id_dbg = self._build_dbg(packed, dbg_label, op="UNKNOWN", packed=True)
+                id_dbg = self._build_dbg(packed, dbg_label, op="IDENTITY", packed=True)
             else:
-                id_dbg = KDbg(op="UNKNOWN")
+                id_dbg = KDbg(op="IDENTITY")
             extras.append(
                 KValue(
                     KLine(
@@ -342,7 +343,7 @@ class TokenEncoder:
                         nodes=[packed],
                         dbg=id_dbg,
                     ),
-                    band_significance("UNKNOWN"),
+                    SIG_S1,
                 )
             )
 

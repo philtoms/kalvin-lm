@@ -253,6 +253,8 @@ class TestTrainerLogging:
         key = _entry_key(entry)
         trainer._state.mark_submitted(key)
         trainer._state.mark_satisfied(key)
+        current_lesson = trainer._state.curriculum.current_lesson()
+        trainer._state.mark_lesson_submitted(current_lesson.label)
         trainer._check_lesson_complete()
 
         assert any("complete" in r.message and "satisfied" in r.message for r in caplog.records)

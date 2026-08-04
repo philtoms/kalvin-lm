@@ -232,6 +232,14 @@ candidate retrieval or significance computation.
 it carries no information and claims S4 (@CONTEXT.md §Unknown). Call
 `model.add_to_ltm(Q)`. Emit a `"frame"` event at S4. Return `True`.
 
+**Identity (self-referential)**: If Q is the self-referential form
+`{S: [S]}` (`is_identity`), it is recognised (S1) by its own structure
+(kline spec KL-21). Its sole node is itself, so it is self-defining — it
+cannot wait for its operand to be grounded (the operand *is* Q), and on the
+slow path `expand()` yields only S4 (no structural relation to its subword
+fragments), so it is fast-tracked here unconditionally. Call
+`model.add_to_ltm(Q)`. Emit a `"frame"` event at S1. Return `True`.
+
 **Canonical — recognised by its own structure**: If `Q.signature == signature_of(Q.nodes)`
 (as defined in the @signifier spec) and every node that could resolve does
 resolve in the model (exists as a Kline signature), Q is recognised (S1) —

@@ -36,7 +36,7 @@ from kalvin.significance import (
     SIG_S4,
     structural_sig,
 )
-from kalvin.kline import KLine, is_canon, sig_level
+from kalvin.kline import KLine, is_canon, is_identity, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
@@ -252,6 +252,11 @@ class Rationaliser:
         if not kline.nodes:
             self._model.add_to_ltm(kline)
             self._publish("frame", value, KValue(kline, SIG_S4))  # S4
+            return True
+
+        if is_identity(kline):
+            self._model.add_to_ltm(kline)
+            self._publish("frame", value, KValue(kline, SIG_S1))  # S1
             return True
 
         expected_sig = self._signifier.signature_of(kline.nodes)
