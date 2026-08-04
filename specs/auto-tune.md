@@ -143,6 +143,8 @@ Session artefacts are persisted to files inside the session's git worktree. The 
    7a. `start-harness` generates that per-session harness config from the project harness config. Auto-tune does not configure an LLMSupervisor participant, so pi (the CLI supervisor) is the sole decider for the session (`@specs/supervisor-decision.md`).
 8. `start-harness` records the PID in the session directory.
 9. `start-harness` polls the WebSocket port until it accepts connections, then returns.
+   9a. Before polling, `start-harness` kills any orphan process bound to the WebSocket port (not just the PID-file process). This closes the gap where a stale or missing PID file leaves an orphaned harness holding the port: without it the new harness fails to bind with `EADDRINUSE` and the readiness poll masks the failure by connecting to the orphan.
+   9b. The readiness poll fails fast if the spawned harness exits before becoming ready, rather than polling until the timeout (which would again mask a bind crash behind a pre-existing listener).
 10. `stop-harness` sends SIGTERM to the harness PID, waits for exit (SIGKILL on 5s timeout).
 
 ### Supervisor Lifecycle
@@ -231,6 +233,7 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 | AT-18 | `reset` deletes curriculum state and truncates events                                                                        | §Reset                  |
 | AT-19 | `reset --fresh-model` also deletes Kalvin model file                                                                         | §Reset                  |
 | AT-20 | Process lifecycle commands manage PIDs and enforce timeouts                                                                  | §Error Handling         |
+| AT-21 | `start-harness` kills orphan processes bound to the port (not just the PID-file process) and fails fast on a spawned-harness crash | §Harness Lifecycle     |
 
 ## Out of Scope
 

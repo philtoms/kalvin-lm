@@ -147,6 +147,69 @@ def _delete_pid_file(path: Path) -> None:
         pass
 
 
+def _port_pids(port: int) -> list[int]:
+    """Return PIDs of processes listening on *port*.
+
+    Uses ``lsof`` (the same tool the troubleshooting guide recommends).
+    Returns an empty list if ``lsof`` is unavailable or finds nothing —
+    callers treat "nothing on the port" as the normal, no-op case.
+    """
+    try:
+        out = subprocess.run(
+            ["lsof", "-ti", f":{port}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        # lsof not installed — nothing we can do; let the bind fail loudly.
+        return []
+    if out.returncode != 0:
+        return []
+    return [int(line) for line in out.stdout.split() if line.strip().isdigit()]
+
+
+def _kill_port_orphans(port: int, *, keep: int | None = None) -> None:
+    """Kill every process bound to *port* (except *keep*).
+
+    ``_kill_stale_process`` is PID-file based: when the PID file is missing
+    or stale (deleted during debugging, lost to an unclean shutdown, or
+    recycled to another process) an orphaned harness can keep holding the
+    WebSocket port. The next ``start-harness`` then spawns a harness that
+    fails to bind with ``OSError: [Errno 48] address already in use``, and
+    the readiness poll — which only checks "can I TCP-connect?" — sees the
+    *orphan* and falsely reports success.
+
+    This port-based fallback closes that gap. Called after the PID-file
+    kill so the common case (PID file is accurate) does no extra work.
+    """
+    import warnings
+
+    for pid in _port_pids(port):
+        if pid == keep:
+            continue
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            continue
+        except PermissionError:
+            warnings.warn(
+                f"Port {port} held by process {pid} (no permission to kill); "
+                "the harness may fail to bind"
+            )
+            continue
+        warnings.warn(f"Killing orphan process {pid} bound to port {port}")
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+        if not _wait_for_exit(pid, timeout=5.0):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
 # Harness lifecycle
 
 
@@ -180,6 +243,11 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
     if port is None:
         raise ValueError(f"Cannot extract port from harness_url: {cfg.harness_url}")
 
+    # Port-based fallback: a stale PID file can leave an orphaned harness
+    # holding the port. Without this, the new harness fails to bind and the
+    # readiness poll below masks the failure by connecting to the orphan.
+    _kill_port_orphans(port)
+
     harness_config_path = _generate_session_harness_config(session_dir, cfg)
 
     log_path = session_dir / "training.harness.log"
@@ -195,6 +263,14 @@ def start_harness(session_dir: Path, *, poll_timeout: float = 30.0) -> int:
 
     deadline = time.monotonic() + poll_timeout
     while time.monotonic() < deadline:
+        # If the spawned harness died (e.g. it crashed on startup), say so
+        # rather than polling forever — or worse, mistaking a pre-existing
+        # listener for readiness.
+        if proc.poll() is not None:
+            raise RuntimeError(
+                f"Harness process exited with code {proc.returncode} before "
+                f"becoming ready; see {log_path}"
+            )
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.settimeout(1.0)
