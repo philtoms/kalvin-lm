@@ -20,9 +20,11 @@ converts SymbolicEntry tuples to encoded uint64 values.
 
 **MTS expansion (spec §8):**
   Multi-character all-uppercase identifiers (compounds: MHALL, SVO, ALL)
-  trigger automatic emission of:
-  1. One UNKNOWN entry per resolved constituent character.
-  2. One CANONIZES entry mapping the compound to its resolved components.
+  trigger emission of exactly one CANONIZES entry mapping the compound to
+  its resolved constituent characters. MTS emits only the canon — the
+  characters are values inside the canon, not headed klines of their own.
+  An author who wants a headed kline for a character writes it as a bare
+  singleton (§7.1).
 
   MTS applies to compounds wherever they appear — signature side or node
   side, any operator.  Single-character identifiers and lowercase/mixed-case
@@ -32,10 +34,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
   rule (§2).
 
 **MTS deduplication (§8.3):**
-  CANONIZES entries are deduplicated on (sig, nodes).  Component UNKNOWN
-  entries are deduplicated across MTS calls via _mts_identity_seen (a
-  character emitted once is never emitted again).  Intra-expansion dedup
-  prevents duplicate chars within a single compound (e.g., MHALL's second L).
+  CANONIZES entries are deduplicated on (sig, nodes).
 
 **Word binding integration (spec §10):**
   When a BindingScope is provided, single-character identifiers are resolved
@@ -56,8 +55,7 @@ converts SymbolicEntry tuples to encoded uint64 values.
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
   - No UNKNOWN op written — self-denote (A = A) emits UNKNOWN with empty nodes.
-  - No general deduplication beyond MTS — CANONIZES dedup per §8.3,
-    plus component UNKNOWN dedup.
+  - No general deduplication beyond CANONIZES dedup per §8.3.
 
 Spec references: §3 (Scope Model), §6 (Entry Model), §7 (Operator Rules),
 §8 (MTS Expansion), §10 (Word Binding Resolution).
@@ -125,7 +123,6 @@ class ASTEmitter:
 
         # MTS dedup tracking (§8.3).
         self._mts_canonize_seen: dict[tuple[str, tuple[str, ...]], int] = {}
-        self._mts_identity_seen: set[str] = set()
         # Cached resolved components per identifier (§8.3) so the
         # BindingScope occurrence counter never re-advances for one.
         self._resolution_cache: dict[str, list[str]] = {}
@@ -135,8 +132,8 @@ class ASTEmitter:
         self._parent_kline_canonize_idx: int | None = None
 
         # Set inside a single-char CANONIZES scope with recursive content
-        # (subscript block); multi-char CANONIZES sigs get component identities
-        # from MTS, so subscript identity is unnecessary.
+        # (subscript block); multi-char CANONIZES sigs trigger MTS (the
+        # canon kline), so subscript identity filling is suppressed for them.
         self._in_canonize_subscript: bool = False
 
     # Public API
@@ -340,23 +337,20 @@ class ASTEmitter:
     # MTS expansion (§8)
 
     def _emit_mts(self, sig: str) -> int | None:
-        """Emit MTS entries for a multi-character identifier.
+        """Emit the MTS canon entry for a multi-character identifier.
 
-        1. One UNKNOWN entry per resolved constituent character (deduped).
-        2. One CANONIZES entry mapping the compound to its resolved components.
+        MTS emits exactly one CANONIZES entry mapping the compound to its
+        resolved constituent characters (one node per character, preserving
+        repeats — §8.2 node-count invariant). MTS emits no per-character
+        component entries: the characters are values inside the canon, not
+        headed klines. An author who wants a headed kline for a character
+        writes it as a bare singleton (§7.1).
 
-        Component UNKNOWN deduplication (§8.3 extended):
-          - Intra-expansion: duplicate chars within a compound (e.g., MHALL's
-            second L) emit only one UNKNOWN L.
-          - Inter-expansion: if a char was already emitted by a previous MTS
-            call, it is silently skipped.
+        CANONIZES deduplication (§8.3): the same (sig, nodes) pair is
+        silently skipped.
 
-        CANONIZES deduplication (§8.3):
-          - Same (sig, nodes) pair is silently skipped.
-
-        No UNKNOWN entry is emitted for the compound itself.  A compound
-        signature is the OR-reduction of multiple token IDs and cannot form
-        an identity (spec §8; CONTEXT.md "Identity" glossary).
+        A compound signature is the OR-reduction of multiple token IDs and
+        cannot form an identity (spec §8; CONTEXT.md "Identity" glossary).
 
         Returns the index of the CANONIZES entry (for Rule B4), or None
         if no MTS was emitted (single-char or non-uppercase identifier).
@@ -370,32 +364,17 @@ class ASTEmitter:
             return None
 
         # Resolve once on first expansion (§8.3); reuse the cached list so
-        # the identifier resolves identically as node or signature.
-        # Track (raw_char, resolved) pairs so component emission can apply the
-        # binding-aware rule (§7.1): word-bound → IDENTITY {w:[w]}, else UNKNOWN.
+        # the identifier resolves identically as node or signature. MTS emits
+        # only the canon kline — its nodes are the resolved characters (one
+        # per character, preserving repeats; §8.2 node-count invariant). MTS
+        # no longer emits per-character component entries: components are
+        # values inside the canon, not headed klines. An author who wants a
+        # headed kline for a character writes it as a bare singleton (§7.1).
         if sig in self._resolution_cache:
-            pairs = list(self._resolution_cache[sig])
+            chars = list(self._resolution_cache[sig])
         else:
-            pairs = [(c, self._resolve_char(c)) for c in sig]
-            self._resolution_cache[sig] = list(pairs)
-        chars = [resolved for _, resolved in pairs]
-
-        seen_in_this_call: set[str] = set()
-        for raw_char, resolved_char in pairs:
-            if resolved_char in seen_in_this_call:
-                continue  # intra-expansion dedup (e.g., second L in MHALL)
-            seen_in_this_call.add(resolved_char)
-            if resolved_char in self._mts_identity_seen:
-                continue  # inter-expansion dedup (keys on resolved form)
-            self._mts_identity_seen.add(resolved_char)
-            # Binding-aware component emission (§7.1/§8): a word-bound
-            # constituent (resolved differs from raw) is a self-referential
-            # IDENTITY {w:[w]} (S1); an unbound constituent is UNKNOWN {c:[]}
-            # (S4). Same rule as a bare singleton.
-            if resolved_char != raw_char:
-                self._emit_entry(resolved_char, [resolved_char], "IDENTITY", is_mts=True)
-            else:
-                self._emit_entry(resolved_char, [], "UNKNOWN", is_mts=True)
+            chars = [self._resolve_char(c) for c in sig]
+            self._resolution_cache[sig] = list(chars)
 
         key = (sig, tuple(chars))
         if key in self._mts_canonize_seen:
@@ -419,8 +398,7 @@ class ASTEmitter:
         entries, subscript identities, and single-char CANONIZES scopes
         carry the default (source).
 
-        Note: UNKNOWN dedup for MTS components is handled in _emit_mts
-        via _mts_identity_seen, not here.
+        Note: CANONIZES dedup is handled here; other ops always emit.
         """
         if op == "CANONIZES":
             key = (sig, tuple(nodes))
@@ -441,22 +419,16 @@ class ASTEmitter:
         unbound → empty UNKNOWN {w:[]}.
 
         Dedup checks (in order):
-          1. _mts_identity_seen — sig was already emitted as MTS component
-             (keyed on resolved form).
-          2. Existing CANONIZES entry — sig is a compound already introduced
+          1. Existing CANONIZES entry — sig is a compound already introduced
              by its CANONIZES entry from MTS.
-          3. Existing IDENTITY or UNKNOWN entries — sig already has one.
+          2. Existing IDENTITY or UNKNOWN entries — sig already has one.
 
-        This prevents duplicate component entries when MTS expansion already
-        provided one for the same identifier, or when the identifier already
-        appears as the signature of an IDENTITY/UNKNOWN entry.  The CANONIZES
-        check blocks compounds (which cannot form an identity) without
-        affecting single-char sigs that have only DENOTES entries (e.g., D
-        in §14.8).
+        This prevents duplicate entries when the identifier already appears
+        as the signature of an IDENTITY/UNKNOWN entry.  The CANONIZES check
+        blocks compounds (which cannot form an identity) without affecting
+        single-char sigs that have only DENOTES entries (e.g., D in §14.8).
         """
         resolved = self._resolve_char(raw_id)
-        if resolved in self._mts_identity_seen:
-            return
         if any(e.sig == resolved and e.op == "CANONIZES" for e in self.entries):
             return  # compound already introduced by its CANONIZES entry
         if any(e.sig == resolved and e.op in ("IDENTITY", "UNKNOWN") for e in self.entries):
@@ -490,8 +462,8 @@ class ASTEmitter:
         where every identifier must appear as the signature of at least
         one emitted entry; identity UNKNOWN fills any gap. Activated only
         when the CANONIZES sig did NOT trigger MTS (mts_idx is None) —
-        multi-char sigs get component identities from MTS, so subscript
-        identity would produce spurious entries (e.g. UNKNOWN D in §14.11).
+        multi-char sigs trigger MTS (the canon kline), so subscript identity
+        is suppressed for them.
 
         _emit_identity_if_needed is applied to leaf Signature items (no
         operator entry) and to DENOTES scope sigs (their entries use nodes

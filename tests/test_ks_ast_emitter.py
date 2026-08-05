@@ -583,64 +583,48 @@ class TestKS18NonCanonizeIndent:
 
 
 class TestKS19MTS:
-    """ABC → UNKNOWN entries for A, B, C; CANONIZES {ABC:[A,B,C]}."""
+    """ABC → only CANONIZES {ABC:[A,B,C]}; no per-component entries."""
 
     def test_mts_expansion(self):
         entries = emit(_file(_bare("ABC")))
 
-        # Component UNKNOWNs
-        assert_has_entry(entries, "A", [], "UNKNOWN")
-        assert_has_entry(entries, "B", [], "UNKNOWN")
-        assert_has_entry(entries, "C", [], "UNKNOWN")
-
-        # MTS CANONIZES
+        # MTS emits only the CANONIZES canon — components are values inside
+        # it, not headed klines of their own.
         assert_has_entry(entries, "ABC", ["A", "B", "C"], "CANONIZES")
+        assert not _find_entries(entries, sig="A")
+        assert not _find_entries(entries, sig="B")
+        assert not _find_entries(entries, sig="C")
 
-    def test_mts_entry_order(self):
-        """MTS components come before CANONIZES."""
+    def test_mts_entry_count(self):
+        """MTS produces exactly one entry (the canon)."""
         entries = emit(_file(_bare("ABC")))
-        sigs = [e.sig for e in entries]
-        idx_a = sigs.index("A")
-        idx_b = sigs.index("B")
-        idx_c = sigs.index("C")
-        idx_canonize = next(
-            i for i, e in enumerate(entries) if e.sig == "ABC" and e.op == "CANONIZES"
-        )
-        assert idx_a < idx_canonize
-        assert idx_b < idx_canonize
-        assert idx_c < idx_canonize
+        assert len(entries) == 1
+        assert entries[0].sig == "ABC"
+        assert entries[0].op == "CANONIZES"
 
     def test_mts_entries_tagged_is_mts(self):
-        """§8 MTS-produced entries carry is_mts=True; source entries do not.
+        """§8 MTS-produced canon entries carry is_mts=True; source entries do not.
 
-        Only the component UNKNOWN entries and the MTS CANONIZES entry
-        produced by ``_emit_mts`` are tagged. Operator-produced entries
-        (COUNTERSIGNS/DENOTES/CONNOTES), subscript identities, and
-        single-char CANONIZES scopes stay source (is_mts=False) so the
-        TokenEncoder can push them ahead of MTS in the final output.
+        Only the MTS CANONIZES entry produced by ``_emit_mts`` is tagged.
+        Operator-produced entries (COUNTERSIGNS/DENOTES/CONNOTES) and
+        subscript identities stay source (is_mts=False) so the TokenEncoder
+        can push them ahead of MTS in the final output.
         """
-        # `ABC == MHALL`: ABC + MHALL each MTS-expand; countersign is source.
+        # `ABC == MHALL`: ABC + MHALL each MTS-expand (canon only);
+        # countersign is source.
         entries = emit(_file(_scope(
             "ABC", TokenType.COUNTERSIGNS, items=[_sig("MHALL")]
         )))
-        tagged = [e for e in entries if e.is_mts]
-        source = [e for e in entries if not e.is_mts]
 
-        # Component identities + both canonizations are MTS.
-        for mts_entry in (
-            ("A", [], "UNKNOWN"),
-            ("B", [], "UNKNOWN"),
-            ("C", [], "UNKNOWN"),
-            ("ABC", ["A", "B", "C"], "CANONIZES"),
-            ("M", [], "UNKNOWN"),
-            ("H", [], "UNKNOWN"),
-            ("A", [], "UNKNOWN"),
-            ("L", [], "UNKNOWN"),
-            ("MHALL", ["M", "H", "A", "L", "L"], "CANONIZES"),
-        ):
-            assert any(
-                (e.sig, e.nodes, e.op) == mts_entry and e.is_mts for e in entries
-            ), f"Expected MTS-tagged {mts_entry}"
+        # Both canonizations are MTS-tagged.
+        assert any(
+            (e.sig, e.nodes, e.op) == ("ABC", ["A", "B", "C"], "CANONIZES")
+            and e.is_mts for e in entries
+        )
+        assert any(
+            (e.sig, e.nodes, e.op) == ("MHALL", ["M", "H", "A", "L", "L"], "CANONIZES")
+            and e.is_mts for e in entries
+        )
 
         # The countersign pair is source (not MTS).
         assert any(
@@ -652,10 +636,9 @@ class TestKS19MTS:
             and not e.is_mts for e in entries
         )
 
-        # No tagged entry is an operator entry.
-        assert all(
-            e.op in ("UNKNOWN", "CANONIZES") for e in tagged
-        ), f"Operator entry wrongly tagged MTS: {source}"
+        # No source entry is a canon, no tagged entry is an operator entry.
+        assert all(e.op == "CANONIZES" for e in entries if e.is_mts)
+        assert all(e.op != "CANONIZES" for e in entries if not e.is_mts)
 
 
 # ======================================================================
@@ -711,10 +694,12 @@ class TestKS20bNoMTSForWords:
         assert unsigned[0].nodes == []
 
     def test_uppercase_still_decomposes(self):
-        # Sanity: all-uppercase multi-char identifiers still trigger MTS.
+        # Sanity: all-uppercase multi-char identifiers still trigger MTS,
+        # emitting only the canon (no per-component entries).
         entries = emit(_file(_bare("ALL")))
         assert_has_entry(entries, "ALL", ["A", "L", "L"], "CANONIZES")
-        assert_has_entry(entries, "A", [], "UNKNOWN")
+        assert not _find_entries(entries, sig="A")
+        assert not _find_entries(entries, sig="L")
 
 
 # ======================================================================
@@ -723,17 +708,15 @@ class TestKS20bNoMTSForWords:
 
 
 class TestKS21MTSNode:
-    """A == MHALL → MTS expansion fires for MHALL."""
+    """A == MHALL → MTS canon expansion fires for MHALL (canon only)."""
 
     def test_mts_on_node(self):
         entries = emit(_file(_scope("A", TokenType.COUNTERSIGNS, items=[_sig("MHALL")])))
-        # MTS for MHALL: component UNKNOWNs
-        assert_has_entry(entries, "M", [], "UNKNOWN")
-        assert_has_entry(entries, "H", [], "UNKNOWN")
-        assert_has_entry(entries, "A", [], "UNKNOWN")
-        assert_has_entry(entries, "L", [], "UNKNOWN")
-        # MTS CANONIZES
+        # MTS for MHALL: canon only (no per-component entries).
         assert_has_entry(entries, "MHALL", ["M", "H", "A", "L", "L"], "CANONIZES")
+        assert not _find_entries(entries, sig="M", op="UNKNOWN")
+        assert not _find_entries(entries, sig="H", op="UNKNOWN")
+        assert not _find_entries(entries, sig="L", op="UNKNOWN")
 
         # COUNTERSIGNS
         assert_has_entry(entries, "A", ["MHALL"], "COUNTERSIGNS")
@@ -951,15 +934,17 @@ class TestMTSDedup:
         assert len(canonize) == 1  # deduped
 
     def test_identity_dedup_by_mts(self):
-        """MTS component UNKNOWN entries ARE deduped across calls."""
+        """MTS emits no per-component entries — only the canon."""
         entries = emit(
             _file(
-                _bare("ABC"),  # emits UNKNOWN A, B, C; CANONIZES ABC; UNKNOWN ABC
+                _bare("ABC"),  # emits only CANONIZES ABC:[A,B,C]
             )
         )
-        # Exactly one UNKNOWN per unique char (A, B, C) plus compound ABC
-        identity_a = _find_entries(entries, sig="A", op="UNKNOWN")
-        assert len(identity_a) == 1  # deduped
+        # No headed entries for the characters.
+        assert not _find_entries(entries, sig="A")
+        assert not _find_entries(entries, sig="B")
+        assert not _find_entries(entries, sig="C")
+        assert len(_find_entries(entries, op="CANONIZES")) == 1
 
     def test_non_mts_identity_no_dedup(self):
         """Non-MTS UNKNOWN entries (from bare single-char scopes) are NOT deduped."""
@@ -979,16 +964,17 @@ class TestMTSDedup:
 
 
 class TestMTSComponentDedup:
-    """MTS component UNKNOWN deduplication (§8.3 extended)."""
+    """MTS canon deduplication (§8.3) — canon only, no component entries."""
 
-    def test_intra_expansion_dedup(self):
-        """MHALL has two L's — only one UNKNOWN L is emitted."""
+    def test_intra_expansion_node_count(self):
+        """MHALL has two L's — the canon preserves both as nodes (§8.2)."""
         entries = emit(_file(_bare("MHALL")))
-        identity_l = _find_entries(entries, sig="L", op="UNKNOWN")
-        assert len(identity_l) == 1  # not 2
+        canon = _find_entries(entries, sig="MHALL", op="CANONIZES")
+        assert len(canon) == 1
+        assert canon[0].nodes == ["M", "H", "A", "L", "L"]  # 5 nodes, repeats kept
 
     def test_inter_expansion_dedup(self):
-        """Second _emit_mts for same compound emits no component UNKNOWN."""
+        """Second _emit_mts for same compound emits nothing (canon dedup)."""
         emitter = ASTEmitter()
         idx1 = emitter._emit_mts("ABC")
         count_after_first = len(emitter.entries)
@@ -996,17 +982,17 @@ class TestMTSComponentDedup:
         assert len(emitter.entries) == count_after_first  # no new entries
         assert idx2 == idx1  # returns existing CANONIZES index
 
-    def test_cross_compound_partial_dedup(self):
-        """SVO after MHALL: S,V,O are new, M,H,A,L already emitted."""
+    def test_cross_compound_no_component_entries(self):
+        """SVO after MHALL: each emits only its canon (no component entries)."""
         emitter = ASTEmitter()
         emitter._emit_mts("MHALL")
         count_after_mhall = len(emitter.entries)
         emitter._emit_mts("SVO")
         new_entries = emitter.entries[count_after_mhall:]
-        # SVO emits: UNKNOWN S, V, O + CANONIZES SVO (no compound-own identity)
-        assert len(new_entries) == 4
-        sigs = [e.sig for e in new_entries]
-        assert sigs == ["S", "V", "O", "SVO"]
+        # SVO emits only its CANONIZES canon.
+        assert len(new_entries) == 1
+        assert new_entries[0].sig == "SVO"
+        assert new_entries[0].op == "CANONIZES"
 
 
 # ======================================================================

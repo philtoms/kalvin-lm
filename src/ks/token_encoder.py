@@ -69,10 +69,9 @@ class TokenEncoder:
         self._tokenizer = tokenizer
         self._signifier = signifier or NLPSignifier()
         self._dev = dev
-        # Track already-decomposed multi-token words to avoid duplicate
-        # §11.3 compound-word emissions.  Key is tuple of BPE tokens (same
-        # word always produces the same BPE tokens).
-        self._decomposed: set[tuple[int, ...]] = set()
+        # Track emitted compound-word identity signatures (§11.3) so a word
+        # used as a node more than once emits its identity only once.
+        self._compound_identity_emitted: set[int] = set()
         # Canonical encoding registry (§11.4): a declared compound
         # identifier's signature uint64, computed once at its MTS CANONIZES
         # definition as OR of its resolved component node values, then reused
@@ -162,20 +161,31 @@ class TokenEncoder:
             if len(sig_tokens) == 1:
                 sig_uint64 = sig_tokens[0]
             else:
-                # An IDENTITY entry provides its own self-referential identity
-                # as a source kline, so its sig's §11.3 decomposition emits
-                # only the subword UNKNOWNs (not a second identity). Other
-                # ops take the decomposition's identity too (the word is a
-                # node/operand artefact, §11.3).
-                emit_identity = entry.op != "IDENTITY"
-                sig_uint64, sig_extras = self._emit_mts_for_tokens(
-                    sig_tokens,
-                    dbg_label=entry.sig,
-                    op="UNKNOWN",
-                    emit_identity=emit_identity,
-                )
-                extras.extend((kv, True) for kv in sig_extras)
-                sig_is_packed = True
+                # An IDENTITY entry whose sig multi-token-splits provides
+                # its own self-referential identity as a source kline
+                # {packed: [packed]}, so its §11.3 decomposition must not
+                # emit a second identity. Register the packed signature
+                # (so the entry's node resolves to the same packed value)
+                # but take no decomposition extras. Other ops take the
+                # decomposition's identity as the word's representation.
+                if entry.op == "IDENTITY":
+                    packed = self._signifier.signature_of(sig_tokens)
+                    if entry.sig:
+                        self._compound_sigs.setdefault(entry.sig, packed)
+                    # The IDENTITY main entry emits {packed:[packed]} as
+                    # source; mark it emitted so a later node-side use of
+                    # the same word does not re-emit it.
+                    self._compound_identity_emitted.add(packed)
+                    sig_uint64 = packed
+                    sig_is_packed = True
+                else:
+                    sig_uint64, sig_extras = self._emit_mts_for_tokens(
+                        sig_tokens,
+                        dbg_label=entry.sig,
+                        op="UNKNOWN",
+                    )
+                    extras.extend((kv, True) for kv in sig_extras)
+                    sig_is_packed = True
 
         # 2. Encode nodes (compound nodes reuse the registry value).
         node_values: list[int] = []
@@ -256,42 +266,30 @@ class TokenEncoder:
         tokens: list[int],
         dbg_label: str = "",
         op: str = "UNKNOWN",
-        emit_identity: bool = True,
     ) -> tuple[int, list[KValue]]:
-        """Emit §11.3 compound-word decomposition entries for a multi-token word.
+        """Emit the §11.3 compound-word identity for a multi-token word.
 
         A resolved word the external tokenizer splits into ≥2 subwords
         (e.g. ``Mary`` → ``[mar, y]``) is a *compound-word*: one lexical
         item whose decomposition is an encoding artefact, not a declared
-        aggregation. The word is represented as a single-token
-        self-referential identity whose signature is the OR-reduction of the
-        subword tokens — the subwords live in the signature. No marker token
-        is used; the compound-word distinction does not appear in any kline's
-        nodes. This is orthogonal to §8 MTS (declared compounds), which
-        produces a canon rather than a self-ref identity.
+        aggregation. The word is represented as a single self-referential
+        identity whose signature is the OR-reduction of the subword tokens
+        — the subwords live in the signature. No marker token is used.
 
-        Emits:
-          1. One UNKNOWN KValue per BPE subword token.
-          2. One self-referential identity KValue ``{packed → [packed]}``
-             (S1) — structurally identical to a single-token word identity.
-
-        Deduplicates: if this exact token tuple has been seen before,
-        no entries are emitted (but the packed signature is still returned).
-
-        Each emitted KValue carries the band-representative significance for
-        its production op (subword UNKNOWN entries use ``op`` — always
-        "UNKNOWN" at call sites; the identity entry uses "UNKNOWN" too, the
-        band for a self-ref identity).
+        Emits exactly one entry: the self-referential identity
+        ``{packed → [packed]}`` (S1). No per-subword component entries are
+        emitted — the subwords are values inside the signature, not headed
+        klines. This mirrors §8 MTS, which emits only the canon.
 
         Args:
             tokens: List of BPE token uint64 values.
             dbg_label: Debug label for dev mode.
-            op: Operator for the identity subword entries.
+            op: Unused for the identity emission (kept for call-site
+                compatibility); the identity always carries SIG_S1.
 
         Returns:
             (packed_signature, extra_entries).
         """
-        token_key = tuple(tokens)
         # The compound-word signature is the OR-reduction of the subword
         # tokens — the subwords live in the signature. No marker token is
         # involved; ``packed`` is reused by references (a block-canon under
@@ -307,57 +305,29 @@ class TokenEncoder:
         if dbg_label:
             self._compound_sigs.setdefault(dbg_label, packed)
 
+        # Self-referential identity: packed sig → [packed]. Packed values
+        # are opaque per §11.5 — _build_dbg skips decode for them. An
+        # identity claims S1 (kline spec KL-21; sig_level returns S1 for
+        # {S:[S]}; kscript §11.3). Emitted once per compound-word signature
+        # (a word reused as a node does not re-emit its identity).
         extras: list[KValue] = []
-
-        if token_key not in self._decomposed:
-            self._decomposed.add(token_key)
-
-            for tok in tokens:
-                tok_dbg: KDbg | None = None
-                if self._dev:
-                    # Each subword UNKNOWN kline is its own lexical item,
-                    # not the compound word: pass no label so _build_dbg
-                    # names the kline after its own decoded subword text
-                    # (e.g. ``M``, ``ary``) instead of inheriting the
-                    # compound's ``dbg_label`` (``Mary``), which would label
-                    # every subword identically and obscure which is which.
-                    tok_dbg = self._build_dbg(tok, "", op="UNKNOWN")
-                else:
-                    tok_dbg = KDbg(op="UNKNOWN")
-                extras.append(
-                    KValue(
-                        KLine(
-                            signature=tok,
-                            nodes=[],
-                            dbg=tok_dbg,
-                        ),
-                        band_significance(op),
-                    )
+        if packed not in self._compound_identity_emitted:
+            self._compound_identity_emitted.add(packed)
+            id_dbg: KDbg | None = None
+            if self._dev:
+                id_dbg = self._build_dbg(packed, dbg_label, op="IDENTITY", packed=True)
+            else:
+                id_dbg = KDbg(op="IDENTITY")
+            extras.append(
+                KValue(
+                    KLine(
+                        signature=packed,
+                        nodes=[packed],
+                        dbg=id_dbg,
+                    ),
+                    SIG_S1,
                 )
-
-            # Self-referential identity: packed sig → [packed].
-            # Packed values are opaque per §11.5 — _build_dbg skips decode
-            # for them. An identity claims S1 (kline spec KL-21; sig_level
-            # returns S1 for {S:[S]}; kscript §11.3). Suppressed when the
-            # caller (an IDENTITY entry's sig path) provides its own source
-            # identity for the same packed signature.
-            if emit_identity:
-                id_dbg: KDbg | None = None
-                if self._dev:
-                    id_dbg = self._build_dbg(packed, dbg_label, op="IDENTITY", packed=True)
-                else:
-                    id_dbg = KDbg(op="IDENTITY")
-                extras.append(
-                    KValue(
-                        KLine(
-                            signature=packed,
-                            nodes=[packed],
-                            dbg=id_dbg,
-                        ),
-                        SIG_S1,
-                    )
-                )
-
+            )
         return (packed, extras)
 
     # Debug construction

@@ -741,22 +741,16 @@ class TestEmitterMTS:
     # -- KS-19: MTS expansion --------------------------------------------
 
     def test_ks19_mts_expansion(self):
-        """KS-19: ABC → 4 entries matching §14.6.
+        """KS-19: ABC → only the CANONIZES canon (no per-component entries).
 
-        Expected:
-          1. A unsigned (S4)
-          2. B unsigned (S4)
-          3. C unsigned (S4)
-          4. ABC canonize [A, B, C] (S2)
+        MTS emits exactly one entry: the canon {ABC:[A,B,C]} (S2). The
+        characters are values inside the canon, not headed klines.
         """
         entries = compile_dev("ABC")
-        assert len(entries) == 4
+        assert len(entries) == 1
 
-        assert _sig_str(entries[0]) == "A" and entries[0].kline.dbg.op == "UNKNOWN"
-        assert _sig_str(entries[1]) == "B" and entries[1].kline.dbg.op == "UNKNOWN"
-        assert _sig_str(entries[2]) == "C" and entries[2].kline.dbg.op == "UNKNOWN"
-        assert _sig_str(entries[3]) == "ABC" and entries[3].kline.dbg.op == "CANONIZES"
-        assert _node_strs(entries[3]) == ["A", "B", "C"]
+        assert _sig_str(entries[0]) == "ABC" and entries[0].kline.dbg.op == "CANONIZES"
+        assert _node_strs(entries[0]) == ["A", "B", "C"]
 
     def test_ks19a_mts_component_uniformity(self):
         """KS-19a: word-bound MTS constituents → IDENTITY; unbound → UNKNOWN.
@@ -979,18 +973,15 @@ class TestComplexExamples:
         6:     D denote [A] (S3)
         7:     M denote [L] (S3)
         8:     L connote [O] (S3)
-        MTS entries (S2/S4, after all source):
-        9–12:  MTS M, H, A, L identity (S4)
-        13:    MHALL canonize [M, H, A, L, L] (S2)
-        14–16: MTS S, V, O identity (S4)
-        17:    SVO canonize [S, V, O] (S2)
+        MTS entries (S2, after all source — canons only, no components):
+        9:     MHALL canonize [M, H, A, L, L] (S2)
+        10:    SVO canonize [S, V, O] (S2)
         (SVO canonize subscript: deduped)
-        (MTS ALL A, L: deduped)
-        18:    ALL canonize [A, L, L] (S2)
+        11:    ALL canonize [A, L, L] (S2)
         (ALL canonize subscript: deduped)
         """
         entries = compile_dev(_SEC1411_SOURCE)
-        assert len(entries) == 18
+        assert len(entries) == 11
 
         # Spot-check critical entries by dbg.label — the first emitted
         # kline is now a source countersign, not an MTS component identity.
@@ -1028,14 +1019,22 @@ class TestComplexExamples:
         # Connote
         assert has_entry(entries, sig="L", op="CONNOTES")
 
-    def test_ks35_complex_nested_presence(self):
-        """KS-35: §14.11 master regression — key entries present (18 entries)."""
-        entries = compile_dev(_SEC1411_SOURCE)
-        assert len(entries) == 18
-
-        # MTS identity for all single-char identifiers
+        # MTS emits no per-component entries.
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
-            assert has_entry(entries, sig=char, op="UNKNOWN"), f"Missing UNKNOWN entry for {char}"
+            assert not has_entry(entries, sig=char, op="UNKNOWN"), (
+                f"Unexpected component entry for {char}"
+            )
+
+    def test_ks35_complex_nested_presence(self):
+        """KS-35: §14.11 master regression — key entries present (11 entries)."""
+        entries = compile_dev(_SEC1411_SOURCE)
+        assert len(entries) == 11
+
+        # MTS emits only canons — no per-component UNKNOWN entries.
+        for char in ["M", "H", "A", "L", "S", "V", "O"]:
+            assert not has_entry(entries, sig=char, op="UNKNOWN"), (
+                f"Unexpected component entry for {char}"
+            )
 
         # MTS CANONIZES for compound identifiers
         assert has_entry(entries, sig="MHALL", op="CANONIZES")

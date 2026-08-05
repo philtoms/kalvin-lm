@@ -256,37 +256,31 @@ class TestMultiTokenMTS:
     """Multi-token BPE words produce unsigned per token + CANONIZES packed."""
 
     def test_multi_token_node_emits_mts(self) -> None:
-        """A multi-token node triggers unsigned + self-ref identity entries."""
+        """A multi-token node triggers only the compound-word identity entry."""
         mock = MockMultiTokenTokenizer({"Mary": [10, 20]})
         enc = TokenEncoder(mock, dev=True)
         entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTES")
         results = enc.encode_entries([entry])
 
-        # Should have: UNKNOWN(10), UNKNOWN(20), identity(packed,[packed]), CONNOTES(A, [packed])
-        unsigned_entries = [
-            r for r in results if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and not r.kline.nodes
-        ]
-        # The compound-word self-ref identity: op IDENTITY (self-ref band),
-        # nodes == [signature].
+        packed = signifier.signature_of([10, 20])
+
+        # §11.3 emits only the self-referential identity {packed:[packed]}
+        # (S1) — no per-subword component entries.
         identity_entries = [
             r for r in results
             if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.nodes == [r.kline.signature]
         ]
-        connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
-
-        assert len(unsigned_entries) == 2
-        assert unsigned_entries[0].kline.signature == 10
-        assert unsigned_entries[0].kline.nodes == []
-        assert unsigned_entries[1].kline.signature == 20
-        assert unsigned_entries[1].kline.nodes == []
-
         assert len(identity_entries) == 1
-        packed = signifier.signature_of([10, 20])
-        # The §11.3 compound-word identity is a self-ref whose signature is
-        # the OR-reduction of its subword tokens; no marker token.
         assert identity_entries[0].kline.signature == packed
         assert identity_entries[0].kline.nodes == [packed]
 
+        # No subword UNKNOWN entries.
+        assert not [
+            r for r in results
+            if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and not r.kline.nodes
+        ]
+
+        connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
         assert len(connote_entries) == 1
         # The compound's signature is reused as a node value — references
         # share the same value as the definition.
@@ -294,8 +288,8 @@ class TestMultiTokenMTS:
 
     def test_multi_token_sig_emits_mts(self) -> None:
         """A multi-token signature heading an UNKNOWN entry is represented
-        solely by its §11.3 decomposition — no standalone packed-sig
-        UNKNOWN (CONTEXT.md "Identity").
+        solely by its §11.3 compound-word identity — no standalone packed-sig
+        UNKNOWN and no subword entries (CONTEXT.md "Identity").
         """
         mock = MockMultiTokenTokenizer({"WORD": [50, 60]})
         enc = TokenEncoder(mock, dev=True)
@@ -304,29 +298,21 @@ class TestMultiTokenMTS:
 
         packed = signifier.signature_of([50, 60])
 
-        # §11.3: UNKNOWN(50), UNKNOWN(60), identity(packed, [packed])
-        mts_unsigned = [
-            r for r in results
-            if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and r.kline.signature in (50, 60)
-        ]
+        # §11.3: only the identity(packed, [packed]).
         identity_entries = [
             r for r in results
             if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.nodes == [r.kline.signature]
         ]
-        assert len(mts_unsigned) == 2
         assert len(identity_entries) == 1
-        # The compound identity signature is the OR-reduction of the tokens.
         assert identity_entries[0].kline.signature == packed
         assert identity_entries[0].kline.nodes == [packed]
 
-        # No standalone UNKNOWN at the packed signature.
+        # No subword UNKNOWN entries, no standalone UNKNOWN at the packed sig.
         assert not [
             r for r in results
             if r.kline.dbg and r.kline.dbg.op == "UNKNOWN"
-            and r.kline.signature == packed
-            and not r.kline.nodes
         ]
-        assert len(results) == 3
+        assert len(results) == 1
 
     def test_source_precedes_mts(self) -> None:
         """Compiled source precedes any MTS entries in the output.
@@ -364,8 +350,8 @@ class TestDedupMTS:
         ]
         results = enc.encode_entries(entries)
 
-        # Only 2 UNKNOWN subword entries (not 4) and 1 compound identity
-        # (not 2).
+        # No subword UNKNOWN entries (MTS emits only the identity); the
+        # compound-word identity is deduped to 1 across the two uses.
         unsigned_entries = [
             r for r in results if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and not r.kline.nodes
         ]
@@ -375,7 +361,7 @@ class TestDedupMTS:
         ]
         connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
 
-        assert len(unsigned_entries) == 2  # deduped from potential 4
+        assert len(unsigned_entries) == 0
         assert len(identity_entries) == 1  # deduped from potential 2
         assert len(connote_entries) == 2  # both main entries
 

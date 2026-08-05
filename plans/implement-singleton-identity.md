@@ -120,6 +120,37 @@ Test mapping: KS-33/33a/33b/33c, KS-19/19a, KS-34, KS-36, KS-37, KS-38.
 | B4 patches canon nodes only, not component identities   | Grill Q12a: preserves `DH = h(ad)` scope-leak prevention. §14.12 S/V/O stay S4.                        |
 | `band_significance` retained, not torn out              | Grill keystone: the byte is the Target Significance (answer key), not a structural derivation.         |
 
+## Follow-on: aggregate-only decomposition
+
+After the initial implementation, the B4-staleness problem surfaced: MTS
+component identities emitted at expansion time could not be retroactively
+patched by Rule B4 inline overrides in subscript scopes (the `DH = h(ad)`
+scope-leak prevention forbids it). Rather than weaken B4, the resolution is
+that **decomposition emits only the aggregate** — components are values
+inside the aggregate, not headed klines. An author wanting a headed kline for
+a component writes it as a bare singleton (§7.1).
+
+This applies uniformly to both decomposition mechanisms:
+
+- **MTS (§8):** emits only the CANONIZES canon `{compound: [chars]}`. No
+  per-character component entries. Removed `_mts_identity_seen` and the
+  component-emission loop from `_emit_mts`.
+- **Compound-words (§11.3):** emits only the self-referential identity
+  `{packed: [packed]}`. No per-subword component entries. Removed `_decomposed`
+  from the TokenEncoder; added `_compound_identity_emitted` to dedup the
+  identity by packed signature (a word reused as a node emits its identity
+  once). An IDENTITY entry whose sig multi-token-splits registers its packed
+  sig and marks it emitted (the main entry is the source identity).
+
+Downstream consequence: the dialogue-script format (which mirrored the old
+  per-component emissions turn-by-turn) was updated — `MHALL_TURNS` no longer
+  encodes subword CANONIZES turns or component UNKNOWN asks; compound words
+  are ratified as IDENTITY turns instead.
+
+Spec: §8, §8.3, §11.3, §14.6, §14.11, §14.12; matrix KS-19/19a/38/39/43.
+Tests: updated across test_ks*, test_ks_ast_emitter, test_ks_token_encoder,
+  test_ks_compiler, and the dialogue fixtures (tests/_fixtures/__init__.py).
+
 ## Status
 
 - [x] Spec (`specs/kscript.md`) rewritten.

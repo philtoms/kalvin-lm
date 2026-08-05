@@ -143,12 +143,12 @@ class TestKS35ComplexNested:
         self.entries = compile_source(SOURCE_14_11, dev=True)
 
     def test_entry_count(self) -> None:
-        """Total entry count matches spec §14.11 (18 entries).
+        """Total entry count matches spec §14.11 (11 entries).
 
-        MTS component UNKNOWN dedup, no compound-own
-        identity, and subscript identity suppression for MTS CANONIZES scopes.
+        8 source entries + 3 MTS canons (MHALL, SVO, ALL). MTS emits only
+        canons — no per-component entries.
         """
-        assert len(self.entries) == 18
+        assert len(self.entries) == 11
 
     def test_no_duplicate_canonize(self) -> None:
         """CANONIZES dedup: no two CANONIZES entries share the same (sig, nodes)."""
@@ -167,21 +167,21 @@ class TestKS35ComplexNested:
         assert _count_entries(self.entries, "CANONIZES") == 3
 
     def test_mts_mhall_components(self) -> None:
-        """MTS for MHALL: unsigned entries for M, H, A, L components."""
-        assert _has_entry(self.entries, "UNKNOWN", "M")
-        assert _has_entry(self.entries, "UNKNOWN", "H")
-        assert _has_entry(self.entries, "UNKNOWN", "A")
-        assert _has_entry(self.entries, "UNKNOWN", "L")
+        """MTS for MHALL: no per-component entries (canon only)."""
+        assert not _has_entry(self.entries, "UNKNOWN", "M")
+        assert not _has_entry(self.entries, "UNKNOWN", "H")
+        assert not _has_entry(self.entries, "UNKNOWN", "A")
+        assert not _has_entry(self.entries, "UNKNOWN", "L")
 
     def test_mts_mhall_canonize(self) -> None:
         """MTS canonization: MHALL → [M, H, A, L, L]."""
         assert _has_entry(self.entries, "CANONIZES", "MHALL", "MHALL")
 
     def test_mts_svo_components(self) -> None:
-        """MTS for SVO: unsigned entries for S, V, O components."""
-        assert _has_entry(self.entries, "UNKNOWN", "S")
-        assert _has_entry(self.entries, "UNKNOWN", "V")
-        assert _has_entry(self.entries, "UNKNOWN", "O")
+        """MTS for SVO: no per-component entries (canon only)."""
+        assert not _has_entry(self.entries, "UNKNOWN", "S")
+        assert not _has_entry(self.entries, "UNKNOWN", "V")
+        assert not _has_entry(self.entries, "UNKNOWN", "O")
 
     def test_mts_svo_canonize(self) -> None:
         """MTS canonization: SVO → [S, V, O]."""
@@ -217,12 +217,8 @@ class TestKS35ComplexNested:
             assert isinstance(e, KValue)
 
     def test_identity_count(self) -> None:
-        """7 UNKNOWN entries from MTS component identities.
-
-        MTS components (deduped): M, H, A, L, S, V, O = 7 unique chars.
-        Total UNKNOWN: 7 (no compound-own identity).
-        """
-        assert _count_entries(self.entries, "UNKNOWN") == 7
+        """No UNKNOWN entries — MTS emits only canons."""
+        assert _count_entries(self.entries, "UNKNOWN") == 0
 
     def test_source_precedes_mts(self) -> None:
         """Compiled source precedes any MTS entries in the output.
@@ -702,15 +698,16 @@ class TestPipelineWiring:
         assert _has_entry(entries, "COUNTERSIGNS", "A", "B")
 
     def test_end_to_end_mts(self) -> None:
-        """Multi-character identifier triggers MTS expansion."""
+        """Multi-character identifier triggers MTS canon expansion (canon only)."""
         compiler = Compiler(dev=True)
         tokens = Lexer("ABC == X").tokenize()
         kfile = Parser(tokens).parse()
         entries = compiler.compile(kfile)
-        # MTS for ABC
-        assert _has_entry(entries, "UNKNOWN", "A")
-        assert _has_entry(entries, "UNKNOWN", "B")
-        assert _has_entry(entries, "UNKNOWN", "C")
+        # MTS for ABC emits only the canon — no per-component entries.
+        assert _has_entry(entries, "CANONIZES", "ABC")
+        assert not _has_entry(entries, "UNKNOWN", "A")
+        assert not _has_entry(entries, "UNKNOWN", "B")
+        assert not _has_entry(entries, "UNKNOWN", "C")
         # No MTS for single-char X
         assert _has_entry(entries, "COUNTERSIGNS", "ABC", "X")
         assert _has_entry(entries, "COUNTERSIGNS", "X", "ABC")
@@ -866,23 +863,20 @@ class TestKV4CompilerSignificance:
     def test_mts_entries_get_correct_significance(self) -> None:
         """`ABC == X` (multi-char triggers MTS) threads the op correctly.
 
-        UNKNOWN entries (MTS subwords) get SIG_S4, CANONIZES entries (the
-        ABC aggregate) get SIG_S2, and COUNTERSIGNS entries (ABC↔X) get
+        MTS emits only the CANONIZES canon (no subword entries). The ABC
+        aggregate gets SIG_S2, and COUNTERSIGNS entries (ABC↔X) get
         SIG_S1. This verifies the production op is threaded through MTS
         expansion, not lost when wrapping KLines as KValues.
         """
         entries = compile_source("ABC == X", dev=True)
 
-        identities = [kv for kv in entries if kv.kline.dbg.op == "UNKNOWN"]
         canonized = [kv for kv in entries if kv.kline.dbg.op == "CANONIZES"]
         countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNS"]
 
         # Guard against vacuous pass: at least one entry of each op exists.
-        assert len(identities) >= 1, "Expected MTS subword UNKNOWN entries"
         assert len(canonized) >= 1, "Expected an ABC CANONIZES entry"
         assert len(countersigned) >= 1, "Expected ABC↔X COUNTERSIGNS entries"
 
-        assert all(kv.significance == SIG_S4 for kv in identities)
         assert all(kv.significance == SIG_S2 for kv in canonized)
         assert all(kv.significance == SIG_S1 for kv in countersigned)
 
