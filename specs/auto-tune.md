@@ -56,10 +56,10 @@ Each line is a JSON object with a monotonic `seq` counter.
 
 ### KLine Display Object
 
-| Field  | Type                                 | Description               |
-| ------ | ------------------------------------ | ------------------------- |
-| raw    | `{signature: int, nodes: list[int]}` | Raw KLine data            |
-| source | `str`                                | Decompiled KScript source |
+| Field       | Type                                 | Description                                  |
+| ----------- | ------------------------------------ | -------------------------------------------- |
+| values      | `{signature: int, nodes: list[int]}` | The kline the model stored — judgement basis |
+| for_display | `str`                                | Decompiled KScript label — display only      |
 
 ### Command Frame
 
@@ -194,7 +194,7 @@ Session artefacts are persisted to files inside the session's git worktree. The 
 ### Event Enrichment
 
 23. Raw `RationaliseEvent` payloads are enriched with decompiled source before writing to the event stream.
-24. KLine objects are converted to the KLine Display Object format: `{raw: {signature, nodes}, source: <decompiled>}`.
+24. KLine objects are converted to the KLine Display Object format: `{values: {signature, nodes}, for_display: <decompiled>}`.
 25. Significance values are converted to the Significance Object format: `{raw, normalised, level}`.
 26. The significance level (`S1`–`S4`) is derived from the raw byte via `BandLayout.classify`.
 27. Progress events are passed through with field renaming only (`lesson_label` → `lesson`, etc.).

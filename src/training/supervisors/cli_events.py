@@ -169,12 +169,12 @@ def _build_significance(raw_sig: int) -> dict:
 def _build_kline_display(kline: KLine) -> dict:
     """Build a KLine Display Object (§KLine Display Object).
 
-    Returns dict with raw (signature, nodes) and decompiled source.
+    ``values`` is the kline the model stored (judge against this);
+    ``for_display`` is a decompiled label for human readability only.
     """
-    source = _display_kline(kline)
     return {
-        "raw": {"signature": kline.signature, "nodes": kline.nodes},
-        "source": source,
+        "values": {"signature": kline.signature, "nodes": kline.nodes},
+        "for_display": _display_kline(kline),
     }
 
 

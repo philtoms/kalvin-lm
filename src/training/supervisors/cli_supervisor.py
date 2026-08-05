@@ -124,7 +124,7 @@ class CLISupervisor:
                     # Buffer the canonical KLine wire dict ({"signature",
                     # "nodes"}) straight from the inbound frame, not the
                     # enriched display object produced by ``enrich_event``
-                    # (which wraps the proposal as {"raw": {...}, "source": ...}).
+                    # (which wraps the proposal as {"values": {...}, "for_display": ...}).
                     # The emitted countersign frame must carry the wire
                     # contract's KLine shape (see ``_domain_json_default`` /
                     # ``events._build_kline_display``); the raw frame's

@@ -557,11 +557,11 @@ class TestWireFrameRoundTrip:
         assert event["significance"]["raw"] == 99
         assert event["significance"]["level"] == "S3"
         assert "normalised" in event["significance"]
-        # KLines round-trip to their KLine Display Object raw shape.
-        assert event["query"]["raw"] == {"signature": 0xAA, "nodes": [0xAA]}
-        assert event["proposal"]["raw"] == {"signature": 0xBB, "nodes": [0xBB, 0xCC]}
-        assert isinstance(event["query"]["source"], str)
-        assert isinstance(event["proposal"]["source"], str)
+        # KLines round-trip to their KLine Display Object values shape.
+        assert event["query"]["values"] == {"signature": 0xAA, "nodes": [0xAA]}
+        assert event["proposal"]["values"] == {"signature": 0xBB, "nodes": [0xBB, 0xCC]}
+        assert isinstance(event["query"]["for_display"], str)
+        assert isinstance(event["proposal"]["for_display"], str)
 
     def test_ratify_request_frame_enriches_to_ratify_request(self) -> None:
         msg = Message(
@@ -582,7 +582,7 @@ class TestWireFrameRoundTrip:
         assert event["seq"] == 7
         assert event["significance"]["raw"] == 99
         assert event["significance"]["level"] == "S3"
-        assert event["query"]["raw"] == {"signature": 0xAA, "nodes": [0xAA]}
-        assert event["proposal"]["raw"] == {"signature": 0xBB, "nodes": [0xBB]}
-        assert isinstance(event["query"]["source"], str)
-        assert isinstance(event["proposal"]["source"], str)
+        assert event["query"]["values"] == {"signature": 0xAA, "nodes": [0xAA]}
+        assert event["proposal"]["values"] == {"signature": 0xBB, "nodes": [0xBB]}
+        assert isinstance(event["query"]["for_display"], str)
+        assert isinstance(event["proposal"]["for_display"], str)
