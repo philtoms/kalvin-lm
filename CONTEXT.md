@@ -20,6 +20,8 @@ Kalvin is a rationalising system whose entire world is built from klines. This g
 
 ### Structure
 
+The objective shape of a kline — its signature and nodes — and the significance that shape _claims_ on its own, with no model and no observer. Structure is the ground truth every participant measures against; it is independent of who is looking.
+
 **KLine**:
 The fundamental unit of Kalvin's memory, and the unit Kalvin rationalises. A structure containing a **signature** (its head node) and a **nodes** list, between which holds a relationship Kalvin rationalises as a **Structural Significance**.
 
@@ -61,6 +63,8 @@ A kline **structure**: the signature does not equal `signature_of(nodes)`. Struc
 
 ### Rationalisation
 
+How a participant tests a kline's structural claim against what Kalvin actually holds — the slow, model-traversing path that arrives at a participant's own significance for a kline. Distinct from Structure (the claim) and from KScript's Target Significance (the authored answer): rationalisation is a participant's private derivation, and the gap between it and the target is what training closes.
+
 **Significance (Rational)**:
 The measurement of whether a kline's structural claim holds against what Kalvin holds — refined through model traversal and learned preferences. Classified into four levels of understanding:
 
@@ -92,8 +96,14 @@ The unit of exchange between participants — a **KLine** (objective structure) 
 
 ### KScript
 
+The language that authors training material. A script declares klines and, through its relational tokens and the structures they generate, labels each with a **Target Significance** — the answer a trainee must learn to derive for itself. KScript is a compiler/provenance concern: it produces structures and their target labels, never a participant's lived significance.
+
 **Token ID**:
 A value produced by the tokenizer.
+
+**Target Significance**:
+The significance a compiled kline is _labelled_ with — the answer the script asserts the trainee should learn to derive.
+_Avoid_: compiled significance (describes provenance, not the purpose), the kline's significance (a kline has no significance of its own — participants assign one; the compiled label is the target they are measured against), ground truth (overloaded with Grounding)
 
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
@@ -102,7 +112,7 @@ The closed set of written tokens that declare how a kline is produced in KScript
 - **CANONIZES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonizes its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
 - **CONNOTES** (`>`) — 1:1 `{A: [B]}`. The signature connotes each node (`A > B` ⇒ A connotes B; subjectively, _A is a B_).
 - **DENOTES** (`=`) — 1:1 `{B: [A]}`. The signature denotes each node (`A = B` ⇒ A denotes B; objectively, _B is an A_).
-- **UNKNOWN** — `{A: []}` (bare signature) — see Unknown. The structural form of an ask: nothing held for this signature.
+- **UNKNOWN** — a bare, unbound signature. See **Unknown**. A bare signature with no **Word Binding** compiles to the empty Unknown `{A: []}` — the structural form of an ask. A bare signature that is word-bound compiles instead to an **Identity** `{A: [A]}` (see Identity): the binding gives it a decodable value, so the script labels it a known identity rather than an ask. Binding chooses the structure; the structure then determines the **Target Significance**.
   _Avoid_: structural relationship (collides with Structural Significance), relational operator (the token declares provenance, not an operation)
 
 **MTS (Multi-Token Signature)**:
@@ -114,6 +124,8 @@ The association of a single-character KScript signature with a word, resolved th
 _Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature), rebind (a top-level annotation never overrides; an inline annotation always does — use the specific kind)
 
 ### Training and Runtime
+
+The multi-agent loop in which authored material becomes understanding. A trainer presents klines carrying **Target Significance**; a trainee rationalises them and is graded on the gap; a supervisor resolves what rationalisation alone cannot. The runtime is where Structure, Rationalisation, and KScript's targets finally meet.
 
 **Harness**:
 The multi-agent runtime that loads agents as participants and runs a dialogue loop between them. A message broker — agents send role-addressed messages through the harness and it routes them to all subscribers of that role. Participants never communicate directly.
