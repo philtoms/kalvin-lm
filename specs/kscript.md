@@ -260,21 +260,24 @@ KLine:
     dbg: KDbg                       # op (structural relationship) + diagnostic fields
 ```
 
-**No singleton rule.** Nodes are always a list. An UNKNOWN entry has an empty list (structurally an Unknown). A single-node entry has a one-element list. A multi-node entry has multiple elements.
+**No singleton rule.** Nodes are always a list. An UNKNOWN entry has an empty list (structurally an Unknown). An IDENTITY entry has a one-element self-referential list (structurally an Identity). A single-node non-self-ref entry has a one-element list. A multi-node entry has multiple elements.
 
-### 6.2 Significance Level Assignment
+### 6.2 Target Significance
 
-Each emitted entry is tagged with a significance level based on its structural relationship (the signature↔nodes relationship, recorded in the `op` field):
+Each emitted entry is labelled with a **Target Significance** (@CONTEXT.md §Target Significance) — the S-level the script asserts a trainee should learn to derive for that kline. It is categorically distinct from a participant's **Significance (Rational)** (@CONTEXT.md), which is that participant's own derivation from structure and model state. The target is authored by the relational token together with the structure it generates; it is not measured from any one kline in isolation.
 
-| Relationship        | Level | Meaning                                |
+The target level is derived from the production `op`:
+
+| Op                  | Level | Meaning                                |
 | ------------------- | ----- | -------------------------------------- |
-| COUNTERSIGNS (`==`) | S1    | Mutual / bidirectional                 |
+| COUNTERSIGNS (`==`) | S1    | Mutual / bidirectional — reciprocals   |
+| CANONIZES (`=>`)    | S2    | Canonical — intent to aggregate        |
 | DENOTES (`=`)       | S3    | Objective — signature denotes node     |
-| CANONIZES (`=>`)    | S2    | Canonical                              |
 | CONNOTES (`>`)      | S3    | Connotative — signature connotes node  |
-| UNKNOWN (bare)      | S4    | Unknown — bare node, no relationships |
+| IDENTITY (self-ref) | S1    | A known, decodable value               |
+| UNKNOWN (empty)     | S4    | Unknown — nothing held for signature   |
 
-Significance bits are not encoded into the token IDs. The level is carried as metadata on the compiled entry.
+Significance bits are not encoded into the token IDs. The target level is carried as metadata on the compiled entry.
 
 ---
 
@@ -283,14 +286,17 @@ Significance bits are not encoded into the token IDs. The level is carried as me
 ### 7.1 UNKNOWN token (bare signature)
 
 ```
-A       → {A: []}
+A       → {A: []}     (unbound — orphan)
+(Mary)
+A       → {A: [A]}    (word-bound — identity; resolved A → "Mary")
 ```
 
-A bare signature compiles under the **UNKNOWN** token (@CONTEXT.md §Relational
-Tokens). The resulting empty kline `{A: []}` is structurally an **Unknown**
-that claims S4 (@CONTEXT.md §Unknown). (A scripted true-**Identity** token for
-self-referential `{A: [A]}` is reserved for future work; the UNKNOWN token
-names the bare ask, not the decodable identity.)
+A bare signature is lexed under the **UNKNOWN** token (@CONTEXT.md §Relational Tokens) — the lexer's single classification for any identifier with no relational token. The compiler then refines it by **Word Binding** (§10): binding is the sole discriminator between the two structural outcomes.
+
+- **Word-bound** (a block or inline annotation resolves the character to a word) → compiles to a self-referential **Identity** `{S: [S]}` (@CONTEXT.md §Identity). The binding gives the signature a decodable value, so the script labels it a known identity. The resolved word is the signature's surface form.
+- **Unbound** (no annotation resolves the character) → compiles to the empty **Unknown** `{S: []}` (@CONTEXT.md §Unknown) — the structural form of an ask, nothing held for this signature.
+
+Binding chooses the structure; the structure then determines the **Target Significance** (§6.2): an Identity claims S1, an Unknown claims S4.
 
 Plus MTS expansion if multi-character (§8).
 
@@ -307,11 +313,11 @@ Each node produces a bidirectional pair.
 
 ```
 A = B       → {B: A}
-A = A       → {A: []}              (self-unknown, UNKNOWN)
+A = A       → {A: [A]}          (self-denote → self-referential Identity)
 A = B C D   → {B: A}, {C: A}, {D: A}
 ```
 
-A denote declares an objective relationship: the written signature denotes each node, so the node becomes the signature and the written signature its node (`A = B` ⇒ A denotes B; literally, _B is an A_). Each node produces its own kline. Self-denote (`A = A`) collapses to the empty Unknown `{A: []}`.
+A denote declares an objective relationship: the written signature denotes each node, so the node becomes the signature and the written signature its node (`A = B` ⇒ A denotes B; literally, _B is an A_). Each node produces its own kline. Self-denote (`A = A`) is an explicit self-reference: it compiles to the self-referential Identity `{A: [A]}` (S1) regardless of word binding — once the author has written the self-reference, the structure is fixed and binding no longer gets a vote (cf. §7.1, where binding chooses the structure for a bare singleton).
 
 ### 7.4 CONNOTES (`>`) — unidirectional, per-item
 
@@ -341,14 +347,14 @@ A =>
   C = D
 ```
 
-Items in child scope: B, C. CANONIZES aggregates → `{A: [B, C]}`. Recursive compilation of children: `{D: [C]}`, `{B: []}`, `{C: []}`, `{D: []}`.
+Items in child scope: B, C. CANONIZES aggregates → `{A: [B, C]}`. Recursive compilation of children: `{D: [C]}`, then B and C are filled as identities (§7.1).
 
 **Subscript identity rule.** In a CANONIZES subscript block, every identifier that appears in the block must be the signature of at least one emitted entry. Some identifiers never produce such an entry on their own:
 
 - A **leaf Signature item** (a bare node like `B` above) emits no operator entry, so it has no entry whose signature is `B`.
 - A **DENOTES scope sig** (`C = D` produces `{D: [C]}` — the scope's own sig `C` is never a signature).
 
-For these, an UNKNOWN entry `{sig: []}` is emitted to fill the gap. (Structurally each is an **Unknown** claiming S4, @CONTEXT.md §Unknown; "UNKNOWN" here is the compiler token, §7.1.) UNKNOWN emission is deduplicated: if the identifier already has an UNKNOWN entry, or was already introduced as an MTS component, or is a compound already introduced by its CANONIZES entry, no new UNKNOWN is emitted.
+For these, an identity entry is emitted to fill the gap — a self-referential **Identity** `{sig: [sig]}` if the identifier is word-bound, an empty **Unknown** `{sig: []}` otherwise (the same binding-aware rule as §7.1). Identity emission is deduplicated: if the identifier already has an identity/unknown entry, or was already introduced as an MTS component, or is a compound already introduced by its CANONIZES entry, no new entry is emitted.
 
 **MTS-expanded sig suppression.** This identity filling applies only when the CANONIZES scope's sig did **not** trigger MTS — i.e. it is a single-character sig. A multi-character CANONIZES sig already receives component identities from its own MTS expansion (§8), so subscript identity would only produce spurious duplicates and is suppressed. (This is why §14.11 emits no identity for `ALL`'s subscript children `A`, `L` — they were already introduced by `MHALL`'s MTS expansion.)
 
@@ -362,18 +368,20 @@ The identity-filling flag does not propagate between CANONIZES scopes; only the 
 
 When an MTS entry appears (signature side or node side, any operator), the ASTEmitter automatically emits:
 
-1. **Component identities:** One UNKNOWN entry per constituent character (resolved via BindingScope). Each `{char: []}` is structurally an Unknown (S4); together they seed the model with the character signatures the canonization references.
+1. **Component identities:** One entry per constituent character (resolved via BindingScope), following the same binding-aware rule as a bare singleton (§7.1): a word-bound character → self-referential **Identity** `{char: [char]}` (S1); an unbound character → empty **Unknown** `{char: []}` (S4). Together they seed the model with the character signatures the canonization references.
 2. **MTS canonization:** One CANONIZES entry mapping the identifier to its resolved components.
 
 ```
-ABC  →  {A: []}, {B: []}, {C: []}, {ABC: [A, B, C]}
+ABC (unbound)     →  {A: []}, {B: []}, {C: []}, {ABC: [A, B, C]}
+(Mary had a)
+MHA (word-bound)  →  {Mary: [Mary]}, {Had: [Had]}, {A: [A]}, {MHA: [Mary, Had, A]}
 ```
 
 Single-character signatures do NOT trigger MTS expansion.
 
-**Semantics.** The MTS canonization kline `{ABC: [A, B, C]}` is structurally a **canon** — its signature equals `signature_of([A, B, C])`. It is therefore recognised (S1) by its own structure (see @CONTEXT.md §Canon). MTS never produces an Unknown or Identity; the decomposition is the point.
+**Semantics.** The MTS canonization kline `{ABC: [A, B, C]}` is structurally a **canon** — its signature equals `signature_of([A, B, C])`. It is therefore recognised (S1) by its own structure (see @CONTEXT.md §Canon). The component identities it expands to are Identities or Unknowns per §7.1; the canonization itself is neither.
 
-MTS character-expansion applies only to all-uppercase identifiers. A lowercase or mixed-case multi-character identifier (e.g. `had`, `did`, `all`) is a **single word** — one lexical item — not an MTS entry; it is emitted as its own UNKNOWN and is never decomposed into per-character entries. Case is the discriminator that separates an MTS entry from a word; both are admitted by the case-insensitive SIGNATURE rule (§2). (Historically every multi-character identifier was uppercase, so the case guard was implicit; the SIGNATURE relaxation made it explicit.) A word that the _external tokenizer_ splits into multiple BPE subwords is handled by the orthogonal compound-word mechanism (§11.3), not by MTS.
+MTS character-expansion applies only to all-uppercase identifiers. A lowercase or mixed-case multi-character identifier (e.g. `had`, `did`, `all`) is a **single word** — one lexical item — not an MTS entry; it is emitted as its own identity/unknown per §7.1 and is never decomposed into per-character entries. Case is the discriminator that separates an MTS entry from a word; both are admitted by the case-insensitive SIGNATURE rule (§2). (Historically every multi-character identifier was uppercase, so the case guard was implicit; the SIGNATURE relaxation made it explicit.) A word that the _external tokenizer_ splits into multiple BPE subwords is handled by the orthogonal compound-word mechanism (§11.3), not by MTS.
 
 MTS applies wherever **all-uppercase multi-character identifiers** appear — signature side or node side, any operator. There is no position-dependent rule.
 
@@ -389,11 +397,11 @@ The number of nodes in an MTS canonization entry always equals the number of cha
 
 MTS deduplication prevents duplicate entries when the same identifier appears in multiple MTS expansions. Two categories are deduplicated:
 
-**Component identity dedup.** Each constituent character of an MTS expansion produces one UNKNOWN (S4) entry. If a character was already emitted by a previous MTS expansion, the duplicate is silently dropped. Intra-expansion dedup also prevents duplicate emission when the same character appears multiple times in an MTS entry (e.g., the second L in MHALL).
+**Component identity dedup.** Each constituent character of an MTS expansion produces one component entry — an Identity if word-bound, an Unknown if not (§7.1). If a character was already emitted by a previous MTS expansion (under the same resolved form), the duplicate is silently dropped. Intra-expansion dedup also prevents duplicate emission when the same character appears multiple times in an MTS entry (e.g., the second L in MHALL).
 
 **Canonization dedup.** An MTS canonization entry is a CANONIZES (S2) entry mapping an MTS entry to its components. If another CANONIZES entry with the same signature and nodes would be produced (e.g., a CANONIZES scope that aggregates the same components), the duplicate is silently dropped.
 
-Deduplication applies only to MTS-produced entries — it is not a general deduplication mechanism. Relationship-produced entries (COUNTERSIGNS, DENOTES, CONNOTES) and non-MTS UNKNOWN entries are always emitted.
+Deduplication applies only to MTS-produced entries — it is not a general deduplication mechanism. Relationship-produced entries (COUNTERSIGNS, DENOTES, CONNOTES) and non-MTS component entries are always emitted.
 
 **Canonical resolution.** An MTS entry's MTS component list is computed once, on first expansion, and reused by every subsequent reference (node-side or signature-side, any operator). The occurrence counter (§10.1) disambiguates characters within a single expansion (e.g. the two L's in `MHALL`); it does not advance between expansions of the same identifier.
 
@@ -588,7 +596,9 @@ The `entries` property returns a list of `KLine` objects, ordered compiled-sourc
 
 ## 14. Worked Examples
 
-### 14.1 Minimal Unknown
+### 14.1 Minimal Unknown / Identity
+
+A bare signature is unbound by default → Unknown:
 
 ```
 A
@@ -599,6 +609,19 @@ Compiled:
 | Entry | Signature | Nodes | Op       | Level |
 | ----- | --------- | ----- | -------- | ----- |
 | 1     | A         | []    | UNKNOWN  | S4    |
+
+Word-bound, the same singleton becomes an Identity:
+
+```
+(Mary)
+A
+```
+
+Compiled (A resolves to "Mary"):
+
+| Entry | Signature | Nodes   | Op       | Level |
+| ----- | --------- | ------- | -------- | ----- |
+| 1     | Mary      | [Mary]  | IDENTITY | S1    |
 
 ### 14.2 Bidirectional Link
 
@@ -637,7 +660,7 @@ Compiled:
 | ----- | --------- | ----- | -------- | ----- |
 | 1     | A         | [B]   | CONNOTES | S3    |
 
-### 14.5 Self-Unknown (`A = A`)
+### 14.5 Self-Denote (`A = A`)
 
 ```
 A = A
@@ -647,7 +670,9 @@ Compiled:
 
 | Entry | Signature | Nodes | Op       | Level |
 | ----- | --------- | ----- | -------- | ----- |
-| 1     | A         | []    | UNKNOWN  | S4    |
+| 1     | A         | [A]  | IDENTITY | S1    |
+
+Self-denote is an explicit self-reference: it compiles to the self-referential Identity `{A: [A]}` (S1) regardless of word binding (§7.3).
 
 ### 14.6 MTS Expansion
 
@@ -769,7 +794,7 @@ Compiled (source-first — §11.6):
 | 18  | MTS ALL canonize       | ALL       | [A, L, L]       | CANONIZES    | S2                                                     |
 | —   | ALL canonize subscript | —         | —               | —            | Dropped (canonize dedup: identical to entry 18)        |
 
-> **MTS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MTS entries. Two component identity entries (MTS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MTS canonization counterparts already exist. Compound identifiers receive no UNKNOWN of their own (an Unknown requires a single-token signature), so there is nothing to drop for those. Only MTS-produced entries (component identity and canonization) are deduplicated — relationship-produced duplicates are emitted as-is.
+> **MTS deduplication in action:** Four entries are silently dropped because they duplicate already-emitted MTS entries. Two component identity entries (MTS ALL component A and L) are dropped because MHALL's expansion already provided them. Two canonization entries (SVO subscript and ALL subscript) are dropped because their MTS canonization counterparts already exist. Compound identifiers receive no component entry of their own (a component entry requires a single-token signature), so there is nothing to drop for those. Only MTS-produced entries (component identity and canonization) are deduplicated — relationship-produced duplicates are emitted as-is.
 
 ### 14.12 Word-Bound Example
 
@@ -793,15 +818,17 @@ Binding resolution:
 MTS for MHALL (resolved):
 
 ```
-{Mary: []}, {Had: []}, {A: []}, {Little: []}, {Lamb: []}
+{Mary: [Mary]}, {Had: [Had]}, {A: [A]}, {Little: [Little]}, {Lamb: [Lamb]}
 {MHALL: [Mary, Had, A, Little, Lamb]}
 ```
 
-With Rule B4 override, the parent SVO canonize entry becomes:
+MHALL's characters are all word-bound, so each component compiles to a self-referential Identity (§7.1/§8) rather than an Unknown. With Rule B4 override, the parent SVO canonize entry becomes:
 
 ```
 {SVO: [Subject, V, O]}    (S patched to "Subject")
 ```
+
+Note `S`, `V`, `O` themselves remain unbound singletons (`SVO`'s MTS expansion resolves them against the block annotation, where no word starts with S/V/O), so their component entries stay Unknown `{S:[]} {V:[]} {O:[]}` (S4). B4 patches only the SVO canonization's nodes, not these component identities (§10.1 Rule B4 scope discipline).
 
 Compiled (resolved-word level; source-first — §11.6). MHALL has five distinct resolved components — no intra-expansion dedup — so this table has 19 entries versus §14.11's 18:
 
@@ -815,15 +842,15 @@ Compiled (resolved-word level; source-first — §11.6). MHALL has five distinct
 | 6   | D         | [A]                          | DENOTES      | S3    |
 | 7   | Mary      | [Little]                     | DENOTES      | S3    |
 | 8   | Lamb      | [O]                          | CONNOTES     | S3    |
-| 9   | Mary      | []                           | UNKNOWN  | S4    |
-| 10  | Had       | []                           | UNKNOWN  | S4    |
-| 11  | A         | []                           | UNKNOWN  | S4    |
-| 12  | Little    | []                           | UNKNOWN  | S4    |
-| 13  | Lamb      | []                           | UNKNOWN  | S4    |
+| 9   | Mary      | [Mary]                       | IDENTITY     | S1    |
+| 10  | Had       | [Had]                        | IDENTITY     | S1    |
+| 11  | A         | [A]                          | IDENTITY     | S1    |
+| 12  | Little    | [Little]                     | IDENTITY     | S1    |
+| 13  | Lamb      | [Lamb]                       | IDENTITY     | S1    |
 | 14  | MHALL     | [Mary, Had, A, Little, Lamb] | CANONIZES    | S2    |
-| 15  | S         | []                           | UNKNOWN  | S4    |
-| 16  | V         | []                           | UNKNOWN  | S4    |
-| 17  | O         | []                           | UNKNOWN  | S4    |
+| 15  | S         | []                           | UNKNOWN      | S4    |
+| 16  | V         | []                           | UNKNOWN      | S4    |
+| 17  | O         | []                           | UNKNOWN      | S4    |
 | 18  | SVO       | [Subject, V, O]              | CANONIZES    | S2    |
 | 19  | ALL       | [A, Little, Lamb]            | CANONIZES    | S2    |
 
@@ -857,7 +884,8 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-17                 | DEDENT returns to parent scope                                                                                                                                                                                                                                | Scope       |
 | KS-18                 | Non-CANONIZES with indent: per-item emission extends into child block                                                                                                                                                                                         | Scope       |
 | **MTS**               |                                                                                                                                                                                                                                                               |             |
-| KS-19                 | MTS expansion: all-uppercase multi-char compound produces component identities + canonization                                                                                                                                                                 | MTS         |
+| KS-19                 | MTS expansion: all-uppercase multi-char compound produces component entries (Identity if word-bound, Unknown if not) + canonization                                                                                                                          | MTS         |
+| KS-19a                | MTS component uniformity: a word-bound constituent compiles to a self-referential Identity `{w:[w]}` S1; an unbound constituent compiles to Unknown `{c:[]}` S4 — same rule as a bare singleton (KS-33a/b)                                                    | MTS         |
 | KS-20                 | No MTS for single-char identifiers                                                                                                                                                                                                                            | MTS         |
 | KS-20b                | No MTS for lowercase/mixed-case words (`had`, `Hello`) — single-token, not decomposed                                                                                                                                                                         | MTS         |
 | KS-21                 | MTS on node side: `A == MHALL` triggers MTS for MHALL                                                                                                                                                                                                         | MTS         |
@@ -873,16 +901,19 @@ SVO and ALL subscript canonizations are dropped by §8.3 dedup; MTS ALL componen
 | KS-30                 | Unresolved identifier (BindingScope returns None) is encoded as its own raw BPE token — no special fallback state                                                                                                                                             | Binding     |
 | KS-31                 | Inert annotation: no matching characters → no effect                                                                                                                                                                                                          | Binding     |
 | KS-32                 | An unresolved single character (e.g. `Z`) encodes to a single typed uint64 node — the same encoding path as any resolved character                                                                                                                            | Encoding    |
-| **Self-Unknown**       |                                                                                                                                                                                                                                                               |             |
-| KS-33                 | Self-unknown: `A = A` → `{A: []}` (an Unknown) with op=UNKNOWN                                                                                                                                                                                               | Operators   |
+| **Self-Denote / Singleton Identity** |                                                                                                                                                                                                                                               |             |
+| KS-33                 | Self-denote: `A = A` → `{A: [A]}` (a self-referential Identity) with op=IDENTITY, S1 — binding-independent                                                                                                                                                   | Operators   |
+| KS-33a                | Bare singleton, unbound: `A` → `{A: []}` Unknown, op=UNKNOWN, S4                                                                                                                                                                                              | Operators   |
+| KS-33b                | Bare singleton, word-bound: `(Mary) A` → `{Mary: [Mary]}` Identity, op=IDENTITY, S1 — binding is the sole Identity/Unknown discriminator                                                                                                                     | Operators   |
+| KS-33c                | Word binding is the sole discriminator: MTS-component introduction or node-referencing alone does not elevate an unbound singleton to Identity                                                                                                                | Operators   |
 | **Structure**         |                                                                                                                                                                                                                                                               |             |
-| KS-34                 | Nodes always a list: `A => B` → `{A: [B]}`, `A` → `{A: []}`                                                                                                                                                                                                   | Structure   |
+| KS-34                 | Nodes always a list: `A => B` → `{A: [B]}`; bare unbound `A` → `{A: []}`; bare bound `A` → `{A: [A]}`                                                                                                                                                          | Structure   |
 | **Integration**       |                                                                                                                                                                                                                                                               |             |
 | KS-35                 | Complex nested example (§14.11) produces correct complete entry list                                                                                                                                                                                          | Integration |
 | KS-36                 | Word-bound example (§14.12) produces correct resolved entries                                                                                                                                                                                                 | Integration |
 | KS-37                 | Uniform-tokenizer integration: all characters (bound and unresolved) produce valid typed nodes                                                                                                                                                                | Integration |
 | **MTS Deduplication** |                                                                                                                                                                                                                                                               |             |
-| KS-38                 | Component identity dedup: overlapping MTS expansions silently drop duplicate character identities (S4)                                                                                                                                                        | MTS Dedup   |
+| KS-38                 | Component identity dedup: overlapping MTS expansions silently drop duplicate character entries (same resolved form)                                                                                                                                            | MTS Dedup   |
 | KS-39                 | Intra-expansion dedup: repeated characters in one compound emit only one identity (e.g., second L in MHALL)                                                                                                                                                   | MTS Dedup   |
 | KS-40                 | Canonization dedup: CANONIZES entries with same (sig, nodes) silently dropped across MTS and subscript                                                                                                                                                        | MTS Dedup   |
 | KS-41                 | Canonical resolution (§8.3): an identifier's MTS components are identical wherever it appears (node-side and signature-side), even under an ambiguous occurrence counter                                                                                      | MTS         |

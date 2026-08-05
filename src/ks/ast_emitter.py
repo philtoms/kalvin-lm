@@ -95,7 +95,7 @@ class SymbolicEntry(NamedTuple):
 
     sig: str
     nodes: list[str]
-    op: str  # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | UNKNOWN
+    op: str  # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | IDENTITY | UNKNOWN
     component_labels: list[str] | None = None
     is_mts: bool = False  # True for §8 MTS-produced entries (component
                           # identity + MTS canonization). The TokenEncoder
@@ -181,9 +181,14 @@ class ASTEmitter:
         if op == "UNKNOWN":
             # For multi-char sigs _emit_mts already introduced the compound
             # via CANONIZES (mts_idx is not None) — a compound can't form an
-            # identity (§8). Single-char sigs get a bare UNKNOWN here.
+            # identity (§8). Single-char sigs refine by Word Binding (§7.1):
+            # word-bound → self-referential IDENTITY {S:[S]} (S1); unbound →
+            # empty UNKNOWN {S:[]} (S4). Binding is the sole discriminator.
             if mts_idx is None:
-                self._emit_entry(sig_resolved, [], "UNKNOWN")
+                if sig_resolved != scope.sig.id:
+                    self._emit_entry(sig_resolved, [sig_resolved], "IDENTITY")
+                else:
+                    self._emit_entry(sig_resolved, [], "UNKNOWN")
             return
 
         node_ids = self._collect_node_ids(scope)
@@ -251,8 +256,10 @@ class ASTEmitter:
         elif op == "DENOTES":
             for node in nodes:
                 if node == sig:
-                    # Self-identity → UNKNOWN with empty nodes (§7.3)
-                    self._emit_entry(sig, [], "UNKNOWN")
+                    # Self-denote → self-referential IDENTITY {S:[S]} (§7.3).
+                    # Binding-independent: once the author writes the
+                    # self-reference, the structure is fixed at S1.
+                    self._emit_entry(sig, [sig], "IDENTITY")
                 else:
                     self._emit_entry(node, [sig], "DENOTES")
 
@@ -364,21 +371,31 @@ class ASTEmitter:
 
         # Resolve once on first expansion (§8.3); reuse the cached list so
         # the identifier resolves identically as node or signature.
+        # Track (raw_char, resolved) pairs so component emission can apply the
+        # binding-aware rule (§7.1): word-bound → IDENTITY {w:[w]}, else UNKNOWN.
         if sig in self._resolution_cache:
-            chars = list(self._resolution_cache[sig])
+            pairs = list(self._resolution_cache[sig])
         else:
-            chars = [self._resolve_char(c) for c in sig]
-            self._resolution_cache[sig] = list(chars)
+            pairs = [(c, self._resolve_char(c)) for c in sig]
+            self._resolution_cache[sig] = list(pairs)
+        chars = [resolved for _, resolved in pairs]
 
         seen_in_this_call: set[str] = set()
-        for resolved_char in chars:
+        for raw_char, resolved_char in pairs:
             if resolved_char in seen_in_this_call:
                 continue  # intra-expansion dedup (e.g., second L in MHALL)
             seen_in_this_call.add(resolved_char)
             if resolved_char in self._mts_identity_seen:
-                continue  # inter-expansion dedup
+                continue  # inter-expansion dedup (keys on resolved form)
             self._mts_identity_seen.add(resolved_char)
-            self._emit_entry(resolved_char, [], "UNKNOWN", is_mts=True)
+            # Binding-aware component emission (§7.1/§8): a word-bound
+            # constituent (resolved differs from raw) is a self-referential
+            # IDENTITY {w:[w]} (S1); an unbound constituent is UNKNOWN {c:[]}
+            # (S4). Same rule as a bare singleton.
+            if resolved_char != raw_char:
+                self._emit_entry(resolved_char, [resolved_char], "IDENTITY", is_mts=True)
+            else:
+                self._emit_entry(resolved_char, [], "UNKNOWN", is_mts=True)
 
         key = (sig, tuple(chars))
         if key in self._mts_canonize_seen:
@@ -415,31 +432,39 @@ class ASTEmitter:
 
     # Identity emission for CANONIZES subscript blocks
 
-    def _emit_identity_if_needed(self, sig: str) -> None:
-        """Emit identity UNKNOWN only if no UNKNOWN entry for this sig exists.
+    def _emit_identity_if_needed(self, raw_id: str) -> None:
+        """Emit a component entry for ``raw_id`` if none exists (§7.6).
 
         Used in CANONIZES subscript blocks to ensure every identifier appears
-        as the signature of at least one emitted entry.
+        as the signature of at least one emitted entry. Applies the binding-
+        aware rule (§7.1): word-bound → self-referential IDENTITY {w:[w]};
+        unbound → empty UNKNOWN {w:[]}.
 
         Dedup checks (in order):
-          1. _mts_identity_seen — sig was already emitted as MTS component.
+          1. _mts_identity_seen — sig was already emitted as MTS component
+             (keyed on resolved form).
           2. Existing CANONIZES entry — sig is a compound already introduced
              by its CANONIZES entry from MTS.
-          3. Existing UNKNOWN entries — sig already has an UNKNOWN entry.
+          3. Existing IDENTITY or UNKNOWN entries — sig already has one.
 
-        This prevents duplicate UNKNOWN when MTS expansion already provided
-        one for the same identifier, or when the identifier already appears
-        as the signature of an UNKNOWN entry.  The CANONIZES check blocks
-        compounds (which cannot form an identity) without affecting single-char
-        sigs that have only DENOTES entries (e.g., D in §14.8).
+        This prevents duplicate component entries when MTS expansion already
+        provided one for the same identifier, or when the identifier already
+        appears as the signature of an IDENTITY/UNKNOWN entry.  The CANONIZES
+        check blocks compounds (which cannot form an identity) without
+        affecting single-char sigs that have only DENOTES entries (e.g., D
+        in §14.8).
         """
-        if sig in self._mts_identity_seen:
+        resolved = self._resolve_char(raw_id)
+        if resolved in self._mts_identity_seen:
             return
-        if any(e.sig == sig and e.op == "CANONIZES" for e in self.entries):
+        if any(e.sig == resolved and e.op == "CANONIZES" for e in self.entries):
             return  # compound already introduced by its CANONIZES entry
-        if any(e.sig == sig and e.op == "UNKNOWN" for e in self.entries):
+        if any(e.sig == resolved and e.op in ("IDENTITY", "UNKNOWN") for e in self.entries):
             return
-        self._emit_entry(sig, [], "UNKNOWN")
+        if resolved != raw_id:
+            self._emit_entry(resolved, [resolved], "IDENTITY")
+        else:
+            self._emit_entry(resolved, [], "UNKNOWN")
 
     # Scope walk and child compilation (Step 3)
 
@@ -504,8 +529,7 @@ class ASTEmitter:
                     and item.op is not None
                     and self._op_to_str(item.op) == "DENOTES"
                 ):
-                    resolved = self._resolve_char(item.sig.id)
-                    self._emit_identity_if_needed(resolved)
+                    self._emit_identity_if_needed(item.sig.id)
                 self._process_scope(item)
             elif isinstance(item, Annotation):
                 self._feed_annotation(item)
@@ -513,8 +537,7 @@ class ASTEmitter:
             # (they produce no operator entry).
             elif isinstance(item, Signature):
                 if self._in_canonize_subscript:
-                    resolved = self._resolve_char(item.id)
-                    self._emit_identity_if_needed(resolved)
+                    self._emit_identity_if_needed(item.id)
 
         if scope.child_block is not None:
             for construct in scope.child_block.constructs:
@@ -536,8 +559,7 @@ class ASTEmitter:
                     and construct.op is not None
                     and self._op_to_str(construct.op) == "DENOTES"
                 ):
-                    resolved = self._resolve_char(construct.sig.id)
-                    self._emit_identity_if_needed(resolved)
+                    self._emit_identity_if_needed(construct.sig.id)
                 self._process_construct(construct)
 
         if pushed_scope and self._scope is not None:

@@ -266,11 +266,11 @@ class TestMultiTokenMTS:
         unsigned_entries = [
             r for r in results if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and not r.kline.nodes
         ]
-        # The compound-word self-ref identity: op UNKNOWN (self-ref band),
+        # The compound-word self-ref identity: op IDENTITY (self-ref band),
         # nodes == [signature].
         identity_entries = [
             r for r in results
-            if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and r.kline.nodes == [r.kline.signature]
+            if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.nodes == [r.kline.signature]
         ]
         connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
 
@@ -311,7 +311,7 @@ class TestMultiTokenMTS:
         ]
         identity_entries = [
             r for r in results
-            if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and r.kline.nodes == [r.kline.signature]
+            if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.nodes == [r.kline.signature]
         ]
         assert len(mts_unsigned) == 2
         assert len(identity_entries) == 1
@@ -343,10 +343,10 @@ class TestMultiTokenMTS:
 
         # Source entry is first
         assert results[0].kline.dbg.op == "CONNOTES"
-        # All remaining entries are MTS (subword UNKNOWN or the compound
-        # self-ref identity, also op UNKNOWN).
+        # All remaining entries are §11.3 decomposition: subword UNKNOWN or
+        # the compound self-ref identity (op IDENTITY).
         for r in results[1:]:
-            assert r.kline.dbg.op == "UNKNOWN"
+            assert r.kline.dbg.op in ("UNKNOWN", "IDENTITY")
 
 
 # ── Dedup multi-token MTS ────────────────────────────────────────────
@@ -371,7 +371,7 @@ class TestDedupMTS:
         ]
         identity_entries = [
             r for r in results
-            if r.kline.dbg and r.kline.dbg.op == "UNKNOWN" and r.kline.nodes == [r.kline.signature]
+            if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.nodes == [r.kline.signature]
         ]
         connote_entries = [r for r in results if r.kline.dbg and r.kline.dbg.op == "CONNOTES"]
 

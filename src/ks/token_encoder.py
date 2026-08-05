@@ -162,10 +162,17 @@ class TokenEncoder:
             if len(sig_tokens) == 1:
                 sig_uint64 = sig_tokens[0]
             else:
+                # An IDENTITY entry provides its own self-referential identity
+                # as a source kline, so its sig's §11.3 decomposition emits
+                # only the subword UNKNOWNs (not a second identity). Other
+                # ops take the decomposition's identity too (the word is a
+                # node/operand artefact, §11.3).
+                emit_identity = entry.op != "IDENTITY"
                 sig_uint64, sig_extras = self._emit_mts_for_tokens(
                     sig_tokens,
                     dbg_label=entry.sig,
                     op="UNKNOWN",
+                    emit_identity=emit_identity,
                 )
                 extras.extend((kv, True) for kv in sig_extras)
                 sig_is_packed = True
@@ -249,6 +256,7 @@ class TokenEncoder:
         tokens: list[int],
         dbg_label: str = "",
         op: str = "UNKNOWN",
+        emit_identity: bool = True,
     ) -> tuple[int, list[KValue]]:
         """Emit §11.3 compound-word decomposition entries for a multi-token word.
 
@@ -330,22 +338,25 @@ class TokenEncoder:
             # Self-referential identity: packed sig → [packed].
             # Packed values are opaque per §11.5 — _build_dbg skips decode
             # for them. An identity claims S1 (kline spec KL-21; sig_level
-            # returns S1 for {S:[S]}; kscript §11.3).
-            id_dbg: KDbg | None = None
-            if self._dev:
-                id_dbg = self._build_dbg(packed, dbg_label, op="IDENTITY", packed=True)
-            else:
-                id_dbg = KDbg(op="IDENTITY")
-            extras.append(
-                KValue(
-                    KLine(
-                        signature=packed,
-                        nodes=[packed],
-                        dbg=id_dbg,
-                    ),
-                    SIG_S1,
+            # returns S1 for {S:[S]}; kscript §11.3). Suppressed when the
+            # caller (an IDENTITY entry's sig path) provides its own source
+            # identity for the same packed signature.
+            if emit_identity:
+                id_dbg: KDbg | None = None
+                if self._dev:
+                    id_dbg = self._build_dbg(packed, dbg_label, op="IDENTITY", packed=True)
+                else:
+                    id_dbg = KDbg(op="IDENTITY")
+                extras.append(
+                    KValue(
+                        KLine(
+                            signature=packed,
+                            nodes=[packed],
+                            dbg=id_dbg,
+                        ),
+                        SIG_S1,
+                    )
                 )
-            )
 
         return (packed, extras)
 

@@ -878,22 +878,22 @@ class TestKS26RuleB4:
 
 
 class TestKS33SelfIdentity:
-    """A = A → {A:[], UNKNOWN} (collapsed from DENOTES)."""
+    """A = A → {A:[A], IDENTITY} (self-referential, binding-independent)."""
 
     def test_self_identity(self):
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("A")])))
-        # Should produce UNKNOWN with empty nodes, not DENOTES
-        assert_has_entry(entries, "A", [], "UNKNOWN")
+        # Should produce IDENTITY with self-referential nodes, not DENOTES
+        assert_has_entry(entries, "A", ["A"], "IDENTITY")
         # Should NOT produce DENOTES entry
         assert_no_entry(entries, "A", ["A"], "DENOTES")
 
     def test_entry_count(self):
-        """Exact entry count — self-identity produces exactly 1 UNKNOWN entry."""
-        # A = A → 1 entry (UNKNOWN with empty nodes)
+        """Exact entry count — self-identity produces exactly 1 IDENTITY entry."""
+        # A = A → 1 entry (IDENTITY {A:[A]})
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("A")])))
         assert len(entries) == 1
-        assert entries[0].op == "UNKNOWN"
-        assert entries[0].nodes == []
+        assert entries[0].op == "IDENTITY"
+        assert entries[0].nodes == ["A"]
 
 
 # ======================================================================
@@ -926,9 +926,9 @@ class TestAnnotations:
             ),
             scope=scope,
         )
-        # M should be resolved to "Mary"
-        unsigned_m = _find_entries(entries, sig="Mary", op="UNKNOWN")
-        assert len(unsigned_m) >= 1
+        # M should be resolved to "Mary" and compile to an IDENTITY
+        identity_m = _find_entries(entries, sig="Mary", op="IDENTITY")
+        assert len(identity_m) >= 1
 
 
 # ======================================================================

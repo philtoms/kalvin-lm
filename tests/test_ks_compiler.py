@@ -351,7 +351,7 @@ class TestKS36WordBound:
             assert isinstance(e.kline, KLine)
             assert isinstance(e.kline.signature, int)
             assert e.kline.dbg.op in (
-                "COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "UNKNOWN"
+                "COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY", "UNKNOWN"
             )
 
 

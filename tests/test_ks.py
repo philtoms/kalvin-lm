@@ -52,6 +52,7 @@ import pytest
 
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.significance import SIG_S1, SIG_S4
 from ks import compile_source
 from ks.ast import Annotation, Block, KScriptFile, OperatorScope, Signature
 from ks.binding_scope import BindingScope
@@ -679,17 +680,54 @@ class TestEmitterOperators:
     # -- KS-33: Self-identity --------------------------------------------
 
     def test_ks33_self_identity(self):
-        """KS-33: A = A → single {A:[]} UNKNOWN."""
+        """KS-33: A = A → single {A:[A]} IDENTITY (self-referential, S1)."""
         entries = compile_dev("A = A")
         assert len(entries) == 1
-        assert entries[0].kline.dbg.op == "UNKNOWN"
+        assert entries[0].kline.dbg.op == "IDENTITY"
         assert _sig_str(entries[0]) == "A"
-        assert entries[0].kline.nodes == []
+        assert entries[0].kline.nodes == [entries[0].kline.signature]
+        assert entries[0].significance == SIG_S1
 
     def test_ks33_self_identity_unsigned_present(self):
-        """KS-33 (relaxed): At least one A UNKNOWN with empty nodes exists."""
+        """KS-33: A = A → self-referential IDENTITY (no empty-form Unknown)."""
         entries = compile_dev("A = A")
+        assert has_entry(entries, sig="A", op="IDENTITY")
+        assert not has_entry(entries, sig="A", op="UNKNOWN", nodes=[])
+
+    # -- KS-33a/b/c: Singleton Identity vs Unknown (binding-aware) ---------
+
+    def test_ks33a_bare_singleton_unbound_is_unknown(self):
+        """KS-33a: A bare unbound singleton → {A:[]} UNKNOWN, S4."""
+        entries = compile_dev("A")
         assert has_entry(entries, sig="A", op="UNKNOWN", nodes=[])
+        unknown = _find_entries(entries, sig="A", op="UNKNOWN")[0]
+        assert unknown.kline.nodes == []
+        assert unknown.significance == SIG_S4
+
+    def test_ks33b_bare_singleton_word_bound_is_identity(self):
+        """KS-33b: A bare word-bound singleton → self-ref IDENTITY, S1.
+
+        Binding is the sole Identity/Unknown discriminator.
+        """
+        entries = compile_dev("(Mary)\nM")
+        assert has_entry(entries, sig="Mary", op="IDENTITY")
+        identity = _find_entries(entries, sig="Mary", op="IDENTITY")[0]
+        assert identity.kline.nodes == [identity.kline.signature]
+        assert identity.significance == SIG_S1
+        # No empty-form Unknown for the bound singleton.
+        assert not has_entry(entries, sig="Mary", op="UNKNOWN", nodes=[])
+
+    def test_ks33c_binding_is_sole_discriminator(self):
+        """KS-33c: an unbound singleton stays Unknown even when referenced as
+        a node or introduced via MTS — only word binding elevates it."""
+        # A is referenced as a node (A == A would self-denote → IDENTITY, so
+        # use a distinct node B that is unbound). B is introduced only by
+        # being a node here; it has no annotation → stays Unknown.
+        entries = compile_dev("A == B")
+        assert has_entry(entries, sig="B", op="COUNTERSIGNS")  # referenced as node
+        # B has no identity entry of its own (no bare singleton, no binding).
+        assert not has_entry(entries, sig="B", op="IDENTITY")
+        assert not has_entry(entries, sig="B", op="UNKNOWN", nodes=[])
 
 
 # ===================================================================
@@ -719,6 +757,21 @@ class TestEmitterMTS:
         assert _sig_str(entries[2]) == "C" and entries[2].kline.dbg.op == "UNKNOWN"
         assert _sig_str(entries[3]) == "ABC" and entries[3].kline.dbg.op == "CANONIZES"
         assert _node_strs(entries[3]) == ["A", "B", "C"]
+
+    def test_ks19a_mts_component_uniformity(self):
+        """KS-19a: word-bound MTS constituents → IDENTITY; unbound → UNKNOWN.
+
+        Same binding-aware rule as a bare singleton (KS-33a/b). A word-bound
+        compound's constituent compiles to a self-referential Identity; an
+        unbound compound's constituent stays an empty Unknown.
+        """
+        # Bound: M resolves to "Mary" under (Mary ...) → IDENTITY.
+        bound = compile_dev("(Mary)\nM")
+        assert has_entry(bound, sig="Mary", op="IDENTITY")
+        # Unbound: M has no annotation → UNKNOWN.
+        unbound = compile_dev("M")
+        assert has_entry(unbound, sig="M", op="UNKNOWN", nodes=[])
+        assert not has_entry(unbound, sig="M", op="IDENTITY")
 
     # -- KS-20: No MTS for single-char -----------------------------------
 
@@ -1047,11 +1100,12 @@ class TestComplexExamples:
         entries = compile_dev(_SEC1412_SOURCE)
         assert len(entries) > 0
 
-        # MTS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb
-        # Check that "Mary" appears as a signature (from MTS resolution)
-        assert has_entry(entries, sig="Mary", op="UNKNOWN") or has_entry(
-            entries, sig="Mary", op="CANONIZES"
-        ), "Expected 'Mary' entries from MHALL MTS resolution"
+        # MTS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb.
+        # Each word-bound constituent compiles to a self-referential IDENTITY
+        # (§7.1/§8); Mary is no longer an empty Unknown.
+        assert has_entry(entries, sig="Mary", op="IDENTITY"), (
+            "Expected 'Mary' IDENTITY from MHALL MTS resolution"
+        )
 
         # "Subject" should appear from inline annotation S(ubject)
         subject_entries = _find_entries(entries, sig="Subject")
@@ -1096,5 +1150,6 @@ class TestComplexExamples:
                 "CANONIZES",
                 "CONNOTES",
                 "DENOTES",
+                "IDENTITY",
                 "UNKNOWN",
             )
