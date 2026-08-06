@@ -4,8 +4,6 @@ Provides :func:`snapshot` and :func:`restore` so that an auto-tune session
 can capture and reinstate its complete training state — curriculum state
 file, event log, Kalvin model, and git metadata.  Also provides
 :func:`reset` to clear session state for a fresh start.
-
-Spec ref: specs/auto-tune.md §Snapshot and Restore (rules 32–38), §Reset (rules 39–42)
 """
 
 from __future__ import annotations

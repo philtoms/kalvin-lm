@@ -104,7 +104,7 @@ LEVEL_TO_SIG: dict[str, int] = {
 
 # Compile-time production op (@CONTEXT.md §Relational Tokens, §Target Significance)
 # → band-representative significance. Producers that assert a band rather than
-# compute a distance (the compiler, per @kvalue spec KP-1) look up here. The
+# compute a distance (the compiler) look up here. The
 # band is the Target Significance — the answer key a trainee must derive, not a
 # structural measurement. CONNOTES and DENOTES both map to SIG_S3; IDENTITY
 # (self-referential, word-bound or self-denote) maps to SIG_S1; UNKNOWN (empty,
@@ -127,7 +127,7 @@ def band_significance(op: str) -> int:
     band. The result is the **Target Significance** — the answer key a trainee
     must learn to derive, not a structural measurement of any one kline
     (@CONTEXT.md §Target Significance). Used by producers that assert a band
-    rather than compute a distance (the compiler, per @kvalue spec KP-1).
+    rather than compute a distance (the compiler).
     Unknown ops default to ``SIG_S4``.
     """
     return _OP_TO_SIG.get(op, SIG_S4)

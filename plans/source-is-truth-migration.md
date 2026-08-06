@@ -140,11 +140,17 @@ so each appraisal has stable referents.
 - [x] Fill navigation entries.
 - [x] Retire specs → ARCHIVE rows → fix references.
 
-### 1i — Auto-tune  *(specs/auto-tune.md)*
-- Source: `src/training/auto_tune/`.
-- [ ] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
-- [ ] Fill navigation entries.
-- [ ] Retire spec → ARCHIVE row → fix references.
+### 1i — Auto-tune  *(specs/auto-tune.md)* ✅
+- Source: `src/training/auto_tune/` (session, lifecycle, orchestrate, snapshots, cli) + `src/training/supervisors/cli_supervisor.py`/`cli_events.py`.
+- Also folded in the deferred `specs/signifier.md` (missed in P1a; source appraised there).
+- Also swept `@kvalue spec` stragglers missed in P1b across `adapter.py` (6), `protocol.py` (2), `significance.py` (2), `events.py` (1), `cli_events.py` (1), `test_agent.py` (1).
+- [x] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
+- [x] Fill navigation entries.
+- [x] Retire specs → ARCHIVE rows → fix references.
+
+---
+
+**Phase 1 complete.** All 19 specs retired. `specs/` is empty. The only remaining spec/plan references in the repo are inside `plans/` (retired wholesale in Phase 2) and `docs/ARCHIVE.md` (the ledger) / `docs/cascade-development.md` (deleted in Phase 3).
 
 ## Phase 2 — Plans retirement
 
@@ -211,6 +217,12 @@ Append one line per retired artifact: `artifact → carry-over destination (if a
 - `specs/dialogue-cogitation.md` → deleted; truth in `src/dialogue/rationalise.py`. Self-declared most-speculative sketch. Tag `source-is-truth-2026-08-06`.
   - Stripped 10 dangling refs across `actors.py` (3), `decoder.py`/`runner.py`/`rationalise.py`/`synthesize.py` (module headers), `runner.py` (1 inline), CONTEXT.md (Trainer glossary → redirected to `src/dialogue/`), `test_runner.py` (header).
 
-### ⚠️ Correction found mid-stream
+- `specs/signifier.md` → deleted; truth in `signifier.py` + `abstract.py`. Missed in P1a, folded into P1i. Tag `source-is-truth-2026-08-06`.
+  - Stripped 4 dangling refs in `signifier.py` (3) + `test_signifier.py` (1).
+- `specs/auto-tune.md` → deleted; truth in `src/training/auto_tune/` + `cli_supervisor.py`/`cli_events.py`. Tag `source-is-truth-2026-08-06`.
+  - Stripped 11 dangling refs across `lifecycle.py`/`session.py`×2/`snapshots.py`/`orchestrate.py` (module docstrings), `cli_events.py`/`cli_supervisor.py` (headers), `protocol.py` (2), `test_auto_tune_summary.py`/`test_auto_tune_lifecycle.py` (headers).
+  - Bonus: swept 11 `@kvalue spec` stragglers missed in P1b across `adapter.py` (6), `protocol.py` (2), `significance.py` (2), `events.py` (1), `cli_events.py` (1), `test_agent.py` (1).
 
-`specs/signifier.md` was missed in P1a — it is part of the Signature & Token primitives area (its source `src/kalvin/signifier.py` was appraised there) but wasn't in P1a's retire list. Still present in `specs/`. Fold into P1i (the last workstream) before Phase 2.
+### ✅ Correction resolved
+
+`specs/signifier.md` (missed in P1a) folded into P1i above. Phase 1 is complete: `specs/` is empty.

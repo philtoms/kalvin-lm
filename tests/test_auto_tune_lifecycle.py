@@ -2,8 +2,6 @@
 
 Covers the fix for the ``start-harness`` hang caused by orphaned harness
 processes holding the WebSocket port after their PID file goes missing.
-
-Spec ref: specs/auto-tune.md §Harness Lifecycle.
 """
 
 from __future__ import annotations

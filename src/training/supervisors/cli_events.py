@@ -1,9 +1,7 @@
 """Event enrichment for auto-tune.
 
 Transforms raw harness WebSocket frames into the enriched auto-tune event
-format defined in specs/auto-tune.md §Event Enrichment (rules 23–27).
-
-Each event gets a monotonic ``seq`` counter supplied by the caller.
+format. Each event gets a monotonic ``seq`` counter supplied by the caller.
 Rationalise and ratify events receive decompiled KScript source and a full
 significance breakdown (raw, normalised, level).
 """
@@ -81,8 +79,8 @@ def _enrich_rationalise(message: object, seq: int) -> dict:
 
     Significance is sourced from the proposal KValue — ``proposal["significance"]``
     on the wire-dict path, ``message.proposal.significance`` on the live-object
-    path — i.e. Kalvin's assessment of the proposal (@kvalue spec §KE-4). There
-    is no top-level significance field on the event (§KE-3); ``query``/``proposal``
+    path — i.e. Kalvin's assessment of the proposal. There
+    is no top-level significance field on the event; ``query``/``proposal``
     arrive as KValue wire dicts (handled transparently by ``_to_kline``, which
     ignores the extra ``significance`` key).
     """

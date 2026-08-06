@@ -3,9 +3,6 @@
 Provides functions to start and stop the harness server and CLI supervisor
 as background processes, with PID tracking, readiness polling, graceful
 shutdown with SIGTERM→SIGKILL escalation, and configurable timeouts.
-
-Spec ref: specs/auto-tune.md §Harness Lifecycle (rules 7–10),
-§Supervisor Lifecycle (rules 11–15), §Error Handling (rules 30–31)
 """
 
 from __future__ import annotations

@@ -1147,7 +1147,7 @@ class TestAgentTokenizerIntegration:
 # ── KValue Exchange Criteria (KV-5, KV-6, KV-13, KV-14, KV-15) ────────
 #
 # These tests verify the rationalisation pipeline consumes and emits
-# KValues (@kvalue spec §Exchange, §Producers). They use a dummy tokenizer
+# KValues. They use a dummy tokenizer
 # because rationalise/countersign/on_expansion operate on the Model API
 # (KLine-based) and never tokenise — but the module-level ``pytestmark``
 # skips them where tokenizer data is absent.

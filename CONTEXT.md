@@ -265,6 +265,19 @@ The authored-script ↔ real-actor ↔ rules triad. An authored **dialogue scrip
 - `src/dialogue/rationalise.py` — the rationalising engine: derives one turn from `(state, incoming)` returning `(batch, observations)`. Two cogitation paths — the S3 countersignature path (pair two canons' operands, establish the reciprocal) and the S2 similar-fit-proposal path (recombine grounded klines, no invention) — plus the work-list, frame (dedup/match), and significance-as-structure routing.
 - `src/dialogue/synthesize.py` — `synthesize`: the supervisor/engine behind the `SynthesizingTrainer`, deriving a trainer turn from the compiled script.
 
+### Auto-tune
+
+The project's experimental loop for tuning Kalvin's rationalisation behaviour. A CLI tool lets an LLM coding agent (pi) autonomously control training sessions, observe results, modify the significance-model code, and re-run — converging on a behavioural goal.
+
+- `src/training/auto_tune/session.py` — `SessionConfig` (serialisable session config: session name, curriculum path, harness URL, model path, run counter, source branch/commit, worktree path) and `SessionDir` (directory layout, git worktree + branch management, config I/O).
+- `src/training/auto_tune/lifecycle.py` — harness and supervisor process lifecycle: start/stop as background processes with PID tracking, readiness polling (fail-fast on spawn crash), orphan-port kill before bind, SIGTERM→SIGKILL escalation.
+- `src/training/auto_tune/orchestrate.py` — the file-based protocol pi drives: `send_command`, `read_events`, `step` (write + block-until-next-event), `read_status`, and `summarize` — the **run-summary arbiter** that classifies the run (`completed`/`deadlocked`/`supervisor-stalled`/`stalled`/`crashed`/`incomplete`) from the event stream + trainer state, with the S1–S4 significance histogram and a diagnosis pointer.
+- `src/training/auto_tune/snapshots.py` — `snapshot` (capture state/events/model/git metadata to a run directory), `restore`, and `reset`.
+- `src/training/auto_tune/cli.py` / `__main__.py` — the 13-subcommand CLI (`init`/`teardown`/`start|stop-harness`/`start|stop-supervisor`/`send`/`events`/`step`/`status`/`summary`/`snapshot`/`restore`/`reset`).
+- `src/training/supervisors/cli_supervisor.py` / `cli_events.py` — the CLI supervisor: a headless WebSocket client that blocks per-event (receive → write event → wait for command → process), and the event-enrichment layer (decompiled KScript source, significance breakdown, KLine/Significance display objects).
+
+See **Auto-Tune** in the glossary.
+
 See **Dialogue**, **Trainee**, **Trainer**, **Proposal**, **Ratify**, **Canon**, **Misfit** in the glossary.
 
 See **Harness**, **Agent**, **Message**, **Dialogue**, **Supervisor**, **Trainee**, **Trainer**, **Scaffolding**, **Ratify**, **Escalation** in the glossary.

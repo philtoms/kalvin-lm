@@ -5,9 +5,6 @@ writes them to ``events.jsonl``, and blocks per-event waiting for commands
 from ``cmd.json``.  This is the core runtime that lets an LLM agent observe
 and control auto-tune training sessions via the file-based command/status
 protocol.
-
-Spec ref: specs/auto-tune.md §Per-Event Blocking Model, §Command Processing,
-          §Run Completion, §Error Handling
 """
 
 from __future__ import annotations

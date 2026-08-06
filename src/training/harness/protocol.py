@@ -31,17 +31,17 @@ def _domain_json_default(obj: Any) -> Any:
     objects it cannot natively serialise. Produces exactly the dict shapes that
     ``enrich_event`` (the auto-tune supervisor) consumes, so a bus ``Message``
     carrying a domain object becomes a valid WebSocket JSON frame at the wire
-    boundary. See specs/auto-tune.md §Event Frame and §KLine Display Object.
+    boundary.
 
     - ``KValue`` → ``{"signature": int, "nodes": list[int], "significance": int}``.
       The canonical KValue wire shape, matching the adapter's inbound
       ``_materialise_kvalue`` wire-dict input exactly (KB-355). Significance
-      rides on the KValue (@kvalue spec §Definition).
+      rides on the KValue.
     - ``KLine`` → ``{"signature": int, "nodes": list[int]}``.
     - ``RationaliseEvent`` → ``{"kind", "query": <KValue wire>, "proposal":
       <KValue wire>}``. Post-KB-354 ``query``/``proposal`` are ``KValue``
       objects, encoded recursively by the ``KValue`` branch above. There is no
-      top-level ``significance`` key (@kvalue spec KE-3): significance rides on
+      top-level ``significance`` key: significance rides on
       each KValue. The consumer (the enrich path) reads
       ``proposal["significance"]`` per the §6 Consumer Map (KE-4).
 
@@ -134,8 +134,7 @@ class WebSocketProtocol:
     canonical wire dict ``{"signature", "nodes", "significance"}`` (matching
     the adapter's inbound ``_materialise_kvalue`` input); ``RationaliseEvent``
     emits ``query``/``proposal`` as KValue wire dicts with no top-level
-    significance (@kvalue spec KE-3). Wire shapes match specs/auto-tune.md
-    §Event Frame and §KLine Display Object.
+    significance.
 
     Disconnect semantics (HRNS-21): the bus subscription is *not* removed on
     disconnect.  Messages to a disconnected client are silently dropped until

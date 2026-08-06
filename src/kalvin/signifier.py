@@ -11,8 +11,7 @@ layout)::
     node = (nlp_type32 << 32) | bpe_token_id
 
 ``NLPSignifier`` understands this packing — the peer coupling permitted
-between the NLP Tokenizer and the NLP Signifier (see specs/signifier.md
-§NLPSignifier). Its two operations:
+between the NLP Tokenizer and the NLP Signifier. Its operations:
 
 - :meth:`signature_of` — bitwise OR-reduce over the full 64-bit node
   values.
@@ -28,11 +27,6 @@ Misfit classification of a kline's signature against its nodes is a
 structural concern: see :func:`kalvin.kline.classify_misfit`, which
 orchestrates this class's :meth:`residual` (the residual representation and
 its masking stay here).
-
-See specs/signifier.md for the full specification, including the
-NLPSignifier-specific properties (determinism, commutativity, the empty→0
-convention) that are consequences of this bit-algebra and are **not**
-required by the ``KSignifier`` interface.
 """
 
 from __future__ import annotations
@@ -50,7 +44,7 @@ _TYPE_MASK = 0xFFFF_FFFF_0000_0000
 class NLPSignifier(KSignifier):
     """The production Signifier: the NLP masked bit-algebra.
 
-    See specs/signifier.md §NLPSignifier. Operationally:
+    Operationally:
 
     - :meth:`signature_of` OR-reduces the full 64-bit node values.
     - :meth:`signifies` is ``(a & b & _TYPE_MASK) != 0``.

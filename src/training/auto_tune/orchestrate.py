@@ -4,9 +4,6 @@ Pure functions that let pi drive an auto-tune session through its file-based
 protocol: write commands to ``cmd.json``, read events from ``events.jsonl``,
 and poll for new events.  These are the core operations behind the ``send``,
 ``events``, ``step``, and ``status`` CLI subcommands.
-
-Spec ref: specs/auto-tune.md §CLI Subcommands, §Command Frame, §Event Frame,
-          §Status Object
 """
 
 from __future__ import annotations

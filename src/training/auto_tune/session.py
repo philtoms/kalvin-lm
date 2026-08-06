@@ -2,8 +2,6 @@
 
 Provides ``SessionConfig`` for serialisable session configuration and
 ``SessionDir`` for directory layout, git branch management, and config I/O.
-
-Spec ref: specs/auto-tune.md §Session Configuration, §Session Initialisation
 """
 
 from __future__ import annotations
@@ -23,10 +21,7 @@ import yaml
 
 @dataclass
 class SessionConfig:
-    """Serialisable configuration for an auto-tune session.
-
-    Fields match the schema in specs/auto-tune.md §Session Configuration.
-    """
+    """Serialisable configuration for an auto-tune session."""
 
     session: str
     curriculum: str

@@ -4,8 +4,6 @@
 verdict (``run-summary.json``) that tells the agent whether the goal was
 met and, if not, where to look. It replaces per-turn supervision prose
 with a machine-readable signal (see SKILL.md §Pi-in-the-Loop Model).
-
-Spec ref: specs/auto-tune.md §Run Summary.
 """
 
 from __future__ import annotations

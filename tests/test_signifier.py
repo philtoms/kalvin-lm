@@ -1,4 +1,4 @@
-"""Tests for Signifier — specs/signifier.md conformance (NLPSignifier)."""
+"""Tests for Signifier — the NLPSignifier bit-algebra."""
 
 from kalvin.signifier import NLPSignifier
 

@@ -11,7 +11,7 @@ its adapter callback (replacing the internal EventBus).
 KValue exchange
 ---------------
 The bus exchanges **KValues** — a KLine paired with a sender's significance
-assessment (@kvalue spec §Definition) — not bare KLines:
+assessment — not bare KLines:
 
 - ``submit`` compiles KScript source via :func:`compile_source` (which now
   returns ``list[KValue]``) and forwards each KValue to
@@ -22,7 +22,7 @@ assessment (@kvalue spec §Definition) — not bare KLines:
   :meth:`Rationaliser.countersign`.
 - ``on_event`` reads the sender-map key off ``event.query.kline``. The
   event's ``query``/``proposal`` are KValues that carry their own
-  significance (@kvalue spec KE-3); there is no top-level significance field.
+  significance; there is no top-level significance field.
 
 Countersign bus payload contract (shared with the Reactor, KB-356)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -32,7 +32,7 @@ auto-countersign path), a wire dict ``{signature, nodes, significance}``,
 or a legacy bare :class:`KLine` (wrapped at :data:`SIG_S1`, per KP-2:
 countersign is an S1 ratification). Significance rides on the KValue;
 recovering a significance lost at a future remote (WebSocket) boundary is
-explicitly **out of scope** (@kvalue spec §What a KValue is Not).
+explicitly **out of scope**.
 
 Thread model
 ------------
@@ -107,9 +107,9 @@ def _materialise_kvalue(obj: object) -> KValue:
       A dict missing ``significance`` raises ``TypeError`` — fail-loud,
       mirroring the existing philosophy.
     - **Legacy :class:`KLine`** — wrapped at :data:`SIG_S1`
-      (``KValue(kline, SIG_S1)``). Per @kvalue spec KP-2 the act of
-      countersigning is an S1 ratification. Preserves backwards compatibility
-      with any caller still sending a bare KLine.
+      (``KValue(kline, SIG_S1)``): the act of countersigning is an S1
+      ratification. Preserves backwards compatibility with any caller still
+      sending a bare KLine.
 
     Any other type raises ``TypeError`` so malformed payloads fail loudly
     rather than being coerced into something meaningless.
@@ -117,8 +117,8 @@ def _materialise_kvalue(obj: object) -> KValue:
     .. note::
        A future *remote* supervisor that loses significance at the WebSocket
        boundary is explicitly **out of scope** — no significance recovery is
-       attempted here. Significance rides on the KValue (@kvalue spec KE-3);
-       today every participant that exchanges KValues is embedded in-process.
+       attempted here. Significance rides on the KValue; today every
+       participant that exchanges KValues is embedded in-process.
     """
     if isinstance(obj, KValue):
         return obj
@@ -253,8 +253,8 @@ class RationaliserAdapter:
 
         The event's ``query`` is a :class:`KValue` (KB-354); the sender-map
         key is read off ``event.query.kline``. There is no top-level
-        ``significance`` field on the event (@kvalue spec KE-3) —
-        significance rides on the KValue.
+        ``significance`` field on the event — significance rides on the
+        KValue.
 
         Orphan events (no sender in the map, e.g. "done" idle events from
         the Cogitator) are silently dropped.

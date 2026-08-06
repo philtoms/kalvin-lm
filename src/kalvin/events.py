@@ -20,7 +20,7 @@ class RationaliseEvent:
     """Event emitted during rationalisation processing.
 
     Carries KValues, not bare KLines, and exposes no top-level significance
-    field (@kvalue spec §Exchange, KE-3). ``query`` is the inbound KValue
+    field. ``query`` is the inbound KValue
     (the sender's declared assessment); ``proposal`` is Kalvin's assessment
     of the same (or an expansion-proposal) KLine. Each KValue supplies its
     own significance.
