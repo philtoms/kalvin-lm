@@ -1,24 +1,8 @@
-# Kalvin — Context
+# Domain Glossary
 
-This document has three sections. **Operating Notes** contains process instructions and conventions. **Domain Glossary** defines the precise meaning of terms used across code and docs. **Project Navigation** maps the source tree to its concerns — the entry point for finding where a concept lives in code. Do not mix the three: glossary entries are domain terms only; operating notes are behavioral rules; navigation points into source, never restating it.
+Kalvin is a rationalising system whose entire world is built from klines. This glossary defines the precise meaning of terms used across the code.
 
----
-
-## Operating Notes
-
-- Commit all work before creating any kb tasks.
-- When creating kb tasks for large features, decompose into discrete code tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single module or a single behavioural change. Do not create monolithic tasks that span multiple modules.
-- Source is the truth document. The **Project Navigation** section below maps the source tree to its concerns; read the code for behaviour. When a term's precise meaning matters, use this glossary.
-- CONTEXT.md is a glossary plus operating notes plus project navigation. Keep the three sections separate. Do not add implementation details or code to the glossary or operating notes; navigation points into source, never restating it.
-- **Lesson Labelling Convention.** Lessons are identified by stable labels derived from their headings. Whole-number labels (1, 2, 3) indicate distinct conceptual steps. Sub-labels (2a, 2b) indicate lessons semantically related to their parent — refinements, bridges, or remediations of that concept. If a new lesson is logically subsequent but not semantically related, the document is renumbered instead. The curriculum must always read as a logical and temporal narrative for humans.
-
----
-
-## Domain Glossary
-
-Kalvin is a rationalising system whose entire world is built from klines. This glossary defines the precise meaning of terms used across specs, plans, and code.
-
-### Structure
+## Structure
 
 The objective shape of a kline — its signature and nodes — and the significance that shape _claims_ on its own, with no model and no observer. Structure is the ground truth every participant measures against; it is independent of who is looking.
 
@@ -61,7 +45,7 @@ A kline **structure**: the signature does not equal `signature_of(nodes)`. Struc
 - connote/denote (`{A: [B]}`): signature attracts association. Claims **S3**
   _Avoid_: fabrication (informal), conjecture/hypothesis (a misfit is a structure, not a distinct emission kind)
 
-### Rationalisation
+## Rationalisation
 
 How a participant tests a kline's structural claim against what Kalvin actually holds — the slow, model-traversing path that arrives at a participant's own significance for a kline. Distinct from Structure (the claim) and from KScript's Target Significance (the authored answer): rationalisation is a participant's private derivation, and the gap between it and the target is what training closes.
 
@@ -94,7 +78,7 @@ _Avoid_: persistent store (too vague), knowledge base, LTM frame
 **KValue**:
 The unit of exchange between participants — a **KLine** (objective structure) paired with a **significance** (the sender's assessment of it).
 
-### KScript
+## KScript
 
 The language that authors training material. A script declares klines and, through its relational tokens and the structures they generate, labels each with a **Target Significance** — the answer a trainee must learn to derive for itself. KScript is a compiler/provenance concern: it produces structures and their target labels, never a participant's lived significance.
 
@@ -123,7 +107,7 @@ _Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS
 The association of a single-character KScript signature with a word, resolved through annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope. Two annotation kinds bind with different strength: a **top-level annotation** (on a scope signature) binds only if the character is currently unbound — fill-if-empty, never overriding an outer binding; an **inline annotation** (on an item) binds unconditionally, overriding any outer binding for that occurrence. Each identity occurrence is bound exactly once by the most specific annotation that applies to it, so one character never acquires two competing tokens.
 _Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature), rebind (a top-level annotation never overrides; an inline annotation always does — use the specific kind)
 
-### Training and Runtime
+## Training and Runtime
 
 The multi-agent loop in which authored material becomes understanding. A trainer presents klines carrying **Target Significance**; a trainee rationalises them and is graded on the gap; a supervisor resolves what rationalisation alone cannot. The runtime is where Structure, Rationalisation, and KScript's targets finally meet.
 
@@ -175,119 +159,5 @@ The model's mechanism for realising **S1** (recognised). A kline is **grounded**
 _Avoid_: self-grounded (legacy; conflates the mechanism with the level), grounded identity (grounding applies to any kline that attains S1, not just identities)
 
 **Auto-Tune**:
-The project's experimental loop for tuning Kalvin's rationalisation behaviour. An LLM coding agent runs repeated sessions against a curriculum, observes how the reactor/cogitator/rationaliser actually behave, edits the significance-model code (`expand()`, `significance.py`, the rationaliser) together with the owning spec, and re-runs to confirm.
+The project's experimental loop for tuning Kalvin's rationalisation behaviour. An LLM coding agent runs repeated sessions against a curriculum, observes how the reactor/cogitator/rationaliser actually behave, edits the significance-model code (`expand()`, `significance.py`, the rationaliser), and re-runs to confirm.
 _Avoid_: tuning session (ambiguous with training session), auto-train (it's not training), auto-tune supervisor (the CLI includes the full auto-tune tool, not just the supervisor).
-
----
-
-## Project Navigation
-
-Source is the truth document. This section maps the source tree to its concerns so a reader can locate where a concept lives. Each entry names the module(s) and the role they play; the code itself is authoritative for behaviour. Filled incrementally as areas are appraised.
-
-### Signature & Token primitives
-
-The value layer — how text becomes opaque uint64 nodes, and the bit-algebra over them.
-
-- `src/kalvin/abstract.py` — the `KTokenizer` (text↔nodes) and `KSignifier` (signature creation, `signifies` overlap, `residual`) interfaces. Layout- and algebra-agnostic.
-- `src/kalvin/tokenizer.py` — `Tokenizer`, the BPE-engine wrapper (train/save/load, raw `encode_bpe`/`decode_bpe`). Not a `KTokenizer`; produces raw BPE IDs, not nodes.
-- `src/kalvin/nlp_tokenizer.py` — `NLPTokenizer`, the sole concrete `KTokenizer`. Owns the node layout `(sig_word << 32) | bpe_token_id`, the type dictionary, and the `POS_X` (`65536`) fallback for untyped tokens. Builds on `Tokenizer`.
-- `src/kalvin/signifier.py` — `NLPSignifier`, the sole concrete `KSignifier`. Owns the NLP bit-algebra: `signature_of` (OR-reduce), `signifies` (upper-32 type-word overlap), `residual` (masked set-difference). The empty node sequence reduces to signature `0`.
-
-### KLine & KValue
-
-The memory unit and the exchange unit.
-
-- `src/kalvin/kline.py` — `KLine` (signature + ordered nodes; equality/hash by both) and the structural predicates: `is_terminal`/`is_unknown`/`is_identity`/`is_canon`/`is_misfit`/`classify_misfit`. `KDbg` carries non-structural provenance (op, label, decoded text) for display only.
-- `src/kalvin/kvalue.py` — `KValue`, the unit of exchange: an immutable `KLine` paired with a sender's `significance`. Identity is structural — equality and hashing consider `kline` only, ignoring `significance`.
-- `src/kalvin/events.py` — `RationaliseEvent` (carries `query` and `proposal` as two KValues, no top-level significance field) and the `EventBus` pub/sub adapter.
-
-### Model, STM, Significance, Expansion
-
-The memory and the significance algebra. Four cooperating modules; the dependency is strictly one-way: significance (byte algebra) ← expand (graph walk) ← proposals (misfit reshape); all read the Model.
-
-- `src/kalvin/model.py` — `Model`, the four-tier collection (STM → Frame → LTM → Base). The write cascade (`add_to_stm` / `add_to_frame` / `add_to_ltm`), unified cross-tier read API (`find`, `find_all`, `find_by_nodes`, `exists`, `grounded`, `where`, `klines`), graph traversal (`resolve`, `query_expand`, `unpack`, `query`), and `is_countersigned`. `KLineStore` backs Frame and LTM; `_TierChain`/`_TierAdapter` normalise the tiers. S1 recognition is `model.grounded()` (Frame/LTM/Base presence) composed with structural predicates at call sites — there is no standalone `is_s1`.
-- `src/kalvin/stm.py` — `STM`, a bounded (default 256) dual-keyed index (signature + nodes-signature) with FIFO eviction and snapshot iterators.
-- `src/kalvin/significance.py` — the 8-bit compositional grade: `SIG_MASK`/sentinels, `distance_to_byte`, `BandLayout` (only `S2_S3_BOUNDARY` configurable), the band-representative constants `SIG_S1..SIG_S4`, `band_significance` (production op → Target Significance), and the `Aggregator` bundling layout + `DecayFunction`/`ComposeFunction` seams (`DEFAULT_AGGREGATOR`).
-- `src/kalvin/expand.py` — `expand()` (compose-on-return graph expansion yielding connotation `KValue`s + a terminal grade) and `edge_hops()` (bounded non-canonical resolution chain, cycle/dead-end/canon/unknown termination).
-- `src/kalvin/proposals.py` — misfit comprehension: `propose_expansions` / `generate_expansions` reshape an underfit/overfit/dual misfit into self-consistent klines plus companions (no invention, no orphan nodes; terminals never emitted).
-- `src/kalvin/agent_codec.py` — binary/JSON serialization for Agent persistence (STM/Frame/LTM + activity); storage is objective-only, significance never persisted.
-- `src/kalvin/paths.py` — data-directory resolution (`tokenizer_dir`, `agent_bin`, etc.).
-
-### Cogitator & Rationaliser
-
-The rationalisation pipeline: a fast path (routing) and a slow path (background cogitation).
-
-- `src/kalvin/rationaliser.py` — `Rationaliser` (aliased `Agent`), the orchestrator. `rationalise(KValue)` runs the phased pipeline: Phase 1 prepare (asserts signature set), Phase 1b significance-comparison gate (declared-S4 disagreement drops), Phase 2 ground check, Phase 3 assess (Unknown/Identity/canon/countersigned fast-tracks), Phase 4 candidate retrieval, Phase 5 route-and-submit. Also `_route` (node-membership → S2/S3), `_promote_participating` (cascade participating STM klines to LTM on S1), the `CogitationHandler` callbacks (`on_s1`, `on_expansion`), `countersign`, and serialization delegation to `AgentCodec`. S1 recognition = `model.grounded()` + structural predicates — there is no standalone `is_s1`.
-- `src/kalvin/cogitator.py` — `Cogitator` (background daemon thread), `WorkItem` (query|candidate|level), and the `CogitationHandler` protocol. Drains the backlog by `expand()`-ing each pair, classifying yields via `BandLayout`, calling `on_s1` on a terminal S1 (then breaking) or `on_expansion` for S2/S3 proposals via `propose_expansions`. Emits `"done"` after an idle timeout (default 2s) without halting; `drain(timeout)` blocks until backlog empty and no work item processing (inter-lesson drain, `_processing` flag guarded).
-
-### KScript
-
-The authoring language. A four-stage pipeline (`src/ks/`) compiles declarative scripts into encoded `KValue`s: source → lexer → parser → ASTEmitter → TokenEncoder. The compiler treats encoded node values as opaque `uint64`.
-
-- `src/ks/token.py` / `src/ks/lexer.py` — `TokenType`/`Token` and the `Lexer`: operators (`==` `=>` `>` `=`), case-insensitive `SIGNATURE` identifiers `[a-zA-Z][a-zA-Z0-9]*`, parenthesised `ANNOTATION`s (nested, multi-line), Python-style INDENT/DEDENT.
-- `src/ks/ast.py` / `src/ks/parser.py` — the scope-model AST (`OperatorScope` = sig + op + items + child_block; `Signature` items may carry an inline annotation) and the recursive-descent `Parser`. Scope is operator-delimited; the preceding identifier is the signature, succeeding identifiers are nodes, INDENT extends the scope.
-- `src/ks/binding_scope.py` — `BindingScope`, the word-binding stack implementing rules B1–B4: first-letter matching (case-insensitive) with a per-scope-per-character occurrence counter, counter reset on `push_scope`, and inline `bind_override` (binds tighter than word-list).
-- `src/ks/ast_emitter.py` — `ASTEmitter`: walks the AST emitting `SymbolicEntry` tuples. Operator rules (COUNTERSIGNS bidirectional per-item, DENOTES reversed, CONNOTES forward, CANONIZES aggregated), **MTS** (a multi-char all-uppercase identifier emits exactly one CANONIZES canon over its resolved characters — no per-component entries), CANONIZES subscript identity filling, CANONIZES dedup, and Rule B4 inline-override patching of the parent MTS canon.
-- `src/ks/token_encoder.py` — `TokenEncoder`: encodes symbolic entries to `KValue`s via the tokenizer. Compound-word decomposition (a word the BPE tokenizer splits into ≥2 subwords → one self-referential identity whose signature is the OR-reduction of the subwords), the canonical-signature registry (a declared compound's signature computed once and reused by references), and the source-before-decomposition output partition.
-- `src/ks/compiler.py` / `src/ks/__init__.py` — `Compiler` (orchestrator; always creates a BindingScope) and `KScript` (the one-shot public API: `KScript(source).entries → list[KValue]`).
-
-### Training: trainer, reactor, curriculum
-
-The training driver. The `Trainer` submits curriculum lessons to the rationaliser, tracks satisfaction, and routes proposals it cannot auto-resolve to the supervisor.
-
-- `src/training/trainer/curriculum_document.py` — `CurriculumDocument` (markdown parser: three required sections `## Objective`/`## Approach`/`## Lessons`, `### <label>` lessons with stable labels `\d+[a-z]?`, fenced KScript blocks) and `Lesson`. Supports `from_file`/`from_string` and `amend` (insert/append/modify with write-back).
-- `src/training/trainer/curriculum.py` — `Curriculum` (ordered lesson container, document- or flat-list-backed) and `CurriculumState` (per-session tracking: entry-level `submitted`/`satisfied`/`pending` `EntryKey` sets **and** label-level `lesson_submitted`/`lesson_satisfied`, JSON persistence with legacy-format compat).
-- `src/training/trainer/curriculum_generator.py` — `CurriculumGenerator`: LLM goal→curriculum markdown (one call, one retry on parse failure, slug-derived filename).
-- `src/training/trainer/reactor.py` — `Reactor`: the Trainer's mechanical S2/S3 handler. Auto-countersigns structurally matching proposals (kline-only equality), and re-submits intra-lesson recurrences at declared `SIG_S4` (drop signal). Everything else returns `False` for the Trainer to escalate.
-- `src/training/trainer/trainer.py` — `Trainer`: the embedded harness participant. Compiles and submits lessons, tracks satisfaction (`satisfied ⊇ submitted`, lesson-completion guarded against late cogitation), emits progress events, handles session lifecycle (goal/file resolution, file polling, amendment), and escalates unresolved proposals to the supervisor with a decision gate. Logging lives throughout (`kline_display`-decompiled event lines).
-
-### Harness & supervisors
-
-The multi-agent runtime and the supervisor participants. The harness is a message broker — participants send role-addressed messages through it and it routes them to all subscribers of that role (fan-out). It is not itself a participant.
-
-- `src/training/harness/bus.py` — `MessageBus`: thread-safe role-based router with a single-dispatch event loop, fan-out to all subscribers of a role, wildcard diagnostic subscribers, and error replies for unknown roles.
-- `src/training/harness/message.py` / `constants.py` — `Message` (role/action/message/sender; routed by role only) and the role constants (`trainee`/`trainer`/`supervisor`).
-- `src/training/harness/adapter.py` — `RationaliserAdapter`: Kalvin's bridge to the bus. Handles `submit` (compile + rationalise each entry), `countersign` (reciprocal at S1), and `rationalise` (deliver a KValue as-is into the significance-comparison gate); maintains the sender map so callbacks route back to the originator; materialises three payload forms (live KValue, wire dict, legacy KLine).
-- `src/training/harness/server.py` / `protocol.py` — `HarnessServer` (YAML/JSON config → embedded-participant registry + WebSocket + bus loop) and `WebSocketProtocol` (registration, bidirectional JSON frames, silent-drop on disconnect).
-- `src/training/harness/llm.py` — shared `LLMClient` protocol, `LLMResponse`, `OpenAICompatibleClient` (used by the curriculum generator and the LLMSupervisor).
-- `src/training/harness/__main__.py` — CLI entry point (loads config, wires participants, runs the server).
-- `src/training/supervisors/commands.py` — the shared command parser mapping free-text to structured commands (`start`/`stop`/`pause`/`resume`/`goal:`/`ratify`/`scaffold:`/file-path/guidance).
-- `src/training/supervisors/tui_client.py` / `slack_agent.py` / `cli_supervisor.py` / `llm_supervisor.py` — four client supervisors, all registering as role `supervisor`, sharing one decision contract. The **decision gate** lives in the Trainer (hold-and-replay, lesson-boundary drain window, `ratify`/`scaffold`/`continue` answers); the `LLMSupervisor` resolves `ratify_request`s via its own pipeline (prompt build, `#`-comment sanitisation, LLM call, scaffold extraction).
-- `src/training/harness/README.md` — the operator guide for running the harness (survives as a usage doc).
-
-### Dialogue subsystem
-
-The authored-script ↔ real-actor ↔ rules triad. An authored **dialogue script** drives a turn-by-turn exchange between a Trainer (T) and Trainee (K); a **runner** decodes the script and drives two **actors** over the harness bus, tracking how much of the authored exchange the actors traverse. The script is one of three coupled artefacts (script, code, rules) the dialogue work exists to bring into agreement — not a golden master.
-
-- `src/dialogue/decoder.py` — `DialogueScript`/`Turn`/`DecodedTurn`/`RunConfig` and `decode()`: a configuration-time resolver that builds each turn's kline from `source`, attaches significance by band, drops annotation-only turns, and treats `priors` as a sequence of independent runs (not merged). Handles UNKNOWN (`X:[]`), IDENTITY (self-referential or compound-word), and multi-CANONIZES labels.
-- `src/dialogue/runner.py` — `run()`: a coverage-tracking wildcard subscriber over the `MessageBus`. A thin driver opens a run by delivering the first row to the opposite role; the bus then drives the exchange. Three terminal conditions (close observed / coverage exhausted / mutual PASS); `on_divergence` governs fail-vs-accept; `RunResult.uncovered` is the **displacement** (rows never emitted). White-box grounding verification via the trainee's `drain_observations`. `PASS` is the no-content sentinel.
-- `src/dialogue/actors.py` — `EventSink`/`Actor` protocols and the actors: `ScriptTrainer`/`ScriptTrainee` (content-blind, cursor-advancing, bursts paced all-S1-or-all-non-S1), `SynthesizingTrainer` (derives replies from compiled source, falls back to the table for driving moves), `RationalisingTrainee`/`RationalisingTrainer` (wrap the rationalising engine; the trainee exposes `drain_observations`). Actors take an optional `RationaliserState` for state injection.
-- `src/dialogue/rationalise.py` — the rationalising engine: derives one turn from `(state, incoming)` returning `(batch, observations)`. Two cogitation paths — the S3 countersignature path (pair two canons' operands, establish the reciprocal) and the S2 similar-fit-proposal path (recombine grounded klines, no invention) — plus the work-list, frame (dedup/match), and significance-as-structure routing.
-- `src/dialogue/synthesize.py` — `synthesize`: the supervisor/engine behind the `SynthesizingTrainer`, deriving a trainer turn from the compiled script.
-
-### Auto-tune
-
-The project's experimental loop for tuning Kalvin's rationalisation behaviour. A CLI tool lets an LLM coding agent (pi) autonomously control training sessions, observe results, modify the significance-model code, and re-run — converging on a behavioural goal.
-
-- `src/training/auto_tune/session.py` — `SessionConfig` (serialisable session config: session name, curriculum path, harness URL, model path, run counter, source branch/commit, worktree path) and `SessionDir` (directory layout, git worktree + branch management, config I/O).
-- `src/training/auto_tune/lifecycle.py` — harness and supervisor process lifecycle: start/stop as background processes with PID tracking, readiness polling (fail-fast on spawn crash), orphan-port kill before bind, SIGTERM→SIGKILL escalation.
-- `src/training/auto_tune/orchestrate.py` — the file-based protocol pi drives: `send_command`, `read_events`, `step` (write + block-until-next-event), `read_status`, and `summarize` — the **run-summary arbiter** that classifies the run (`completed`/`deadlocked`/`supervisor-stalled`/`stalled`/`crashed`/`incomplete`) from the event stream + trainer state, with the S1–S4 significance histogram and a diagnosis pointer.
-- `src/training/auto_tune/snapshots.py` — `snapshot` (capture state/events/model/git metadata to a run directory), `restore`, and `reset`.
-- `src/training/auto_tune/cli.py` / `__main__.py` — the 13-subcommand CLI (`init`/`teardown`/`start|stop-harness`/`start|stop-supervisor`/`send`/`events`/`step`/`status`/`summary`/`snapshot`/`restore`/`reset`).
-- `src/training/supervisors/cli_supervisor.py` / `cli_events.py` — the CLI supervisor: a headless WebSocket client that blocks per-event (receive → write event → wait for command → process), and the event-enrichment layer (decompiled KScript source, significance breakdown, KLine/Significance display objects).
-
-See **Auto-Tune** in the glossary.
-
-See **Dialogue**, **Trainee**, **Trainer**, **Proposal**, **Ratify**, **Canon**, **Misfit** in the glossary.
-
-See **Harness**, **Agent**, **Message**, **Dialogue**, **Supervisor**, **Trainee**, **Trainer**, **Scaffolding**, **Ratify**, **Escalation** in the glossary.
-
-See **Curriculum**, **Scaffolding**, **Trainee**, **Trainer**, **Proposal**, **Ratify**, **Escalation**, **Expectation** in the glossary.
-
-See **KScript**, **Relational Tokens**, **MTS**, **Word Binding**, **Target Significance** in the glossary.
-
-See **Cogitation**, **Proposal**, **Ratify**, **Escalation**, **Expectation** in the glossary.
-
-See **Frame**, **STM**, **LTM**, **Grounding**, **Significance (Rational)**, **Cogitation**, **S2 Expansion** in the glossary.
-
-See **KLine**, **Signature**, **Node**, **Structural Significance**, **Terminal/Unknown/Identity/Canon/Misfit**, **KValue** in the glossary.

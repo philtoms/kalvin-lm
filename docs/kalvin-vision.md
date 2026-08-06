@@ -114,7 +114,7 @@ Two guarantees hold: no kline enters the model without agent ratification, and n
 
 Kalvin's memory only grows. Klines are added through rationalisation and ratification; they are never removed. This monotonic property has consequences worth tracing.
 
-Correction happens through the introduction of more significant information, not by retracting what came before. New information does not override old information; it outcompetes it. If Kalvin holds a ratified misconception and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path. The misconception is still there, intact in the model, but it is no longer the optimal response. Nothing was deleted. The model grew, and the balance of significance shifted.
+Correction happens through the introduction of more significant information. New information does not override old information; it outcompetes it. If Kalvin holds a ratified misconception and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path. The misconception is still there, intact in the model, but it is no longer the optimal response. Nothing was deleted. The model grew, and the balance of significance shifted.
 
 Monotonicity is what makes scaffolding irreversible. Each scaffold adds structure to the model. Even if a particular teaching goal is abandoned, the scaffolding remains, enriching future rationalisation. Every round leaves the model larger than it found it.
 
@@ -123,13 +123,5 @@ This connects to the three-part model: new preferences can be taught, and what K
 ## Aspiration
 
 The distinction between S1 and S2 becomes particularly interesting when the agent in the dialogue is another Kalvin instance. One agent's partial understanding becomes another's scaffolding. One agent's significant response becomes another's ratified knowledge. The architecture admits networks of mutual ratification, where knowledge is generated through mutual rationalisation and understanding emerges from the dialogue between understanding-generating systems. The long-term aspiration is distributed rationality built on actionable signals and mutual respect for autonomy — shared understanding that no single instance could reach alone.
-
-Kalvin's design makes several choices worth stating plainly:
-
-- **Preferences are learned, not given.** They are part of the model — subject to ratification, scaffoldable, revisable.
-- **Information is accumulated, not statistically weighted.** The model grows through the addition of ratified klines. It does not converge through parameter adjustment.
-- **Actions include meta-actions.** Producing significance is itself the agentic act — not a side channel or a quality metric, but the communication.
-- **Optimality is actionable, not accurate.** The optimal response is the most significant one Kalvin can produce, even if that response is "I do not understand this at all." An S4 response is optimally useful — it tells the other agent exactly where understanding breaks down.
-- **Rationality is second-order.** Kalvin rationalises its own rational outputs. The ability to assess and communicate the grounds for one's own understanding is not an add-on to rationality; it is constitutive of it.
 
 These are the principles on which Kalvin is built. The aspiration is a system — and networks of systems — that develop shared understanding through the honest measurement of what each one knows.

@@ -55,13 +55,13 @@ MHALL = SVO =>
      L > O
 ```
 
-| Operator    | Syntax     | Significance | Meaning                |
-| ----------- | ---------- | ------------ | ---------------------- |
-| Countersign | `A == B`   | S1           | Mutual / bidirectional |
-| Denote     | `A = B`    | S3           | Objective — A denotes B (B is an A) |
-| Canonize    | `A => B C` | S2           | Canonical              |
-| Connote     | `A > B`    | S3           | Connotative — A connotes B |
-| Unsigned    | `A`        | S4           | Identity only          |
+| Operator    | Syntax     | Significance | Meaning                             |
+| ----------- | ---------- | ------------ | ----------------------------------- |
+| Countersign | `A == B`   | S1           | Mutual / bidirectional              |
+| Denote      | `A = B`    | S3           | Objective — A denotes B (B is an A) |
+| Canonize    | `A => B C` | S2           | Canonical                           |
+| Connote     | `A > B`    | S3           | Connotative — A connotes B          |
+| Undefined   | `A`        | S4           | Identity only                       |
 
 Indented blocks are **scaffolding** — context that steers Kalvin toward understanding the parent line.
 
@@ -144,10 +144,9 @@ src/
 
 ## Documentation
 
-| Document                                         | Purpose                                                                  |
-| ------------------------------------------------ | ------------------------------------------------------------------------ |
-| [`CONTEXT.md`](CONTEXT.md)                       | Operating notes, domain glossary, and project navigation (source map)    |
-| [`docs/kalvin-vision.md`](docs/kalvin-vision.md) | Vision, conceptual model, and philosophy — the WHY                       |
+| Document                   | Purpose         |
+| -------------------------- | --------------- |
+| [`CONTEXT.md`](CONTEXT.md) | domain glossary |
 
 Source is the truth document for behaviour. `CONTEXT.md`'s **Project
 Navigation** section maps the source tree to its concerns.
@@ -159,28 +158,3 @@ uv run pytest                    # Run tests
 uv run ruff format .             # Format code
 uv run ruff check .              # Lint
 ```
-
-Both `ruff check .` and `ruff format --check .` are enforced as **hard CI
-gates** — a lint or format failure will fail the build.
-
-### CI
-
-GitHub Actions runs the full test suite on every push and pull request
-(`.github/workflows/ci.yml`). Tokenizer tests are gated behind a
-`requires_tokenizer_data` marker so they skip cleanly on a fresh clone; CI
-provisions the `data/tokenizer/` assets so those tests **run instead of
-skip**, giving full coverage.
-
-The assets are restored from a cache keyed on the rebuild pipeline's source
-files (`scripts/rebuild-tokenizer-data.sh`, `dev/nlp/*.py`) and a
-`data/tokenizer/.cache-version` stamp. On a cache hit the 34 MB of assets
-restore in seconds; on a miss CI runs the full rebuild (HuggingFace download →
-BPE train → spaCy analysis → vocab tagging, ~7–15 min) and caches the result.
-To force a rebuild, bump `.cache-version` (e.g. `v1` → `v2`). The rebuild
-path is hardened against external-service flakiness: the corpus download
-retries with exponential backoff and pins a dataset revision, the spaCy
-model download retries on transient host errors, and an HF Hub cache layer
-reduces redundant API calls.
-
-See [`.github/workflows/provision-tokenizer-data/README.md`](.github/workflows/provision-tokenizer-data/README.md)
-for the full cache-strategy rationale.

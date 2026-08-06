@@ -307,8 +307,7 @@ def _infer_outcome(
             f"{len(submitted) - len(satisfied)} of {len(submitted)} entries were "
             "submitted but never satisfied, and the run ended without completion. "
             "The satisfaction model has no path for these entries — see "
-            "``src/training/trainer/reactor.py`` (``_auto_countersign``) and the "
-            "owning spec for what \"resolved\" means for this entry type.",
+            "``src/training/trainer/reactor.py`` (``_auto_countersign``).",
         )
 
     # No trainer state to confirm deadlock, but no completion either: the
