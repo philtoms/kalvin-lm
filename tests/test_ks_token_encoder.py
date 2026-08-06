@@ -194,8 +194,8 @@ class TestSignificanceLevels:
     not a runtime significance input. ``sig_level`` classifies structurally:
     a single-node non-canonical kline is S3, an empty-nodes kline is S4.
     S1/S2 arise only from canonical structure / node overlap at expansion time,
-    not from the authored op. (See @specs/rationaliser.md §Routing — S1 is
-    established by structure or countersignature, never by node membership.)
+    not from the authored op. (S1 is established by structure or
+    countersignature, never by node membership.)
     """
 
     @pytest.mark.parametrize(

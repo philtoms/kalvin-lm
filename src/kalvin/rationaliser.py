@@ -10,9 +10,6 @@ imports and wires it. All significance computation lives in
 expansion-proposal logic in :mod:`kalvin.proposals`.
 
 Serialization is delegated to the AgentCodec module (see agent_codec.py).
-
-See specs/rationaliser.md for the Rationaliser specification.
-See specs/cogitator.md for the cogitator specification.
 """
 
 from __future__ import annotations
@@ -203,9 +200,8 @@ class Rationaliser:
         ``value.significance`` (the sender's declared assessment) is the
         counterpart to Kalvin's own assessment in a two-way significance
         dialog. It is consumed by the significance-comparison gate below
-        (MVP: an S4 disagreement drops the query); see @rationaliser spec
-        §Rationalisation. The query voice on published events also carries
-        it (KE-2).
+        (MVP: an S4 disagreement drops the query). The query voice on
+        published events also carries it (KE-2).
 
         Fast path: routing (no model calls). S1/S4 resolve instantly.
         Slow path: S2/S3 queued as individual work items for cogitation.
@@ -213,9 +209,9 @@ class Rationaliser:
         Returns True if significant (S1, S4), False if rational (S2, S3).
         """
         kline = value.kline
-        # Prepare — callers must provide a set signature (see @specs/rationaliser.md
-        # §Phase 1). This is a presence check, not a value-test: 0 is an
-        # ordinary signature value (the empty node set's signature).
+        # Prepare — callers must provide a set signature. This is a presence
+        # check, not a value-test: 0 is an ordinary signature value (the
+        # empty node set's signature).
         assert kline.signature is not None, (
             "KLine.signature must be set before rationalise; callers compute "
             "it via signifier.signature_of(nodes)."
@@ -226,8 +222,7 @@ class Rationaliser:
         # sender declares S4 and Kalvin derives otherwise, Kalvin drops the
         # query (returns True, no STM write, no event). This sits before the
         # ground check because a recurring proposal is already in Frame, so a
-        # post-ground gate would be inert against its target. See @rationaliser spec
-        # §Rationalisation.
+        # post-ground gate would be inert against its target.
         #
         # S4 is the sentinel SIG_S4 (= 0), detected by value: classify()
         # collapses the S3|S4 boundary (0 classifies as S3), so the band

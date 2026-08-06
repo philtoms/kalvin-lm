@@ -1073,7 +1073,7 @@ class TestComplexExamples:
         # Verify structural significance levels. Significance is derived
         # from kline shape (sig_level), not the op token: a canonical kline
         # (sig == signature_of(nodes)) is S1; a single-node non-canonical
-        # kline is S3; an empty-nodes kline is S4. See @specs/rationaliser.md.
+        # kline is S3; an empty-nodes kline is S4.
         from kalvin.kline import sig_level
         from kalvin.signifier import NLPSignifier as _Sig
 

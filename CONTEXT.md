@@ -213,6 +213,15 @@ The memory and the significance algebra. Four cooperating modules; the dependenc
 - `src/kalvin/agent_codec.py` — binary/JSON serialization for Agent persistence (STM/Frame/LTM + activity); storage is objective-only, significance never persisted.
 - `src/kalvin/paths.py` — data-directory resolution (`tokenizer_dir`, `agent_bin`, etc.).
 
+### Cogitator & Rationaliser
+
+The rationalisation pipeline: a fast path (routing) and a slow path (background cogitation).
+
+- `src/kalvin/rationaliser.py` — `Rationaliser` (aliased `Agent`), the orchestrator. `rationalise(KValue)` runs the phased pipeline: Phase 1 prepare (asserts signature set), Phase 1b significance-comparison gate (declared-S4 disagreement drops), Phase 2 ground check, Phase 3 assess (Unknown/Identity/canon/countersigned fast-tracks), Phase 4 candidate retrieval, Phase 5 route-and-submit. Also `_route` (node-membership → S2/S3), `_promote_participating` (cascade participating STM klines to LTM on S1), the `CogitationHandler` callbacks (`on_s1`, `on_expansion`), `countersign`, and serialization delegation to `AgentCodec`. S1 recognition = `model.grounded()` + structural predicates — there is no standalone `is_s1`.
+- `src/kalvin/cogitator.py` — `Cogitator` (background daemon thread), `WorkItem` (query|candidate|level), and the `CogitationHandler` protocol. Drains the backlog by `expand()`-ing each pair, classifying yields via `BandLayout`, calling `on_s1` on a terminal S1 (then breaking) or `on_expansion` for S2/S3 proposals via `propose_expansions`. Emits `"done"` after an idle timeout (default 2s) without halting; `drain(timeout)` blocks until backlog empty and no work item processing (inter-lesson drain, `_processing` flag guarded).
+
+See **Cogitation**, **Proposal**, **Ratify**, **Escalation**, **Expectation** in the glossary.
+
 See **Frame**, **STM**, **LTM**, **Grounding**, **Significance (Rational)**, **Cogitation**, **S2 Expansion** in the glossary.
 
 See **KLine**, **Signature**, **Node**, **Structural Significance**, **Terminal/Unknown/Identity/Canon/Misfit**, **KValue** in the glossary.

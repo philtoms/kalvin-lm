@@ -1,6 +1,5 @@
 """Tests for Cogitator inter-lesson drain.
 
-Spec: specs/cogitator.md §Lifecycle › Inter-Lesson Drain (AGT-43..AGT-48).
 Validates that the cogitator drain mechanism prevents cross-lesson
 spillover of S2/S3 events.
 """

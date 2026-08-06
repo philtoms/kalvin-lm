@@ -103,11 +103,14 @@ so each appraisal has stable referents.
 - [x] Fill navigation entries.
 - [x] Retire specs → ARCHIVE rows → fix references.
 
-### 1d — Cogitator & Rationaliser  *(specs/cogitator.md, specs/rationaliser.md)*
+### 1d — Cogitator & Rationaliser  *(specs/cogitator.md, specs/rationaliser.md)* ✅
 - Source: `src/kalvin/cogitator.py`, `src/kalvin/rationaliser.py`, `src/kalvin/proposals.py`.
-- [ ] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
-- [ ] Fill navigation entries.
-- [ ] Retire specs → ARCHIVE rows → fix references.
+- Appraisal notes:
+  - `cogitator.py` docstring referenced `specs/cogitator-drain.md` — a phantom spec that never existed. Drain semantics live in `cogitator.md` §Lifecycle and `cogitator.py:drain()`. Dangling pointer removed.
+  - `rationaliser.md` test-row AGT-7 (assign-sig-if-missing) was stale vs the spec body and the code's `assert` — code is the truth, no change.
+- [x] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
+- [x] Fill navigation entries.
+- [x] Retire specs → ARCHIVE rows → fix references.
 
 ### 1e — KScript  *(specs/kscript.md)*
 - Source: `src/ks/` (lexer, parser, ast, ast_emitter, binding_scope, compiler, token, token_encoder).
@@ -189,3 +192,6 @@ Append one line per retired artifact: `artifact → carry-over destination (if a
 - `specs/stm.md` → deleted; truth in `stm.py`. Tag `source-is-truth-2026-08-06`.
 - `specs/model.md` → deleted; truth in `model.py`, `significance.py`, `expand.py`, `proposals.py`. Spec's `is_s1` was a naming abstraction the code expresses via `model.grounded()` — no behaviour gap. Tag `source-is-truth-2026-08-06`.
   - Stripped 7 dangling refs: `model.py` (3: module docstring ×2, `unpack` docstring), `significance.py` (1 comment), `test_model.py`/`test_expand.py`/`test_countersign_resolution.py` (3).
+- `specs/cogitator.md` → deleted; truth in `cogitator.py` (+`expand.py`/`proposals.py`). Tag `source-is-truth-2026-08-06`.
+- `specs/rationaliser.md` → deleted; truth in `rationaliser.py`. Spec AGT-7 stale vs code's `assert`. Tag `source-is-truth-2026-08-06`.
+  - Stripped 14 dangling refs across `cogitator.py` (4, incl. phantom `cogitator-drain.md` pointer), `rationaliser.py` (5: module docstring + 3 inline comments + 1), `kline.py` (1), `harness/adapter.py` (1), `test_ks.py`/`test_ks_token_encoder.py`/`test_cogitator_drain.py` (3).

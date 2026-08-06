@@ -1,20 +1,17 @@
 """Cogitator — background processor for rational work items (S2/S3).
 
-The Cogitator is the slow-path of the rationalisation pipeline (see
-@rationaliser spec, §Cogitation). It is a thin threading dispatcher: it dequeues
-``WorkItem`` instances, invokes functions from :mod:`kalvin.expand`
-(expand) and :mod:`kalvin.proposals` (propose_expansions), and routes
-results to a ``CogitationHandler``. All significance computation lives in
-:mod:`kalvin.significance`; graph expansion in :mod:`kalvin.expand`; and
-expansion-proposal logic in :mod:`kalvin.proposals`.
+The Cogitator is the slow-path of the rationalisation pipeline. It is a thin
+threading dispatcher: it dequeues ``WorkItem`` instances, invokes functions
+from :mod:`kalvin.expand` (expand) and :mod:`kalvin.proposals`
+(propose_expansions), and routes results to a ``CogitationHandler``. All
+significance computation lives in :mod:`kalvin.significance`; graph expansion
+in :mod:`kalvin.expand`; and expansion-proposal logic in
+:mod:`kalvin.proposals`.
 
-Split out of the Rationaliser module so the fast-path (Rationaliser routing) and slow-path
-(cogitation) live in their own modules while sharing the seam defined here.
-
-See specs/cogitator.md for the cogitator specification.
-See specs/rationaliser.md for the Rationaliser specification (the seam: the Rationaliser submits
-work items and is the primary CogitationHandler).
-See specs/cogitator-drain.md for inter-lesson drain semantics.
+Split out of the Rationaliser module so the fast-path (Rationaliser routing)
+and slow-path (cogitation) live in their own modules while sharing the seam
+defined here: the Rationaliser submits work items and is the primary
+``CogitationHandler``.
 """
 
 from __future__ import annotations

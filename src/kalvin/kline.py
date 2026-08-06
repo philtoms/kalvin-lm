@@ -119,8 +119,7 @@ KGraph: TypeAlias = "object"  # Iterator[KLine] — for compat
 #
 # Identity and canon are structural properties of a KLine (they depend only
 # on its signature and nodes, not on model state). Defined here so every
-# module agrees on what counts as identity vs canon. See @kline spec and
-# @cogitator spec §Universal Constraint.
+# module agrees on what counts as identity vs canon.
 
 
 def is_terminal(kline: KLine) -> bool:

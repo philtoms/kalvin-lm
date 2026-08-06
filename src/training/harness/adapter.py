@@ -349,7 +349,7 @@ class RationaliserAdapter:
         ``countersign`` (which builds the reciprocal kline at SIG_S1), this
         action delivers the KValue as-is — the significance on the KValue is
         the sender's declared assessment, carried straight into the
-        significance-comparison gate (@rationaliser spec §Rationalisation).
+        significance-comparison gate.
 
         Three payload forms are accepted, same as ``countersign`` (see
         :func:`_materialise_kvalue`): a live :class:`KValue`, a wire dict
