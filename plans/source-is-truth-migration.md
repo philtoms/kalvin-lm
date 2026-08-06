@@ -87,11 +87,11 @@ so each appraisal has stable referents.
 - [x] Fill navigation entries.
 - [x] Retire specs → ARCHIVE rows → fix references.
 
-### 1b — KLine & KValue  *(specs/kline.md, specs/kvalue.md)*
+### 1b — KLine & KValue  *(specs/kline.md, specs/kvalue.md)* ✅
 - Source: `src/kalvin/kline.py`, `src/kalvin/kvalue.py`, `src/kalvin/abstract.py`, `src/kalvin/events.py`.
-- [ ] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
-- [ ] Fill navigation entries.
-- [ ] Retire specs → ARCHIVE rows → fix references.
+- [x] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
+- [x] Fill navigation entries.
+- [x] Retire specs → ARCHIVE rows → fix references.
 
 ### 1c — Model, STM, Significance, Expansion  *(specs/model.md, specs/stm.md, specs/rationaliser.md §significance)*
 - Source: `src/kalvin/model.py`, `src/kalvin/stm.py`, `src/kalvin/significance.py`, `src/kalvin/expand.py`,
@@ -182,3 +182,7 @@ Append one line per retired artifact: `artifact → carry-over destination (if a
 - `specs/signature.md` → deleted; truth in `kline.py`/`signifier.py`/`abstract.py`; term in CONTEXT (Signature). Tag `source-is-truth-2026-08-06`.
 - `specs/tokenizer.md` → deleted; truth in `abstract.py` (`KTokenizer`), `tokenizer.py`. Tag `source-is-truth-2026-08-06`.
 - `specs/nlp_tokenizer.md` → deleted; truth in `nlp_tokenizer.py`. Tag `source-is-truth-2026-08-06`.
+- `specs/kline.md` → deleted; truth in `kline.py` (KLine + structural predicates); terms in CONTEXT (Structure). Tag `source-is-truth-2026-08-06`.
+- `specs/kvalue.md` → deleted; truth in `kvalue.py` (KValue), `events.py` (RationaliseEvent); term in CONTEXT (KValue). Tag `source-is-truth-2026-08-06`.
+  - Stripped dangling `@specs/…` refs from 2 source docstrings (`kline.py`, `kvalue.py`) and 4 test docstrings (`test_kvalue.py`, `test_kline.py` ×2, `test_misfit.py`, `test_agent_codec.py`).
+  - Cross-refs in other pending specs (`dialogue-driven-training`, `training-log`, `trainer-satisfaction`, `harness-server`) left to dissolve in their own workstreams.

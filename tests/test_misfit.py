@@ -3,8 +3,7 @@
 Test values use ``t(bits) = bits << 32`` so the type word (upper 32 bits) is
 populated. Misfit classification operates on the type word only (masked,
 consistent with ``signifies``); low-bit-only values would have an empty type
-word and classify trivially as canonical. See specs/kline.md §classify_misfit
-and specs/signifier.md §residual.
+word and classify trivially as canonical.
 """
 
 from kalvin.kline import KLine, classify_misfit

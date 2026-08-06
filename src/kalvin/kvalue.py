@@ -3,9 +3,6 @@
 A KValue pairs an objective KLine with a sender's significance assessment of
 it. The KLine is the data Kalvin stores; the significance is an assessment
 that is re-derived on retrieval and never persisted.
-
-See specs/kvalue.md (§Definition, §Construction, §Equality and Hashing,
-§What a KValue is Not) for the authoritative contract.
 """
 
 from __future__ import annotations

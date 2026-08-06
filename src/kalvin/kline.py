@@ -1,7 +1,6 @@
 """KLine - Fundamental unit of Kalvin's memory.
 
 A Kline is an identified, ordered sequence of zero or more nodes.
-See specs/kline.md for the full specification.
 """
 
 from __future__ import annotations

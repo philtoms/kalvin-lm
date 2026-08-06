@@ -16,3 +16,5 @@ git show <tag>:<artifact>
 | `specs/signature.md` | Source-is-truth: expressed by `src/kalvin/kline.py`, `src/kalvin/signifier.py`, `src/kalvin/abstract.py`; domain term retained in `CONTEXT.md` (Signature) | `source-is-truth-2026-08-06` |
 | `specs/tokenizer.md` | Source-is-truth: expressed by `src/kalvin/abstract.py` (`KTokenizer`), `src/kalvin/tokenizer.py` (`Tokenizer` BPE wrapper) | `source-is-truth-2026-08-06` |
 | `specs/nlp_tokenizer.md` | Source-is-truth: expressed by `src/kalvin/nlp_tokenizer.py` (`NLPTokenizer`, node layout, type dictionary, POS_X fallback) | `source-is-truth-2026-08-06` |
+| `specs/kline.md` | Source-is-truth: expressed by `src/kalvin/kline.py` (`KLine`, structural predicates, equality); structural-kind terms in `CONTEXT.md` (Structure) | `source-is-truth-2026-08-06` |
+| `specs/kvalue.md` | Source-is-truth: expressed by `src/kalvin/kvalue.py` (`KValue`, structural equality) and `src/kalvin/events.py` (`RationaliseEvent`); term in `CONTEXT.md` (KValue) | `source-is-truth-2026-08-06` |

@@ -1,4 +1,4 @@
-"""Tests for KValue — specs/kvalue.md conformance (KV-1, KV-2, KV-3)."""
+"""Tests for KValue — structural equality and hashing (KV-1, KV-2, KV-3)."""
 
 from dataclasses import FrozenInstanceError
 

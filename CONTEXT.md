@@ -193,4 +193,12 @@ The value layer — how text becomes opaque uint64 nodes, and the bit-algebra ov
 - `src/kalvin/nlp_tokenizer.py` — `NLPTokenizer`, the sole concrete `KTokenizer`. Owns the node layout `(sig_word << 32) | bpe_token_id`, the type dictionary, and the `POS_X` (`65536`) fallback for untyped tokens. Builds on `Tokenizer`.
 - `src/kalvin/signifier.py` — `NLPSignifier`, the sole concrete `KSignifier`. Owns the NLP bit-algebra: `signature_of` (OR-reduce), `signifies` (upper-32 type-word overlap), `residual` (masked set-difference). The empty node sequence reduces to signature `0`.
 
-See **Signature**, **Token ID**, **Relational Tokens**, **MTS** in the glossary.
+### KLine & KValue
+
+The memory unit and the exchange unit.
+
+- `src/kalvin/kline.py` — `KLine` (signature + ordered nodes; equality/hash by both) and the structural predicates: `is_terminal`/`is_unknown`/`is_identity`/`is_canon`/`is_misfit`/`classify_misfit`. `KDbg` carries non-structural provenance (op, label, decoded text) for display only.
+- `src/kalvin/kvalue.py` — `KValue`, the unit of exchange: an immutable `KLine` paired with a sender's `significance`. Identity is structural — equality and hashing consider `kline` only, ignoring `significance`.
+- `src/kalvin/events.py` — `RationaliseEvent` (carries `query` and `proposal` as two KValues, no top-level significance field) and the `EventBus` pub/sub adapter.
+
+See **KLine**, **Signature**, **Node**, **Structural Significance**, **Terminal/Unknown/Identity/Canon/Misfit**, **KValue** in the glossary.

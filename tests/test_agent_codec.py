@@ -347,7 +347,7 @@ class TestEmptyTiers:
 class TestObjectiveOnlyStorage:
     """KV-7 — codec persists ``{signature, nodes}`` only; significance never serialised.
 
-    Storage is objective-only (@specs/kvalue.md §Storage): the codec writes and
+    Storage is objective-only: the codec writes and
     reads ``{signature, nodes}`` and reconstructs bare ``KLine`` objects.
     Significance is a KValue concept — it lives on KValue and is re-derived on
     retrieval — so it must never leak onto a stored or reconstructed KLine.

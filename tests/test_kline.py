@@ -1,4 +1,4 @@
-"""Tests for KLine — specs/kline.md conformance."""
+"""Tests for KLine — construction, equality, and structural predicates."""
 
 from kalvin.kline import KDbg, KLine, is_canon, is_identity, is_misfit, is_terminal, is_unknown
 from kalvin.signifier import NLPSignifier
@@ -143,7 +143,7 @@ class TestKDbgOp:
 
 
 class TestStructuralPredicates:
-    """is_terminal / is_unknown / is_identity / is_canon / is_misfit — specs/kline.md §Structural Predicates."""
+    """is_terminal / is_unknown / is_identity / is_canon / is_misfit — structural predicates."""
 
     # ── is_unknown ───────────────────────────────────────────────────────
     def test_kl20_is_unknown_empty(self):
