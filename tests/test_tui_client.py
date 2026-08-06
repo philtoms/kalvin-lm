@@ -250,7 +250,7 @@ async def test_tuiapp_ratify_sends_supervisor_decision():
     Verifies that on ratify click, the app sends
     ``{role: "trainer", action: "supervisor_decision",
     message: {decision: "ratify", proposal: <event_data>}}``
-    through the HarnessClient (`@specs/supervisor-decision.md` SD-9).
+    through the HarnessClient.
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)
@@ -687,8 +687,7 @@ async def test_ratify_request_to_supervisor_decision_wire_shape():
     ``ratify_request`` (full ``{proposal, query, significance}`` envelope)
     followed by typing ``"ratify"`` in the InputBar must produce a
     ``supervisor_decision`` frame whose ``proposal`` is the raw KLine wire
-    dict — NOT the ``{proposal, query, significance}`` envelope
-    (`@specs/supervisor-decision.md` SD-9).
+    dict — NOT the ``{proposal, query, significance}`` envelope.
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)

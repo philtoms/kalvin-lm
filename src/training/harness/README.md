@@ -244,8 +244,7 @@ escalates it to the supervisor as a `ratify_request`. A decider answers with
 `scaffold` (writes reactive KScript), `ratify` (accepts the proposal), or
 `continue` (skips). The Trainer applies the answer and gates the run until it
 arrives. The LLMSupervisor participant automates this with an LLM; a human on
-the TUI/Slack, or pi via the CLI supervisor, can decide instead
-(`@specs/supervisor-decision.md`).
+the TUI/Slack, or pi via the CLI supervisor, can decide instead.
 
 ### Rollback and Replay
 
@@ -347,8 +346,7 @@ Two distinct uses of an LLM, both reading `KALVIN_LLM_API_KEY`:
   proposals the Trainer cannot auto-ratify. Launch the LLMSupervisor as its
   own process (`python -m training.supervisors.llm_supervisor`); it connects
   to the harness, registers as `supervisor`, and answers `ratify_request`
-  frames with `scaffold`/`continue` decisions. See
-  `@specs/supervisor-decision.md` §LLMSupervisor Pipeline.
+  frames with `scaffold`/`continue` decisions.
 
 | Variable             | Required | Description                                                                        |
 | -------------------- | -------- | ---------------------------------------------------------------------------------- |
@@ -472,7 +470,7 @@ Events from Kalvin are routed back to the original sender (stored in a sender ma
 #### Trainer (`role: "trainer"`)
 
 Drives the training loop. Holds LLM access for curriculum generation; reactive
-decisions are surfaced to a supervisor participant (`@specs/supervisor-decision.md`):
+decisions are surfaced to a supervisor participant:
 
 | Incoming Action    | Behaviour                                                                                                                      |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -752,8 +750,7 @@ A typical training cycle looks like this:
 A proposal the Trainer cannot auto-ratify is escalated to the supervisor as
 a `ratify_request`; the Trainer **gates** (holds further trainee events) until
 the supervisor answers `supervisor_decision` (`ratify` / `scaffold` / `continue`).
-There is no Trainer-side budget or escalation — the decider is terminal
-(`@specs/supervisor-decision.md`).
+There is no Trainer-side budget or escalation — the decider is terminal.
 
 ---
 

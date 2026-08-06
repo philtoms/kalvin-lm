@@ -78,7 +78,7 @@ class Trainer:
         :class:`~trainer.curriculum_generator.CurriculumGenerator`. Reactive
         decisions are owned by a supervisor participant (the LLMSupervisor
         is one such participant); the Trainer surfaces decisions and gates
-        the run — it never decides reactively (`@specs/supervisor-decision.md`).
+        the run — it never decides reactively.
     save_path:
         Optional file path for curriculum state persistence.
     curriculum_file:
@@ -116,8 +116,8 @@ class Trainer:
 
         # The Reactor owns the Trainer's mechanical S2/S3 handling
         # (auto-countersign + recurrence dedup). Every proposal it cannot
-        # resolve itself is surfaced to the supervisor as a decision
-        # (`@specs/supervisor-decision.md`). The Trainer never cogitates.
+        # resolve itself is surfaced to the supervisor as a decision.
+        # The Trainer never cogitates.
         self._reactor = Reactor(
             bus,
             self._state,
@@ -329,9 +329,8 @@ class Trainer:
         else:
             # A proposal the Trainer may not be able to auto-ratify. The
             # Reactor resolves what it can (auto-countersign, recurrence);
-            # anything else is escalated to the supervisor as a decision
-            # (`@specs/supervisor-decision.md`). The decision gate is
-            # unconditional (SD-8): every decision request arms the hold.
+            # anything else is escalated to the supervisor as a decision.
+            # The decision gate is unconditional: every decision request arms the hold.
             #
             # We do NOT short-circuit on ``is_satisfied(query)``: the
             # Reactor's ``_auto_countersign`` already absorbs genuine

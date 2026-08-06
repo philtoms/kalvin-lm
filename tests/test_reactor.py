@@ -3,7 +3,7 @@
 The Reactor owns the Trainer's *mechanical* S2/S3 handling: auto-countersign
 of structurally matching proposals and within-lesson recurrence dedup. Every
 proposal it cannot resolve itself returns ``False`` so the Trainer can
-escalate it to the supervisor as a decision (`@specs/supervisor-decision.md`).
+escalate it to the supervisor as a decision.
 
 Covers: auto-countersign matching (SD-13), recurrence dedup (SD-14), and the
 ``False``→escalation contract (SD-1).

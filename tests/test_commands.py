@@ -177,7 +177,7 @@ class TestFileGoalCommand:
 class TestScaffoldCommand:
     """ScaffoldCommand submits reactive scaffolding (KScript).
 
-    Two paths (`@specs/supervisor-decision.md` SD-10): with a pending
+    Two paths: with a pending
     proposal it routes to the trainer as a scaffold decision; without one it
     is a free submission to the trainee. The compile-error round-trip
     (invalid KScript → ``error`` event) is exercised by Kalvin's adapter

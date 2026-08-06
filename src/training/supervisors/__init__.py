@@ -1,9 +1,8 @@
 """Harness WebSocket client supervisors.
 
 Four client supervisors that connect to the harness server, all registering
-as the ``supervisor`` role and sharing one decision contract
-(``@specs/supervisor-decision.md``) — they differ only in the process that
-produces an answer:
+as the ``supervisor`` role and sharing one decision contract — they differ
+only in the process that produces an answer:
 
 - **SlackParticipant** — a human on Slack.
 - **TUIParticipant** (``TUIApp`` / ``HarnessClient``) — a human on a Textual TUI.

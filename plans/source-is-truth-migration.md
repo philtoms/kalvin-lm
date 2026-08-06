@@ -126,11 +126,12 @@ so each appraisal has stable referents.
 - [x] Fill navigation entries.
 - [x] Retire specs → ARCHIVE rows → fix references.
 
-### 1g — Harness & supervisors  *(specs/harness-server.md, specs/supervisor-decision.md)*
+### 1g — Harness & supervisors  *(specs/harness-server.md, specs/supervisor-decision.md)* ✅
 - Source: `src/training/harness/`, `src/training/supervisors/`.
-- [ ] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
-- [ ] Fill navigation entries.
-- [ ] Retire specs → ARCHIVE rows → fix references.
+- Note: `supervisor-decision.md`'s header marked it superseded by the dialogue path but still the running production path — code is the truth.
+- [x] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
+- [x] Fill navigation entries.
+- [x] Retire specs → ARCHIVE rows → fix references.
 
 ### 1h — Dialogue subsystem  *(specs/dialogue-driven-training.md, specs/dialogue-cogitation.md)*
 - Source: `src/dialogue/` (runner, actors, decoder, rationalise, synthesize).
@@ -202,3 +203,6 @@ Append one line per retired artifact: `artifact → carry-over destination (if a
 - `specs/trainer-satisfaction.md` → deleted; truth in `trainer.py`, `reactor.py`. Spec's paced-loop partition was a superseded transitional design; production uses Reactor + supervisor escalation. Tag `source-is-truth-2026-08-06`.
 - `specs/training-log.md` → deleted; truth in the `logging` calls across `trainer.py`, `reactor.py`, `harness/adapter.py`. Tag `source-is-truth-2026-08-06`.
   - Stripped 1 dangling ref (`test_training_log.py` header). Reactor/trainer `@specs/supervisor-decision.md` refs deferred to 1g.
+- `specs/harness-server.md` → deleted; truth in `src/training/harness/` + `src/training/supervisors/`. Tag `source-is-truth-2026-08-06`.
+- `specs/supervisor-decision.md` → deleted; truth in the Trainer decision-gate logic + `llm_supervisor.py`. Spec header marked it superseded-but-running; code is the truth. Tag `source-is-truth-2026-08-06`.
+  - Stripped 28 dangling refs across `reactor.py` (3), `trainer.py` (3), `commands.py` (3), `tui_client.py` (3), `llm_supervisor.py` (2), `slack_agent.py` (2), `cli_supervisor.py` (1), `supervisors/__init__.py` (1), `harness/__main__.py` (1), `harness/README.md` (4), and 7 test files (`test_reactor`, `test_tui_client` ×2, `test_training_log`, `test_slack_agent` ×2, `test_commands`, `test_s3_auto_countersign`, `test_trainer`).

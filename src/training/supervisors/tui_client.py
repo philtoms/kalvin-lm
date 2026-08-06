@@ -7,8 +7,6 @@ Provides:
   via asyncio queues.
 - **TUIApp**: Textual application that renders Rationaliser events and provides
   ratification (countersign) controls.
-
-Spec reference: specs/harness-server.md §TUI Participant
 """
 
 from __future__ import annotations
@@ -233,7 +231,7 @@ class TUIApp(App):
         ``ratify_request`` message — for the ratify command. Only the proposal
         is buffered (not the full ``{proposal, query, significance}``
         envelope) so the emitted ``countersign`` frame carries the wire
-        contract's KLine shape (see ``specs/harness-server.md``).
+        contract's KLine shape.
         """
         event_log = self.query_one(EventLog)
         ratify_bar = self.query_one(RatifyBar)
@@ -267,8 +265,7 @@ class TUIApp(App):
         Sends ``{role: TRAINER_ROLE, action: "supervisor_decision",
         message: {decision: "ratify", proposal: <event_data>}}`` so the Trainer
         applies the countersign itself after replaying any held events
-        (`@specs/supervisor-decision.md` SD-9). Same path as typing ``ratify``
-        in the InputBar.
+        Same path as typing ``ratify`` in the InputBar.
         """
         payload = {"decision": "ratify", "proposal": event.event_data}
         # Schedule the async send as a background task

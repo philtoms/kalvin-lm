@@ -282,8 +282,7 @@ class CLISupervisor:
         events until it receives this decision (``supervisor_decision``
         action — §Decision gate). The Trainer applies the countersign/submit
         itself, so we address the TRAINER role (not the trainee) and clear
-        the pending proposal afterward. Spec ref:
-        specs/supervisor-decision.md §Decision answers (SD-9/10/11).
+        the pending proposal afterward.
         """
         proposal = self._latest_ratify_proposal
         payload: dict[str, Any] = {"decision": decision, "proposal": proposal}

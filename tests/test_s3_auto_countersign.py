@@ -2,8 +2,6 @@
 
 Covers: process_s2_s3 return value, conditional ratify_request suppression,
 event relay regardless of auto-countersign outcome.
-
-See specs/harness-server.md §S2/S3 Auto-Countersign Suppression for the specification.
 """
 
 from __future__ import annotations

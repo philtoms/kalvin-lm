@@ -241,6 +241,22 @@ The training driver. The `Trainer` submits curriculum lessons to the rationalise
 - `src/training/trainer/reactor.py` — `Reactor`: the Trainer's mechanical S2/S3 handler. Auto-countersigns structurally matching proposals (kline-only equality), and re-submits intra-lesson recurrences at declared `SIG_S4` (drop signal). Everything else returns `False` for the Trainer to escalate.
 - `src/training/trainer/trainer.py` — `Trainer`: the embedded harness participant. Compiles and submits lessons, tracks satisfaction (`satisfied ⊇ submitted`, lesson-completion guarded against late cogitation), emits progress events, handles session lifecycle (goal/file resolution, file polling, amendment), and escalates unresolved proposals to the supervisor with a decision gate. Logging lives throughout (`kline_display`-decompiled event lines).
 
+### Harness & supervisors
+
+The multi-agent runtime and the supervisor participants. The harness is a message broker — participants send role-addressed messages through it and it routes them to all subscribers of that role (fan-out). It is not itself a participant.
+
+- `src/training/harness/bus.py` — `MessageBus`: thread-safe role-based router with a single-dispatch event loop, fan-out to all subscribers of a role, wildcard diagnostic subscribers, and error replies for unknown roles.
+- `src/training/harness/message.py` / `constants.py` — `Message` (role/action/message/sender; routed by role only) and the role constants (`trainee`/`trainer`/`supervisor`).
+- `src/training/harness/adapter.py` — `RationaliserAdapter`: Kalvin's bridge to the bus. Handles `submit` (compile + rationalise each entry), `countersign` (reciprocal at S1), and `rationalise` (deliver a KValue as-is into the significance-comparison gate); maintains the sender map so callbacks route back to the originator; materialises three payload forms (live KValue, wire dict, legacy KLine).
+- `src/training/harness/server.py` / `protocol.py` — `HarnessServer` (YAML/JSON config → embedded-participant registry + WebSocket + bus loop) and `WebSocketProtocol` (registration, bidirectional JSON frames, silent-drop on disconnect).
+- `src/training/harness/llm.py` — shared `LLMClient` protocol, `LLMResponse`, `OpenAICompatibleClient` (used by the curriculum generator and the LLMSupervisor).
+- `src/training/harness/__main__.py` — CLI entry point (loads config, wires participants, runs the server).
+- `src/training/supervisors/commands.py` — the shared command parser mapping free-text to structured commands (`start`/`stop`/`pause`/`resume`/`goal:`/`ratify`/`scaffold:`/file-path/guidance).
+- `src/training/supervisors/tui_client.py` / `slack_agent.py` / `cli_supervisor.py` / `llm_supervisor.py` — four client supervisors, all registering as role `supervisor`, sharing one decision contract. The **decision gate** lives in the Trainer (hold-and-replay, lesson-boundary drain window, `ratify`/`scaffold`/`continue` answers); the `LLMSupervisor` resolves `ratify_request`s via its own pipeline (prompt build, `#`-comment sanitisation, LLM call, scaffold extraction).
+- `src/training/harness/README.md` — the operator guide for running the harness (survives as a usage doc).
+
+See **Harness**, **Agent**, **Message**, **Dialogue**, **Supervisor**, **Trainee**, **Trainer**, **Scaffolding**, **Ratify**, **Escalation** in the glossary.
+
 See **Curriculum**, **Scaffolding**, **Trainee**, **Trainer**, **Proposal**, **Ratify**, **Escalation**, **Expectation** in the glossary.
 
 See **KScript**, **Relational Tokens**, **MTS**, **Word Binding**, **Target Significance** in the glossary.

@@ -3,10 +3,9 @@
 The Reactor owns the Trainer's *mechanical* S2/S3 handling: auto-countersign
 of structurally matching proposals and within-lesson recurrence dedup. Every
 proposal it cannot resolve itself is surfaced to the Trainer, which emits a
-decision request to the supervisor and gates the run until answered
-(`@specs/supervisor-decision.md`). The Reactor never cogitates, never submits
-reactive scaffolding, and never escalates — those are decider concerns, owned
-by a supervisor participant.
+decision request to the supervisor and gates the run until answered. The
+Reactor never cogitates, never submits reactive scaffolding, and never
+escalates — those are decider concerns, owned by a supervisor participant.
 
 Loaded lesson entries and proposal events are KValues (`@kvalue` §Exchange):
 the reactor matches structurally (kline-only equality, ignoring significance —
@@ -49,7 +48,7 @@ class Reactor:
 
     - **Auto-countersign** — a proposal structurally matching a loaded
       expectation. The Reactor sends the countersign and marks the entry
-      satisfied (`@specs/supervisor-decision.md` SD-13).
+      satisfied.
     - **Recurrence** — the same proposal kline seen twice in one lesson
       (intra-expectation fan-out). The second sighting is re-submitted to
       Kalvin at a declared ``SIG_S4`` so rationalise drops it instead of
@@ -113,7 +112,7 @@ class Reactor:
 
         Returns ``True`` if the proposal was auto-resolved (no supervisor
         interaction needed); ``False`` if it must be escalated to the
-        supervisor as a decision (`@specs/supervisor-decision.md` SD-1).
+        supervisor as a decision.
         """
         if self._auto_countersign(event.proposal):
             return True

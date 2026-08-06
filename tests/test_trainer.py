@@ -1883,10 +1883,9 @@ class TestEventRelay:
 
 
 class TestTrainerProgressToAllSupervisors:
-    """HRNS-31: Trainer sends progress to role `supervisor`; all supervisor
-    subscribers receive. (Escalation fan-out was HRNS-14, now [removed] —
-    there is no Trainer-side escalation; the Trainer sends ``ratify_request``
-    instead, owned by `@specs/supervisor-decision.md`.)"""
+    """Trainer sends progress to role `supervisor`; all supervisor
+    subscribers receive. (There is no Trainer-side escalation; the Trainer
+    sends ``ratify_request`` instead.)"""
 
     @patch("training.trainer.trainer.compile_source")
     def test_progress_to_all_supervisor_subscribers(self, mock_compile: MagicMock) -> None:

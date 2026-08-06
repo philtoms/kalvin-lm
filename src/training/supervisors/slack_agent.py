@@ -4,10 +4,6 @@ Registers as ``"supervisor"`` on connect to the harness WebSocket server.
 Renders all supervisor actions (``progress``, ``event``, ``escalation``,
 ``ratify_request``) to a Slack channel and forwards supervisor Slack input
 through the shared command parser to the appropriate harness role.
-
-Spec reference: specs/harness-server.md §Slack Participant, §Supervisor Participant
-Test mapping: HRNS-17 (forward supervisor input), HRNS-18 (render supervisor actions),
-              HRNS-31 (supervisor registration), HRNS-34 (ratify countersign)
 """
 
 from __future__ import annotations
@@ -129,8 +125,7 @@ class SlackParticipant:
                     # the ratify command is buffered. The countersign frame
                     # must carry the canonical KLine wire dict
                     # ({"signature", "nodes"}), not the whole
-                    # {proposal, query, significance} envelope
-                    # (see specs/harness-server.md).
+                    # {proposal, query, significance} envelope.
                     await self._render_to_slack(message, action)
                     if action == "ratify_request":
                         self._latest_ratify_proposal = (

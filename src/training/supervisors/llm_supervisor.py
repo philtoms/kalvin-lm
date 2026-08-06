@@ -2,9 +2,9 @@
 
 A WebSocket client participant that registers as role ``supervisor`` and
 resolves reactive decisions (``ratify_request`` frames) via an LLM. It is a
-peer of the TUI, Slack, and CLI supervisors — same decision contract
-(`@specs/supervisor-decision.md`), differing only in the process that
-produces an answer (an LLM rather than a human or pi).
+peer of the TUI, Slack, and CLI supervisors — same decision contract,
+differing only in the process that produces an answer (an LLM rather than a
+human or pi).
 
 This module owns the LLMSupervisor's reasoning pipeline (the SD-16…21
 contract): the system prompt, prompt construction, the
@@ -27,9 +27,6 @@ escalate to, so the run advances past the gap).
 
 Routine observation frames (``progress``, ``event`` relay) are observed but
 not acted on — the LLMSupervisor is a decider, not a logger.
-
-Spec ref: specs/supervisor-decision.md §LLMSupervisor (SD-2),
-          §LLMSupervisor Pipeline (SD-16…21)
 """
 
 from __future__ import annotations

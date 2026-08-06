@@ -3,10 +3,6 @@
 Maps supervisor free-text input to structured commands, which are then dispatched
 as bus messages. Used by both the TUI and Slack supervisors to interpret user
 input uniformly.
-
-Spec ref: specs/harness-server.md §Shared Command Protocol (HRNS-32).
-The ``scaffold`` command (reactive scaffolding) is defined in
-specs/supervisor-decision.md §Decision answers (SD-10).
 """
 
 from __future__ import annotations
@@ -118,9 +114,9 @@ class RatifyCommand(Command):
     """Accept the latest pending proposal — a supervisor decision.
 
     Routes to the ``trainer`` role as a ``supervisor_decision`` so the Trainer
-    applies the countersign itself after replaying any held events
-    (`@specs/supervisor-decision.md` SD-9). The proposal is carried verbatim
-    so the Trainer countersigns the exact kline Kalvin proposed.
+    applies the countersign itself after replaying any held events. The
+    proposal is carried verbatim so the Trainer countersigns the exact kline
+    Kalvin proposed.
     """
 
     def to_messages(self, latest_proposal: Any) -> list[tuple[str, str, Any]]:
@@ -160,10 +156,9 @@ class ScaffoldCommand(Command):
     """Submit reactive scaffolding (KScript) — a supervisor decision.
 
     When a proposal is pending, routes to the ``trainer`` role as a
-    ``supervisor_decision`` so the Trainer applies the scaffold answer
-    (`@specs/supervisor-decision.md` SD-10); the KScript is then submitted to
-    Kalvin and compiled like any lesson submission (compile failures surface
-    as ``error`` events — SD-12).
+    ``supervisor_decision`` so the Trainer applies the scaffold answer; the
+    KScript is then submitted to Kalvin and compiled like any lesson
+    submission (compile failures surface as ``error`` events).
 
     When no proposal is pending, this is a free submission to Kalvin (not a
     decision answer) and goes directly to the ``trainee`` ``submit`` action.

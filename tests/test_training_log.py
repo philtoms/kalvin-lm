@@ -282,10 +282,9 @@ class TestTrainerLogging:
 
 
 class TestReactorLogging:
-    """TL-10 through TL-11: Reactor log output. (TL-12 through TL-15 are
-    [removed] — reactive scaffolding, cogitation failure, budget exhaustion,
-    and escalation logging belonged to the inline-cogitation path, which is
-    retired per `@specs/supervisor-decision.md` SD-3.)"""
+    """Reactor log output. (Reactive scaffolding, cogitation failure,
+    budget exhaustion, and escalation logging belonged to the inline-cogitation
+    path, which is retired.)"""
 
     def _make_reactor(self, bus: MessageBus) -> Reactor:
         doc = CurriculumDocument(

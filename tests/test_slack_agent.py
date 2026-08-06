@@ -269,7 +269,7 @@ async def test_slack_ratify_command_routes_supervisor_decision():
     """HRNS-34: ``ratify`` command routes a ``supervisor_decision`` to the trainer.
 
     The buffered ``_latest_ratify_proposal`` (canonical KLine wire dict) is
-    carried verbatim inside the decision payload (`@specs/supervisor-decision.md` SD-9).
+    carried verbatim inside the decision payload.
     """
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
@@ -301,7 +301,7 @@ async def test_slack_ratify_request_to_supervisor_decision_wire_shape():
     ``ratify_request`` (full ``{proposal, query, significance}`` envelope)
     followed by a ``"ratify"`` dispatch must produce a ``supervisor_decision``
     frame whose ``proposal`` is the raw KLine wire dict — NOT the
-    ``{proposal, query, significance}`` envelope (`@specs/supervisor-decision.md` SD-9).
+    ``{proposal, query, significance}`` envelope.
     """
     async with StubHarness() as stub:
         participant = await _make_participant(stub)

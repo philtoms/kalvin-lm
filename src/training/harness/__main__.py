@@ -168,9 +168,9 @@ def main(argv: list[str] | None = None) -> None:
             curriculum = Curriculum(lessons=[])
 
         # The LLMSupervisor (when launched) is a supervisor participant that
-        # resolves reactive decisions. The Trainer never decides reactively
-        # (`@specs/supervisor-decision.md`); it surfaces decisions and gates
-        # the run. ``llm_client`` is used only for goal-based curriculum
+        # resolves reactive decisions. The Trainer never decides reactively;
+        # it surfaces decisions and gates the run. ``llm_client`` is used
+        # only for goal-based curriculum
         # generation here.
         llm_client = _build_llm_client(trainer_cfg)
 
