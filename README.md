@@ -144,14 +144,13 @@ src/
 
 ## Documentation
 
-| Document                                         | Purpose                                            |
-| ------------------------------------------------ | -------------------------------------------------- |
-| [`CONTEXT.md`](CONTEXT.md)                       | Domain glossary — precise definitions of all terms |
-| [`docs/kalvin-vision.md`](docs/kalvin-vision.md) | Vision, conceptual model, and philosophy           |
-| [`docs/roadmap.md`](docs/roadmap.md)             | Build phases, dependency graph, current status     |
-| [`docs/adr/`](docs/adr/)                         | Architectural decision records                     |
-| [`specs/`](specs/)                               | Testable behavioural contracts                     |
-| [`plans/`](plans/)                               | Implementation strategy and test mapping           |
+| Document                                         | Purpose                                                                  |
+| ------------------------------------------------ | ------------------------------------------------------------------------ |
+| [`CONTEXT.md`](CONTEXT.md)                       | Operating notes, domain glossary, and project navigation (source map)    |
+| [`docs/kalvin-vision.md`](docs/kalvin-vision.md) | Vision, conceptual model, and philosophy — the WHY                       |
+
+Source is the truth document for behaviour. `CONTEXT.md`'s **Project
+Navigation** section maps the source tree to its concerns.
 
 ## Development
 

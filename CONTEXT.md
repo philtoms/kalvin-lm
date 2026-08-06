@@ -7,9 +7,9 @@ This document has three sections. **Operating Notes** contains process instructi
 ## Operating Notes
 
 - Commit all work before creating any kb tasks.
-- When creating kb tasks for large features, decompose into discrete code tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single module or a single behavioural change. Do not create monolithic tasks that span multiple modules. Cascade work (specs, plans, vision) follows the `docs/cascade-development.md` flow, not kb.
-- Follow the docs/cascade-development.md model strictly.
-- CONTEXT.md is a glossary plus operating notes. Keep the two sections separate. Do not add implementation details, spec content, or code to either section.
+- When creating kb tasks for large features, decompose into discrete code tasks with explicit `depends` chains. Each task should cover one coherent piece of work — a single module or a single behavioural change. Do not create monolithic tasks that span multiple modules.
+- Source is the truth document. The **Project Navigation** section below maps the source tree to its concerns; read the code for behaviour. When a term's precise meaning matters, use this glossary.
+- CONTEXT.md is a glossary plus operating notes plus project navigation. Keep the three sections separate. Do not add implementation details or code to the glossary or operating notes; navigation points into source, never restating it.
 - **Lesson Labelling Convention.** Lessons are identified by stable labels derived from their headings. Whole-number labels (1, 2, 3) indicate distinct conceptual steps. Sub-labels (2a, 2b) indicate lessons semantically related to their parent — refinements, bridges, or remediations of that concept. If a new lesson is logically subsequent but not semantically related, the document is renumbered instead. The curriculum must always read as a logical and temporal narrative for humans.
 
 ---
