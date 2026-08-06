@@ -243,16 +243,16 @@ class Trainer:
             self._handle_supervisor_decision(msg)
             return
 
-        # While a decision is pending, hold Rationaliser events (and the
-        # drained/lesson-advance they trigger) until the supervisor replies.
-        # This is what makes the supervisor gating: the run cannot advance
-        # past the pending proposal. ``supervisor_decision`` above bypasses
-        # the hold so the reply is always processed immediately.
-        if self._pending_decision is not None and action in (
-            "ground",
-            "frame",
-            "error",
-            "drained",
+        # While a decision is pending, hold Rationaliser events until the
+        # supervisor replies. This is what makes the supervisor gating: the
+        # run cannot advance past the pending proposal. ``supervisor_decision``
+        # above bypasses the hold so the reply is always processed immediately.
+        # ``drained`` also bypasses the hold (SD-8a, §Lesson boundary): it is
+        # the message that *advances* the lesson, and holding it behind
+        # pending decisions deadlocks lesson progression.
+        if (
+            self._pending_decision is not None
+            and action in ("ground", "frame", "error")
         ):
             self._held_messages.append(msg)
             return
@@ -341,12 +341,30 @@ class Trainer:
             # decisions the supervisor needs to see.
             auto_matched = self._reactor.process_s2_s3(event)
 
+            # Lesson boundary (SD-8b, §Lesson boundary): during the inter-lesson
+            # drain window the current lesson N+1 has not been submitted to
+            # Kalvin yet (`_do_submit_lesson` runs only after `drained`
+            # returns), so any S2/S3 proposal arriving now is residual
+            # cogitation from the completed lesson N. Dropping it — rather
+            # than arming the gate — keeps the advancing `drained` from being
+            # buried under a cascade of novel rotations from the completed
+            # misfit. The "some lesson already satisfied" clause excludes
+            # the session-start drain (before L1 is submitted), where no
+            # completed lesson exists to produce residual cogitation.
+            in_drain_window = (
+                self._drain_pending and bool(self._state.lesson_satisfied)
+            )
+            if not auto_matched and in_drain_window:
+                logger.info(
+                    "Dropping post-completion proposal during drain window: %s",
+                    event.proposal,
+                )
             # Escalation: a proposal the Reactor could not resolve. The
             # decision request is always enriched with ``misfit`` and
             # ``curriculum_context`` so every decider receives the same
             # context (SD-1). A context-gathering failure must never block
             # the request itself.
-            if not auto_matched:
+            elif not auto_matched:
                 payload: dict = {
                     "proposal": event.proposal,
                     "query": event.query,
@@ -469,9 +487,22 @@ class Trainer:
         # Replay held events until the gate re-arms (a new ratify_request
         # sets _pending_decision) or the hold drains. Each replayed event
         # dispatches through on_message, which stashes again if a new
-        # decision is now pending.
+        # decision is now pending. `drained` is pulled ahead of held proposal
+        # events (SD-6, §Lesson boundary): it advances the lesson and must
+        # not wait behind a stream of proposals that would each re-arm the
+        # gate.
         while self._held_messages and self._pending_decision is None:
-            held = self._held_messages.popleft()
+            # Prefer a held `drained` so lesson advancement is not buried.
+            drained_idx = next(
+                (i for i, m in enumerate(self._held_messages)
+                 if m.action == "drained"),
+                None,
+            )
+            if drained_idx is not None:
+                held = self._held_messages[drained_idx]
+                del self._held_messages[drained_idx]
+            else:
+                held = self._held_messages.popleft()
             self.on_message(held)
 
     # Input handling (from Slack / supervisor)

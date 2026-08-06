@@ -176,6 +176,12 @@ submitted`), where `submitted` now spans all four bands, not just S1.
     to N+1, but before N+1's drain returns and `_do_submit_lesson` compiles
     it) from spuriously completing N+1 against N's counts. The trainer emits
     `progress: lesson_complete` and submits the next lesson.
+13a. The same lesson boundary that rule 13 defends for *completion* is defended
+     for the *decision gate* (`@specs/supervisor-decision.md` §Lesson boundary):
+     during the drain window, a late S2/S3 proposal from lesson N does not arm
+     the gate and does not surface a `ratify_request`. Without this, the
+     completed misfit's rotation cascade buries the advancing `drained` message
+     under a stream of novel proposals, deadlockng lesson progression.
 
 ### Subword Canons
 

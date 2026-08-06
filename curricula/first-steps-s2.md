@@ -13,7 +13,7 @@ and producing expansion proposals that the supervisor must ratify.
 
 ## Terminating Goal
 
-Kalvin proposes the following kline once for each misfit submission:
+Kalvin proposes the following canonical kline once for each misfit submission:
 
 ```
   {MH: [M, H]

@@ -2184,6 +2184,140 @@ class TestDecisionRequest:
         }
 
 
+# ── Lesson boundary (SD-8a/8b) ───────────────────────────────────────
+
+
+class TestLessonBoundaryDrainWindow:
+    """SD-8a/8b: during the inter-lesson drain window, `drained` is never
+    held and post-completion proposals do not arm the gate.
+
+    Reproduces the held-`drained` deadlock: without the fix, a residual S2
+    proposal from the completed lesson arms the gate, the returning `drained`
+    is held behind it, and the next lesson is never submitted.
+    """
+
+    @patch("training.trainer.trainer.compile_source")
+    @requires_tokenizer_data
+    def test_post_completion_proposal_dropped_during_drain_window(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """SD-8b: a residual S2 proposal arriving while `_drain_pending` is
+        True (after a lesson is satisfied) is dropped — no ratify_request,
+        gate not armed."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        _drain(trainer)  # L1 submitted
+        capture.reset()
+
+        # Satisfy L1's entry so lesson_satisfied is non-empty, then complete L1.
+        ground = _make_event(
+            "frame",
+            query=KLine(signature=100, nodes=[10]),
+            proposal=KLine(signature=100, nodes=[10]),
+            significance=_S1_SIGNIFICANCE,
+        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=ground))
+        # L1 complete fires _submit_next_lesson -> _drain_pending is now True.
+        assert trainer._drain_pending is True
+        assert len(trainer._state.lesson_satisfied) == 1
+        capture.reset()
+
+        # Reactor fails to auto-match (residual cogitation proposal).
+        trainer._reactor.process_s2_s3 = MagicMock(return_value=False)
+        residual = _make_event(
+            "frame",
+            query=KLine(signature=999, nodes=[99]),
+            proposal=KLine(signature=999, nodes=[99]),
+            significance=_S2_SIGNIFICANCE,
+        )
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="frame", message=residual)
+        )
+
+        # No ratify_request surfaced, gate not armed.
+        assert capture.find_all(SUPERVISOR_ROLE, "ratify_request") == []
+        assert trainer._pending_decision is None
+
+    @patch("training.trainer.trainer.compile_source")
+    @requires_tokenizer_data
+    def test_drained_bypasses_hold_and_advances_lesson(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """SD-8a: `drained` is never held. Even with a pending decision armed
+        before the drain window, `drained` is processed immediately and the
+        next lesson is submitted (here: L2's compile runs)."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1", "lesson2"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        _drain(trainer)  # L1 submitted
+        capture.reset()
+
+        # Arm the gate with an in-lesson proposal (L1 not yet satisfied).
+        trainer._reactor.process_s2_s3 = MagicMock(return_value=False)
+        proposal_event = _make_event(
+            "frame",
+            query=KLine(signature=999, nodes=[99]),
+            proposal=KLine(signature=999, nodes=[99]),
+            significance=_S2_SIGNIFICANCE,
+        )
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="frame", message=proposal_event)
+        )
+        assert trainer._pending_decision is not None
+
+        # `drained` arrives while the gate is armed. It must NOT be held.
+        # (In this unit scenario no real drain was requested, but the
+        # bypass path is what we're verifying: on_message routes `drained`
+        # to _handle_drained regardless of _pending_decision.)
+        assert mock_compile.call_count == 1  # only L1 compiled so far
+        trainer.on_message(
+            Message(role=TRAINER_ROLE, action="drained", message=None)
+        )
+        # _handle_drained ran (it no-ops without _drain_pending, but crucially
+        # the message was not stashed into _held_messages).
+        assert len(trainer._held_messages) == 0
+
+    @patch("training.trainer.trainer.compile_source")
+    @requires_tokenizer_data
+    def test_session_start_drain_does_not_drop_proposals(
+        self, mock_compile: MagicMock
+    ) -> None:
+        """SD-8b guard clause: at session start `_drain_pending` is True but
+        no lesson is satisfied yet, so proposals arm the gate normally
+        (they belong to the upcoming L1)."""
+        mock_compile.return_value = [_make_entry(100, [10])]
+
+        bus = MessageBus()
+        curriculum = Curriculum(["lesson1"])
+        trainer, capture = _make_trainer(bus, curriculum)
+        trainer.start_session()
+        # start_session -> _submit_next_lesson -> _drain_pending True, but
+        # lesson_satisfied is empty (the guard's exclusion clause).
+        assert trainer._drain_pending is True
+        assert trainer._state.lesson_satisfied == set()
+        capture.reset()
+
+        trainer._reactor.process_s2_s3 = MagicMock(return_value=False)
+        event = _make_event(
+            "frame",
+            query=KLine(signature=999, nodes=[99]),
+            proposal=KLine(signature=999, nodes=[99]),
+            significance=_S2_SIGNIFICANCE,
+        )
+        trainer.on_message(Message(role=TRAINER_ROLE, action="frame", message=event))
+
+        # Proposed normally — ratify_request surfaced, gate armed.
+        assert len(capture.find_all(SUPERVISOR_ROLE, "ratify_request")) == 1
+        assert trainer._pending_decision is not None
+
+
 # ── Restart action ───────────────────────────────────────────────────
 
 

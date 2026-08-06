@@ -93,11 +93,38 @@ On an S2/S3 event that does not auto-countersign and is not a recurrence: emit t
 
 ### Decision gate
 
-4. While a decision request is pending, the Trainer holds subsequent trainee events (`ground`, `frame`, `error`, `drained`) in an internal queue; the bus does not block. The handler returns immediately after stashing a held event.
+4. While a decision request is pending, the Trainer holds subsequent trainee events (`ground`, `frame`, `error`) in an internal queue; the bus does not block. The handler returns immediately after stashing a held event. **`drained` is never held** — see §Lesson boundary.
 5. The decision-answer message is never held; it is processed immediately even while events are queued.
-6. On a decision answer the Trainer applies it, clears the pending marker, and replays held events through its normal handler.
+6. On a decision answer the Trainer applies it, clears the pending marker, and replays held events through its normal handler. **`drained` is pulled ahead of held proposal events during replay** (§Lesson boundary).
 7. A replayed event that raises a new decision request re-arms the gate; remaining events stay held. This yields the multi-turn decision loop — one decision per held-stream segment.
-8. The gate is unconditional: it arms on every decision request in every session, regardless of which decider (or whether a decider) is launched.
+8. The gate is unconditional: it arms on every decision request in every session, regardless of which decider (or whether a decider) is launched — **except during the lesson-boundary drain window** (§Lesson boundary), where post-completion proposals do not arm the gate.
+
+### Lesson boundary
+
+The `progress: lesson_complete` signal is authoritative: once lesson N is
+complete, its cogitation must not gate the transition to lesson N+1. The
+inter-lesson **drain window** opens when the Trainer sends `drain` (in
+`_submit_next_lesson`) and closes when `_do_submit_lesson` runs for N+1. During
+that window:
+
+8a. **`drained` is never held.** It is the message that *advances* the
+    lesson; holding it behind pending decisions deadlocks lesson progression.
+    It bypasses the hold (like `supervisor_decision`) and is processed
+    immediately.
+
+8b. **Post-completion proposals do not arm the gate.** An S2/S3 event whose
+    query entry belongs to a lesson already marked satisfied (a late cogitation
+    yield from lesson N arriving during N+1's drain window) is **dropped** —
+    no `ratify_request`, no `_pending_decision`. The reactor's per-lesson
+    `_seen_proposals` / `_current_entries` already reset on the next lesson;
+    this rule extends that boundary to the gate, so the cascade of novel
+    rotations from a completed misfit cannot bury the advancing `drained`.
+    Proposals belonging to the *current* (not-yet-satisfied) lesson arm the
+    gate normally.
+
+The drain window is tracked by `_drain_pending`. The completed-lesson test
+uses the curriculum state: the proposal's query entry is post-completion when
+its lesson label is in `lesson_satisfied`.
 
 ### Decision answers
 
@@ -131,11 +158,13 @@ When the LLMSupervisor receives a decision request, it builds a prompt from the 
 | SD-1 | A proposal the Trainer cannot auto-ratify emits exactly one enriched `ratify_request` (`misfit` + `curriculum_context` always present); the Trainer emits no `countersign`/`submit`/escalation for it | §Decision ownership |
 | SD-2 | The LLMSupervisor is not wired inside the Trainer; when launched it registers as a `supervisor` participant and answers via `supervisor_decision` | §Decision ownership |
 | SD-3 | No reactive-round budget is tracked; no `budget_exhaustion` or `low_confidence` escalation is ever emitted by the Trainer | §Decision ownership |
-| SD-4 | While a decision request is pending, trainee events (`ground`/`frame`/`error`/`drained`) are held and the bus does not block | §Decision gate |
-| SD-5 | A `supervisor_decision` is processed immediately even while events are held | §Decision gate |
-| SD-6 | On a decision answer the Trainer applies it, clears the pending marker, and replays held events | §Decision gate |
+| SD-4 | While a decision request is pending, trainee events (`ground`/`frame`/`error`) are held and the bus does not block; `drained` is never held (§Lesson boundary) | §Decision gate |
+| SD-5 | A `supervisor_decision` (and `drained`) is processed immediately even while events are held | §Decision gate |
+| SD-6 | On a decision answer the Trainer applies it, clears the pending marker, and replays held events; `drained` is pulled ahead of held proposal events during replay | §Decision gate |
 | SD-7 | A replayed event that raises a new decision request re-arms the gate, yielding a multi-turn loop | §Decision gate |
-| SD-8 | The gate arms on every decision request regardless of which decider is launched (no delegation flag branches the behaviour) | §Decision gate |
+| SD-8 | The gate arms on every decision request regardless of which decider is launched — except during the lesson-boundary drain window, where post-completion proposals do not arm the gate (no delegation flag branches the behaviour) | §Decision gate, §Lesson boundary |
+| SD-8a | During the drain window (`_drain_pending`), `drained` bypasses the hold and is processed immediately | §Lesson boundary |
+| SD-8b | During the drain window (`_drain_pending`) once at least one lesson is satisfied, an S2/S3 proposal is dropped (no `ratify_request`) as residual cogitation from the completed lesson; proposals of the current lesson and during the session-start drain arm the gate normally | §Lesson boundary |
 | SD-9 | `ratify` → `{trainee, countersign, proposal}` | §Decision answers |
 | SD-10 | `scaffold` → `{trainee, submit, text}` | §Decision answers |
 | SD-11 | `continue` → no bus effect (skip) | §Decision answers |
