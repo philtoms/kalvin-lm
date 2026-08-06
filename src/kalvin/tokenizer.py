@@ -13,9 +13,6 @@ Engine surface:
   training and persistence (setup-time).
 - ``encode_bpe`` / ``decode_bpe`` — raw text ↔ BPE token IDs.
 - ``vocab_size`` — the BPE vocabulary size.
-
-See specs/tokenizer.md (§BPE Engine) and specs/nlp_tokenizer.md
-(§BPE Engine Foundation) for the full specification.
 """
 
 from __future__ import annotations

@@ -18,8 +18,6 @@ not itself a ``KTokenizer``.
 
 BPE tokens without a type-dictionary entry fall back to ``POS_X``
 (``UNKNOWN_NLP_TYPE = 65536 = 1 << 16``), the NLP "unknown" POS flag.
-
-See specs/nlp_tokenizer.md for the full specification.
 """
 
 from __future__ import annotations

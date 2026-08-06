@@ -13,3 +13,6 @@ git show <tag>:<artifact>
 | `specs/reactive-delegation.md` | `specs/supervisor-decision.md` (SD-1…SD-21 re-own the surviving contracts; flag/budget/delegated-mode removals encoded as positive rules) | `docs-archive-2026-06-29` |
 | `plans/impl/reactive-delegation.md` | Implemented — conclusion absorbed into `specs/supervisor-decision.md`; design rationale retained in code comments where code-alone-would-mislead | `docs-archive-2026-06-29` |
 | `plans/impl/cascade-control.md` | Superseded by `plans/impl/realign-training-roles.md` (T4) — its reactive-round budget and silent-drop behaviour removed under `specs/supervisor-decision.md` SD-3 | `docs-archive-2026-06-29` |
+| `specs/signature.md` | Source-is-truth: expressed by `src/kalvin/kline.py`, `src/kalvin/signifier.py`, `src/kalvin/abstract.py`; domain term retained in `CONTEXT.md` (Signature) | `source-is-truth-2026-08-06` |
+| `specs/tokenizer.md` | Source-is-truth: expressed by `src/kalvin/abstract.py` (`KTokenizer`), `src/kalvin/tokenizer.py` (`Tokenizer` BPE wrapper) | `source-is-truth-2026-08-06` |
+| `specs/nlp_tokenizer.md` | Source-is-truth: expressed by `src/kalvin/nlp_tokenizer.py` (`NLPTokenizer`, node layout, type dictionary, POS_X fallback) | `source-is-truth-2026-08-06` |

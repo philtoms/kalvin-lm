@@ -1,6 +1,6 @@
 # Kalvin — Context
 
-This document has two sections. **Operating Notes** contains process instructions and conventions. **Domain Glossary** defines the precise meaning of terms used across specs, plans, and code. Do not mix the two — glossary entries are domain terms only; operating notes are behavioral rules.
+This document has three sections. **Operating Notes** contains process instructions and conventions. **Domain Glossary** defines the precise meaning of terms used across code and docs. **Project Navigation** maps the source tree to its concerns — the entry point for finding where a concept lives in code. Do not mix the three: glossary entries are domain terms only; operating notes are behavioral rules; navigation points into source, never restating it.
 
 ---
 
@@ -177,3 +177,20 @@ _Avoid_: self-grounded (legacy; conflates the mechanism with the level), grounde
 **Auto-Tune**:
 The project's experimental loop for tuning Kalvin's rationalisation behaviour. An LLM coding agent runs repeated sessions against a curriculum, observes how the reactor/cogitator/rationaliser actually behave, edits the significance-model code (`expand()`, `significance.py`, the rationaliser) together with the owning spec, and re-runs to confirm.
 _Avoid_: tuning session (ambiguous with training session), auto-train (it's not training), auto-tune supervisor (the CLI includes the full auto-tune tool, not just the supervisor).
+
+---
+
+## Project Navigation
+
+Source is the truth document. This section maps the source tree to its concerns so a reader can locate where a concept lives. Each entry names the module(s) and the role they play; the code itself is authoritative for behaviour. Filled incrementally as areas are appraised.
+
+### Signature & Token primitives
+
+The value layer — how text becomes opaque uint64 nodes, and the bit-algebra over them.
+
+- `src/kalvin/abstract.py` — the `KTokenizer` (text↔nodes) and `KSignifier` (signature creation, `signifies` overlap, `residual`) interfaces. Layout- and algebra-agnostic.
+- `src/kalvin/tokenizer.py` — `Tokenizer`, the BPE-engine wrapper (train/save/load, raw `encode_bpe`/`decode_bpe`). Not a `KTokenizer`; produces raw BPE IDs, not nodes.
+- `src/kalvin/nlp_tokenizer.py` — `NLPTokenizer`, the sole concrete `KTokenizer`. Owns the node layout `(sig_word << 32) | bpe_token_id`, the type dictionary, and the `POS_X` (`65536`) fallback for untyped tokens. Builds on `Tokenizer`.
+- `src/kalvin/signifier.py` — `NLPSignifier`, the sole concrete `KSignifier`. Owns the NLP bit-algebra: `signature_of` (OR-reduce), `signifies` (upper-32 type-word overlap), `residual` (masked set-difference). The empty node sequence reduces to signature `0`.
+
+See **Signature**, **Token ID**, **Relational Tokens**, **MTS** in the glossary.
