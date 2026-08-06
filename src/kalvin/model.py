@@ -4,8 +4,6 @@ The model provides storage, deduplication, lookup by signature, and
 graph traversal. Significance computation and misfit classification
 both live in expand.py.
 
-See specs/model.md for the full specification.
-
 Thread safety
 -------------
 Concurrent access (e.g. the background Cogitator thread mutating the model
@@ -27,8 +25,6 @@ thread) is made safe by encapsulating all locking inside the data structures:
   chain/adapters or directly from ``add_to_*`` — the inner tier's lock. Inner
   tiers never call back into a ``Model``, so the ordering is acyclic and
   deadlock-free. Cogitator/Rationaliser code therefore needs no locking of its own.
-
-See specs/model.md §Thread Safety for the full contract.
 """
 
 from __future__ import annotations
@@ -482,8 +478,7 @@ class Model:
         """Flatten a kline's signature decomposition to terminal signatures.
 
         Walks the kline's node tree, returning an ordered list of the
-        single-token terminal signatures it decomposes into. See
-        @specs/model.md §Graph Traversal › Unpack.
+        single-token terminal signatures it decomposes into.
 
         - Terminal (``is_terminal`` — empty Unknown, self-referential Identity
           ``{S: [S]}``, or a compound-word) → [signature]. Base case.

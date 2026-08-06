@@ -42,7 +42,7 @@ def t(bits: int) -> int:
 
 
 class TestBandRepresentativeConstants:
-    """Verify the four band-representative constants match @model spec."""
+    """Verify the four band-representative constants."""
 
     def test_constants_are_spec_values(self):
         """SIG_S1..SIG_S4 are the fixed 8-bit sentinels (0xFF/0xFE/0x7F/0x00)."""

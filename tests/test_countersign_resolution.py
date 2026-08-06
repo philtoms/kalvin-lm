@@ -1,9 +1,5 @@
 """Tests for countersign resolution behaviour.
 
-Spec references: @specs/rationaliser.md §Rationalisation (Phase 2–5),
-@specs/model.md (is_countersigned, grounded STM exclusion),
-@specs/kscript.md §7 (operator significance levels).
-
 Covers: pre-registration, ground-check STM exclusion, self-filter,
 sig_level propagation, denote=connote identity, and countersign
 pair resolution.

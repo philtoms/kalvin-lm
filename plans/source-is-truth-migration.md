@@ -93,15 +93,15 @@ so each appraisal has stable referents.
 - [x] Fill navigation entries.
 - [x] Retire specs → ARCHIVE rows → fix references.
 
-### 1c — Model, STM, Significance, Expansion  *(specs/model.md, specs/stm.md, specs/rationaliser.md §significance)*
+### 1c — Model, STM, Significance, Expansion  *(specs/model.md, specs/stm.md)* ✅
 - Source: `src/kalvin/model.py`, `src/kalvin/stm.py`, `src/kalvin/significance.py`, `src/kalvin/expand.py`,
-  `src/kalvin/rationaliser.py`, `src/kalvin/cogitator.py`, `src/kalvin/proposals.py`, `src/kalvin/paths.py`,
-  `src/kalvin/agent_codec.py` (Agent-persistence serialization — refiled from 1a).
-- Note: `specs/model.md` (914 lines) and `specs/cogitator.md` (483) are the largest — schedule a full,
-  unhurried read. `specs/cogitator.md` is currently dirty.
-- [ ] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
-- [ ] Fill navigation entries.
-- [ ] Retire specs → ARCHIVE rows → fix references.
+  `src/kalvin/proposals.py`, `src/kalvin/agent_codec.py`, `src/kalvin/paths.py`.
+- Note: `specs/rationaliser.md §significance` was listed here but rationaliser is its own spec — handled in 1d.
+  `agent_codec.py` refiled here from 1a (Agent-persistence serialization).
+- Appraisal note: spec's standalone `is_s1` free function does not exist in code — S1 recognition is `model.grounded()` + structural predicates at call sites. Naming divergence only; no behaviour gap, no code change.
+- [x] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
+- [x] Fill navigation entries.
+- [x] Retire specs → ARCHIVE rows → fix references.
 
 ### 1d — Cogitator & Rationaliser  *(specs/cogitator.md, specs/rationaliser.md)*
 - Source: `src/kalvin/cogitator.py`, `src/kalvin/rationaliser.py`, `src/kalvin/proposals.py`.
@@ -186,3 +186,6 @@ Append one line per retired artifact: `artifact → carry-over destination (if a
 - `specs/kvalue.md` → deleted; truth in `kvalue.py` (KValue), `events.py` (RationaliseEvent); term in CONTEXT (KValue). Tag `source-is-truth-2026-08-06`.
   - Stripped dangling `@specs/…` refs from 2 source docstrings (`kline.py`, `kvalue.py`) and 4 test docstrings (`test_kvalue.py`, `test_kline.py` ×2, `test_misfit.py`, `test_agent_codec.py`).
   - Cross-refs in other pending specs (`dialogue-driven-training`, `training-log`, `trainer-satisfaction`, `harness-server`) left to dissolve in their own workstreams.
+- `specs/stm.md` → deleted; truth in `stm.py`. Tag `source-is-truth-2026-08-06`.
+- `specs/model.md` → deleted; truth in `model.py`, `significance.py`, `expand.py`, `proposals.py`. Spec's `is_s1` was a naming abstraction the code expresses via `model.grounded()` — no behaviour gap. Tag `source-is-truth-2026-08-06`.
+  - Stripped 7 dangling refs: `model.py` (3: module docstring ×2, `unpack` docstring), `significance.py` (1 comment), `test_model.py`/`test_expand.py`/`test_countersign_resolution.py` (3).

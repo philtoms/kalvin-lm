@@ -81,8 +81,7 @@ _MAX_INTERIOR_DISTANCE: int = 0xFE
 
 # Band-representative significance values — the canonical bytes a producer
 # stamps when asserting a band rather than computing a grade (the compiler,
-# the countersign reciprocal, band_significance). Single source of
-# truth per @model spec §Band-representative Values. Computed values from
+# the countersign reciprocal, band_significance). Computed values from
 # expand() may be any byte within a band, not only the representative.
 #
 # Fixed (not derived from a BandLayout): structural significance marks *which

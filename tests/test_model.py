@@ -1,4 +1,4 @@
-"""Tests for Model — specs/model.md conformance."""
+"""Tests for Model — four-tier storage, write cascade, lookup, and traversal."""
 
 import pytest
 

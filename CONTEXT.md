@@ -201,4 +201,18 @@ The memory unit and the exchange unit.
 - `src/kalvin/kvalue.py` — `KValue`, the unit of exchange: an immutable `KLine` paired with a sender's `significance`. Identity is structural — equality and hashing consider `kline` only, ignoring `significance`.
 - `src/kalvin/events.py` — `RationaliseEvent` (carries `query` and `proposal` as two KValues, no top-level significance field) and the `EventBus` pub/sub adapter.
 
+### Model, STM, Significance, Expansion
+
+The memory and the significance algebra. Four cooperating modules; the dependency is strictly one-way: significance (byte algebra) ← expand (graph walk) ← proposals (misfit reshape); all read the Model.
+
+- `src/kalvin/model.py` — `Model`, the four-tier collection (STM → Frame → LTM → Base). The write cascade (`add_to_stm` / `add_to_frame` / `add_to_ltm`), unified cross-tier read API (`find`, `find_all`, `find_by_nodes`, `exists`, `grounded`, `where`, `klines`), graph traversal (`resolve`, `query_expand`, `unpack`, `query`), and `is_countersigned`. `KLineStore` backs Frame and LTM; `_TierChain`/`_TierAdapter` normalise the tiers. S1 recognition is `model.grounded()` (Frame/LTM/Base presence) composed with structural predicates at call sites — there is no standalone `is_s1`.
+- `src/kalvin/stm.py` — `STM`, a bounded (default 256) dual-keyed index (signature + nodes-signature) with FIFO eviction and snapshot iterators.
+- `src/kalvin/significance.py` — the 8-bit compositional grade: `SIG_MASK`/sentinels, `distance_to_byte`, `BandLayout` (only `S2_S3_BOUNDARY` configurable), the band-representative constants `SIG_S1..SIG_S4`, `band_significance` (production op → Target Significance), and the `Aggregator` bundling layout + `DecayFunction`/`ComposeFunction` seams (`DEFAULT_AGGREGATOR`).
+- `src/kalvin/expand.py` — `expand()` (compose-on-return graph expansion yielding connotation `KValue`s + a terminal grade) and `edge_hops()` (bounded non-canonical resolution chain, cycle/dead-end/canon/unknown termination).
+- `src/kalvin/proposals.py` — misfit comprehension: `propose_expansions` / `generate_expansions` reshape an underfit/overfit/dual misfit into self-consistent klines plus companions (no invention, no orphan nodes; terminals never emitted).
+- `src/kalvin/agent_codec.py` — binary/JSON serialization for Agent persistence (STM/Frame/LTM + activity); storage is objective-only, significance never persisted.
+- `src/kalvin/paths.py` — data-directory resolution (`tokenizer_dir`, `agent_bin`, etc.).
+
+See **Frame**, **STM**, **LTM**, **Grounding**, **Significance (Rational)**, **Cogitation**, **S2 Expansion** in the glossary.
+
 See **KLine**, **Signature**, **Node**, **Structural Significance**, **Terminal/Unknown/Identity/Canon/Misfit**, **KValue** in the glossary.
