@@ -1,8 +1,7 @@
 """Synthesize a trainer turn from the compiled script.
 
 The supervisor the rationalising trainer escalates to (and the engine behind
-:class:`~dialogue.actors.SynthesizingTrainer`). See
-@specs/dialogue-cogitation.md §Identities for the R2 precedence.
+:class:`~dialogue.actors.SynthesizingTrainer`).
 """
 
 from __future__ import annotations

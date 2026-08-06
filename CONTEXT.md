@@ -144,7 +144,7 @@ The participant under instruction — the rationalising system being trained, an
 
 **Trainer**:
 A rationaliser — the trainer-side peer of the trainee, sharing the same rationalising engine and differing only in the significance bands it keeps (S1 ratifications and S2 proposals). Cogitates over incoming proposals and emits its own; escalates to the supervisor only when its cogitation yields no reply. Registered on the harness bus with role `trainer`.
-_Avoid_: auto-agent, training bot, the deterministic ratifier of the earlier path (it now rationalises; see `specs/dialogue-driven-training.md`)
+_Avoid_: auto-agent, training bot, the deterministic ratifier of the earlier path (it now rationalises; see `src/dialogue/`)
 
 **Supervisor**:
 An Agent that resolves the proposals the Trainer escalates — deciding ratify, scaffold, or continue. Independent of medium — TUI, Slack, CLI, or an LLMSupervisor all share the same capabilities; a judgement may be a human decision or an LLM's internal assessment. Registered on the harness bus with role `supervisor`.
@@ -254,6 +254,18 @@ The multi-agent runtime and the supervisor participants. The harness is a messag
 - `src/training/supervisors/commands.py` — the shared command parser mapping free-text to structured commands (`start`/`stop`/`pause`/`resume`/`goal:`/`ratify`/`scaffold:`/file-path/guidance).
 - `src/training/supervisors/tui_client.py` / `slack_agent.py` / `cli_supervisor.py` / `llm_supervisor.py` — four client supervisors, all registering as role `supervisor`, sharing one decision contract. The **decision gate** lives in the Trainer (hold-and-replay, lesson-boundary drain window, `ratify`/`scaffold`/`continue` answers); the `LLMSupervisor` resolves `ratify_request`s via its own pipeline (prompt build, `#`-comment sanitisation, LLM call, scaffold extraction).
 - `src/training/harness/README.md` — the operator guide for running the harness (survives as a usage doc).
+
+### Dialogue subsystem
+
+The authored-script ↔ real-actor ↔ rules triad. An authored **dialogue script** drives a turn-by-turn exchange between a Trainer (T) and Trainee (K); a **runner** decodes the script and drives two **actors** over the harness bus, tracking how much of the authored exchange the actors traverse. The script is one of three coupled artefacts (script, code, rules) the dialogue work exists to bring into agreement — not a golden master.
+
+- `src/dialogue/decoder.py` — `DialogueScript`/`Turn`/`DecodedTurn`/`RunConfig` and `decode()`: a configuration-time resolver that builds each turn's kline from `source`, attaches significance by band, drops annotation-only turns, and treats `priors` as a sequence of independent runs (not merged). Handles UNKNOWN (`X:[]`), IDENTITY (self-referential or compound-word), and multi-CANONIZES labels.
+- `src/dialogue/runner.py` — `run()`: a coverage-tracking wildcard subscriber over the `MessageBus`. A thin driver opens a run by delivering the first row to the opposite role; the bus then drives the exchange. Three terminal conditions (close observed / coverage exhausted / mutual PASS); `on_divergence` governs fail-vs-accept; `RunResult.uncovered` is the **displacement** (rows never emitted). White-box grounding verification via the trainee's `drain_observations`. `PASS` is the no-content sentinel.
+- `src/dialogue/actors.py` — `EventSink`/`Actor` protocols and the actors: `ScriptTrainer`/`ScriptTrainee` (content-blind, cursor-advancing, bursts paced all-S1-or-all-non-S1), `SynthesizingTrainer` (derives replies from compiled source, falls back to the table for driving moves), `RationalisingTrainee`/`RationalisingTrainer` (wrap the rationalising engine; the trainee exposes `drain_observations`). Actors take an optional `RationaliserState` for state injection.
+- `src/dialogue/rationalise.py` — the rationalising engine: derives one turn from `(state, incoming)` returning `(batch, observations)`. Two cogitation paths — the S3 countersignature path (pair two canons' operands, establish the reciprocal) and the S2 similar-fit-proposal path (recombine grounded klines, no invention) — plus the work-list, frame (dedup/match), and significance-as-structure routing.
+- `src/dialogue/synthesize.py` — `synthesize`: the supervisor/engine behind the `SynthesizingTrainer`, deriving a trainer turn from the compiled script.
+
+See **Dialogue**, **Trainee**, **Trainer**, **Proposal**, **Ratify**, **Canon**, **Misfit** in the glossary.
 
 See **Harness**, **Agent**, **Message**, **Dialogue**, **Supervisor**, **Trainee**, **Trainer**, **Scaffolding**, **Ratify**, **Escalation** in the glossary.
 

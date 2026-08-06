@@ -1,4 +1,4 @@
-"""Dialogue actors — see @specs/dialogue-driven-training.md §Actor contract."""
+"""Dialogue actors."""
 
 from __future__ import annotations
 
@@ -245,7 +245,7 @@ class SynthesizingTrainer(_ScriptedFallback, Actor):
 
 class RationalisingTrainee(Actor):
     """Replies from the shared rationaliser engine; dedups its own emissions and
-    exposes S1 groundings via :meth:`drain_observations`. See @specs/dialogue-cogitation.md."""
+    exposes S1 groundings via :meth:`drain_observations`."""
 
     def __init__(
         self, signifier: KSignifier, sink: EventSink,
@@ -293,8 +293,7 @@ _TRAINEE_BANDS = frozenset({SIG_S2, SIG_S3, SIG_S4})
 class RationalisingTrainer(_ScriptedFallback, Actor):
     """Cogitates via the shared engine (keeping S1/S2); escalates to
     :func:`synthesize` when cogitation has nothing to say; falls back to the
-    scripted next T row when K PASSes. Reactive only (the runner opens).
-    See @specs/dialogue-cogitation.md."""
+    scripted next T row when K PASSes. Reactive only (the runner opens)."""
 
     def __init__(
         self,

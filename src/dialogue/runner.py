@@ -1,7 +1,6 @@
-"""Dialogue runner — see @specs/dialogue-driven-training.md §The Runner.
+"""Dialogue runner — a coverage-tracking wildcard subscriber over the harness ``MessageBus``.
 
-A coverage-tracking wildcard subscriber over the harness ``MessageBus`` plus
-a thin driver that opens a run (delivers the first row to the opposite role)
+A thin driver opens a run (delivers the first row to the opposite role)
 and runs the bus until a terminal condition (close observed / coverage
 exhausted / mutual PASS)."""
 
@@ -58,7 +57,7 @@ class EventSink(Protocol):
 
 @runtime_checkable
 class Actor(Protocol):
-    """A dialogue actor (see @specs/dialogue-driven-training.md §Actor contract)."""
+    """A dialogue actor."""
 
     @property
     def role(self) -> str: ...

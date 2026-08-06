@@ -1,9 +1,9 @@
 """Phase 3 — the Runner as a MessageBus subscriber.
 
-Spec: ``@specs/dialogue-driven-training.md``. The runner is a coverage-tracking
-wildcard subscriber over a ``MessageBus`` (the sink + relay), plus a driver
-that **opens the run** by delivering the first row to the opposite role, then
-runs the bus until a terminal condition (the close observed, coverage
+The runner is a coverage-tracking wildcard subscriber over a ``MessageBus``
+(the sink + relay), plus a driver that **opens the run** by delivering the
+first row to the opposite role, then runs the bus until a terminal condition
+(the close observed, coverage
 exhausted, or mutual PASS). Actors reply fire-and-forget via the bus; no
 synchronised alternation; anticipation and interjection are first-class.
 

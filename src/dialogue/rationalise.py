@@ -1,4 +1,4 @@
-r"""The rationalising engine — see @specs/dialogue-cogitation.md.
+r"""The rationalising engine.
 
 A :class:`Rationaliser` derives one turn from ``(state, incoming)`` and returns
 ``(batch, observations)`` — dialogue emissions and K's internal S1 groundings

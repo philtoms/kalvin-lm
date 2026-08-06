@@ -1,4 +1,4 @@
-"""Single-stage dialogue-script decoder — see @specs/dialogue-driven-training.md §Decode.
+"""Single-stage dialogue-script decoder.
 
 ``decode(script)`` turns a :class:`DialogueScript` into a flat ordered
 ``list[DecodedTurn]``, resolving every symbolic label against ``script.source``."""
