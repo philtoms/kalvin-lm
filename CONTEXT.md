@@ -231,6 +231,18 @@ The authoring language. A four-stage pipeline (`src/ks/`) compiles declarative s
 - `src/ks/token_encoder.py` — `TokenEncoder`: encodes symbolic entries to `KValue`s via the tokenizer. Compound-word decomposition (a word the BPE tokenizer splits into ≥2 subwords → one self-referential identity whose signature is the OR-reduction of the subwords), the canonical-signature registry (a declared compound's signature computed once and reused by references), and the source-before-decomposition output partition.
 - `src/ks/compiler.py` / `src/ks/__init__.py` — `Compiler` (orchestrator; always creates a BindingScope) and `KScript` (the one-shot public API: `KScript(source).entries → list[KValue]`).
 
+### Training: trainer, reactor, curriculum
+
+The training driver. The `Trainer` submits curriculum lessons to the rationaliser, tracks satisfaction, and routes proposals it cannot auto-resolve to the supervisor.
+
+- `src/training/trainer/curriculum_document.py` — `CurriculumDocument` (markdown parser: three required sections `## Objective`/`## Approach`/`## Lessons`, `### <label>` lessons with stable labels `\d+[a-z]?`, fenced KScript blocks) and `Lesson`. Supports `from_file`/`from_string` and `amend` (insert/append/modify with write-back).
+- `src/training/trainer/curriculum.py` — `Curriculum` (ordered lesson container, document- or flat-list-backed) and `CurriculumState` (per-session tracking: entry-level `submitted`/`satisfied`/`pending` `EntryKey` sets **and** label-level `lesson_submitted`/`lesson_satisfied`, JSON persistence with legacy-format compat).
+- `src/training/trainer/curriculum_generator.py` — `CurriculumGenerator`: LLM goal→curriculum markdown (one call, one retry on parse failure, slug-derived filename).
+- `src/training/trainer/reactor.py` — `Reactor`: the Trainer's mechanical S2/S3 handler. Auto-countersigns structurally matching proposals (kline-only equality), and re-submits intra-lesson recurrences at declared `SIG_S4` (drop signal). Everything else returns `False` for the Trainer to escalate.
+- `src/training/trainer/trainer.py` — `Trainer`: the embedded harness participant. Compiles and submits lessons, tracks satisfaction (`satisfied ⊇ submitted`, lesson-completion guarded against late cogitation), emits progress events, handles session lifecycle (goal/file resolution, file polling, amendment), and escalates unresolved proposals to the supervisor with a decision gate. Logging lives throughout (`kline_display`-decompiled event lines).
+
+See **Curriculum**, **Scaffolding**, **Trainee**, **Trainer**, **Proposal**, **Ratify**, **Escalation**, **Expectation** in the glossary.
+
 See **KScript**, **Relational Tokens**, **MTS**, **Word Binding**, **Target Significance** in the glossary.
 
 See **Cogitation**, **Proposal**, **Ratify**, **Escalation**, **Expectation** in the glossary.

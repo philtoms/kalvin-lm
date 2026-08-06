@@ -119,11 +119,12 @@ so each appraisal has stable referents.
 - [x] Fill navigation entries.
 - [x] Retire spec → ARCHIVE row → fix references.
 
-### 1f — Training: trainer, reactor, curriculum  *(specs/curriculum.md, specs/trainer-satisfaction.md, specs/training-log.md)*
-- Source: `src/training/trainer/`.
-- [ ] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
-- [ ] Fill navigation entries.
-- [ ] Retire specs → ARCHIVE rows → fix references.
+### 1f — Training: trainer, reactor, curriculum  *(specs/curriculum.md, specs/trainer-satisfaction.md, specs/training-log.md)* ✅
+- Source: `src/training/trainer/` (curriculum_document, curriculum, curriculum_generator, reactor, trainer).
+- Appraisal note: `trainer-satisfaction.md` described a transitional "paced-loop" Prompted/Withheld partition + Held-Index design its own header marked superseded by the dialogue path. The production `Trainer` uses Reactor auto-countersign + supervisor escalation instead. Code is the truth; spec was stale on the paced-loop mechanics.
+- [x] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
+- [x] Fill navigation entries.
+- [x] Retire specs → ARCHIVE rows → fix references.
 
 ### 1g — Harness & supervisors  *(specs/harness-server.md, specs/supervisor-decision.md)*
 - Source: `src/training/harness/`, `src/training/supervisors/`.
@@ -197,3 +198,7 @@ Append one line per retired artifact: `artifact → carry-over destination (if a
   - Stripped 14 dangling refs across `cogitator.py` (4, incl. phantom `cogitator-drain.md` pointer), `rationaliser.py` (5: module docstring + 3 inline comments + 1), `kline.py` (1), `harness/adapter.py` (1), `test_ks.py`/`test_ks_token_encoder.py`/`test_cogitator_drain.py` (3).
 - `specs/kscript.md` → deleted; truth in `src/ks/` (8 modules). Tag `source-is-truth-2026-08-06`.
   - Stripped 7 dangling refs across `token.py`, `lexer.py`, `ast.py`, `compiler.py`, `__init__.py` (module docstrings), `token_encoder.py` (1 comment), `test_ks.py` (header).
+- `specs/curriculum.md` → deleted; truth in `curriculum_document.py`, `curriculum.py`, `curriculum_generator.py`. Tag `source-is-truth-2026-08-06`.
+- `specs/trainer-satisfaction.md` → deleted; truth in `trainer.py`, `reactor.py`. Spec's paced-loop partition was a superseded transitional design; production uses Reactor + supervisor escalation. Tag `source-is-truth-2026-08-06`.
+- `specs/training-log.md` → deleted; truth in the `logging` calls across `trainer.py`, `reactor.py`, `harness/adapter.py`. Tag `source-is-truth-2026-08-06`.
+  - Stripped 1 dangling ref (`test_training_log.py` header). Reactor/trainer `@specs/supervisor-decision.md` refs deferred to 1g.

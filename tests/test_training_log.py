@@ -2,8 +2,6 @@
 
 Verifies that the Trainer, Reactor, and Adapter emit structured log
 messages at the correct levels during training operations.
-
-Spec ref: specs/training-log.md TL-1 through TL-20
 """
 
 from __future__ import annotations
