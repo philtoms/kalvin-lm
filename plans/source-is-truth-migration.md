@@ -152,14 +152,13 @@ so each appraisal has stable referents.
 
 **Phase 1 complete.** All 19 specs retired. `specs/` is empty. The only remaining spec/plan references in the repo are inside `plans/` (retired wholesale in Phase 2) and `docs/ARCHIVE.md` (the ledger) / `docs/cascade-development.md` (deleted in Phase 3).
 
-## Phase 2 — Plans retirement
+## Phase 2 — Plans retirement ✅
 
-Plans are HOW; once specs are gone and source is truth, plans are spent. Retire them wholesale,
-one ARCHIVE row per plan (or one summarising row per directory). No per-plan appraisal needed —
-their value was transitional.
+Plans are HOW; once specs are gone and source is truth, plans are spent. Retired wholesale.
 
-- [ ] `plans/impl/*` → ARCHIVE rows → delete.
-- [ ] `plans/implement-*.md`, `plans/role-based-routing.md`, `plans/remove-compound-token.md` → ARCHIVE rows → delete.
+- [x] All 13 plans deleted (impl/* ×3, implement-*.md ×8, role-based-routing.md, remove-compound-token.md) → one summarising ARCHIVE row → delete.
+- [x] `plans/source-is-truth-migration.md` retained (this plan; deleted in Phase 3).
+- [x] Full suite: 1220 passed.
 
 ## Phase 3 — Cascade teardown & CONTEXT finalisation
 
