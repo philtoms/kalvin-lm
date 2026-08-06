@@ -112,12 +112,12 @@ so each appraisal has stable referents.
 - [x] Fill navigation entries.
 - [x] Retire specs → ARCHIVE rows → fix references.
 
-### 1e — KScript  *(specs/kscript.md)*
+### 1e — KScript  *(specs/kscript.md)* ✅
 - Source: `src/ks/` (lexer, parser, ast, ast_emitter, binding_scope, compiler, token, token_encoder).
-- Largest single spec (900 lines). Many source/test references point here.
-- [ ] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
-- [ ] Fill navigation entries.
-- [ ] Retire spec → ARCHIVE row → fix references.
+- Largest single spec (900 lines). Appraised across all 8 modules + 8 test files (327 tests).
+- [x] Appraise (read spec + source + tests; verify; fix code only on genuine gaps).
+- [x] Fill navigation entries.
+- [x] Retire spec → ARCHIVE row → fix references.
 
 ### 1f — Training: trainer, reactor, curriculum  *(specs/curriculum.md, specs/trainer-satisfaction.md, specs/training-log.md)*
 - Source: `src/training/trainer/`.
@@ -195,3 +195,5 @@ Append one line per retired artifact: `artifact → carry-over destination (if a
 - `specs/cogitator.md` → deleted; truth in `cogitator.py` (+`expand.py`/`proposals.py`). Tag `source-is-truth-2026-08-06`.
 - `specs/rationaliser.md` → deleted; truth in `rationaliser.py`. Spec AGT-7 stale vs code's `assert`. Tag `source-is-truth-2026-08-06`.
   - Stripped 14 dangling refs across `cogitator.py` (4, incl. phantom `cogitator-drain.md` pointer), `rationaliser.py` (5: module docstring + 3 inline comments + 1), `kline.py` (1), `harness/adapter.py` (1), `test_ks.py`/`test_ks_token_encoder.py`/`test_cogitator_drain.py` (3).
+- `specs/kscript.md` → deleted; truth in `src/ks/` (8 modules). Tag `source-is-truth-2026-08-06`.
+  - Stripped 7 dangling refs across `token.py`, `lexer.py`, `ast.py`, `compiler.py`, `__init__.py` (module docstrings), `token_encoder.py` (1 comment), `test_ks.py` (header).

@@ -1,10 +1,8 @@
 """AST node definitions for KScript v3 compiler.
 
-The AST models operator-delimited scopes (spec §3). Each OperatorScope
+The AST models operator-delimited scopes. Each OperatorScope
 holds a signature, an optional operator, items (nodes), and an optional
 indented child block. Annotations provide BPE encoding word text.
-
-Spec ref: @specs/kscript.md v3.0 §4–5
 """
 
 from __future__ import annotations

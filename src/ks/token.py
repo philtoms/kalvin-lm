@@ -1,6 +1,4 @@
 """Token types and Token dataclass for KScript v3 lexer.
-
-See specs/kscript.md §2.1 for the token type reference table.
 """
 
 from dataclasses import dataclass

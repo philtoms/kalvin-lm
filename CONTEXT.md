@@ -220,6 +220,19 @@ The rationalisation pipeline: a fast path (routing) and a slow path (background 
 - `src/kalvin/rationaliser.py` — `Rationaliser` (aliased `Agent`), the orchestrator. `rationalise(KValue)` runs the phased pipeline: Phase 1 prepare (asserts signature set), Phase 1b significance-comparison gate (declared-S4 disagreement drops), Phase 2 ground check, Phase 3 assess (Unknown/Identity/canon/countersigned fast-tracks), Phase 4 candidate retrieval, Phase 5 route-and-submit. Also `_route` (node-membership → S2/S3), `_promote_participating` (cascade participating STM klines to LTM on S1), the `CogitationHandler` callbacks (`on_s1`, `on_expansion`), `countersign`, and serialization delegation to `AgentCodec`. S1 recognition = `model.grounded()` + structural predicates — there is no standalone `is_s1`.
 - `src/kalvin/cogitator.py` — `Cogitator` (background daemon thread), `WorkItem` (query|candidate|level), and the `CogitationHandler` protocol. Drains the backlog by `expand()`-ing each pair, classifying yields via `BandLayout`, calling `on_s1` on a terminal S1 (then breaking) or `on_expansion` for S2/S3 proposals via `propose_expansions`. Emits `"done"` after an idle timeout (default 2s) without halting; `drain(timeout)` blocks until backlog empty and no work item processing (inter-lesson drain, `_processing` flag guarded).
 
+### KScript
+
+The authoring language. A four-stage pipeline (`src/ks/`) compiles declarative scripts into encoded `KValue`s: source → lexer → parser → ASTEmitter → TokenEncoder. The compiler treats encoded node values as opaque `uint64`.
+
+- `src/ks/token.py` / `src/ks/lexer.py` — `TokenType`/`Token` and the `Lexer`: operators (`==` `=>` `>` `=`), case-insensitive `SIGNATURE` identifiers `[a-zA-Z][a-zA-Z0-9]*`, parenthesised `ANNOTATION`s (nested, multi-line), Python-style INDENT/DEDENT.
+- `src/ks/ast.py` / `src/ks/parser.py` — the scope-model AST (`OperatorScope` = sig + op + items + child_block; `Signature` items may carry an inline annotation) and the recursive-descent `Parser`. Scope is operator-delimited; the preceding identifier is the signature, succeeding identifiers are nodes, INDENT extends the scope.
+- `src/ks/binding_scope.py` — `BindingScope`, the word-binding stack implementing rules B1–B4: first-letter matching (case-insensitive) with a per-scope-per-character occurrence counter, counter reset on `push_scope`, and inline `bind_override` (binds tighter than word-list).
+- `src/ks/ast_emitter.py` — `ASTEmitter`: walks the AST emitting `SymbolicEntry` tuples. Operator rules (COUNTERSIGNS bidirectional per-item, DENOTES reversed, CONNOTES forward, CANONIZES aggregated), **MTS** (a multi-char all-uppercase identifier emits exactly one CANONIZES canon over its resolved characters — no per-component entries), CANONIZES subscript identity filling, CANONIZES dedup, and Rule B4 inline-override patching of the parent MTS canon.
+- `src/ks/token_encoder.py` — `TokenEncoder`: encodes symbolic entries to `KValue`s via the tokenizer. Compound-word decomposition (a word the BPE tokenizer splits into ≥2 subwords → one self-referential identity whose signature is the OR-reduction of the subwords), the canonical-signature registry (a declared compound's signature computed once and reused by references), and the source-before-decomposition output partition.
+- `src/ks/compiler.py` / `src/ks/__init__.py` — `Compiler` (orchestrator; always creates a BindingScope) and `KScript` (the one-shot public API: `KScript(source).entries → list[KValue]`).
+
+See **KScript**, **Relational Tokens**, **MTS**, **Word Binding**, **Target Significance** in the glossary.
+
 See **Cogitation**, **Proposal**, **Ratify**, **Escalation**, **Expectation** in the glossary.
 
 See **Frame**, **STM**, **LTM**, **Grounding**, **Significance (Rational)**, **Cogitation**, **S2 Expansion** in the glossary.

@@ -19,9 +19,6 @@ Design:
 The ``compile_source`` convenience function creates a Lexer, Parser, and
 Compiler in sequence — the typical one-shot usage for compiling a source
 string.
-
-Spec ref: @specs/kscript.md §1.1 (pipeline), §12.2 (compiler orchestrator),
-          §13 (public API).
 """
 
 from __future__ import annotations

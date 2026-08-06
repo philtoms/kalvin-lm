@@ -293,8 +293,7 @@ class TokenEncoder:
         # The compound-word signature is the OR-reduction of the subword
         # tokens — the subwords live in the signature. No marker token is
         # involved; ``packed`` is reused by references (a block-canon under
-        # the same word). See @kline spec §Structural Predicates and
-        # @kscript spec §11.3.
+        # the same word).
         packed = self._signifier.signature_of(tokens)
 
         # Register the compound-word's signature (§11.4: the compound-word

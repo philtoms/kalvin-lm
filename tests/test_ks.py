@@ -1,8 +1,6 @@
 """Integration tests for the KScript v3 pipeline (src/ks/).
 
-Spec ref: @specs/kscript.md §15 (Test Matrix).
-
-This module covers all 37 spec test IDs (KS-1 through KS-37):
+This module covers the full pipeline behaviour:
 
     KS-1   — Token types recognized                          TestTokenType
     KS-1   — Token types recognized (also in TestLexer)      TestLexer

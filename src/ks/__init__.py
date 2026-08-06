@@ -13,8 +13,6 @@ Usage::
 
 The v3 API is intentionally minimal: no file I/O, no ``base`` parameter,
 no ``output()`` method, no ``to_jsonl()``.
-
-Spec ref: @specs/kscript.md §13 (Public API).
 """
 
 from __future__ import annotations

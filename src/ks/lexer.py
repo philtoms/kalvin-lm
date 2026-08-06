@@ -9,8 +9,6 @@ Handles:
 
 Key difference from v2: COMMENT tokens are now ANNOTATION tokens,
 reflecting their semantic purpose in BPE encoding.
-
-Spec ref: @specs/kscript.md §2 (Lexical Analysis)
 """
 
 from __future__ import annotations
