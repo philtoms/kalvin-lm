@@ -104,7 +104,7 @@ Study is the existing cogitation process working through its backlog of partiall
 
 ## S2 Expansion
 
-S2 klines are **misfits**: their signature does not match their nodes. The mismatch falls into patterns. An **underfit** kline has a signature that promises structure its nodes do not deliver — there are holes to fill. An **overfit** kline carries nodes whose structure the signature does not capture — there is excess to shed. A **dual misfit** has both problems. In every case, Kalvin reshapes what is already there and offers the result to the agent.
+S2 klines are **misfits**: their signature does not match their nodes. The mismatch falls into patterns. An **underfit** kline has a signature that promises structure its nodes do not deliver — there are holes to fill. An **overfit** kline carries nodes whose structure the signature does not capture — there is excess to shed. A **bad-fit** has both problems. In every case, Kalvin reshapes what is already there and offers the result to the agent.
 
 Underfit klines act as **templates** — a known concept with holes to fill, allowing Kalvin to match a question against a structure that anticipates an answer. Overfit klines act as **sequencers** — step-by-step structure under a single goal, allowing Kalvin to rationalise a query in discrete stages. Kalvin fills templates and decomposes sequencers, turning partial understanding into proposals.
 

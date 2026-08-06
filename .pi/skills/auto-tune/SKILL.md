@@ -86,7 +86,7 @@ Spec and docs (read for what the code _means_; do not re-derive in comments):
      intended routing → Document. Judge the histogram against the per-lesson
      expectations you noted in step 1, not against a remembered number — watch
      in particular for everything collapsing to S1 fast-path (the curriculum
-     exercised nothing). To confirm *which* klines landed (the histogram only
+     exercised nothing). To confirm _which_ klines landed (the histogram only
      gives the S-level distribution), match the goal against the event's
      `query.values`/`proposal.values` — never the `for_display` label, which
      is a decode and may mislead on a packed signature.
@@ -99,6 +99,8 @@ Spec and docs (read for what the code _means_; do not re-derive in comments):
      driving, stop the processes, diagnose the satisfaction deadlock from
      `training.harness.log` and the compiled entries, fix the model, re-run.
    - A real improvement to try → snapshot, edit, commit, re-run.
+   - Genuine forks → go with your best shot. If it doesn't work out try the next fork.
+     **Keep going**.
 
 3. **Commit each meaningful change** on the `auto-tune/<name>` branch. Never
    merge into main. Reference the session name in the commit message. When you

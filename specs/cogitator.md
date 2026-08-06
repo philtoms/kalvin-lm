@@ -57,14 +57,14 @@ This spec depends on the following concepts, defined elsewhere:
 
 A Cogitator consists of:
 
-| Component | Type              | Description                                          |
-| --------- | ----------------- | ---------------------------------------------------- |
-| model     | Model             | For `expand()`, expansions, tiered writes.           |
+| Component | Type                | Description                                          |
+| --------- | ------------------- | ---------------------------------------------------- |
+| model     | Model               | For `expand()`, expansions, tiered writes.           |
 | adapter   | RationaliserAdapter | Receives `RationaliseEvent`s (`on_event`).           |
-| handler   | CogitationHandler | Receives S1 results and expansion proposals.         |
-| timeout   | float             | Idle seconds before emitting `"done"` (default 2.0). |
-| backlog   | queue of WorkItem | Pending work items.                                  |
-| thread    | background daemon | Pulls and processes work items.                      |
+| handler   | CogitationHandler   | Receives S1 results and expansion proposals.         |
+| timeout   | float               | Idle seconds before emitting `"done"` (default 2.0). |
+| backlog   | queue of WorkItem   | Pending work items.                                  |
+| thread    | background daemon   | Pulls and processes work items.                      |
 
 ## Work Items
 
@@ -121,12 +121,12 @@ fixed sentinels:
                  (boundary)
 ```
 
-| Band | Range                        | Meaning                                    |
-| ---- | ---------------------------- | ------------------------------------------ |
-| S1   | `[0xFF]`                     | Only exact match (distance 0 / full account) |
-| S2   | `[boundary, 0xFE]`           | Close, direct                              |
-| S3   | `[0x01, boundary - 1]`       | Indirect, decayed                          |
-| S4   | `[0x00]`                     | Only structural unresolvable (total non-account) |
+| Band | Range                  | Meaning                                          |
+| ---- | ---------------------- | ------------------------------------------------ |
+| S1   | `[0xFF]`               | Only exact match (distance 0 / full account)     |
+| S2   | `[boundary, 0xFE]`     | Close, direct                                    |
+| S3   | `[0x01, boundary - 1]` | Indirect, decayed                                |
+| S4   | `[0x00]`               | Only structural unresolvable (total non-account) |
 
 Classification is a cascade: `sig ≥ S1|S2 → S1`, `sig ≥ S2|S3 → S2`,
 `sig ≥ S3|S4 → S3`, else S4. Raw significance values are never mutated.
@@ -220,12 +220,12 @@ Given a candidate kline, the structural `classify_misfit` predicate
 (@kline spec) classifies whether its signature faithfully covers its nodes,
 returning `(underfit, overfit)`:
 
-| Condition      | Classification | Meaning                                         |
-| -------------- | -------------- | ----------------------------------------------- |
-| neither         | Canonical (S1) | No expansion needed                             |
-| underfit only   | Underfitting   | Signature promises bits the nodes don't deliver |
-| overfit only    | Overfitting    | Nodes carry bits the signature doesn't capture  |
-| Both            | Dual misfit    | Both conditions hold simultaneously             |
+| Condition     | Classification | Meaning                                         |
+| ------------- | -------------- | ----------------------------------------------- |
+| neither       | Canonical (S1) | No expansion needed                             |
+| underfit only | Underfitting   | Signature promises bits the nodes don't deliver |
+| overfit only  | Overfitting    | Nodes carry bits the signature doesn't capture  |
+| Both          | bad-fit        | Both conditions hold simultaneously             |
 
 A kline may be both underfitting and overfitting at the same time. The
 residual values behind the booleans (the underfit gap and overfit excess)
@@ -414,28 +414,28 @@ evolve the Cogitator to perform additional graph expansion and re-routing.
 > spec IDs are never renumbered). They keep their original `AGT-` prefix
 > for traceability to existing tests.
 
-| ID     | Criterion                                                                                      | Origin ref |
-| ------ | ---------------------------------------------------------------------------------------------- | ---------- |
-| AGT-29 | Countersignature discovery: S2 → S1 via countersignature in cogitation, klines cascaded to LTM | —          |
-| AGT-30 | Cogitator join: thread stops cleanly                                                           | —          |
-| AGT-31 | S2 submits work item: WorkItem queued with correct fields                                      | —          |
-| AGT-32 | All yields processed: every QC from `expand()` evaluated                                       | —          |
-| AGT-33 | S1 detection: high-significance QC triggers handler.on_s1                                      | —          |
-| AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals, proposals written to Frame     | —          |
-| AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events                     | —          |
-| AGT-36 | Boundary S1 + structural check: participating klines cascaded to LTM via add_to_ltm            | —          |
-| AGT-37 | Boundary S1 + structural S1: LTM cascade occurs                                                | —          |
-| AGT-38 | S2 before S1: deferred S2 work items discarded, zero cogitator submissions                     | —          |
-| AGT-39 | Cogitator break-on-S1: on_s1 called exactly once, no expansion calls after                     | —          |
-| AGT-40 | S2/S3 event for already-satisfied entry is skipped (satisfaction guard)                        | —          |
-| AGT-41 | Lesson completion uses satisfaction count, not event count                                     | —          |
-| AGT-42 | Lesson completion does not re-fire on post-completion cogitation events                        | —          |
-| AGT-43 | Drain sent before each lesson, even when no S2/S3 expected (DRN-1)                             | —          |
-| AGT-44 | Lesson entries not submitted until `drained` response received (DRN-2)                         | —          |
-| AGT-45 | Empty-backlog drain completes in <10ms (DRN-3)                                                 | —          |
-| AGT-46 | Drain timeout returns False but does not stop the thread (DRN-4)                               | —          |
-| AGT-47 | Processing flag guards against premature drain return (DRN-5)                                  | —          |
-| AGT-48 | Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 satisfaction tracking              | —          |
+| ID     | Criterion                                                                                        | Origin ref |
+| ------ | ------------------------------------------------------------------------------------------------ | ---------- |
+| AGT-29 | Countersignature discovery: S2 → S1 via countersignature in cogitation, klines cascaded to LTM   | —          |
+| AGT-30 | Cogitator join: thread stops cleanly                                                             | —          |
+| AGT-31 | S2 submits work item: WorkItem queued with correct fields                                        | —          |
+| AGT-32 | All yields processed: every QC from `expand()` evaluated                                         | —          |
+| AGT-33 | S1 detection: high-significance QC triggers handler.on_s1                                        | —          |
+| AGT-34 | S2/S3 expansion: non-canonical QC triggers expansion proposals, proposals written to Frame       | —          |
+| AGT-35 | Proposals at any significance: S2 and S3 proposals emitted as frame events                       | —          |
+| AGT-36 | Boundary S1 + structural check: participating klines cascaded to LTM via add_to_ltm              | —          |
+| AGT-37 | Boundary S1 + structural S1: LTM cascade occurs                                                  | —          |
+| AGT-38 | S2 before S1: deferred S2 work items discarded, zero cogitator submissions                       | —          |
+| AGT-39 | Cogitator break-on-S1: on_s1 called exactly once, no expansion calls after                       | —          |
+| AGT-40 | S2/S3 event for already-satisfied entry is skipped (satisfaction guard)                          | —          |
+| AGT-41 | Lesson completion uses satisfaction count, not event count                                       | —          |
+| AGT-42 | Lesson completion does not re-fire on post-completion cogitation events                          | —          |
+| AGT-43 | Drain sent before each lesson, even when no S2/S3 expected (DRN-1)                               | —          |
+| AGT-44 | Lesson entries not submitted until `drained` response received (DRN-2)                           | —          |
+| AGT-45 | Empty-backlog drain completes in <10ms (DRN-3)                                                   | —          |
+| AGT-46 | Drain timeout returns False but does not stop the thread (DRN-4)                                 | —          |
+| AGT-47 | Processing flag guards against premature drain return (DRN-5)                                    | —          |
+| AGT-48 | Cross-lesson spillover eliminated: lesson N events don't affect lesson N+1 satisfaction tracking | —          |
 
 ## Out of Scope
 
