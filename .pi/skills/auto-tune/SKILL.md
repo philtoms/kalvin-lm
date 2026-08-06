@@ -1,6 +1,6 @@
 ---
 name: auto-tune
-description: Drives an auto-tune session to tune Kalvin's rationalisation behaviour (the significance model) using repeated training runs, observation, code edits, and documentation updates. Use when the user says "/auto-tune" or asks to auto-tune, tune, or iterate on the codebase using training runs. Establishes a goal, runs training sessions, observes results, edits the significance-model code and owning spec together, and re-runs to confirm.
+description: Drives an auto-tune session to tune Kalvin's rationalisation behaviour (the significance model) using repeated training runs, observation, code edits, and documentation updates. Use when the user says "/auto-tune" or asks to auto-tune, tune, or iterate on the codebase using training runs. Establishes a goal, runs training sessions, observes results, edits the significance-model code, and re-runs to confirm.
 ---
 
 # Auto-Tune
@@ -12,13 +12,14 @@ did, changing the model so it does better, and re-running.
 
 A curriculum exercises the reactor/cogitator/rationaliser under controlled
 conditions. You observe how Kalvin rationalises, then change the system so it
-rationalises better. The thing being tuned is the significance model: the code
-**and** the owning spec that defines its intended semantics, evolved together.
-When a run shows Kalvin scoring something S4 that the curriculum intends to
-produce an S2/S3 proposal, that is the signal that the model's semantics are
-the thing to change — state the intended semantics, edit the code and the spec
-together, re-run to confirm. This is the core activity; a session whose goal is
-a model-semantics change is the norm, not an exception.
+rationalises better. The thing being tuned is the significance model: the code,
+evolved so its intended semantics (the significance bands, the expansion
+mechanism) match what the curriculum exercises. When a run shows Kalvin
+scoring something S4 that the curriculum intends to produce an S2/S3 proposal,
+that is the signal that the model's semantics are the thing to change — state
+the intended semantics, edit the code, re-run to confirm. This is the core
+activity; a session whose goal is a model-semantics change is the norm, not an
+exception.
 
 ## The arbiter
 
@@ -63,9 +64,9 @@ re-transcribe each loop.
 
 Spec and docs (read for what the code _means_; do not re-derive in comments):
 
-- `specs/model.md`, `specs/rationaliser.md` — the significance model's intended semantics
-- `specs/auto-tune.md` — the harness/CLI contract (subcommands, run-summary object, rules)
-- `specs/supervisor-decision.md` — the decision gate and what each decision means
+- The code itself — `CONTEXT.md`'s Project Navigation maps the significance-model
+  modules (`expand.py`, `significance.py`, `rationaliser.py`) and the training
+  loop. Read it for what each module does.
 - `CONTEXT.md` — domain glossary
 
 ## Workflow
@@ -92,7 +93,7 @@ Spec and docs (read for what the code _means_; do not re-derive in comments):
      is a decode and may mislead on a packed signature.
    - `crashed` → reproduce with a minimal test, fix, verify, re-run.
    - `deadlocked` → the diagnosis pointer names the gap; state the intended
-     semantics, edit the model code **and** the owning spec together, re-run.
+     semantics, edit the model code, re-run.
      This is the expected, primary path — a deadlock is a finding, not a stall.
    - `supervisor-stalled` → you stopped supervising (see below); resume properly.
    - `stalled` → the run is frozen mid-stream (see §Stalled runs). Stop
@@ -104,11 +105,12 @@ Spec and docs (read for what the code _means_; do not re-derive in comments):
 
 3. **Commit each meaningful change** on the `auto-tune/<name>` branch. Never
    merge into main. Reference the session name in the commit message. When you
-   change model behaviour, update the owning spec in the same change.
+   change model behaviour, update the code and CONTEXT.md (navigation/glossary)
+   in the same change.
 
-4. **Document at the end.** Finalise the owning spec (the intended semantics,
-   grounded in observed evidence), the plan, and tests covering the spec
-   criteria. Reference the session directory as evidence.
+4. **Document at the end.** Finalise tests covering the behaviour you changed,
+   and update CONTEXT navigation/glossary if a term or module role shifted.
+   Reference the session directory as evidence.
 
 ### Snapshot before each change
 
@@ -139,7 +141,7 @@ When you see `stalled`:
    compare the compiled entries against the events that _did_ fire — the
    entries absent from the stream are the ones the rationaliser dropped.
 5. **Diagnose and fix the model** (the rationaliser / significance / reactor),
-   update the owning spec, `reset`, re-run. A stall is a finding about the
+   `reset`, re-run. A stall is a finding about the
    model, same as a deadlock.
 
 ## Supervisor decisions (Pi-in-the-Loop)

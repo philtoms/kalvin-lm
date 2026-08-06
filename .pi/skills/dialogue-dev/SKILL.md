@@ -10,11 +10,10 @@ Guide for investigating and progressing the dialogue sub-project:
 
 ## Conceptual model
 
-Lives in `specs/dialogue-driven-training.md` (runs, priors, open/close,
-coverage, displacement, grounding) and `specs/dialogue-cogitation.md`
-(the rationaliser engine). **Read the spec for what the code means; do not
-re-derive or re-assert it in code comments or commits.** This skill is
-navigation and discipline only.
+`src/dialogue/` is the sub-project. **Read the code for what it means; do not
+re-derive or reassert it in code comments or commits.** `CONTEXT.md`'s
+Dialogue subsystem section maps the modules (actors, runner, rationaliser,
+supervisor, decoder). This skill is navigation and discipline only.
 
 ## The two signals
 
@@ -71,8 +70,8 @@ the target's own run.
 
 1. **Reproduce before reading code.** Run the dialogue; read both signals.
 2. **Diagnose** — which artefact is wrong (script / code / rules), and is the
-   turn earned, escalated, or scripted? Read the spec, not the code's comments,
-   for what these mean.
+   turn earned, escalated, or scripted? Read the code, not its comments, for
+   what these mean.
 3. **Edit** — smallest honest change. Keep code and comments minimal: describe
    _what_ a block does, not a theory of why the design is right. Don't mirror
    the spec's prose into the code.
@@ -87,14 +86,14 @@ the target's own run.
   consecutive PASSes (one per role) is terminal.
 - DDT-3 (canonical MHALL, table actors) must stay zero displacement — the
   core-loop guard.
-- Doc maintenance follows `AGENTS.md` (locate → assess → update the single
-  owning layer → report). The owning layer for this sub-project is
-  `specs/dialogue-driven-training.md`; do not duplicate its content into code
-  comments, commits, or other docs.
+- Doc maintenance follows `AGENTS.md` (locate → assess → update source and
+  CONTEXT → report). The owning layer for this sub-project is `src/dialogue/`
+  (mapped in CONTEXT.md); do not duplicate its content into code comments,
+  commits, or other docs.
 
 ## Escalate to the user when
 
 - A turn can't be earned without a genuine design fork in the engine.
-- A change would alter a contract in `specs/`.
+- A change would alter a dialogue contract in `src/dialogue/`.
 - DDT-3 regresses.
 - Escalation load stalls across three runs.
