@@ -364,16 +364,22 @@ class Engine:
         """Can ``kline`` be grounded at S1 right now?
 
         An identity whose signature is grounded; a canon whose nodes are all
-        grounded; or a single-node relationship whose reciprocal is grounded.
-        Multi-node misfits never ground here — they propose.
+        grounded; a single-node relationship whose reciprocal is grounded;
+        or — the general misfit rule — a misfit whose signature and every
+        node are grounded (the relationship is fully supported by what K
+        already holds).
         """
         if is_terminal(kline):
             return kline.signature in self._state.grounded
         if is_canon(kline, self._signifier):
             return all(node in self._state.grounded for node in kline.nodes)
-        if len(kline.nodes) != 1:
-            return False
-        return self._is_grounded(KLine(kline.nodes[0], [kline.signature]))
+        if len(kline.nodes) == 1 and self._is_grounded(KLine(kline.nodes[0], [kline.signature])):
+            return True
+        if kline.signature in self._state.grounded and all(
+            node in self._state.grounded for node in kline.nodes
+        ):
+            return True
+        return False
 
     def _is_grounded(self, kline: KLine) -> bool:
         """Is an isomorphic kline (same signature and nodes) in grounded memory?"""
