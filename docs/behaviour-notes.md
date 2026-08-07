@@ -7,8 +7,8 @@ concepts). Append freely; prune when promoted.
 ## Engine — routing
 
 - `route()` dispatches on **structural** significance (`sig_level`), not the producer's compiled stamp. A countersign `MHALL:[SVO]` is structurally S3.
-- The fast route's admission rule is `_signature_seen` — the same for identities and canons. Not "all nodes grounded."
-- ⚠️ **Suspect:** the fast route may be too greedy. A structurally-S1 canon for a signature K has never encountered is **silently dropped** (WDMH at step 9). Ungrounded canons may need to enter the work_list instead. Open investigation.
+- The fast route's admission rule is `_signature_seen` for identities **and** seen-signature canons — both ground when the signature is known. Not "all nodes grounded."
+- An **unseen-signature canon** takes the slow route (not dropped): its nodes are unpacked as unknown asks and discovered. This is how a novel signature (e.g. WDMH) enters K's world. Identities of an unseen signature are still dropped (an identity carries nothing to learn).
 - `_is_groundable` is a **slow-route/cogitation** predicate (a canon whose nodes are all grounded). Do not lift it into the fast route.
 - The engine speaks in semantic predicates (`is_identity`, `is_unknown`, `is_canon`), never raw `kline.nodes`.
 - "Fast route is for terminals" is **false** — invention. The fast route handles any S1/S4 incoming against the frame.
