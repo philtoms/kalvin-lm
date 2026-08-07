@@ -20,6 +20,11 @@ concepts). Append freely; prune when promoted.
 
 - `self.observations` and `self._incoming` reset to fresh lists at the top of every `rationalise()` call (per-turn scoping, no cross-call leak).
 
+## Engine — answering (the WDMH result)
+
+- K can hold everything a question needs and still produce no answer. Feeding a question-shaped canon (WDMH) when its signature is unseen produces S4 asks (discovery); re-feeding once it's grounded is a no-op (already known). The engine only *routes* (learn) or *no-ops* (known) — it has no path that *traverses* a grounded model to emit a synthesis as an answer.
+- Ordering bites twice: the question is fed (step 9) before the prime's MTS identities land (steps 13+), so the parts aren't known yet; and once they are, nothing re-feeds the question. A curriculum that wants an answer needs the question to arrive after K is primed, or the engine needs an answer/synthesis path.
+
 ## Harness
 
 - The harness is non-judging: it compiles, feeds, retrieves, presents. No verdict, no band-matching. The trainer (a pi agent) judges, outside the loop.
