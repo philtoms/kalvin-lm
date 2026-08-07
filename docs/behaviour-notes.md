@@ -8,9 +8,12 @@ concepts). Append freely; prune when promoted.
 
 - `route()` dispatches on **structural** significance (`sig_level`), not the producer's compiled stamp. A countersign `MHALL:[SVO]` is structurally S3.
 - The fast route's admission rule is `_signature_seen` — the same for identities and canons. Not "all nodes grounded."
+- ⚠️ **Suspect:** the fast route may be too greedy. A structurally-S1 canon for a signature K has never encountered is **silently dropped** (WDMH at step 9). Ungrounded canons may need to enter the work_list instead. Open investigation.
 - `_is_groundable` is a **slow-route/cogitation** predicate (a canon whose nodes are all grounded). Do not lift it into the fast route.
 - The engine speaks in semantic predicates (`is_identity`, `is_unknown`, `is_canon`), never raw `kline.nodes`.
 - "Fast route is for terminals" is **false** — invention. The fast route handles any S1/S4 incoming against the frame.
+- An incoming S4 (`{X:[]}`) is treated as a *reply* to K's own framed ask, not a new ask — so feeding an S4 can't introduce/discover a signature either.
+- A signature is only **discovered** when the slow route unpacks it as an unknown node from an S2/S3 incoming. A signature never referenced by anything K learns is invisible forever.
 
 ## Engine — state
 
@@ -26,13 +29,16 @@ concepts). Append freely; prune when promoted.
 ## Compilation — annotation & scope
 
 - `KDbg.annotation` carries the owning scope's annotation text (parens stripped); `KDbg.scope` is 0 for source entries, 1 for MTS/compound-word decomposition.
-- Each kline owns its own annotation — no propagation to child scopes. `S(ubject)=M`'s entry carries "ubject"; a sibling without an annotation stays empty.
+- Each kline owns its own annotation — no propagation to child scopes. An inline annotation records the **resolved bound word** (`S`+`(ubject)` → "Subject"), not the raw fragment.
 - MTS spawned by a signature **inherits that signature's annotation**. MHALL's MTS canon carries "Mary had a little lamb"; Det's MTS carries "".
 - The encoder's source-before-MTS partition is **preserved**. Lifting it scrambles the authored step order; the constraint stays in-compiler, not re-derived downstream.
 - Compiler output order ≠ authored order: all source entries (every block) first, then all MTS. A single annotation's entries can be non-contiguous in the trace (the prime's source and its MTS split by the test block's source).
 - The encoder expands (one symbolic entry → multiple KValues) **and** stable-partitions. Symbolic-entry indices do **not** align with compiled-KValue indices — don't try to reconstruct scope from outside the compiler.
+- A single-token node word (e.g. "did", "have") never heads an entry, so its label comes from `TokenEncoder.node_labels` (recorded in `_encode_node`'s single-token branch), not from any KDbg. The harness decoder is **unsafe** for this — packed-signature-as-node values decode to garbage; only the compiler-side map is reliable.
 
 ## Process — discipline
 
+- **Do not assume existing code is correct.** This contradicts "source is the truth document," but we are in a privileged working mode where the source is exactly what we are trying to improve. The fast route's drop-on-unseen-signature is the smoking gun — existing behaviour can be the bug.
 - Check the source before asserting behaviour as fact. Inferences stated as established rules cause real bugs (the `_is_groundable` lift; the invented "terminals" rule).
 - Don't misread `diff` hunk formatting as duplicate output. Verify counts directly.
+- ⚠️ marks an open suspicion in these notes — a rule under active questioning, not a settled fact.
