@@ -149,10 +149,13 @@ class Engine:
           misfit's unrecognised nodes and signature as identity asks.
         """
         self._incoming.append(query)
-        if sig_level(query.kline, self._signifier) in ("S1", "S4"):
+        kline = query.kline
+        if sig_level(kline, self._signifier) in ("S1", "S4"):
             self._fast_route(query)
             return
+        self._slow_route(query)
 
+    def _slow_route(self, query: KValue) -> None:
         kline = query.kline
         self._state.work_list.append(kline)
         for node in kline.nodes:
@@ -169,8 +172,19 @@ class Engine:
         # same turn's cogitation (route-all-then-cogitate ordering), so the
         # work-list and grounded views matter as much as the frame.
         kline = query.kline
-        if is_identity(kline) or is_canon(kline, self._signifier):
+        if is_identity(kline):
             if not self._signature_seen(kline.signature):
+                return
+            self._unframe(kline)
+            self._pop_identity(kline.signature)
+            self._promote(kline)
+            return
+        if is_canon(kline, self._signifier):
+            # A canon whose signature has been seen grounds (a known
+            # composition); an unseen-signature canon carries novel structure,
+            # so it takes the slow route and its nodes are discovered there.
+            if not self._signature_seen(kline.signature):
+                self._slow_route(query)
                 return
             self._unframe(kline)
             self._pop_identity(kline.signature)
