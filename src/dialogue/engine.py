@@ -169,7 +169,7 @@ class Engine:
         # same turn's cogitation (route-all-then-cogitate ordering), so the
         # work-list and grounded views matter as much as the frame.
         kline = query.kline
-        if kline.nodes and is_identity(kline):
+        if is_identity(kline):
             if not self._signature_seen(kline.signature):
                 return
             self._unframe(kline)
@@ -179,7 +179,7 @@ class Engine:
         if not self._in_frame(kline):
             return
         self._unframe(kline)
-        if not kline.nodes:
+        if is_unknown(kline):
             self._pop_identity(kline.signature)
         else:
             self._promote(kline)
