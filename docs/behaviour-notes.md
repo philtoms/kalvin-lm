@@ -21,6 +21,16 @@ concepts). Append freely; prune when promoted.
 - The harness is non-judging: it compiles, feeds, retrieves, presents. No verdict, no band-matching. The trainer (a pi agent) judges, outside the loop.
 - S4 identity asks (`{X:[]}`) whose signature the curriculum defines as `X:[X]` are answered inline from the compiled entries — unsupervised, mechanical, per-step dedup.
 - Feeding an S1 identity alone doesn't ground it; the engine grounds it only once K has framed/asked the signature first.
+- The trainer forms expectations from annotation prose ("a fact" → expect grounding; "a question" → expect an answer). Judgement stays conversational, never coded in the harness.
+
+## Compilation — annotation & scope
+
+- `KDbg.annotation` carries the owning scope's annotation text (parens stripped); `KDbg.scope` is 0 for source entries, 1 for MTS/compound-word decomposition.
+- Each kline owns its own annotation — no propagation to child scopes. `S(ubject)=M`'s entry carries "ubject"; a sibling without an annotation stays empty.
+- MTS spawned by a signature **inherits that signature's annotation**. MHALL's MTS canon carries "Mary had a little lamb"; Det's MTS carries "".
+- The encoder's source-before-MTS partition is **preserved**. Lifting it scrambles the authored step order; the constraint stays in-compiler, not re-derived downstream.
+- Compiler output order ≠ authored order: all source entries (every block) first, then all MTS. A single annotation's entries can be non-contiguous in the trace (the prime's source and its MTS split by the test block's source).
+- The encoder expands (one symbolic entry → multiple KValues) **and** stable-partitions. Symbolic-entry indices do **not** align with compiled-KValue indices — don't try to reconstruct scope from outside the compiler.
 
 ## Process — discipline
 
