@@ -178,13 +178,15 @@ class ASTEmitter:
         operator entries, then recurse into children.
 
         The scope's annotation is its own — the pending scope annotation, or
-        its signature's inline annotation — and does **not** propagate to
+        its signature's inline annotation (resolved to the full bound word,
+        e.g. "S" + "(ubject)" → "Subject") — and does **not** propagate to
         child scopes (each kline owns its own annotation). MTS spawned by the
         scope's signature inherits this scope's annotation.
         """
-        annotation = self._pending_annotation or self._inline_annotation_text(
-            scope.inline_annotation
-        )
+        if scope.inline_annotation is not None and len(scope.sig.id) == 1:
+            annotation = self._extract_inline_word(scope.sig.id, scope.inline_annotation)
+        else:
+            annotation = self._pending_annotation
         self._pending_annotation = ""
         saved_annotation = self._scope_annotation
         self._scope_annotation = annotation
@@ -192,13 +194,6 @@ class ASTEmitter:
             self._process_scope_body(scope)
         finally:
             self._scope_annotation = saved_annotation
-
-    @staticmethod
-    def _inline_annotation_text(annotation: Annotation | None) -> str:
-        """The inline annotation text with surrounding parens stripped."""
-        if annotation is None:
-            return ""
-        return ASTEmitter._annotation_text(annotation)
 
     def _process_scope_body(self, scope: OperatorScope) -> None:
         sig_resolved = self._resolve_inline_or_scope(
