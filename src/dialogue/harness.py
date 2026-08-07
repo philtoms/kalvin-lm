@@ -132,10 +132,14 @@ def _label(signature: int, labels: dict[int, str], verbose: bool) -> str:
     return name or f"0x{signature:x}"
 
 
-def _render_kline(value: KValue, labels: dict[int, str], verbose: bool) -> str:
-    sig = _label(value.kline.signature, labels, verbose)
-    nodes = ", ".join(_label(n, labels, verbose) for n in value.kline.nodes)
+def _render_kline_struct(kline: KLine, labels: dict[int, str], verbose: bool) -> str:
+    sig = _label(kline.signature, labels, verbose)
+    nodes = ", ".join(_label(n, labels, verbose) for n in kline.nodes)
     return f"{sig}:[{nodes}]"
+
+
+def _render_kline(value: KValue, labels: dict[int, str], verbose: bool) -> str:
+    return _render_kline_struct(value.kline, labels, verbose)
 
 
 def _band(value: KValue) -> str:
@@ -185,6 +189,14 @@ def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool) 
     return "\n".join(lines)
 
 
+def _render_work_list(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
+    if not state.work_list:
+        return "  (empty)"
+    return "\n".join(
+        f"  {_render_kline_struct(kl, labels, verbose)}" for kl in state.work_list
+    )
+
+
 def _render_summary(results: list[StepResult], state: EngineState,
                     labels: dict[int, str], verbose: bool) -> str:
     bands: Counter = Counter()
@@ -196,7 +208,8 @@ def _render_summary(results: list[StepResult], state: EngineState,
         f"── summary ──\n"
         f"  steps: {len(results)}\n"
         f"  batch by band: {band_str}\n"
-        f"  grounded:\n{_render_grounded(state, labels, verbose)}"
+        f"  grounded:\n{_render_grounded(state, labels, verbose)}\n"
+        f"  work_list (pending at end of run):\n{_render_work_list(state, labels, verbose)}"
     )
 
 
