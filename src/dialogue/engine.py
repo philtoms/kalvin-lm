@@ -25,6 +25,7 @@ from kalvin.kline import (
     is_canon,
     is_identity,
     is_misfit,
+    is_relationship,
     is_terminal,
     is_unknown,
     sig_level,
@@ -263,7 +264,7 @@ class Engine:
                 self._promote(kline)
                 continue
 
-            if is_misfit(kline, self._signifier) and len(kline.nodes) > 1:
+            if is_misfit(kline, self._signifier) and not is_relationship(kline, self._signifier):
                 batch = self._similar_fit_proposal(kline)
 
         return batch
@@ -398,8 +399,8 @@ class Engine:
         )
 
     def _is_countersignable(self, entry: KLine) -> bool:
-        """Is ``entry`` a single-node relationship whose two operands both have canons?"""
-        if is_terminal(entry) or len(entry.nodes) != 1:
+        """Is ``entry`` a relationship whose two operands both have canons?"""
+        if not is_relationship(entry, self._signifier):
             return False
         return (
             self._canon_nodes(entry.signature) is not None

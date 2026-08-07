@@ -45,6 +45,10 @@ A kline **structure**: the signature does not equal `signature_of(nodes)`. Struc
 - connote/denote (`{A: [B]}`): signature attracts association. Claims **S3**
   _Avoid_: fabrication (informal), conjecture/hypothesis (a misfit is a structure, not a distinct emission kind)
 
+**Relationship**:
+A kline **structure**: the single-node misfit — a non-terminal whose signature associates with exactly one other value (`{A: [B]}`, `A != B`). The connote/denote shape, named in its own right because the engine treats it as a distinct routing class (a candidate for reciprocal grounding / countersignature) separate from multi-node misfits (no-fit/underfit/overfit, which propose rather than associate). A relationship is a kind of **Misfit**; it is not a synonym for "any non-identity" (a canon is also a non-identity, and a multi-node misfit is too).
+_Avoid_: link (too vague), association (overloaded with the connote action), any-non-identity (a canon and a multi-node misfit are also non-identities)
+
 ## Rationalisation
 
 How a participant tests a kline's structural claim against what Kalvin actually holds — the slow, model-traversing path that arrives at a participant's own significance for a kline. Distinct from Structure (the claim) and from KScript's Target Significance (the authored answer): rationalisation is a participant's private derivation, and the gap between it and the target is what training closes.

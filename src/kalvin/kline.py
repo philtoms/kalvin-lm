@@ -180,6 +180,22 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """
     return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
+def is_relationship(kline: KLine, signifier: KSignifier) -> bool:
+    """Test whether a kline is a relationship (@CONTEXT.md §Relationship).
+
+    A relationship is the connote/denote structural shape: a non-terminal
+    misfit with exactly one node (``{A: [B]}``, ``A != B``). The signature
+    associates with a single other value. Distinct from a multi-node misfit
+    (no-fit/underfit/overfit) and from terminals and canons.
+    """
+    return (
+        not is_terminal(kline)
+        and len(kline.nodes) == 1
+        and kline.signature != kline.nodes[0]
+        and kline.signature != signifier.signature_of(kline.nodes)
+    )
+
+
 def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
 
