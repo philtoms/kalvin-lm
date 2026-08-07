@@ -9,12 +9,12 @@ concepts). Append freely; prune when promoted.
 - `route()` dispatches on **structural** significance (`sig_level`), not the producer's compiled stamp. A countersign `MHALL:[SVO]` is structurally S3.
 - The fast route's admission rule is `_signature_seen` for identities **and** seen-signature canons — both ground when the signature is known. Not "all nodes grounded."
 - An **unseen-signature canon** takes the slow route (not dropped): its nodes are unpacked as unknown asks and discovered. This is how a novel signature (e.g. WDMH) enters K's world. Identities of an unseen signature are still dropped (an identity carries nothing to learn).
-- `_is_groundable` is a **slow-route/cogitation** predicate (a canon whose nodes are all grounded). Do not lift it into the fast route.
+- `_is_groundable` is a **slow-route/cogitation** predicate. Its branches, in order: terminal → signature grounded; canon → all nodes grounded; single-node relationship → reciprocal grounded; **any misfit → signature grounded AND all nodes grounded**. The last is the general rule that unblocks role-mappings and denotes/conotes; it applies to any node count.
 - The engine speaks in semantic predicates (`is_identity`, `is_unknown`, `is_canon`), never raw `kline.nodes`.
 - "Fast route is for terminals" is **false** — invention. The fast route handles any S1/S4 incoming against the frame.
 - An incoming S4 (`{X:[]}`) is treated as a *reply* to K's own framed ask, not a new ask — so feeding an S4 can't introduce/discover a signature either.
 - A signature is only **discovered** when the slow route unpacks it as an unknown node from an S2/S3 incoming. A signature never referenced by anything K learns is invisible forever.
-- A countersignable pair (`MHALL:[SVO]` + `SVO:[MHALL]`) grounds only when **every operand pairing is grounded**. `_countersignature_proposals` returns one S3 per unresolved pairing (`Mary:[Subject]`, `had:[Verb]`, `ALL:[Object]`); until those ratify, the countersign sits on the work_list. This is the same root as the role-mapping / relationship-grounding problem — the two threads converge here.
+- A countersignable pair (`MHALL:[SVO]` + `SVO:[MHALL]`) grounds only when **every operand pairing is grounded**. `_countersignature_proposals` returns one S3 per unresolved pairing (`Mary:[Subject]`, `had:[Verb]`, `ALL:[Object]`); once those ground (via the signature+nodes groundable rule), the countersign completes. The role-mappings and the countersign were one root, not two.
 
 ## Engine — state
 
