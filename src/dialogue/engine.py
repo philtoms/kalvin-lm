@@ -169,20 +169,14 @@ class Engine:
         # same turn's cogitation (route-all-then-cogitate ordering), so the
         # work-list and grounded views matter as much as the frame.
         kline = query.kline
-        if is_identity(kline):
+        if is_identity(kline) or is_canon(kline, self._signifier):
             if not self._signature_seen(kline.signature):
                 return
             self._unframe(kline)
             self._pop_identity(kline.signature)
             self._promote(kline)
             return
-        # A canon grounds on sight when all its nodes are already grounded;
-        # otherwise it must match a framed kline to promote.
-        if is_canon(kline, self._signifier) and self._is_groundable(kline):
-            self._unframe(kline)
-            self._pop_identity(kline.signature)
-            self._promote(kline)
-            return
+
         if not self._in_frame(kline):
             return
         self._unframe(kline)
