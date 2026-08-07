@@ -176,6 +176,13 @@ class Engine:
             self._pop_identity(kline.signature)
             self._promote(kline)
             return
+        # A canon grounds on sight when all its nodes are already grounded;
+        # otherwise it must match a framed kline to promote.
+        if is_canon(kline, self._signifier) and self._is_groundable(kline):
+            self._unframe(kline)
+            self._pop_identity(kline.signature)
+            self._promote(kline)
+            return
         if not self._in_frame(kline):
             return
         self._unframe(kline)
