@@ -120,45 +120,36 @@ class Engine:
     ) -> tuple[list[KValue], list[KValue]]:
         """Route every incoming query, then cogitate. Returns ``(batch, observations)``."""
         state._dbg_step += 1
-        turn = _Turn(state, self._signifier)
-        for query in incoming:
-            turn.route(query)
-        return turn.finish(turn.cogitate())
 
-
-class _Turn:
-    """A single rationalise turn: scoped accumulators over a shared state."""
-
-    def __init__(
-        self,
-        state: EngineState,
-        signifier: KSignifier,
-    ) -> None:
         self._state = state
-        self._signifier = signifier
         self.observations: list[KValue] = []
         # The incoming queries this turn, in arrival order, retained so
         # cogitation can reply to them. The engine always replies when it
         # can support a reply from its own state; the actor filters per role.
         self._incoming: list[KValue] = []
 
+        for query in incoming:
+            self.route(query)
+        return self.finish(self.cogitate())
+
     # ── Routing ──────────────────────────────────────────────────────
 
     def route(self, query: KValue) -> None:
         """Apply one incoming query as bookkeeping; emit nothing.
 
-        Dispatch is on the query's **subjective** significance (the producer's
-        surface stamp):
+        Dispatch is on the query's **structural** significance (derived from
+        the kline's signature–nodes relationship), not the producer's surface
+        stamp:
 
-        - **S1/S4 (fast route)** — match against the frame. An S1 match
-          promotes the kline (grounds it at S1 and cascades); an S4 match pops
-          the matching identity ask. Either way the framed kline is consumed.
-          Unmatched queries are dropped.
+        - **S1/S4 (fast route)** — match against the frame. An S1 (identity or
+          canon) match promotes the kline (grounds it at S1 and cascades); an
+          S4 (the empty ask ``{X:[]}``) pops the matching identity ask. Either
+          way the framed kline is consumed. Unmatched queries are dropped.
         - **S2/S3 (slow route)** — append to the work-list, then unpack an S2
           misfit's unrecognised nodes and signature as identity asks.
         """
         self._incoming.append(query)
-        if query.significance in (SIG_S1, SIG_S4):
+        if sig_level(query.kline, self._signifier) in ("S1", "S4"):
             self._fast_route(query)
             return
 
@@ -171,26 +162,27 @@ class _Turn:
             self._state.work_list.append(KLine(kline.signature, [], kline.dbg))
 
     def _fast_route(self, query: KValue) -> None:
-        # An S1 identity reply grounds whenever its signature has been seen
-        # (framed as an ask, pending on the work-list, or already grounded) —
-        # not only when an ask-shape is currently framed. Identities are
-        # signature-only, and the ask may be emitted by this same turn's
-        # cogitation (route-all-then-cogitate ordering), so the work-list and
-        # grounded views matter as much as the frame.
-        if query.significance == SIG_S1 and is_identity(query.kline):
-            if not self._signature_seen(query.kline.signature):
+        # Structural S1 (an identity or canon) grounds whenever its signature
+        # has been seen (framed as an ask, pending on the work-list, or already
+        # grounded) — not only when an ask-shape is currently framed.
+        # Identities are signature-only, and the ask may be emitted by this
+        # same turn's cogitation (route-all-then-cogitate ordering), so the
+        # work-list and grounded views matter as much as the frame.
+        kline = query.kline
+        if kline.nodes and is_identity(kline):
+            if not self._signature_seen(kline.signature):
                 return
-            self._unframe(query.kline)
-            self._pop_identity(query.kline.signature)
-            self._promote(query.kline)
+            self._unframe(kline)
+            self._pop_identity(kline.signature)
+            self._promote(kline)
             return
-        if not self._in_frame(query.kline):
+        if not self._in_frame(kline):
             return
-        self._unframe(query.kline)
-        if query.significance == SIG_S4:
-            self._pop_identity(query.kline.signature)
+        self._unframe(kline)
+        if not kline.nodes:
+            self._pop_identity(kline.signature)
         else:
-            self._promote(query.kline)
+            self._promote(kline)
 
     def _signature_seen(self, signature: int) -> bool:
         """Has ``signature`` been seen — framed, pending on the work-list, or grounded?"""
