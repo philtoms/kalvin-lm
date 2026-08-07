@@ -95,28 +95,24 @@ class TokenEncoder:
             expansions (declared compounds) and §11.3 compound-word
             decompositions (BPE-split words).
 
-            Encoding still runs in def-before-ref order internally (so a
-            declared compound's canonical signature is registered before
-            any reference is encoded); the source-before-decomposition
-            ordering is a stable partition applied to the finished output,
-            preserving relative order within each group.  Every KValue
-            carries a band-representative significance derived from the
-            production ``op`` (KP-1).
+            Encoding runs in def-before-ref order internally (so a declared
+            compound's canonical signature is registered before any
+            reference is encoded); the source-before-decomposition ordering
+            is a stable partition applied to the finished output,
+            preserving relative order within each group. ``KDbg.scope`` and
+            ``KDbg.annotation`` are carried through so downstream consumers
+            can group by owning scope regardless of this partition. Every
+            KValue carries a band-representative significance derived from
+            the production ``op`` (KP-1).
         """
         if not symbolic:
             return []
 
-        # Encode in emission order (def-before-ref), tagging each output
-        # KValue as a decomposition entry (§8 MTS or §11.3 compound-word)
-        # or source.
         tagged: list[tuple[KValue, bool]] = []
         for entry in symbolic:
             for kv, bpe_mts in self._encode_entries_for_entry(entry):
                 tagged.append((kv, entry.is_mts or bpe_mts))
 
-        # Output ordering: compiled source precedes any decomposition
-        # entries (§8 MTS or §11.3 compound-word).
-        # Stable partition preserves relative order within each group.
         source = [kv for kv, is_mts in tagged if not is_mts]
         mts = [kv for kv, is_mts in tagged if is_mts]
         return source + mts
@@ -183,6 +179,8 @@ class TokenEncoder:
                         sig_tokens,
                         dbg_label=entry.sig,
                         op="UNKNOWN",
+                        annotation=entry.annotation,
+                        scope=entry.scope,
                     )
                     extras.extend((kv, True) for kv in sig_extras)
                     sig_is_packed = True
@@ -193,7 +191,9 @@ class TokenEncoder:
             if node_str in self._compound_sigs:
                 node_values.append(self._compound_sigs[node_str])
             else:
-                node_val, node_extras = self._encode_node(node_str)
+                node_val, node_extras = self._encode_node(
+                    node_str, annotation=entry.annotation, scope=entry.scope,
+                )
                 extras.extend((kv, True) for kv in node_extras)
                 node_values.append(node_val)
 
@@ -217,6 +217,8 @@ class TokenEncoder:
         dbg = KDbg(op=entry.op)
         if self._dev:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op, packed=sig_is_packed)
+        dbg.annotation = entry.annotation
+        dbg.scope = entry.scope
 
         # 5. A packed signature cannot head an empty-form `{S: []}`
         #    UNKNOWN kline (CONTEXT.md "Identity"); the §11.3 compound-word
@@ -239,7 +241,9 @@ class TokenEncoder:
 
     # Node encoding
 
-    def _encode_node(self, word: str) -> tuple[int, list[KValue]]:
+    def _encode_node(
+        self, word: str, *, annotation: str = "", scope: int = 0,
+    ) -> tuple[int, list[KValue]]:
         """Encode a single word to a uint64 node value.
 
         Args:
@@ -257,7 +261,10 @@ class TokenEncoder:
             return (tokens[0], [])
 
         # Multi-token word → §11.3 compound-word decomposition.
-        return self._emit_mts_for_tokens(tokens, dbg_label=word, op="UNKNOWN")
+        return self._emit_mts_for_tokens(
+            tokens, dbg_label=word, op="UNKNOWN",
+            annotation=annotation, scope=scope,
+        )
 
     # §11.3 compound-word decomposition for multi-token results
 
@@ -266,6 +273,9 @@ class TokenEncoder:
         tokens: list[int],
         dbg_label: str = "",
         op: str = "UNKNOWN",
+        *,
+        annotation: str = "",
+        scope: int = 0,
     ) -> tuple[int, list[KValue]]:
         """Emit the §11.3 compound-word identity for a multi-token word.
 
@@ -317,6 +327,10 @@ class TokenEncoder:
                 id_dbg = self._build_dbg(packed, dbg_label, op="IDENTITY", packed=True)
             else:
                 id_dbg = KDbg(op="IDENTITY")
+            # A compound-word identity is a §11.3 decomposition extra —
+            # scope+1 relative to the entry that triggered it.
+            id_dbg.scope = scope + 1
+            id_dbg.annotation = annotation
             extras.append(
                 KValue(
                     KLine(

@@ -43,6 +43,8 @@ class KDbg:
     label: str = ""
     decoded: str = ""
     type_info: str = ""
+    annotation: str = ""
+    scope: int = 0
 
     def __bool__(self) -> bool:
         """Truthy when any field is non-empty."""
@@ -51,6 +53,8 @@ class KDbg:
             or self.label
             or self.decoded
             or self.type_info
+            or self.annotation
+            or self.scope
         )
 
     def __repr__(self) -> str:

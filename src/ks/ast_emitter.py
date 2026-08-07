@@ -99,6 +99,8 @@ class SymbolicEntry(NamedTuple):
                           # identity + MTS canonization). The TokenEncoder
                           # combines this with its own §11.3 BPE-MTS tag to
                           # push every MTS kline after compiled source.
+    annotation: str = ""   # the owning scope's annotation text
+    scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
 
 
 class ASTEmitter:
@@ -136,6 +138,10 @@ class ASTEmitter:
         # canon kline), so subscript identity filling is suppressed for them.
         self._in_canonize_subscript: bool = False
 
+        # Scope/annotation tracking for KDbg.annotation and KDbg.scope.
+        self._scope_annotation: str = ""
+        self._pending_annotation: str = ""
+
     # Public API
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
@@ -151,16 +157,50 @@ class ASTEmitter:
         if isinstance(construct, OperatorScope):
             self._process_scope(construct)
         elif isinstance(construct, Annotation):
+            self._pending_annotation = self._annotation_text(construct)
             self._feed_annotation(construct)
         elif isinstance(construct, Block):
             for c in construct.constructs:
                 self._process_construct(c)
 
+    @staticmethod
+    def _annotation_text(annotation: Annotation) -> str:
+        """The annotation's text with surrounding parens stripped."""
+        text = getattr(annotation, "text", "") or ""
+        if len(text) >= 2 and text[0] == "(" and text[-1] == ")":
+            return text[1:-1]
+        return text
+
     # Core scope processing (Steps 2–3)
 
     def _process_scope(self, scope: OperatorScope) -> None:
         """Process a single OperatorScope: resolve sig, emit MTS, emit
-        operator entries, then recurse into children."""
+        operator entries, then recurse into children.
+
+        The scope's annotation is its own — the pending scope annotation, or
+        its signature's inline annotation — and does **not** propagate to
+        child scopes (each kline owns its own annotation). MTS spawned by the
+        scope's signature inherits this scope's annotation.
+        """
+        annotation = self._pending_annotation or self._inline_annotation_text(
+            scope.inline_annotation
+        )
+        self._pending_annotation = ""
+        saved_annotation = self._scope_annotation
+        self._scope_annotation = annotation
+        try:
+            self._process_scope_body(scope)
+        finally:
+            self._scope_annotation = saved_annotation
+
+    @staticmethod
+    def _inline_annotation_text(annotation: Annotation | None) -> str:
+        """The inline annotation text with surrounding parens stripped."""
+        if annotation is None:
+            return ""
+        return ASTEmitter._annotation_text(annotation)
+
+    def _process_scope_body(self, scope: OperatorScope) -> None:
         sig_resolved = self._resolve_inline_or_scope(
             scope.sig.id,
             scope.inline_annotation,
@@ -406,7 +446,11 @@ class ASTEmitter:
                 return
             self._mts_canonize_seen[key] = len(self.entries)
 
-        self.entries.append(SymbolicEntry(sig=sig, nodes=nodes, op=op, is_mts=is_mts))
+        self.entries.append(SymbolicEntry(
+            sig=sig, nodes=nodes, op=op, is_mts=is_mts,
+            annotation=self._scope_annotation,
+            scope=1 if is_mts else 0,
+        ))
 
     # Identity emission for CANONIZES subscript blocks
 

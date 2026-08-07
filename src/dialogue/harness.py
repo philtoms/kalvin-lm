@@ -203,7 +203,12 @@ def _render_summary(results: list[StepResult], state: EngineState,
 def present(results: list[StepResult], state: EngineState, source: str,
             tokenizer: NLPTokenizer, signifier: NLPSignifier, *, verbose: bool) -> None:
     labels = _sig_to_label(source, tokenizer, signifier)
+    last_annotation: str | None = None
     for step in results:
+        annotation = step.entry.kline.dbg.annotation if step.entry.kline.dbg else ""
+        if annotation and annotation != last_annotation:
+            print(f"\n[{annotation}]")
+            last_annotation = annotation
         print(_render_step(step, labels, verbose))
     print()
     print(_render_summary(results, state, labels, verbose))
