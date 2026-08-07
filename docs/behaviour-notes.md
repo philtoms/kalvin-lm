@@ -14,6 +14,7 @@ concepts). Append freely; prune when promoted.
 - "Fast route is for terminals" is **false** — invention. The fast route handles any S1/S4 incoming against the frame.
 - An incoming S4 (`{X:[]}`) is treated as a *reply* to K's own framed ask, not a new ask — so feeding an S4 can't introduce/discover a signature either.
 - A signature is only **discovered** when the slow route unpacks it as an unknown node from an S2/S3 incoming. A signature never referenced by anything K learns is invisible forever.
+- A countersignable pair (`MHALL:[SVO]` + `SVO:[MHALL]`) grounds only when **every operand pairing is grounded**. `_countersignature_proposals` returns one S3 per unresolved pairing (`Mary:[Subject]`, `had:[Verb]`, `ALL:[Object]`); until those ratify, the countersign sits on the work_list. This is the same root as the role-mapping / relationship-grounding problem — the two threads converge here.
 
 ## Engine — state
 
