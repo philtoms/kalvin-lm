@@ -82,6 +82,7 @@ class Compiler:
 
         encoder = TokenEncoder(tokenizer=self.tokenizer, signifier=self._signifier, dev=self.dev)
         self.entries = encoder.encode_entries(symbolic)
+        self.node_labels: dict[int, str] = dict(encoder.node_labels)
         return self.entries
 
 

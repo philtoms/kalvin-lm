@@ -147,9 +147,18 @@ def _band(value: KValue) -> str:
 
 
 def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier) -> dict[int, str]:
-    """Recompile once to recover ``{signature: scripted label}`` for display."""
-    entries = compile_source(source, tokenizer=tokenizer, signifier=signifier, dev=True)
-    out: dict[int, str] = {}
+    """Recompile once to recover ``{signature: scripted label}`` for display.
+
+    Compiled-entry labels are authoritative; the encoder's ``node_labels``
+    supplies words for single-token node values that never head an entry
+    (e.g. MTS-expanded words like ``did``/``have``).
+    """
+    from ks.compiler import Compiler
+    from ks.lexer import Lexer
+    from ks.parser import Parser
+    compiler = Compiler(tokenizer, signifier=signifier, dev=True)
+    entries = compiler.compile(Parser(Lexer(source).tokenize()).parse())
+    out: dict[int, str] = dict(compiler.node_labels)
     for e in entries:
         d = e.kline.dbg
         if d is None:
@@ -185,7 +194,7 @@ def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool) 
         bucket = state.grounded[signature]
         for kl in bucket:
             nodes = ", ".join(_label(n, labels, verbose) for n in kl.nodes)
-            lines.append(f"  {owner}:[{nodes}]")
+            lines.append(f"      {owner}:[{nodes}]")
     return "\n".join(lines)
 
 
@@ -193,7 +202,7 @@ def _render_work_list(state: EngineState, labels: dict[int, str], verbose: bool)
     if not state.work_list:
         return "  (empty)"
     return "\n".join(
-        f"  {_render_kline_struct(kl, labels, verbose)}" for kl in state.work_list
+        f"      {_render_kline_struct(kl, labels, verbose)}" for kl in state.work_list
     )
 
 

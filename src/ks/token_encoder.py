@@ -78,6 +78,10 @@ class TokenEncoder:
         # by every referencing entry. The ASTEmitter emits definitions before
         # references, so this is populated on demand.
         self._compound_sigs: dict[str, int] = {}
+        # Single-token node words keyed by their uint64 value, for display:
+        # a word like "did" that encodes to one token and never heads an
+        # entry would otherwise have no label downstream.
+        self.node_labels: dict[int, str] = {}
 
     # Public API
 
@@ -258,6 +262,7 @@ class TokenEncoder:
         tokens = self._tokenizer.encode(word)
 
         if len(tokens) == 1:
+            self.node_labels.setdefault(tokens[0], word)
             return (tokens[0], [])
 
         # Multi-token word → §11.3 compound-word decomposition.
