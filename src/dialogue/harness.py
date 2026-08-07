@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from dialogue.engine import Engine, EngineState
+from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
@@ -31,14 +32,36 @@ _SIG_TO_BAND = {SIG_S1: "S1", SIG_S2: "S2", SIG_S3: "S3", SIG_S4: "S4"}
 _BAND_ORDER = ("S1", "S2", "S3", "S4")
 
 
+def _identity_offers(entries: list[KValue]) -> dict[int, KValue]:
+    """``{signature: X:[X] at S1}`` for every signature the curriculum defines
+    as a self-identity. The first such entry per signature wins."""
+    offers: dict[int, KValue] = {}
+    for entry in entries:
+        if entry.significance != SIG_S1:
+            continue
+        sig = entry.kline.signature
+        if sig in offers:
+            continue
+        nodes = entry.kline.nodes
+        if len(nodes) == 1 and nodes[0] == sig:
+            offers[sig] = KValue(KLine(sig, [sig]), SIG_S1)
+    return offers
+
+
 @dataclass
 class StepResult:
-    """One loop iteration: the input entry and the engine's response to it."""
+    """One loop iteration: the input entry and the engine's responses to it.
+
+    A step may span several engine calls. ``offers`` are the S1 identities the
+    harness fed to answer S4 asks the engine emitted — presented for
+    observability, not as a verdict.
+    """
 
     index: int
     entry: KValue
     batch: list[KValue] = field(default_factory=list)
     observations: list[KValue] = field(default_factory=list)
+    offers: list[KValue] = field(default_factory=list)
 
 
 class Harness:
@@ -66,14 +89,36 @@ class Harness:
         return self._state
 
     def run(self, source: str) -> list[StepResult]:
-        """Compile ``source`` and drive the engine one entry per step."""
+        """Compile ``source`` and drive the engine one entry per step.
+
+        After each step, scan the batch for S4 identity asks whose signature
+        the curriculum defines as an S1 identity ``X:[X]`` and feed those
+        identities directly. This answers K's asks without supervision and
+        without judgement; it changes the order K assimilates the curriculum.
+        """
         entries = compile_source(
             source, tokenizer=self._tokenizer, signifier=self._signifier, dev=True
         )
+        identities = _identity_offers(entries)
         results: list[StepResult] = []
         for i, entry in enumerate(entries):
             batch, observations = self._engine.rationalise(self._state, [entry])
-            results.append(StepResult(i, entry, batch, observations))
+            offered: list[KValue] = []
+            seen: set[int] = set()
+            while True:
+                asks = {
+                    v.kline.signature for v in batch
+                    if v.significance == SIG_S4 and not v.kline.nodes
+                }
+                signature = next((s for s in asks if s in identities and s not in seen), None)
+                if signature is None:
+                    break
+                seen.add(signature)
+                offer = identities[signature]
+                offered.append(offer)
+                batch, obs = self._engine.rationalise(self._state, [offer])
+                observations.extend(obs)
+            results.append(StepResult(i, entry, batch, observations, offered))
         return results
 
 
@@ -114,6 +159,8 @@ def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier)
 def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str:
     lines = [f"── Step {step.index + 1}  in  {_band(step.entry)}  "
              f"{_render_kline(step.entry, labels, verbose)} ──"]
+    for v in step.offers:
+        lines.append(f"  offer   {_render_kline(v, labels, verbose)}")
     if step.batch:
         for v in step.batch:
             lines.append(f"  out   {_band(v)}  {_render_kline(v, labels, verbose)}")
