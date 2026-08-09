@@ -180,7 +180,7 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """
     return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
-def is_relationship(kline: KLine, signifier: KSignifier) -> bool:
+def is_relationship(kline: KLine) -> bool:
     """Test whether a kline is a relationship (@CONTEXT.md §Relationship).
 
     A relationship is the connote/denote structural shape: a non-terminal
@@ -192,7 +192,6 @@ def is_relationship(kline: KLine, signifier: KSignifier) -> bool:
         not is_terminal(kline)
         and len(kline.nodes) == 1
         and kline.signature != kline.nodes[0]
-        and kline.signature != signifier.signature_of(kline.nodes)
     )
 
 

@@ -124,6 +124,10 @@ class Engine:
 
         self._state = state
         self.observations: list[KValue] = []
+        # S2 proposals emitted by a grounding cascade (see ``_promote``).
+        # Cascades run inside routing as well as cogitation, so proposals are
+        # stashed here and drained into the batch by ``cogitate``.
+        self._cascade_proposals: list[KValue] = []
         # The incoming queries this turn, in arrival order, retained so
         # cogitation can reply to them. The engine always replies when it
         # can support a reply from its own state; the actor filters per role.
@@ -138,9 +142,7 @@ class Engine:
     def route(self, query: KValue) -> None:
         """Apply one incoming query as bookkeeping; emit nothing.
 
-        Dispatch is on the query's **structural** significance (derived from
-        the kline's signature–nodes relationship), not the producer's surface
-        stamp:
+        Dispatch is on the query's **structural** significance:
 
         - **S1/S4 (fast route)** — match against the frame. An S1 (identity or
           canon) match promotes the kline (grounds it at S1 and cascades); an
@@ -221,109 +223,41 @@ class Engine:
     # ── Cogitation ───────────────────────────────────────────────────
 
     def cogitate(self) -> list[KValue]:
-        """One LIFO pass over the work-list: ground, countersign, or propose.
+        """One LIFO pass over the work-list: ask, countersign, propose, or ground.
 
-        Per entry, in priority order: an identity becomes an S4 ask; a
-        structurally-S1 entry is promoted (grounded); a countersignable entry
-        takes the S3 path; a multi-node misfit takes the S2 path. The first
-        non-identity proposal short-circuits the pass and is returned alone.
+        Per entry, in priority order: an identity becomes an S4 ask; a 
+        countersignable entry takes the S3 path and eventually grounds; a misfit 
+        takes the S2 path. a structurally-S1 entry is promoted (grounded).
         Entries that match no path persist for a later turn.
         """
         batch: list[KValue] = []
-        # Reply pass — the engine always replies to an incoming query when it
-        # can support a reply from its own state: an S4 identity ask is
-        # answered with the asked signature's canon (S2, or S1 when every node
-        # is already grounded), and an S3 proposal is ratified at S1. These
-        # are emissions the actor filters per role (T answers/ratifies; K asks
-        # and proposes). Runs before the work-list pass so a supported reply
-        # takes precedence over re-deriving the query as a fresh ask.
-        batch.extend(self._replies())
+
         for idx in range(len(self._state.work_list) - 1, -1, -1):
             kline = self._state.work_list[idx]
 
             if is_unknown(kline):
-                batch.append(self._emit_identity(idx, kline.signature))
-                continue
-
-            if batch:
-                continue
-
-            if self._is_groundable(kline):
                 del self._state.work_list[idx]
-                self._promote(kline)
-                continue
+                batch.append(KValue(KLine(kline.signature, []), SIG_S4))
 
-            if self._is_countersignable(kline):
+            elif self._is_countersignable(kline):
                 pairings = self._countersignature_proposals(kline)
                 if pairings:
-                    return pairings
-                # All pairings resolved: the countersignature is complete.
-                # Ground the entry itself (the canonical reciprocal); _ground
-                # mirrors its reciprocal (MHALL:[SVO] → SVO:[MHALL]).
+                    batch.extend(pairings)
+                else:
+                    # All pairings resolved: the countersignature is complete.
+                    del self._state.work_list[idx]
+                    self._promote(kline)
+
+            elif is_misfit(kline, self._signifier):
+                batch.extend(self._similar_fit_proposal(kline))
+
+            elif self._is_groundable(kline):
                 del self._state.work_list[idx]
                 self._promote(kline)
-                continue
 
-            if is_misfit(kline, self._signifier) and not is_relationship(kline, self._signifier):
-                batch = self._similar_fit_proposal(kline)
-
+        batch.extend(self._cascade_proposals)
+        self._cascade_proposals = []
         return batch
-
-    def _emit_identity(self, idx: int, signature: int) -> KValue:
-        """Emit ``{signature: []}`` at S4 and pop the entry."""
-        del self._state.work_list[idx]
-        return KValue(KLine(signature, []), SIG_S4)
-
-    # ── Replies (engine answers/ratifies from its own state) ────────
-
-    def _replies(self) -> list[KValue]:
-        """Emissions that answer the incoming queries from the engine's state.
-
-        Two reply families, both earned (no oracle):
-
-        - **S4 identity ask** ``{X: []}`` — answer with ``X``'s canon if the
-          engine knows it: S1 when every canon node is already grounded, else
-          S2 (some part still unknown). An asked signature with no known canon
-          is left for the work-list pass to (re-)emit as a fresh S4 ask.
-        - **S3 proposal** ``{X: [n]}`` — ratify it at S1. The engine supports
-          the pairing (K offered it; the reciprocal is now grounded).
-        """
-        replies: list[KValue] = []
-        for query in self._incoming:
-            if query.significance == SIG_S4:
-                reply = self._reply_identity_ask(query.kline.signature)
-                if reply is not None:
-                    replies.append(reply)
-            elif query.significance == SIG_S3:
-                replies.append(KValue(query.kline, SIG_S1))
-        return replies
-
-    def _reply_identity_ask(self, signature: int) -> KValue | None:
-        """Answer an S4 ask for ``signature`` from the engine's own state.
-
-        An identity ask is answered only when the engine has a genuine
-        grounding for the signature: a **canon** (teach its parts — S1 when
-        every node is grounded, else S2) or a **self-referential identity**
-        (the text-recoverable grounding at S1 — a §11.3 compound-word is one
-        such, its signature carrying the subwords). A signature merely seen
-        (e.g. as a node) is not enough — its reply shape is the author's to
-        choose (a CONNOTES gloss, a pedagogical S2), so the ask is left
-        unanswered for the actor's other paths. Returns None when the engine
-        has no canon or self-ref identity for ``signature``.
-        """
-        # Canon — teach the parts. Significance is structural: S1 when every
-        # node is grounded, else S2.
-        nodes = self._canon_nodes(signature)
-        if nodes:
-            kline = KLine(signature, list(nodes))
-            sig = SIG_S1 if all(n in self._state.grounded for n in nodes) else SIG_S2
-            return KValue(kline, sig)
-        # Self-referential identity — the text-recoverable grounding (a
-        # compound-word identity is one such).
-        for kline in self._state.grounded.get(signature, []):
-            if is_identity(kline):
-                return KValue(kline, SIG_S1)
-        return None
 
     # ── Grounding ────────────────────────────────────────────────────
 
@@ -333,17 +267,27 @@ class Engine:
         A grounding may make other work-list entries groundable (an identity
         whose signature just landed, a canon whose nodes are now all seen, a
         relationship whose reciprocal just grounded). Cascade until fixed point.
+
+        A groundable misfit is rationalised before it grounds: its S2
+        similar-fit proposal is emitted (cogitation expands it against what K
+        holds), then the misfit itself is grounded (K keeps it). Grounding is
+        the record; the proposal is the rationalisation. Both happen, proposal
+        first — matching ``cogitate``'s main loop, where the S2 branch precedes
+        the ground branch.
         """
         self._ground(kline)
         changed = True
         while changed:
             changed = False
             for i, entry in enumerate(self._state.work_list):
-                if self._is_groundable(entry):
-                    del self._state.work_list[i]
-                    self._ground(entry)
-                    changed = True
-                    break
+                if not self._is_groundable(entry):
+                    continue
+                if is_misfit(entry, self._signifier):
+                    self._cascade_proposals.extend(self._similar_fit_proposal(entry))
+                del self._state.work_list[i]
+                self._ground(entry)
+                changed = True
+                break
 
     def _ground(self, kline: KLine, countersigning: bool = False) -> None:
         """Record that K grounded ``kline`` and observe it at S1.
@@ -370,23 +314,22 @@ class Engine:
         node are grounded (the relationship is fully supported by what K
         already holds).
         """
-        if is_terminal(kline):
+        if is_identity(kline):
             return kline.signature in self._state.grounded
         if is_canon(kline, self._signifier):
             return all(node in self._state.grounded for node in kline.nodes)
-        if len(kline.nodes) == 1 and self._is_grounded(KLine(kline.nodes[0], [kline.signature])):
+        if len(kline.nodes) == 1 and self._is_grounded(kline.nodes[0], [kline.signature]):
             return True
-        if kline.signature in self._state.grounded and all(
-            node in self._state.grounded for node in kline.nodes
-        ):
-            return True
+        if kline.signature in self._state.grounded:
+            return all(node in self._state.grounded for node in kline.nodes)
+
         return False
 
-    def _is_grounded(self, kline: KLine) -> bool:
+    def _is_grounded(self, signature: int, nodes: list[int]) -> bool:
         """Is an isomorphic kline (same signature and nodes) in grounded memory?"""
         return any(
-            existing.nodes == kline.nodes
-            for existing in self._state.grounded.get(kline.signature, [])
+            existing.nodes == nodes
+            for existing in self._state.grounded.get(signature, [])
         )
 
     def _is_seen(self, signature: int) -> bool:
@@ -400,7 +343,7 @@ class Engine:
 
     def _is_countersignable(self, entry: KLine) -> bool:
         """Is ``entry`` a relationship whose two operands both have canons?"""
-        if not is_relationship(entry, self._signifier):
+        if not is_relationship(entry):
             return False
         return (
             self._canon_nodes(entry.signature) is not None
@@ -564,7 +507,7 @@ class Engine:
                 target = core + [n for n in candidate.nodes if n not in core]
 
         proposal = KLine(entry.signature, target)
-        if self._is_grounded(proposal):
+        if self._is_grounded(proposal.signature, proposal.nodes):
             return []
         return [KValue(proposal, SIG_S2)]
 

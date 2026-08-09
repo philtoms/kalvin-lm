@@ -1,6 +1,6 @@
 ---
 name: lean-harness
-description: Drives the lean dialogue harness (src/dialogue/harness.py + engine.py) — the synchronous, non-judging compile→feed→present loop — to tune Kalvin's rationalising engine against a .ks curriculum, and to author curricula that test engine theory or bring out new behaviour. Use when the user says "/lean-harness", "run the harness", "tune the engine", "investigate mhall/WDMH", or asks to observe, tweak, compare, or shake up engine behaviour on a curriculum run.
+description: Drives the lean dialogue harness (src/dialogue/harness.py + engine.py) — the synchronous, non-judging compile→feed→present loop — to tune Kalvin's rationalising engine against a .ks curriculum, and to author curricula that test engine theory or bring out new behaviour. Use when the user says "/lean-harness".
 ---
 
 # Lean Harness
@@ -48,9 +48,9 @@ Every run ends with two lists. Read both before reading code.
 
 - **grounded** — what K knows (identities, canons, relationships).
 - **work_list (pending at end of run)** — what K was still working on
-  when turns ran out. Distinguish *genuine residue* (signatures the
-  curriculum never makes groundable — e.g. an unbound `L`) from *stalled
-  klines* (something that should have grounded but the engine had no
+  when turns ran out. Distinguish _genuine residue_ (signatures the
+  curriculum never makes groundable — e.g. an unbound `L`) from _stalled
+  klines_ (something that should have grounded but the engine had no
   path). The latter is the work.
 
 ## Run
@@ -70,9 +70,14 @@ presents the trace. One linear pass, no waits, no convergence loop.
 1. **Read** CONTEXT.md + behaviour-notes (Rules and Active state of K).
    Note any ⚠️ open suspicions and the current frontier — that's where to
    pick up.
-2. **Run the curriculum.** Read grounded + work_list. Form the trainer
-   expectation from the annotation prose (a fact → expect grounding; a
-   question → expect an answer) and judge the gap.
+2. **Run the curriculum.** Read grounded + work_list. Form an
+   **exploratory expectation** from the annotation + what has grounded —
+   something to compare the trace against and explore, not a pass/fail
+   spec. Write it down so you can compare later. A near-match (right nodes,
+   different signature) is a finding that K is on the right track, not a
+   failure. Then **report** what you found: did K meet the expectation, how
+   was it out, what went wrong — feeding the next step. See trace-reading
+   §Worked example 2.
 3. **Diagnose: engine or curriculum?** (See below. Engine first.)
 4. **Edit** the suspect (engine code, or — only when confident — the
    `.ks`). Smallest honest change. Comments minimal: describe what, not
@@ -99,7 +104,7 @@ engine bugs. Typical retreats:
 - **Prime-before-test ordering.** A question fed before the prime's
   identities land can't be answered (the parts aren't known yet). Reorder
   the `.ks` so priming precedes questioning, to test whether the engine
-  *can* answer given correct ordering. (mhall's WDMH is the canonical
+  _can_ answer given correct ordering. (mhall's WDMH is the canonical
   example — the question arrives at step 9, the identities at steps 13+.)
 - **Shake things up.** Once the engine settles on a curriculum, author a
   new `.ks` to find the next edge — introduce ambiguity, withhold an
@@ -133,14 +138,14 @@ header.
 
 ## Where things live
 
-| Artefact        | Path                          | Role                                              |
-| --------------- | ----------------------------- | ------------------------------------------------- |
-| Engine          | `src/dialogue/engine.py`      | The fork under tune                               |
-| Reference       | `src/dialogue/rationalise.py` | Verbatim baseline; engine.py diverges from here   |
-| Harness         | `src/dialogue/harness.py`     | The non-judging compile→feed→present loop + CLI   |
-| Compiler        | `src/ks/`                     | KScript → KValue; carries annotation/scope/labels |
-| Curricula       | `data/scripts/*.ks`           | `mhall.ks` is canonical                           |
-| Glossary        | `CONTEXT.md`                  | Domain terms                                      |
+| Artefact        | Path                          | Role                                                     |
+| --------------- | ----------------------------- | -------------------------------------------------------- |
+| Engine          | `src/dialogue/engine.py`      | The fork under tune                                      |
+| Reference       | `src/dialogue/rationalise.py` | Verbatim baseline; engine.py diverges from here          |
+| Harness         | `src/dialogue/harness.py`     | The non-judging compile→feed→present loop + CLI          |
+| Compiler        | `src/ks/`                     | KScript → KValue; carries annotation/scope/labels        |
+| Curricula       | `data/scripts/*.ks`           | `mhall.ks` is canonical                                  |
+| Glossary        | `CONTEXT.md`                  | Domain terms                                             |
 | Behaviour notes | `docs/behaviour-notes.md`     | Rules + Active state of K + Process (read every session) |
 
 ## Stop / ask
