@@ -124,10 +124,6 @@ class Engine:
 
         self._state = state
         self.observations: list[KValue] = []
-        # S2 proposals emitted by a grounding cascade (see ``_promote``).
-        # Cascades run inside routing as well as cogitation, so proposals are
-        # stashed here and drained into the batch by ``cogitate``.
-        self._cascade_proposals: list[KValue] = []
         # The incoming queries this turn, in arrival order, retained so
         # cogitation can reply to them. The engine always replies when it
         # can support a reply from its own state; the actor filters per role.
@@ -255,8 +251,6 @@ class Engine:
                 del self._state.work_list[idx]
                 self._promote(kline)
 
-        batch.extend(self._cascade_proposals)
-        self._cascade_proposals = []
         return batch
 
     # ── Grounding ────────────────────────────────────────────────────
@@ -268,26 +262,17 @@ class Engine:
         whose signature just landed, a canon whose nodes are now all seen, a
         relationship whose reciprocal just grounded). Cascade until fixed point.
 
-        A groundable misfit is rationalised before it grounds: its S2
-        similar-fit proposal is emitted (cogitation expands it against what K
-        holds), then the misfit itself is grounded (K keeps it). Grounding is
-        the record; the proposal is the rationalisation. Both happen, proposal
-        first — matching ``cogitate``'s main loop, where the S2 branch precedes
-        the ground branch.
         """
         self._ground(kline)
         changed = True
         while changed:
             changed = False
             for i, entry in enumerate(self._state.work_list):
-                if not self._is_groundable(entry):
-                    continue
-                if is_misfit(entry, self._signifier):
-                    self._cascade_proposals.extend(self._similar_fit_proposal(entry))
-                del self._state.work_list[i]
-                self._ground(entry)
-                changed = True
-                break
+                if self._is_groundable(entry):
+                    del self._state.work_list[i]
+                    self._ground(entry)
+                    changed = True
+                    break
 
     def _ground(self, kline: KLine, countersigning: bool = False) -> None:
         """Record that K grounded ``kline`` and observe it at S1.

@@ -22,15 +22,15 @@ Settled behavioural facts. Candidates for promotion to CONTEXT.md.
 ### Engine — grounding & cogitation
 
 - `_is_groundable` is a **slow-route/cogitation** predicate. Its branches, in order: terminal → signature grounded; canon → all nodes grounded; single-node relationship → reciprocal grounded; **any misfit → signature grounded AND all nodes grounded**. The last is the general rule that unblocks role-mappings and denotes/conotes; it applies to any node count.
-- The cascade in `_promote` **rationalises a misfit before it grounds it**: when a groundable work-list entry is a misfit, its S2 similar-fit proposal is emitted first (cogitation expands it against what K holds), then the misfit is grounded (K keeps it). Grounding is the record; the proposal is the rationalisation. This mirrors cogitate's main loop, where the S2 branch precedes the ground branch — without it, a misfit that becomes groundable inside a cascade (e.g. `WDMH:[Mary, DH]` once `DH` lands) was silently promoted to S1 and never expanded. Cascade proposals are stashed on `_cascade_proposals` and drained into the batch by `cogitate` (cascades run during routing too, before cogitate).
-- **The S2 similar-fit graft is the engine's answering path.** Once the prime grounds, grafting a question-shaped misfit (`WDMH:[Mary, DH]`) against the grounded kline sharing its subject (`MHALL:[Mary, had, a, little, lamb]`) emits the synthesis as an S2 proposal — `WDMH:[Mary, had, a, little, lamb]`. In mhall this surfaces at step 16 (when MHALL grounds), before the question's own underfit becomes groundable. The cascade rule above extends the same path to a misfit at the moment it grounds, so the rationalisation is re-derived against the now-complete model rather than dropped.
-- `cogitate` runs a full LIFO pass over the work-list (no short-circuit): per entry it asks (S4), countersigns (S3 → grounds when complete), proposes (S2 for any misfit), or grounds (S1). Cascade proposals are drained at the end of the pass.
+- The `_promote` cascade **grounds groundable entries until fixed point** — purely records them at S1. A groundable misfit that surfaces inside a cascade is grounded directly; it is not re-rationalised. (The main `cogitate` pass is where misfits get their S2 proposals; the cascade does not emit proposals.)
+- **The S2 similar-fit graft is the engine's answering path.** Once the prime grounds, grafting a question-shaped misfit (`WDMH:[Mary, DH]`) against the grounded kline sharing its subject (`MHALL:[Mary, had, a, little, lamb]`) emits the synthesis as an S2 proposal — `WDMH:[Mary, had, a, little, lamb]`. In mhall this surfaces at step 16 (when MHALL grounds), emitted by `cogitate`'s S2 branch on the still-pending WDMH misfit.
+- `cogitate` runs a full LIFO pass over the work-list (no short-circuit): per entry it asks (S4), countersigns (S3 → grounds when complete), proposes (S2 for any misfit), or grounds (S1).
 - The engine speaks in semantic predicates (`is_identity`, `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
 - "Fast route is for terminals" is **false** — invention. The fast route handles any S1/S4 incoming against the frame.
 
 ### Engine — state
 
-- `self.observations`, `self._incoming`, and `self._cascade_proposals` reset to fresh lists at the top of every `rationalise()` call (per-turn scoping, no cross-call leak).
+- `self.observations` and `self._incoming` reset to fresh lists at the top of every `rationalise()` call (per-turn scoping, no cross-call leak).
 
 ### Harness
 
