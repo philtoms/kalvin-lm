@@ -164,7 +164,7 @@ def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier)
         d = e.kline.dbg
         if d is None:
             continue
-        label = d.label or d.decoded
+        label = d.label
         if label:
             out.setdefault(e.kline.signature, label)
     return out

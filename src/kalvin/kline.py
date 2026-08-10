@@ -5,6 +5,7 @@ A Kline is an identified, ordered sequence of zero or more nodes.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeAlias
 
@@ -231,7 +232,7 @@ def classify_misfit(
     overfit = signifier.residual(nodes_sig, kline.signature) != 0
     return underfit, overfit
 
-# Display helper
+# Display helpers
 
 _OP_SYMBOLS = {
     "COUNTERSIGNS": "==",
@@ -302,6 +303,51 @@ def _decode_token(tokenizer: object, token: int) -> str:
     except Exception:
         pass
     return f"<{token:#x}>"
+
+
+def _node_label(node: int, resolver: Callable[[int], KLine | None]) -> str:
+    """Resolve a node value to a readable label via *resolver*, falling back to hex.
+
+    *resolver* maps a node value to the KLine that heads it (e.g. a model's
+    ``resolve``); the kline's ``dbg.label``/``dbg.annotation`` supply the name.
+    No tokenizer decoding — hex is the only fallback.
+    """
+    kl = resolver(node)
+    if kl is not None and kl.dbg:
+        if kl.dbg.label:
+            return kl.dbg.label
+        if kl.dbg.annotation:
+            return kl.dbg.annotation
+    return f"<{node:#x}>"
+
+
+def kline_decode(
+    kline: KLine,
+    resolver: Callable[[int], KLine | None],
+) -> str:
+    """Format a KLine as a readable ``sig:[node, ...]`` provenance string.
+
+    Uses ``dbg`` provenance (label/annotation) for the signature and resolves
+    each node through *resolver* to read its heading kline's ``dbg``. Falls
+    back to hex when no label is available — no tokenizer decoding. Used by
+    the compiler and the dialogue subsystem to populate ``KDbg.decoded``.
+
+    Args:
+        kline: The KLine to decode.
+        resolver: Maps a node value to the KLine that heads it (a model's
+            ``resolve``, or an equivalent index), or ``None`` when unknown.
+
+    Returns:
+        ``"sig:[n0, n1, ...]"``; empty nodes → ``"sig:[]"``.
+    """
+    if kline.dbg and kline.dbg.label:
+        sig_name = kline.dbg.label
+    elif kline.dbg and kline.dbg.annotation:
+        sig_name = kline.dbg.annotation
+    else:
+        sig_name = f"<{kline.signature:#x}>"
+    nodes = ", ".join(_node_label(n, resolver) for n in kline.nodes)
+    return f"{sig_name}:[{nodes}]"
 
 
 def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:

@@ -141,11 +141,10 @@ def _resolve_script(
             resolved.canon_by_label.setdefault(d.label, kl)
         if d.op in ("COUNTERSIGNS", "CONNOTES", "DENOTES") and d.label:
             resolved.relation_by_label.setdefault(d.label, kl)
-        # Label index: atom/compound dbg.label, and subword dbg.decoded.
+        # Label index: atom/compound dbg.label (covers single-token
+        # subwords too — ``label`` defaults to the decoded text).
         if d.label:
             resolved.labels.setdefault(d.label, kl)
-        if d.decoded:
-            resolved.labels.setdefault(d.decoded, kl)
     return entries, resolved
 
 

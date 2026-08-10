@@ -41,7 +41,7 @@ from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.significance import SIG_S1, band_significance
-from kalvin.kline import KDbg, KLine
+from kalvin.kline import KDbg, KLine, kline_decode
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 
@@ -78,6 +78,9 @@ class TokenEncoder:
         # by every referencing entry. The ASTEmitter emits definitions before
         # references, so this is populated on demand.
         self._compound_sigs: dict[str, int] = {}
+        # Reverse of ``_compound_sigs`` (packed signature → label) so
+        # ``_resolve_node`` can label a compound-word node value.
+        self._compound_labels: dict[int, str] = {}
         # Single-token node words keyed by their uint64 value, for display:
         # a word like "did" that encodes to one token and never heads an
         # entry would otherwise have no label downstream.
@@ -172,6 +175,7 @@ class TokenEncoder:
                     packed = self._signifier.signature_of(sig_tokens)
                     if entry.sig:
                         self._compound_sigs.setdefault(entry.sig, packed)
+                        self._compound_labels.setdefault(packed, entry.sig)
                     # The IDENTITY main entry emits {packed:[packed]} as
                     # source; mark it emitted so a later node-side use of
                     # the same word does not re-emit it.
@@ -215,6 +219,7 @@ class TokenEncoder:
         if is_compound_def and not is_compound_ref:
             sig_uint64 = self._signifier.signature_of(node_values)
             self._compound_sigs[entry.sig] = sig_uint64
+            self._compound_labels.setdefault(sig_uint64, entry.sig)
             sig_is_packed = True
 
         # 4. Debug info.
@@ -237,6 +242,8 @@ class TokenEncoder:
             nodes=node_values,
             dbg=dbg,
         )
+        if self._dev:
+            dbg.decoded = kline_decode(main, self._resolve_node)
         # Wrap the main entry as a KValue. Significance comes from the
         # production op (entry.op — the SymbolicEntry field), NEVER read
         # back from main.dbg.op (D3: dbg is unspec'd dev-only provenance).
@@ -318,6 +325,7 @@ class TokenEncoder:
         # compound-word (it is empty at internal call sites that have no id).
         if dbg_label:
             self._compound_sigs.setdefault(dbg_label, packed)
+            self._compound_labels.setdefault(packed, dbg_label)
 
         # Self-referential identity: packed sig → [packed]. Packed values
         # are opaque per §11.5 — _build_dbg skips decode for them. An
@@ -336,16 +344,14 @@ class TokenEncoder:
             # scope+1 relative to the entry that triggered it.
             id_dbg.scope = scope + 1
             id_dbg.annotation = annotation
-            extras.append(
-                KValue(
-                    KLine(
-                        signature=packed,
-                        nodes=[packed],
-                        dbg=id_dbg,
-                    ),
-                    SIG_S1,
-                )
+            id_kline = KLine(
+                signature=packed,
+                nodes=[packed],
+                dbg=id_dbg,
             )
+            if self._dev:
+                id_dbg.decoded = kline_decode(id_kline, self._resolve_node)
+            extras.append(KValue(id_kline, SIG_S1))
         return (packed, extras)
 
     # Debug construction
@@ -364,24 +370,19 @@ class TokenEncoder:
         opaque per §11.5: its low-32 bits are a bitwise OR of several
         bpe_ids, so decode/type-lookup are meaningless (decode may
         crash or return an unrelated word). ``label`` carries the
-        human-readable name instead. Single tokens are decoded and their
-        type-dictionary entry summarised into ``type_info`` (decode is
-        defensive — ``decoded`` is purely diagnostic and must not crash
-        compilation).
-
-        When ``label`` is empty for a single (non-packed) token, it
-        defaults to the token's own decoded text — the kline's label then
-        names what the kline *is* (e.g. a ``M`` subword) rather than the
-        compound word it was split from (``Mary``).
+        human-readable name instead. Single tokens are decoded defensively
+        only to default an empty ``label`` (the kline's label names what
+        the kline *is*, e.g. a ``M`` subword, rather than the compound word
+        it was split from); ``decoded`` itself is no longer set here — it is
+        populated by :func:`kalvin.kline.kline_decode` at the call site.
         """
         if packed:
             return KDbg(op=op, label=label)
-        try:
-            decoded = self._tokenizer.decode([sig_uint64])
-        except Exception:
-            decoded = ""
         if not label:
-            label = decoded
+            try:
+                label = self._tokenizer.decode([sig_uint64])
+            except Exception:
+                label = ""
         type_info = ""
         # type-info is an NLP-specific debug affordance: only type-aware
         # tokenizers expose a node-taking entry lookup. The KTokenizer
@@ -397,4 +398,22 @@ class TokenEncoder:
                 if k != "text" and isinstance(v, str) and v
             ]
             type_info = " ".join(labels)
-        return KDbg(op=op, label=label, decoded=decoded, type_info=type_info)
+        return KDbg(op=op, label=label, type_info=type_info)
+
+    # Node resolution for ``kline_decode``
+
+    def _resolve_node(self, node: int) -> KLine | None:
+        """Resolve a node value to a labelled KLine from the encoder's indices.
+
+        Backs :func:`kalvin.kline.kline_decode` at compile time: a real model
+        is not available (and the entries are still being constructed), so the
+        encoder resolves from what it has already registered — single-token
+        node words (``node_labels``) and declared compound-word signatures
+        (the reverse of ``_compound_sigs``).
+        """
+        label = self.node_labels.get(node)
+        if label is None:
+            label = self._compound_labels.get(node)
+        if label is None:
+            return None
+        return KLine(node, [node], dbg=KDbg(label=label))
