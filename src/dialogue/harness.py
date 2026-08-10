@@ -78,10 +78,11 @@ class Harness:
         tokenizer: NLPTokenizer,
         *,
         state: EngineState | None = None,
+        strategy: str = "similar_fit",
     ) -> None:
         self._signifier = signifier
         self._tokenizer = tokenizer
-        self._engine = Engine(signifier)
+        self._engine = Engine(signifier, strategy=strategy)
         self._state = state if state is not None else EngineState()
 
     @property
@@ -248,6 +249,12 @@ def main(argv: list[str] | None = None) -> int:
         "-v", "--verbose", action="store_true",
         help="Show hex signatures alongside scripted labels.",
     )
+    parser.add_argument(
+        "-s", "--strategy", choices=("similar_fit", "expand"), default="expand",
+        help="Cogitation strategy for the misfit (S2) arm. "
+             "'similar_fit' (default) is the graft heuristic; 'expand' grades "
+             "grounded candidates via kalvin.expand.expand.",
+    )
     args = parser.parse_args(argv)
 
     source_path = Path(args.source)
@@ -259,7 +266,7 @@ def main(argv: list[str] | None = None) -> int:
 
     tok = NLPTokenizer()
     sigf = NLPSignifier()
-    harness = Harness(sigf, tok)
+    harness = Harness(sigf, tok, strategy=args.strategy)
     results = harness.run(source)
     present(results, harness.state, source, tok, sigf, verbose=args.verbose)
     return 0

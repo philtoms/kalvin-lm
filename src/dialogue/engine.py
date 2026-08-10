@@ -14,12 +14,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kalvin.significance import (
-    SIG_S1,
-    SIG_S2,
-    SIG_S3,
-    SIG_S4,
-)
+from dialogue.expand_fit import ExpandFit
+from dialogue.misfit import MisfitStrategy
+from dialogue.similar_fit import SimilarFit
 from kalvin.kline import (
     KLine,
     is_canon,
@@ -31,11 +28,25 @@ from kalvin.kline import (
     sig_level,
 )
 from kalvin.kvalue import KValue
+from kalvin.significance import (
+    SIG_S1,
+    SIG_S3,
+    SIG_S4,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
 __all__ = ["Engine", "EngineState"]
+
+# Named cogitation strategies for the misfit (S2) arm of ``cogitate``.
+# "similar_fit" — the work-list graft heuristic (the original scheme).
+# "expand"      — grade grounded candidates via ``kalvin.expand.expand`` and
+#                 propose under the entry's signature at the computed band.
+_STRATEGIES = {
+    "similar_fit": SimilarFit,
+    "expand": ExpandFit,
+}
 
 
 @dataclass
@@ -113,8 +124,14 @@ class Engine:
     state lives on :class:`EngineState` (passed in, mutated in place).
     """
 
-    def __init__(self, signifier: KSignifier) -> None:
+    def __init__(self, signifier: KSignifier, *, strategy: str = "similar_fit") -> None:
+        if strategy not in _STRATEGIES:
+            raise ValueError(
+                f"unknown cogitation strategy {strategy!r}; "
+                f"expected one of {sorted(_STRATEGIES)}"
+            )
         self._signifier = signifier
+        self._misfit: MisfitStrategy = _STRATEGIES[strategy]()
 
     def rationalise(
         self, state: EngineState, incoming: Sequence[KValue]
@@ -221,8 +238,8 @@ class Engine:
     def cogitate(self) -> list[KValue]:
         """One LIFO pass over the work-list: ask, countersign, propose, or ground.
 
-        Per entry, in priority order: an identity becomes an S4 ask; a 
-        countersignable entry takes the S3 path and eventually grounds; a misfit 
+        Per entry, in priority order: an identity becomes an S4 ask; a
+        countersignable entry takes the S3 path and eventually grounds; a misfit
         takes the S2 path. a structurally-S1 entry is promoted (grounded).
         Entries that match no path persist for a later turn.
         """
@@ -245,7 +262,11 @@ class Engine:
                     self._promote(kline)
 
             elif is_misfit(kline, self._signifier):
-                batch.extend(self._similar_fit_proposal(kline))
+                batch.extend(
+                    self._misfit.propose(
+                        self._state, self._signifier, kline, self._promote
+                    )
+                )
 
             elif self._is_groundable(kline):
                 del self._state.work_list[idx]
@@ -473,146 +494,3 @@ class Engine:
                 return list(entry.nodes)
         return None
 
-    # ── S2 path: similar-fit proposal ────────────────────────────────
-
-    def _similar_fit_proposal(self, entry: KLine) -> list[KValue]:
-        """Shape one S2 proposal for a misfit ``entry`` by recombining grounded klines.
-
-        Two rules in preference order: (1) **node-expansion** — replace each
-        node that is a grounded kline's signature with that kline's nodes;
-        (2) **node-graft** — fold in each grounded kline sharing a node value
-        with the entry, resolving the accumulated target against it. Every
-        substituted node comes from a grounded kline (no invention). The entry
-        persists in the work-list until ratified.
-        """
-        target = self._expand_nodes(list(entry.nodes))
-        for candidate in self._similar_fit_candidates(entry):
-            core = self._resolve_against(target, list(candidate.nodes))
-            if core:
-                target = core + [n for n in candidate.nodes if n not in core]
-
-        proposal = KLine(entry.signature, target)
-        if self._is_grounded(proposal.signature, proposal.nodes):
-            return []
-        return [KValue(proposal, SIG_S2)]
-
-    def _expand_nodes(self, target: list[int]) -> list[int]:
-        """Rule 1 — replace each node that is a grounded kline's signature with its nodes."""
-        expanded: list[int] = []
-        for node in target:
-            sub = self._grounded_nodes(node)
-            expanded.extend(sub if sub is not None else [node])
-        return expanded
-
-    def _resolve_against(self, target: list[int], candidate_nodes: list[int]) -> list[int]:
-        """Rule 2 — the portion of ``target`` that resolves into ``candidate_nodes``.
-
-        A target node resolves if it is in the candidate directly, or via a
-        grounded kline whose signature is in the candidate. Unresolvable nodes
-        drop out (open slots the caller fills from the candidate's surplus).
-        Iterates to fixed point.
-        """
-        candidate_set = set(candidate_nodes)
-        core: list[int] = []
-        remaining = list(target)
-        while True:
-            direct = [n for n in remaining if n in candidate_set]
-            failed = [n for n in remaining if n not in candidate_set]
-            if not failed:
-                return core + direct
-            resolved = self._cover_with_groundeds(failed)
-            newly_matched = [n for n in resolved if n in candidate_set]
-            core.extend(direct)
-            core.extend(newly_matched)
-            if not newly_matched:
-                return core
-            remaining = [n for n in resolved if n not in candidate_set]
-
-    def _cover_with_groundeds(self, failed: list[int]) -> list[int]:
-        """Maximally cover ``failed`` with disjoint grounded-kline node-sets.
-
-        Each coverable subset is replaced by its kline's signature; uncoverable
-        leftovers are passed through. Greedy is insufficient (a larger kline may
-        block two smaller ones covering more), so this searches for a maximal
-        disjoint cover.
-        """
-        failed_set = set(failed)
-        covers: list[tuple[tuple[int, ...], int]] = []
-        seen_sigs: set[int] = set()
-        for bucket in self._state.grounded.values():
-            for kline in bucket:
-                if kline.signature in seen_sigs or not kline.nodes:
-                    continue
-                effective = tuple(kline.nodes)
-                if set(effective).issubset(failed_set):
-                    covers.append((effective, kline.signature))
-                    seen_sigs.add(kline.signature)
-
-        best = self._max_disjoint_cover(covers)
-        if not best:
-            return list(failed)
-        # Map each covered node to its cover's signature, then walk ``failed``
-        # in order so the output preserves the entry's node order (the order
-        # nodes appeared in the expansion) rather than the cover-emission order.
-        # A cover's signature is emitted once, at the position of its first
-        # covered node; subsequent covered nodes of the same cover are dropped.
-        node_to_sig: dict[int, int] = {}
-        for canon_nodes, canon_sig in best:
-            for n in canon_nodes:
-                node_to_sig[n] = canon_sig
-        resolved: list[int] = []
-        emitted_sigs: set[int] = set()
-        for n in failed:
-            sig = node_to_sig.get(n)
-            if sig is None:
-                resolved.append(n)          # leftover (uncoverable)
-            elif sig not in emitted_sigs:
-                resolved.append(sig)         # first node of this cover
-                emitted_sigs.add(sig)
-        return resolved
-
-    @staticmethod
-    def _max_disjoint_cover(
-        covers: list[tuple[tuple[int, ...], int]]
-    ) -> list[tuple[tuple[int, ...], int]]:
-        """The disjoint subset of ``covers`` maximising total nodes covered."""
-        best: list[tuple[tuple[int, ...], int]] = []
-        best_covered = 0
-
-        def _recurse(idx: int, chosen, used: set[int], covered: int) -> None:
-            nonlocal best, best_covered
-            if covered > best_covered:
-                best_covered = covered
-                best = list(chosen)
-            for i in range(idx, len(covers)):
-                kline_nodes, _ = covers[i]
-                if used & set(kline_nodes):
-                    continue
-                chosen.append(covers[i])
-                _recurse(i + 1, chosen, used | set(kline_nodes), covered + len(kline_nodes))
-                chosen.pop()
-
-        _recurse(0, [], set(), 0)
-        return best
-
-    def _similar_fit_candidates(self, entry: KLine) -> list[KLine]:
-        """Grounded klines sharing a node value with ``entry``, excluding the
-        entry's own canon (its resolution, not a recombination ingredient)."""
-        entry_nodes = set(entry.nodes)
-        candidates: list[KLine] = []
-        for bucket in self._state.grounded.values():
-            for kline in bucket:
-                if kline is entry or not kline.nodes:
-                    continue
-                if kline.signature == entry.signature and is_canon(kline, self._signifier):
-                    continue
-                if entry_nodes & set(kline.nodes):
-                    candidates.append(kline)
-        return candidates
-
-    def _grounded_nodes(self, signature: int) -> list[int] | None:
-        """The nodes of any grounded kline under ``signature`` with non-empty nodes."""
-        for kline in self._state.grounded.get(signature, []):
-            if kline.nodes:
-                return list(kline.nodes)
-        return None
