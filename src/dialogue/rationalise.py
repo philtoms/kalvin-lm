@@ -28,8 +28,11 @@ from kalvin.kline import (
     is_terminal,
     is_unknown,
     sig_level,
+    using_resolver,
 )
 from kalvin.kvalue import KValue
+
+from dialogue.misfit import GroundedModel
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
@@ -121,9 +124,11 @@ class Rationaliser:
         """Route every incoming query, then cogitate. Returns ``(batch, observations)``."""
         state._dbg_step += 1
         turn = _Turn(state, self._signifier)
-        for query in incoming:
-            turn.route(query)
-        return turn.finish(turn.cogitate())
+        resolver = GroundedModel(state).find
+        with using_resolver(resolver):
+            for query in incoming:
+                turn.route(query)
+            return turn.finish(turn.cogitate())
 
 
 class _Turn:

@@ -39,9 +39,11 @@ See ``encode_entries``.
 
 from __future__ import annotations
 
+import contextlib
+
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.significance import SIG_S1, band_significance
-from kalvin.kline import KDbg, KLine, kline_decode
+from kalvin.kline import KDbg, KLine, using_resolver
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 
@@ -116,9 +118,10 @@ class TokenEncoder:
             return []
 
         tagged: list[tuple[KValue, bool]] = []
-        for entry in symbolic:
-            for kv, bpe_mts in self._encode_entries_for_entry(entry):
-                tagged.append((kv, entry.is_mts or bpe_mts))
+        with (using_resolver(self._resolve_node) if self._dev else contextlib.nullcontext()):
+            for entry in symbolic:
+                for kv, bpe_mts in self._encode_entries_for_entry(entry):
+                    tagged.append((kv, entry.is_mts or bpe_mts))
 
         source = [kv for kv, is_mts in tagged if not is_mts]
         mts = [kv for kv, is_mts in tagged if is_mts]
@@ -242,8 +245,6 @@ class TokenEncoder:
             nodes=node_values,
             dbg=dbg,
         )
-        if self._dev:
-            dbg.decoded = kline_decode(main, self._resolve_node)
         # Wrap the main entry as a KValue. Significance comes from the
         # production op (entry.op — the SymbolicEntry field), NEVER read
         # back from main.dbg.op (D3: dbg is unspec'd dev-only provenance).
@@ -349,8 +350,6 @@ class TokenEncoder:
                 nodes=[packed],
                 dbg=id_dbg,
             )
-            if self._dev:
-                id_dbg.decoded = kline_decode(id_kline, self._resolve_node)
             extras.append(KValue(id_kline, SIG_S1))
         return (packed, extras)
 

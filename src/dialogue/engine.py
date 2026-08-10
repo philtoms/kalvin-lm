@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from dialogue.expand_fit import ExpandFit
-from dialogue.misfit import MisfitStrategy
+from dialogue.misfit import GroundedModel, MisfitStrategy
 from dialogue.similar_fit import SimilarFit
 from kalvin.kline import (
     KLine,
@@ -26,6 +26,7 @@ from kalvin.kline import (
     is_terminal,
     is_unknown,
     sig_level,
+    using_resolver,
 )
 from kalvin.kvalue import KValue
 from kalvin.significance import (
@@ -146,9 +147,11 @@ class Engine:
         # can support a reply from its own state; the actor filters per role.
         self._incoming: list[KValue] = []
 
-        for query in incoming:
-            self.route(query)
-        return self.finish(self.cogitate())
+        resolver = GroundedModel(state).find
+        with using_resolver(resolver):
+            for query in incoming:
+                self.route(query)
+            return self.finish(self.cogitate())
 
     # ── Routing ──────────────────────────────────────────────────────
 

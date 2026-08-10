@@ -5,7 +5,9 @@ A Kline is an identified, ordered sequence of zero or more nodes.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import contextlib
+import contextvars
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeAlias
 
@@ -21,6 +23,51 @@ KNodes: TypeAlias = int | None | list[int]
 
 # Type alias for Signatures (uint64)
 KSig: TypeAlias = int
+
+
+# === Decode resolver context ===
+#
+# A session-scoped resolver maps a node value to the KLine that heads it
+# (a model's ``resolve``, an encoder's index, etc.). When one is active,
+# the KLine constructor populates ``KDbg.decoded`` on freshly minted klines
+# via :func:`kline_decode` — so runtime-emitted klines become debuggable
+# without each emission site wiring it explicitly. Probe klines (membership
+# checks, codec deserialisation) run outside any resolver context and pay
+# only a contextvar peek, never the per-node resolve.
+
+KResolver: TypeAlias = Callable[[int], "KLine | None"]
+_resolver: contextvars.ContextVar[KResolver | None] = contextvars.ContextVar(
+    "kalvin.kline.resolver", default=None
+)
+
+
+@contextlib.contextmanager
+def using_resolver(resolver: KResolver) -> Iterator[None]:
+    """Install *resolver* as the active decode resolver for the current context.
+
+    KLines constructed inside the block populate ``KDbg.decoded`` from the
+    resolver; on exit the previous resolver (or none) is restored. Use as a
+    context manager around emission / compilation scopes.
+    """
+    token = _resolver.set(resolver)
+    try:
+        yield
+    finally:
+        _resolver.reset(token)
+
+
+@contextlib.contextmanager
+def _resolver_reset() -> Iterator[None]:
+    """Temporarily clear the active resolver.
+
+    Used inside :func:`kline_decode` so that klines the resolver itself
+    constructs (e.g. a compiler index lookup) do not re-enter ``kline_decode``.
+    """
+    token = _resolver.set(None)
+    try:
+        yield
+    finally:
+        _resolver.reset(token)
 
 
 @dataclass
@@ -90,7 +137,21 @@ class KLine:
     ):
         self.signature = signature
         self.nodes = _normalize_nodes(nodes)
-        self.dbg = dbg
+        resolver = _resolver.get()
+        if resolver is None:
+            self.dbg = dbg
+            return
+        # A resolver is active: populate ``decoded`` on this kline. A passed
+        # ``dbg`` may be shared with another kline (emission sites forward
+        # ``kline.dbg``), so copy it before mutating to avoid aliasing.
+        if dbg is None:
+            self.dbg = KDbg()
+        else:
+            self.dbg = KDbg(
+                op=dbg.op, label=dbg.label, decoded=dbg.decoded,
+                type_info=dbg.type_info, annotation=dbg.annotation, scope=dbg.scope,
+            )
+        self.dbg.decoded = kline_decode(self, resolver)
 
     # Equality, hashing
 
@@ -305,7 +366,7 @@ def _decode_token(tokenizer: object, token: int) -> str:
     return f"<{token:#x}>"
 
 
-def _node_label(node: int, resolver: Callable[[int], KLine | None]) -> str:
+def _node_label(node: int, resolver: KResolver) -> str:
     """Resolve a node value to a readable label via *resolver*, falling back to hex.
 
     *resolver* maps a node value to the KLine that heads it (e.g. a model's
@@ -323,14 +384,19 @@ def _node_label(node: int, resolver: Callable[[int], KLine | None]) -> str:
 
 def kline_decode(
     kline: KLine,
-    resolver: Callable[[int], KLine | None],
+    resolver: KResolver,
 ) -> str:
     """Format a KLine as a readable ``sig:[node, ...]`` provenance string.
 
     Uses ``dbg`` provenance (label/annotation) for the signature and resolves
     each node through *resolver* to read its heading kline's ``dbg``. Falls
     back to hex when no label is available — no tokenizer decoding. Used by
-    the compiler and the dialogue subsystem to populate ``KDbg.decoded``.
+    the compiler and the dialogue subsystem (via the constructor's resolver
+    context) to populate ``KDbg.decoded``.
+
+    Runs with the contextvar resolver cleared, so any ``KLine`` the resolver
+    itself constructs (e.g. a compiler index lookup) does not re-enter
+    ``kline_decode``.
 
     Args:
         kline: The KLine to decode.
@@ -346,7 +412,8 @@ def kline_decode(
         sig_name = kline.dbg.annotation
     else:
         sig_name = f"<{kline.signature:#x}>"
-    nodes = ", ".join(_node_label(n, resolver) for n in kline.nodes)
+    with _resolver_reset():
+        nodes = ", ".join(_node_label(n, resolver) for n in kline.nodes)
     return f"{sig_name}:[{nodes}]"
 
 
