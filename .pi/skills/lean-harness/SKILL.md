@@ -21,7 +21,7 @@ than reading. Load them every session.
    significance bands, grounding, frame, work-list, terminal, canon,
    misfit, relationship) has a precise meaning; several are counter-
    intuitive. Do not infer them.
-2. **`docs/behaviour-notes.md`** — read **§Rules** for settled behaviour,
+2. **`docs/behaviour-notes.md`** — read **§Rules Uncovered** for settled behaviour,
    and **§Active state of K** for the current frontier (not yet rules).
    Re-read every session; both change. ⚠️ marks a rule under active
    suspicion — the boundary between the two sections.
@@ -83,9 +83,8 @@ presents the trace. One linear pass, no waits, no convergence loop.
    `.ks`). Smallest honest change. Comments minimal: describe what, not
    why the design is right.
 5. **Update behaviour-notes in the same change** — a new Rule, a moved
-   Active-state item, or a ⚠️ promoted to active investigation.
-6. **Verify.** Re-run; compare grounded + work_list before/after. Run the
-   suite: `PYTHONPATH=src .venv/bin/python -m pytest tests/ -q`.
+   Active-state item, or a ⚠️ promoted to active investigation. Keep it lean.
+6. **Verify.** Re-run; compare grounded + work_list before/after.
 7. **Commit on the `dialogue` branch.** One change per commit; name what
    shifted.
 
@@ -133,8 +132,11 @@ header.
   `_is_groundable` lift; the invented "fast route is for terminals" rule).
 - **The engine speaks in semantic predicates** (`is_identity`,
   `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
-- **Update CONTEXT.md** when a glossary term shifts (we added
-  **Relationship**; more will come). Source and glossary move together.
+- **Update CONTEXT.md** when a glossary term shifts. Source and glossary
+  move together.
+- **Keep behaviour-notes lean** One line per rule. No more. Keep active
+  state focused. Don't record decisions made, history changed etc - its
+  not that kind of document.
 
 ## Where things live
 
