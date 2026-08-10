@@ -22,7 +22,7 @@ signifier = NLPSignifier()
 
 def _kv(kline, model):
     """Wrap a hand-built kline in a KValue declaring its structurally-correct
-    band (kvalue spec KP-1): the structural band with the model-state S2→S1
+    band (kvalue spec ): the structural band with the model-state S2→S1
     countersigned fork Rationaliser applies. Empty/identity klines declare S4."""
     band = structural_sig(sig_level(kline, signifier))
     if band == SIG_S2 and model.is_countersigned(kline):

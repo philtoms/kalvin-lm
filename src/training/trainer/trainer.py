@@ -131,7 +131,7 @@ class Trainer:
         self._polling_for_goal: bool = False
         self._drain_pending: bool = False
 
-        # Decision gate (SD-7/9). When a ratify_request is emitted
+        # Decision gate. When a ratify_request is emitted
         # the Trainer holds subsequent Rationaliser events until the supervisor
         # replies (``supervisor_decision`` action). This makes the supervisor
         # the gating decision-maker: the lesson cannot advance
@@ -186,7 +186,7 @@ class Trainer:
         """Compute the misfit diagnosis for an S2/S3 event.
 
         Operates on the proposal kline (``event.proposal.kline``). The
-        ``candidate`` field is gone (KB-354 D5), so misfit is always computed
+        ``candidate`` field is gone ( D5), so misfit is always computed
         on the proposal — the objective structure Kalvin is assessing.
 
         Returns a dict matching the spec's Decision Request ``misfit``
@@ -247,7 +247,7 @@ class Trainer:
         # supervisor replies. This is what makes the supervisor gating: the
         # run cannot advance past the pending proposal. ``supervisor_decision``
         # above bypasses the hold so the reply is always processed immediately.
-        # ``drained`` also bypasses the hold (SD-8a, §Lesson boundary): it is
+        # ``drained`` also bypasses the hold: it is
         # the message that *advances* the lesson, and holding it behind
         # pending decisions deadlocks lesson progression.
         if (
@@ -312,7 +312,7 @@ class Trainer:
                 proposal_src,
             )
 
-        # Relay event to supervisor (HRNS-33)
+        # Relay event to supervisor ()
         self._bus.send(
             Message(
                 role=SUPERVISOR_ROLE,
@@ -340,7 +340,7 @@ class Trainer:
             # decisions the supervisor needs to see.
             auto_matched = self._reactor.process_s2_s3(event)
 
-            # Lesson boundary (SD-8b, §Lesson boundary): during the inter-lesson
+            # Lesson boundary: during the inter-lesson
             # drain window the current lesson N+1 has not been submitted to
             # Kalvin yet (`_do_submit_lesson` runs only after `drained`
             # returns), so any S2/S3 proposal arriving now is residual
@@ -361,7 +361,7 @@ class Trainer:
             # Escalation: a proposal the Reactor could not resolve. The
             # decision request is always enriched with ``misfit`` and
             # ``curriculum_context`` so every decider receives the same
-            # context (SD-1). A context-gathering failure must never block
+            # context. A context-gathering failure must never block
             # the request itself.
             elif not auto_matched:
                 payload: dict = {
@@ -394,7 +394,7 @@ class Trainer:
                     )
                 )
 
-                # Decision gate (SD-4/5/6/7/8): hold subsequent trainee
+                # Decision gate: hold subsequent trainee
                 # events until the supervisor resolves this decision.
                 # "Progress is bounded only by the supervisor's responses"
                 # is a runtime guarantee. The bus never blocks —
@@ -454,7 +454,7 @@ class Trainer:
         self._pending_decision = None
 
         if decision == "ratify":
-            # Accept the pending proposal: countersign via Rationaliser (KP-2, S1).
+            # Accept the pending proposal: countersign via Rationaliser.
             self._bus.send(
                 Message(
                     role=TRAINEE_ROLE,
@@ -487,7 +487,7 @@ class Trainer:
         # sets _pending_decision) or the hold drains. Each replayed event
         # dispatches through on_message, which stashes again if a new
         # decision is now pending. `drained` is pulled ahead of held proposal
-        # events (SD-6, §Lesson boundary): it advances the lesson and must
+        # events: it advances the lesson and must
         # not wait behind a stream of proposals that would each re-arm the
         # gate.
         while self._held_messages and self._pending_decision is None:
@@ -658,7 +658,7 @@ class Trainer:
         """Begin a new training session.
 
         If a session is already active, the goal is queued instead
-        (one session at a time — HRNS-16).
+        (one session at a time).
 
         Implements three-path startup resolution:
         1. curriculum_file parameter → load and start

@@ -66,12 +66,12 @@ def _make_cogitator(model=None, adapter=None, handler=None):
     return Cogitator(model, adapter, handler, signifier)
 
 
-# ── AGT-45: Empty-backlog drain completes fast ────────────────────────
+# ── Empty-backlog drain completes fast ────────────────────────
 
 
 class TestDrainEmptyBacklog:
     def test_empty_backlog_drain_returns_true(self):
-        """AGT-45: drain() on empty backlog returns True immediately."""
+        """drain() on empty backlog returns True immediately."""
         cog = _make_cogitator()
         try:
             start = time.monotonic()
@@ -83,7 +83,7 @@ class TestDrainEmptyBacklog:
             cog.join(timeout=2.0)
 
     def test_empty_backlog_drain_under_10ms(self):
-        """AGT-45: Empty-backlog drain completes in <10ms."""
+        """Empty-backlog drain completes in <10ms."""
         cog = _make_cogitator()
         try:
             start = time.monotonic()
@@ -94,12 +94,12 @@ class TestDrainEmptyBacklog:
             cog.join(timeout=2.0)
 
 
-# ── AGT-46: Drain timeout ────────────────────────────────────────────
+# ── Drain timeout ────────────────────────────────────────────
 
 
 class TestDrainTimeout:
     def test_drain_timeout_returns_false(self):
-        """AGT-46: drain() returns False on timeout when work item is slow."""
+        """drain() returns False on timeout when work item is slow."""
         model = Model()
         adapter = EventBus()
         handler = _StubHandler()
@@ -132,7 +132,7 @@ class TestDrainTimeout:
             cog.join(timeout=2.0)
 
     def test_drain_timeout_does_not_stop_thread(self):
-        """AGT-46: timed-out drain does not stop the cogitator thread."""
+        """timed-out drain does not stop the cogitator thread."""
         cog = _make_cogitator()
         try:
             cog.drain(timeout=0.1)
@@ -142,12 +142,12 @@ class TestDrainTimeout:
             cog.join(timeout=2.0)
 
 
-# ── AGT-47: Processing flag ──────────────────────────────────────────
+# ── Processing flag ──────────────────────────────────────────
 
 
 class TestProcessingFlag:
     def test_processing_flag_guards_drain(self):
-        """AGT-47: drain() waits for processing flag to clear."""
+        """drain() waits for processing flag to clear."""
         model = Model()
         adapter = EventBus()
         handler = _StubHandler()
@@ -177,7 +177,7 @@ class TestProcessingFlag:
             cog.join(timeout=2.0)
 
     def test_processing_flag_not_set_when_idle(self):
-        """AGT-47: _processing is False when cogitator is idle."""
+        """_processing is False when cogitator is idle."""
         cog = _make_cogitator()
         try:
             assert cog._processing is False
@@ -185,13 +185,13 @@ class TestProcessingFlag:
             cog.join(timeout=2.0)
 
 
-# ── AGT-48: No cross-lesson spillover ────────────────────────────────
+# ── No cross-lesson spillover ────────────────────────────────
 
 
 @requires_tokenizer_data
 class TestNoCrossLessonSpillover:
     def test_drain_between_lessons_prevents_spillover(self):
-        """AGT-48: Lesson-N cogitation drains fully before lesson N+1 begins.
+        """Lesson-N cogitation drains fully before lesson N+1 begins.
 
         Submits real S2 work items in "lesson 1", drains the cogitator, then
         verifies the backlog is empty and the cogitator remains healthy for a
@@ -247,12 +247,12 @@ class TestNoCrossLessonSpillover:
             agent.cogitate_join(timeout=2.0)
 
 
-# ── AGT-48 (unit): drain empties the backlog ─────────────────────────
+# ──  (unit): drain empties the backlog ─────────────────────────
 
 
 class TestDrainEmptiesBacklog:
     def test_drain_empties_backlog_after_work(self):
-        """AGT-48: drain() empties the backlog after processing real work.
+        """drain() empties the backlog after processing real work.
 
         Isolates the core guarantee — a submitted work item is processed and
         the backlog is empty after drain — at the Cogitator level.

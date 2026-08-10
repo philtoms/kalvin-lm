@@ -32,7 +32,7 @@ class TestSTMAdd:
         assert stm.get(5) == [k2]
 
     def test_add_same_pair_refreshes_fifo(self):
-        """STM-5: adding same (sig, nodes) pair refreshes FIFO position."""
+        """Adding same (sig, nodes) pair refreshes FIFO position."""
         stm = make_stm(bound=5)
         k1 = KLine(5, [1, 2])
         k2 = KLine(5, [1, 2])

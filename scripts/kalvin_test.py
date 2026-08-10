@@ -190,7 +190,7 @@ def main() -> None:
             done_event.set()
             return
 
-        # Events carry two KValues (KE-3): query (sender's declared
+        # Events carry two KValues: query (sender's declared
         # assessment) and proposal (Kalvin's assessment). Significance lives
         # on the KValue, not the event.
         level = significance_level(e.proposal.significance)
@@ -221,7 +221,7 @@ def main() -> None:
         for k in kvalues:
             display_model.add_to_frame(k.kline)
 
-        # Print compiled entries (each compiled entry is a KValue — KP-1).
+        # Print compiled entries (each compiled entry is a KValue).
         print("Compiled entries:")
         for k in kvalues:
             print(f"  {kvalue_display(k, tokenizer, display_model)}")

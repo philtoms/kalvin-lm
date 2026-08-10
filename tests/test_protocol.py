@@ -1,4 +1,4 @@
-"""Tests for the WebSocket protocol (HRNS-4, HRNS-21).
+"""Tests for the WebSocket protocol.
 
 Uses ``pytest-asyncio`` with ``websockets`` client for test connections.
 """
@@ -60,7 +60,7 @@ async def _stop_server(server: Any) -> None:
 
 
 class TestClientRegistration:
-    """HRNS-4: WebSocket client registers role; subsequent frames have
+    """WebSocket client registers role; subsequent frames have
     implicit sender."""
 
     @pytest.mark.asyncio
@@ -110,7 +110,7 @@ class TestClientRegistration:
 
 
 class TestDisconnectSilentDrop:
-    """HRNS-21: Disconnected client — messages silently dropped."""
+    """Disconnected client — messages silently dropped."""
 
     @pytest.mark.asyncio
     async def test_disconnect_silent_drop(self) -> None:
@@ -301,7 +301,7 @@ class TestSendToClientSilentDrop:
 
 
 class TestMultipleClientsSameRoleFanOut:
-    """HRNS-30: two WebSocket clients register for the same role and both
+    """two WebSocket clients register for the same role and both
     receive messages sent to that role."""
 
     @pytest.mark.asyncio
@@ -431,7 +431,7 @@ class TestDomainObjectPayloadSerialisation:
             await asyncio.sleep(0.05)
 
             # Relay a ground/frame event exactly as the Trainer does
-            # (HRNS-33): message is the RationaliseEvent object itself.
+            # (): message is the RationaliseEvent object itself.
             bus.send(
                 Message(
                     role="supervisor",
@@ -454,7 +454,7 @@ class TestDomainObjectPayloadSerialisation:
             assert frame["action"] == "event"
             message = frame["message"]
             assert message["kind"] == "frame"
-            assert "significance" not in message  # no top-level significance (KE-3)
+            assert "significance" not in message  # no top-level significance
             assert message["query"] == {"signature": 0xAA, "nodes": [0xAA], "significance": 0}
             assert message["proposal"] == {
                 "signature": 0xBB,
@@ -484,7 +484,7 @@ class TestDomainObjectPayloadSerialisation:
             await asyncio.sleep(0.05)
 
             # Relay an S2/S3 ratify request exactly as the Trainer does
-            # (HRNS-33): message is a dict whose query/proposal are KValues
+            # (): message is a dict whose query/proposal are KValues
             # (the trainer wraps event.query/event.proposal). The payload
             # retains its top-level "significance" key (a trainer-constructed
             # dict, not a RationaliseEvent).

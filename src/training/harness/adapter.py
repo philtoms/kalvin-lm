@@ -24,12 +24,12 @@ assessment — not bare KLines:
   event's ``query``/``proposal`` are KValues that carry their own
   significance; there is no top-level significance field.
 
-Countersign bus payload contract (shared with the Reactor, KB-356)
+Countersign bus payload contract (shared with the Reactor, )
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The ``countersign`` action's payload may arrive in three forms (see
 :func:`_materialise_kvalue`): a live :class:`KValue` (the in-process
 auto-countersign path), a wire dict ``{signature, nodes, significance}``,
-or a legacy bare :class:`KLine` (wrapped at :data:`SIG_S1`, per KP-2:
+or a legacy bare :class:`KLine` (wrapped at :data:`SIG_S1`:
 countersign is an S1 ratification). Significance rides on the KValue;
 recovering a significance lost at a future remote (WebSocket) boundary is
 explicitly **out of scope**.
@@ -96,7 +96,7 @@ def _materialise_kvalue(obj: object) -> KValue:
     ``dict`` — the canonical KValue wire shape
     ``{"signature": int, "nodes": list[int], "significance": int}``.
 
-    Three input forms are accepted (see the §Countersign Bus Payload Contract
+    Three input forms are accepted (see the Countersign Bus Payload Contract
     in the module docstring):
 
     - **Live :class:`KValue`** — returned unchanged. This is the in-process
@@ -251,7 +251,7 @@ class RationaliserAdapter:
         routed to the original sender (looked up in the sender map) and
         sent via the bus.
 
-        The event's ``query`` is a :class:`KValue` (KB-354); the sender-map
+        The event's ``query`` is a :class:`KValue`; the sender-map
         key is read off ``event.query.kline``. There is no top-level
         ``significance`` field on the event — significance rides on the
         KValue.
@@ -317,7 +317,7 @@ class RationaliserAdapter:
         for entry in entries:
             key: EntryKey = (entry.kline.signature, tuple(entry.kline.nodes))
             self._sender_map[key] = msg.sender or ""
-            # rationalise takes a KValue (KB-354); the Rationaliser reads value.kline.
+            # rationalise takes a KValue; the Rationaliser reads value.kline.
             self._rationaliser.rationalise(entry)  # fire-and-forget; events come via on_event
 
     def _handle_countersign(self, msg: Message) -> None:

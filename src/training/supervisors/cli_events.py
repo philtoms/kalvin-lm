@@ -106,13 +106,13 @@ def _enrich_rationalise(message: object, seq: int) -> dict:
 
 
 def _enrich_ratify_request(message: dict, seq: int) -> dict:
-    """Enrich a ratify request frame (rules 23–26).
+    """Enrich a ratify request frame.
 
     Every decision request carries ``misfit`` and ``curriculum_context``
-    (SD-1) so the decider — and the ``commands.jsonl`` audit — sees the
+    so the decider — and the ``commands.jsonl`` audit — sees the
     diagnosis and pedagogical context the reactive decision needs. The
     ``if``-guarded passthrough below is defensive against stale sources;
-    the contract (§Decision Request message) emits both on every request.
+    the contract emits both on every request.
     """
     query = _to_kline(message["query"])
     proposal = _to_kline(message["proposal"])
@@ -147,7 +147,7 @@ def _enrich_escalation(message: dict, seq: int) -> dict:
 
 
 def _build_significance(raw_sig: int) -> dict:
-    """Build a Significance Object (§Significance Object).
+    """Build a Significance Object.
 
     Returns dict with raw, normalised, and level fields.
 
@@ -165,7 +165,7 @@ def _build_significance(raw_sig: int) -> dict:
 
 
 def _build_kline_display(kline: KLine) -> dict:
-    """Build a KLine Display Object (§KLine Display Object).
+    """Build a KLine Display Object.
 
     ``values`` is the kline the model stored (judge against this);
     ``for_display`` is a decompiled label for human readability only.

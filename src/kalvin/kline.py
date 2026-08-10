@@ -193,13 +193,12 @@ def is_terminal(kline: KLine) -> bool:
 
     A terminal carries no further decomposition. Two shapes are terminal:
       - empty nodes: ``{S: []}`` (an Unknown), or
-      - self-referential: ``{S: [S]}`` (an Identity; this includes §11.3
+      - self-referential: ``{S: [S]}`` (an Identity; this includes
         compound-words, which are self-referential identities whose
         signature is the OR-reduction of their subword tokens).
 
     Terminal is the genus of :func:`is_unknown` and :func:`is_identity`;
-    the canon/misfit distinction applies only to non-terminals
-    (@CONTEXT.md §Terminal).
+    the canon/misfit distinction applies only to non-terminals.
     """
     if not kline.nodes:
         return True
@@ -210,7 +209,7 @@ def is_unknown(kline: KLine) -> bool:
     """Test whether a kline is an Unknown — the empty form ``{S: []}``.
 
     An Unknown claims S4: nothing held for this signature, the structural
-    form of an ask (@CONTEXT.md §Unknown).
+    form of an ask.
     """
     return not kline.nodes
 
@@ -221,13 +220,12 @@ def is_identity(kline: KLine) -> bool:
     An Identity is a terminal that translates to a known value in the
     outside world — directly decodable. The sole structural shape is the
     self-referential form ``{S: [S]}``: a value that decodes into itself.
-    A §11.3 compound-word is an identity by this same rule — its signature
-    is the OR-reduction of its subword tokens, so it is a self-ref with no
+    A compound-word is an identity by this same rule — its signature is
+    the OR-reduction of its subword tokens, so it is a self-ref with no
     marker.
 
     The empty form ``{S: []}`` is an :func:`is_unknown`, not an Identity.
-    Identity overrules any canon classification (see :func:`is_canon` and
-    @CONTEXT.md §Identity).
+    Identity overrules any canon classification (see :func:`is_canon`).
     """
     if not kline.nodes:
         return False
@@ -238,12 +236,12 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a canon.
 
     A kline is a canon when it is a non-terminal whose signature equals
-    ``signature_of(nodes)`` (@CONTEXT.md §Canon). A terminal is never a canon.
+    ``signature_of(nodes)``. A terminal is never a canon.
     """
     return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
 def is_relationship(kline: KLine) -> bool:
-    """Test whether a kline is a relationship (@CONTEXT.md §Relationship).
+    """Test whether a kline is a relationship.
 
     A relationship is the connote/denote structural shape: a non-terminal
     misfit with exactly one node (``{A: [B]}``, ``A != B``). The signature
@@ -261,11 +259,11 @@ def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
 
     A kline is a misfit when it is a non-terminal whose signature does not
-    equal ``signature_of(nodes)`` (@CONTEXT.md §Misfit). This includes the
-    single-node connote/denote shape ``{A: [B]}``; multi-node and
-    single-node misfits differ in the band they claim (S2 vs S3), not in
-    whether they are misfits. Callers that route only multi-node misfits
-    (the S2 expansion path) gate on node count themselves.
+    equal ``signature_of(nodes)``. This includes the single-node connote/denote
+    shape ``{A: [B]}``; multi-node and single-node misfits differ in the band
+    they claim (S2 vs S3), not in whether they are misfits. Callers that route
+    only multi-node misfits (the S2 expansion path) gate on node count
+    themselves.
     """
     return not is_terminal(kline) and not is_canon(kline, signifier)
 

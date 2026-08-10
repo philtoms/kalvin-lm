@@ -1,4 +1,4 @@
-"""Tests for CurriculumGenerator — CRS-32 through CRS-37."""
+"""Tests for CurriculumGenerator."""
 
 from __future__ import annotations
 
@@ -80,11 +80,11 @@ class MockLLMClient:
         return LLMResponse(content=None, tool_calls=None, finish_reason="stop")
 
 
-# ── CRS-32: Generator makes one LLM call ─────────────────────────────
+# ── Generator makes one LLM call ─────────────────────────────
 
 
 class TestGenerateLLMCall:
-    """CRS-32: Generator makes one LLM call with curriculum format system prompt."""
+    """Generator makes one LLM call with curriculum format system prompt."""
 
     def test_generate_makes_llm_call(self, tmp_path: Path) -> None:
         client = MockLLMClient(
@@ -106,11 +106,11 @@ class TestGenerateLLMCall:
         assert "basic patterns" in messages[1]["content"]
 
 
-# ── CRS-33: Generator parses LLM response ─────────────────────────────
+# ── Generator parses LLM response ─────────────────────────────
 
 
 class TestGenerateParseResponse:
-    """CRS-33: Generator parses LLM response via from_string and validates."""
+    """Generator parses LLM response via from_string and validates."""
 
     def test_generate_parses_response(self, tmp_path: Path) -> None:
         client = MockLLMClient(
@@ -129,11 +129,11 @@ class TestGenerateParseResponse:
         assert len(doc.lessons) == 2
 
 
-# ── CRS-34: Generator retries on parse failure ────────────────────────
+# ── Generator retries on parse failure ────────────────────────
 
 
 class TestGenerateRetry:
-    """CRS-34: Generator retries once on parse failure with error feedback."""
+    """Generator retries once on parse failure with error feedback."""
 
     def test_generate_retries_on_parse_failure(self, tmp_path: Path) -> None:
         client = MockLLMClient(
@@ -158,11 +158,11 @@ class TestGenerateRetry:
         assert len(error_msgs) > 0
 
 
-# ── CRS-35: Generator raises on second failure ────────────────────────
+# ── Generator raises on second failure ────────────────────────
 
 
 class TestGenerateSecondFailure:
-    """CRS-35: Generator raises CurriculumGenerationError on second failure."""
+    """Generator raises CurriculumGenerationError on second failure."""
 
     def test_generate_raises_on_second_failure(self, tmp_path: Path) -> None:
         client = MockLLMClient(
@@ -179,11 +179,11 @@ class TestGenerateSecondFailure:
         assert client.call_count == 2
 
 
-# ── CRS-36: Generator writes to file ──────────────────────────────────
+# ── Generator writes to file ──────────────────────────────────
 
 
 class TestGenerateWriteFile:
-    """CRS-36: Generator writes validated markdown to curricula/<slug>.md."""
+    """Generator writes validated markdown to curricula/<slug>.md."""
 
     def test_generate_writes_to_file(self, tmp_path: Path) -> None:
         curricula_dir = tmp_path / "curricula"
@@ -204,11 +204,11 @@ class TestGenerateWriteFile:
         assert doc.lessons[0].kscript == ["A = B"]
 
 
-# ── CRS-37: Slug from goal ───────────────────────────────────────────
+# ── Slug from goal ───────────────────────────────────────────
 
 
 class TestSlugFromGoal:
-    """CRS-37: Slug derived from goal (lowercase, hyphens, non-alphanumeric stripped)."""
+    """Slug derived from goal (lowercase, hyphens, non-alphanumeric stripped)."""
 
     def test_generate_slug_from_goal(self, tmp_path: Path) -> None:
         client = MockLLMClient(

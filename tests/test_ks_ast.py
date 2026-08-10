@@ -1,9 +1,9 @@
 """Tests for KScript v3 AST node definitions.
 
 Covers:
-  KS-6  — Scope model structure (OperatorScope with sig, op, items, child_block)
-  KS-8  — Annotations preserved as AST nodes
-  KS-9  — Inline annotation attachment (sig-side and node-side)
+  Scope model structure (OperatorScope with sig, op, items, child_block)
+  Annotations preserved as AST nodes
+  Inline annotation attachment (sig-side and node-side)
   Defaults — OperatorScope default field values
   ScopeItem composition — mixed list of Signature, Annotation, OperatorScope
   ConstructItem composition — mixed list of Annotation, OperatorScope, Block
@@ -23,12 +23,12 @@ from ks.ast import (
 from ks.token import TokenType
 
 # ---------------------------------------------------------------------------
-# KS-6 — Scope model structure
+# Scope model structure
 # ---------------------------------------------------------------------------
 
 
 class TestScopeModelStructure:
-    """KS-6: AST structure reflects scope model with OperatorScope nodes."""
+    """AST structure reflects scope model with OperatorScope nodes."""
 
     def test_single_operator_scope_fields(self) -> None:
         """Build OperatorScope with explicit sig, op, items, child_block."""
@@ -85,12 +85,12 @@ class TestScopeModelStructure:
 
 
 # ---------------------------------------------------------------------------
-# KS-8 — Annotations preserved as AST nodes
+# Annotations preserved as AST nodes
 # ---------------------------------------------------------------------------
 
 
 class TestAnnotationsPreserved:
-    """KS-8: Annotations are preserved as AST nodes, not discarded."""
+    """Annotations are preserved as AST nodes, not discarded."""
 
     def test_annotation_in_block_constructs(self) -> None:
         """Annotation is a valid ConstructItem in Block.constructs."""
@@ -124,12 +124,12 @@ class TestAnnotationsPreserved:
 
 
 # ---------------------------------------------------------------------------
-# KS-9 — Inline annotation attachment
+# Inline annotation attachment
 # ---------------------------------------------------------------------------
 
 
 class TestInlineAnnotation:
-    """KS-9: Inline annotations attach to sig-side and node-side."""
+    """Inline annotations attach to sig-side and node-side."""
 
     def test_sig_side_inline_annotation(self) -> None:
         """S(ubject) = M — inline_annotation on sig-side."""
@@ -269,7 +269,7 @@ class TestConstructItemComposition:
         but type checkers will flag:
             x: ConstructItem = Signature("A", 1, 1)  # type error
         This is by design: bare Signatures at construct level are wrapped in
-        an OperatorScope with op=None. See grammar §4: construct ::= block |
+        an OperatorScope with op=None. See grammar: construct ::= block |
         annotation | operator_scope.
         """
         # ConstructItem only includes Annotation, OperatorScope, Block

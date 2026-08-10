@@ -16,14 +16,14 @@ from kalvin.kline import KLine
 class KValue:
     """An objective KLine paired with a sender's significance assessment.
 
-    Two fields, both required (KV-1):
+    Two fields, both required:
 
     - ``kline`` — the objective structure (immutable, shared).
     - ``significance`` — the sender's assessment (a uint64 on the inverted
       significance scale).
 
     Identity is structural: equality and hashing consider *only* ``kline``,
-    ignoring ``significance`` entirely (KV-2, KV-3). Two participants may
+    ignoring ``significance`` entirely. Two participants may
     assess the same KLine differently without producing different KValues.
 
     Note: ``__eq__`` and ``__hash__`` are defined explicitly below because the

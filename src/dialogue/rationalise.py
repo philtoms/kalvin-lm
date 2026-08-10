@@ -301,7 +301,7 @@ class _Turn:
         An identity ask is answered only when the engine has a genuine
         grounding for the signature: a **canon** (teach its parts — S1 when
         every node is grounded, else S2) or a **self-referential identity**
-        (the text-recoverable grounding at S1 — a §11.3 compound-word is one
+        (the text-recoverable grounding at S1 — a compound-word is one
         such, its signature carrying the subwords). A signature merely seen
         (e.g. as a node) is not enough — its reply shape is the author's to
         choose (a CONNOTES gloss, a pedagogical S2), so the ask is left

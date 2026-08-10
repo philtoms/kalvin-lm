@@ -40,7 +40,7 @@ def _make_event(
     proposal: KLine,
     significance: int = _S2_SIGNIFICANCE,
 ) -> RationaliseEvent:
-    """Create a RationaliseEvent with KValue query/proposal (KB-354 shape)."""
+    """Create a RationaliseEvent with KValue query/proposal ( shape)."""
     return RationaliseEvent(
         kind=kind,
         query=KValue(query, significance),
@@ -91,11 +91,11 @@ def _make_reactor(
     return reactor, capture
 
 
-# ── HRNS-35: process_s2_s3 returns True on auto-countersign ────────────
+# ── process_s2_s3 returns True on auto-countersign ────────────
 
 
 class TestProcessS2S3ReturnTrue:
-    """HRNS-35: process_s2_s3 returns True when auto-countersign succeeds."""
+    """process_s2_s3 returns True when auto-countersign succeeds."""
 
     def test_returns_true_on_auto_countersign(self) -> None:
         """When proposal matches an entry, returns True."""
@@ -125,11 +125,11 @@ class TestProcessS2S3ReturnTrue:
         assert cs_msgs[0].message == event.proposal
 
 
-# ── HRNS-36: process_s2_s3 returns False on no match ───────────────────
+# ── process_s2_s3 returns False on no match ───────────────────
 
 
 class TestProcessS2S3ReturnFalse:
-    """HRNS-36: process_s2_s3 returns False when auto-countersign fails."""
+    """process_s2_s3 returns False when auto-countersign fails."""
 
     def test_returns_false_on_no_match(self) -> None:
         """When proposal doesn't match any entry, returns False."""
@@ -144,11 +144,11 @@ class TestProcessS2S3ReturnFalse:
         assert result is False
 
 
-# ── SAC-2: escalation not invoked on auto-countersign ────────────────
+# ── escalation not invoked on auto-countersign ────────────────
 
 
 class TestHandleReactiveNotCalledOnAutoCountersign:
-    """SAC-2: when auto-countersign succeeds, escalation is not invoked."""
+    """when auto-countersign succeeds, escalation is not invoked."""
 
     def test_no_notify_on_auto_countersign(self) -> None:
         """When auto-countersign succeeds, no notify/escalation messages."""
@@ -166,16 +166,16 @@ class TestHandleReactiveNotCalledOnAutoCountersign:
         assert len(notify_msgs) == 0
 
 
-# ── HRNS-38 & HRNS-39: Trainer-level ratify_request conditional ──────────
+# ──  & : Trainer-level ratify_request conditional ──────────
 
 
 @requires_tokenizer_data
 class TestTrainerRatifySuppression:
-    """HRNS-38, HRNS-39: Trainer suppresses ratify_request on auto-countersign."""
+    """Trainer suppresses ratify_request on auto-countersign."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_ratify_suppressed_on_auto_countersign(self, mock_compile: MagicMock) -> None:
-        """HRNS-38: No ratify_request when auto-countersign matches."""
+        """No ratify_request when auto-countersign matches."""
         entry = _make_entry(100, [10, 20])
         mock_compile.return_value = [entry]
 
@@ -205,7 +205,7 @@ class TestTrainerRatifySuppression:
 
     @patch("training.trainer.trainer.compile_source")
     def test_ratify_sent_when_auto_countersign_fails(self, mock_compile: MagicMock) -> None:
-        """HRNS-39: ratify_request sent when auto-countersign does NOT match."""
+        """ratify_request sent when auto-countersign does NOT match."""
         entry = _make_entry(100, [10, 20])
         mock_compile.return_value = [entry]
 
@@ -236,12 +236,12 @@ class TestTrainerRatifySuppression:
         assert payload["query"] is event.query
 
 
-# ── HRNS-40: Event relay regardless of auto-countersign ─────────────────
+# ── Event relay regardless of auto-countersign ─────────────────
 
 
 @requires_tokenizer_data
 class TestEventRelayRegardless:
-    """HRNS-40: Event relay sent to supervisor regardless of auto-countersign."""
+    """Event relay sent to supervisor regardless of auto-countersign."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_relay_on_auto_countersign(self, mock_compile: MagicMock) -> None:

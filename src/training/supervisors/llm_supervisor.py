@@ -6,8 +6,7 @@ peer of the TUI, Slack, and CLI supervisors — same decision contract,
 differing only in the process that produces an answer (an LLM rather than a
 human or pi).
 
-This module owns the LLMSupervisor's reasoning pipeline (the SD-16…21
-contract): the system prompt, prompt construction, the
+This module owns the LLMSupervisor's reasoning pipeline: the system prompt, prompt construction, the
 ``submit_scaffolding`` tool schema, response extraction, ``#``-comment
 sanitisation, and the :class:`Cogitator` entry point. The shared LLM
 transport (the :class:`~training.harness.llm.LLMClient` protocol,
@@ -613,7 +612,7 @@ class LLMSupervisor:
         """Build a CogitationRequest from an enriched ratify_request frame.
 
         Reconstructs the proposal/query as KValues, decompiles them to
-        human-readable KScript for the LLM (RS-2: misfit summaries are
+        human-readable KScript for the LLM (: misfit summaries are
         decompiled, falling back to repr on failure), and lifts the
         curriculum context into the request's structured fields.
         """
@@ -730,7 +729,7 @@ def _to_kvalue(obj: Any) -> KValue:
 
 
 def _display_kline(kline: KLine, tokenizer: Any, signifier: Any) -> str:
-    """Decompile a kline to KScript, falling back to repr on failure (RS-2)."""
+    """Decompile a kline to KScript, falling back to repr on failure."""
     try:
         return kline_display(kline, tokenizer, signifier)
     except Exception:

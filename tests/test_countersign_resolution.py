@@ -45,7 +45,7 @@ pytestmark = requires_tokenizer_data
 
 
 class TestCountersignPairResolution:
-    """CR-1: Countersign pair both resolve S1 via model.is_countersigned()."""
+    """Countersign pair both resolve S1 via model.is_countersigned()."""
 
     def test_countersign_pair_both_resolve_s1(self):
         bus = EventBus()
@@ -86,7 +86,7 @@ class TestCountersignPairResolution:
 
 
 class TestGroundCheckExcludesSTM:
-    """CR-3, CR-4: Model.grounded() checks Frame/LTM only."""
+    """Model.grounded() checks Frame/LTM only."""
 
     def test_grounded_returns_false_for_stm_only(self):
         m = Model()
@@ -109,7 +109,7 @@ class TestGroundCheckExcludesSTM:
 
 
 class TestSelfFilterInCandidates:
-    """CR-5: rationalise() excludes self from candidates."""
+    """rationalise() excludes self from candidates."""
 
     def test_rationalise_excludes_self_from_candidates(self):
         bus = EventBus()
@@ -127,7 +127,7 @@ class TestSelfFilterInCandidates:
         assert result is False
 
 class TestDenoteIsConnoteReversed:
-    """CR-7: Denote gets no special fast path. CR-8: connote through slow path."""
+    """Denote gets no special fast path. Connote through slow path."""
 
     def test_denote_no_special_fast_path(self):
         """Denote {M: S} resolves as S3 (not S1), goes through slow path."""
@@ -157,7 +157,7 @@ class TestDenoteIsConnoteReversed:
         result = a.rationalise(e)
         # Denote gets no special fast path: {M: [S]} is routed against
         # the {M: []} identity (match_count 0) -> S3, so it goes through the
-        # slow path and rationalise returns False (CR-7).
+        # slow path and rationalise returns False.
         assert result is False
 
     def test_connote_goes_through_slow_path(self):

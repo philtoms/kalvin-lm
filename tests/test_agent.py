@@ -40,7 +40,7 @@ def t(bits: int) -> int:
 def _kv(kline: KLine, model: Model) -> KValue:
     """Wrap a kline in a KValue declaring its structurally-correct band.
 
-    Honours kvalue spec KP-1 for hand-built test klines: the producer
+    Honours kvalue spec  for hand-built test klines: the producer
     declares the band the kline resolves to — the structural band
     (sig_level → structural_sig) with the one model-state fork Rationaliser applies:
     a structurally-S2 misfit whose reciprocal countersigner is present in the
@@ -762,7 +762,7 @@ class TestCountersign:
 
     def test_countersign_reciprocal_construction(self):
         """Reciprocal is a KValue carrying SIG_S1; its kline is
-        KLine(signifier.signature_of(kline.nodes), [kline.signature]) (KP-2)."""
+        KLine(signifier.signature_of(kline.nodes), [kline.signature])."""
         a = Rationaliser(adapter=EventBus())
         kline = KLine(0xAB, [10, 20, 30])
         expected_reciprocal_sig = signifier.signature_of([10, 20, 30])
@@ -774,7 +774,7 @@ class TestCountersign:
         assert result is True
         mock_rationalise.assert_called_once()
         reciprocal_value = mock_rationalise.call_args[0][0]
-        # KV-5: countersign reciprocal KValue carries SIG_S1 (== 0xFF).
+        # countersign reciprocal KValue carries SIG_S1 (== 0xFF).
         assert isinstance(reciprocal_value, KValue)
         assert reciprocal_value.significance == SIG_S1
         assert reciprocal_value.kline.signature == expected_reciprocal_sig
@@ -805,8 +805,8 @@ class TestCountersign:
 class TestCascadeWriteMethods:
     """Verify the correct model write method is called at each rationalisation phase."""
 
-    def test_agt9_first_rationalise_add_to_ltm(self):
-        """AGT-9: First rationalise of a new kline calls model.add_to_ltm()."""
+    def test_first_rationalise_add_to_ltm(self):
+        """First rationalise of a new kline calls model.add_to_ltm()."""
         m = Model()
         a = Rationaliser(model=m, adapter=EventBus())
         k = KLine(5, [1, 2])
@@ -815,8 +815,8 @@ class TestCascadeWriteMethods:
         assert result is True
         mock_add_to_ltm.assert_called_once_with(k)
 
-    def test_agt10_duplicate_ground_add_to_stm(self):
-        """AGT-10: Second rationalise of same kline calls model.add_to_stm() and emits ground."""
+    def test_duplicate_ground_add_to_stm(self):
+        """Second rationalise of same kline calls model.add_to_stm() and emits ground."""
         m = Model()
         events = []
         adapter = EventBus()
@@ -832,8 +832,8 @@ class TestCascadeWriteMethods:
         mock_add_to_stm.assert_called_once_with(dup)
         assert any(e.kind == "ground" for e in events)
 
-    def test_agt12_s4_unsigned_add_to_ltm(self):
-        """AGT-12: Empty kline calls model.add_to_ltm()."""
+    def test_s4_unsigned_add_to_ltm(self):
+        """Empty kline calls model.add_to_ltm()."""
         m = Model()
         a = Rationaliser(model=m, adapter=EventBus())
         k = KLine(0, [])
@@ -842,8 +842,8 @@ class TestCascadeWriteMethods:
         assert result is True
         mock_add_to_ltm.assert_called_once_with(k)
 
-    def test_agt14_s1_self_grounded_add_to_ltm(self):
-        """AGT-14: Self-grounded canonical kline calls model.add_to_ltm()."""
+    def test_s1_self_grounded_add_to_ltm(self):
+        """Self-grounded canonical kline calls model.add_to_ltm()."""
         m = Model()
         # Add resolved nodes so the query's non-literal nodes resolve
         m.add_to_ltm(KLine(10, [10]))  # identity (self-referential since 040bc0c)
@@ -857,8 +857,8 @@ class TestCascadeWriteMethods:
         assert result is True
         mock_add_to_ltm.assert_any_call(k)
 
-    def test_agt16_novel_s4_add_to_ltm(self):
-        """AGT-16: No candidates found calls model.add_to_ltm()."""
+    def test_novel_s4_add_to_ltm(self):
+        """No candidates found calls model.add_to_ltm()."""
         m = Model()
         a = Rationaliser(model=m, adapter=EventBus())
         # A unique signature that won't match anything in the model
@@ -869,8 +869,8 @@ class TestCascadeWriteMethods:
         assert result is True
         mock_add_to_ltm.assert_any_call(k)
 
-    def test_agt18_overlap_routing_submits_to_cogitator(self):
-        """AGT-18: overlap routing submits work item to cogitator (no short-circuit)."""
+    def test_overlap_routing_submits_to_cogitator(self):
+        """overlap routing submits work item to cogitator (no short-circuit)."""
         m = Model()
         a = Rationaliser(model=m, adapter=EventBus())
         # Add a candidate that overlaps the query (routes S2)
@@ -896,8 +896,8 @@ class TestCascadeWriteMethods:
         assert submitted[0].candidate is c
         assert submitted[0].level == "S2"
 
-    def test_agt22a_slow_path_query_add_to_stm_only(self):
-        """AGT-22a: S2/S3 routed kline calls model.add_to_stm() only.
+    def test_slow_path_query_add_to_stm_only(self):
+        """S2/S3 routed kline calls model.add_to_stm() only.
 
         Not add_to_frame or add_to_ltm.
         """
@@ -925,8 +925,8 @@ class TestCascadeWriteMethods:
         for call in mock_add_to_frame.call_args_list:
             assert call[0][0] is not q, "add_to_frame should not be called for slow-path query"
 
-    def test_agt29_cogitation_s1_promote_participating(self):
-        """AGT-29: on_s1 with structural S1 calls promote and publishes frame."""
+    def test_cogitation_s1_promote_participating(self):
+        """on_s1 with structural S1 calls promote and publishes frame."""
         m = Model()
         events = []
         adapter = EventBus()
@@ -942,8 +942,8 @@ class TestCascadeWriteMethods:
         # Frame event should be published
         assert any(e.kind == "frame" for e in events)
 
-    def test_agt34_expansion_add_to_frame(self):
-        """AGT-34: on_expansion calls model.add_to_frame(proposal) before publishing."""
+    def test_expansion_add_to_frame(self):
+        """on_expansion calls model.add_to_frame(proposal) before publishing."""
         m = Model()
         events = []
         adapter = EventBus()
@@ -1144,7 +1144,7 @@ class TestAgentTokenizerIntegration:
             path.unlink(missing_ok=True)
 
 
-# ── KValue Exchange Criteria (KV-5, KV-6, KV-13, KV-14, KV-15) ────────
+# ── KValue Exchange Criteria ────────
 #
 # These tests verify the rationalisation pipeline consumes and emits
 # KValues. They use a dummy tokenizer
@@ -1154,7 +1154,7 @@ class TestAgentTokenizerIntegration:
 
 
 class TestKValueExchangeCriteria:
-    """KValue-aware pipeline criteria tests (KV-5/6/13/14/15)."""
+    """KValue-aware pipeline criteria tests."""
 
     def _agent(self, model: Model | None = None, bus: EventBus | None = None) -> Rationaliser:
         """Build a Rationaliser with a dummy tokenizer (rationalise never tokenises)."""
@@ -1165,8 +1165,8 @@ class TestKValueExchangeCriteria:
             signifier=signifier,
         )
 
-    def test_kv5_countersign_reciprocal_carries_sig_s1(self) -> None:
-        """KV-5: countersign builds a reciprocal whose KValue carries SIG_S1 (KP-2)."""
+    def test_countersign_reciprocal_carries_sig_s1(self) -> None:
+        """countersign builds a reciprocal whose KValue carries SIG_S1."""
         a = self._agent()
         kline = KLine(0xFF, [10, 20])
         expected_reciprocal = KLine(signifier.signature_of([10, 20]), [0xFF])
@@ -1181,9 +1181,9 @@ class TestKValueExchangeCriteria:
         assert reciprocal_value.significance == SIG_S1
         assert reciprocal_value.kline == expected_reciprocal
 
-    def test_kv6_cogitation_proposal_carries_computed_significance(self) -> None:
-        """KV-6: a cogitation expansion proposal event's ``proposal.significance``
-        equals the value ``expand()`` computed for that proposal (KP-3), not a
+    def test_cogitation_proposal_carries_computed_significance(self) -> None:
+        """a cogitation expansion proposal event's ``proposal.significance``
+        equals the value ``expand()`` computed for that proposal, not a
         band-representative value.
         """
         from kalvin.expand import expand
@@ -1232,7 +1232,7 @@ class TestKValueExchangeCriteria:
 
         band_reps = {SIG_S1, SIG_S2, SIG_S3, SIG_S4}
         for e in expansion_events:
-            # query is the original inbound KValue (KE-2).
+            # query is the original inbound KValue.
             assert e.query == q_value
             # S1 events (from on_s1 promotion) carry SIG_S1, not a computed
             # expansion value — skip them; this test validates expansion proposals.
@@ -1251,10 +1251,10 @@ class TestKValueExchangeCriteria:
         # At least one proposal carries a computed (non-band) significance.
         assert any(e.proposal.significance not in band_reps for e in expansion_events)
 
-    def test_kv13_fast_path_shares_kline_independent_significances(self) -> None:
-        """KV-13: on the fast path ``event.query.kline is event.proposal.kline``
+    def test_fast_path_shares_kline_independent_significances(self) -> None:
+        """on the fast path ``event.query.kline is event.proposal.kline``
         (one shared immutable KLine, no copy) while the significances are
-        independent assessments (KE-1).
+        independent assessments.
         """
         events: list = []
         bus = EventBus()
@@ -1278,9 +1278,8 @@ class TestKValueExchangeCriteria:
         assert e.proposal.significance == SIG_S4
         assert e.query.significance != e.proposal.significance
 
-    def test_kv14_event_has_no_significance_field(self) -> None:
-        """KV-14: RationaliseEvent exposes no top-level significance field
-        (KE-3); significance lives only on the query/proposal KValues.
+    def test_event_has_no_significance_field(self) -> None:
+        """RationaliseEvent exposes no top-level significance field; significance lives only on the query/proposal KValues.
         """
         q = KValue(KLine(0, []), 0)
         p = KValue(KLine(0, []), 0)
@@ -1291,10 +1290,10 @@ class TestKValueExchangeCriteria:
         with pytest.raises(TypeError):
             RationaliseEvent("ground", q, p, significance=0xFF)  # type: ignore[call-arg]
 
-    def test_kv15_consumer_reads_proposal_significance(self) -> None:
-        """KV-15: a consumer (subscriber) reads ``event.proposal.significance``
+    def test_consumer_reads_proposal_significance(self) -> None:
+        """a consumer (subscriber) reads ``event.proposal.significance``
         (Kalvin's assessment), which carries the Kalvin band value, not the
-        sender's declared assessment (KE-4).
+        sender's declared assessment.
         """
         events: list = []
         bus = EventBus()

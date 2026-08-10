@@ -1,10 +1,10 @@
 """Tests for BindingScope — word binding resolution scope stack.
 
-Covers acceptance criteria KS-23 through KS-31 plus edge cases:
+Covers acceptance criteria  plus edge cases:
 case-insensitive matching, counter exceeded, multiple word lists,
 empty word lists, and error conditions.
 
-Spec reference: §10 (Word Binding Resolution), §10.1 (Rules B1–B4), §10.3 (BindingScope API).
+Spec reference: (Word Binding Resolution), (Rules B1–B4), (BindingScope API).
 """
 
 import pytest
@@ -12,12 +12,12 @@ import pytest
 from ks.binding_scope import BindingScope
 
 # ---------------------------------------------------------------------------
-# KS-23: First-letter matching
+# First-letter matching
 # ---------------------------------------------------------------------------
 
 
 class TestFirstLetterMatching:
-    """KS-23: Words are matched by their first letter (case-insensitive)."""
+    """Words are matched by their first letter (case-insensitive)."""
 
     def test_mary(self):
         bs = BindingScope()
@@ -45,12 +45,12 @@ class TestFirstLetterMatching:
 
 
 # ---------------------------------------------------------------------------
-# KS-24: Occurrence counter disambiguation
+# Occurrence counter disambiguation
 # ---------------------------------------------------------------------------
 
 
 class TestOccurrenceCounter:
-    """KS-24: Ambiguous matches (multiple L-words) use occurrence counter."""
+    """Ambiguous matches (multiple L-words) use occurrence counter."""
 
     def test_first_l_returns_little(self):
         bs = BindingScope()
@@ -77,12 +77,12 @@ class TestOccurrenceCounter:
 
 
 # ---------------------------------------------------------------------------
-# KS-25: Unambiguous match does NOT increment counter (inline bypass property)
+# Unambiguous match does NOT increment counter (inline bypass property)
 # ---------------------------------------------------------------------------
 
 
 class TestInlineBypassProperty:
-    """KS-25: Unambiguous match bypasses counter — same word returned repeatedly."""
+    """Unambiguous match bypasses counter — same word returned repeatedly."""
 
     def test_single_match_returns_same_word_repeatedly(self):
         bs = BindingScope()
@@ -102,12 +102,12 @@ class TestInlineBypassProperty:
 
 
 # ---------------------------------------------------------------------------
-# KS-27: Scope inheritance (inner scope falls through to outer)
+# Scope inheritance (inner scope falls through to outer)
 # ---------------------------------------------------------------------------
 
 
 class TestScopeInheritance:
-    """KS-27: Inner scope without a binding inherits from outer scope."""
+    """Inner scope without a binding inherits from outer scope."""
 
     def test_inner_finds_outer_word(self):
         bs = BindingScope()
@@ -119,12 +119,12 @@ class TestScopeInheritance:
 
 
 # ---------------------------------------------------------------------------
-# KS-28: Scope shadowing
+# Scope shadowing
 # ---------------------------------------------------------------------------
 
 
 class TestScopeShadowing:
-    """KS-28: Inner scope binding shadows outer scope for same character."""
+    """Inner scope binding shadows outer scope for same character."""
 
     def test_inner_shadows_outer(self):
         bs = BindingScope()
@@ -146,12 +146,12 @@ class TestScopeShadowing:
 
 
 # ---------------------------------------------------------------------------
-# KS-29: Counter reset on new scope
+# Counter reset on new scope
 # ---------------------------------------------------------------------------
 
 
 class TestCounterReset:
-    """KS-29: Each new scope has independent counters."""
+    """Each new scope has independent counters."""
 
     def test_new_scope_independent_counter(self):
         bs = BindingScope()
@@ -182,12 +182,12 @@ class TestCounterReset:
 
 
 # ---------------------------------------------------------------------------
-# KS-30: Unbound returns None
+# Unbound returns None
 # ---------------------------------------------------------------------------
 
 
 class TestUnboundReturnsNone:
-    """KS-30: Resolving an unbound character returns None."""
+    """Resolving an unbound character returns None."""
 
     def test_no_match(self):
         bs = BindingScope()
@@ -206,12 +206,12 @@ class TestUnboundReturnsNone:
 
 
 # ---------------------------------------------------------------------------
-# KS-31: Inert annotation (no matching chars → no side effects)
+# Inert annotation (no matching chars → no side effects)
 # ---------------------------------------------------------------------------
 
 
 class TestInertAnnotation:
-    """KS-31: No matching characters causes no side effects on counters."""
+    """No matching characters causes no side effects on counters."""
 
     def test_no_match_no_counter_side_effect(self):
         bs = BindingScope()

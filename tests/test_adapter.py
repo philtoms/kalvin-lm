@@ -1,5 +1,4 @@
-"""Tests for Rationaliser adapter — HRNS-7, HRNS-8, HRNS-9, HRNS-10, HRNS-22.
-
+"""Tests for Rationaliser adapter.
 The adapter bridges the Rationaliser rationalisation pipeline and the role-based
 message bus.  These tests verify compilation, sender-map routing,
 countersign forwarding, error handling, and direct Rationaliser→adapter callbacks.
@@ -91,14 +90,14 @@ class TestMaterialiseKValue:
         """A wire dict without 'significance' raises TypeError (fail-loud).
 
         This is the legacy two-key wire shape ``{signature, nodes}`` — now
-        malformed because significance rides on the KValue (KE-3).
+        malformed because significance rides on the KValue.
         """
         wire = {"signature": 0xABCD, "nodes": [0x1234]}
         with pytest.raises(TypeError):
             _materialise_kvalue(wire)
 
     def test_legacy_kline_wrapped_at_s1(self) -> None:
-        """A legacy bare KLine is wrapped at SIG_S1 (KP-2: countersign is S1)."""
+        """A legacy bare KLine is wrapped at SIG_S1 (: countersign is S1)."""
         kline = KLine(0xABCD, [0x1234])
         result = _materialise_kvalue(kline)
         assert isinstance(result, KValue)
@@ -112,11 +111,11 @@ class TestMaterialiseKValue:
                 _materialise_kvalue(bad)
 
 
-# ── HRNS-7: Submit compiles and submits ──────────────────────────────────
+# ── Submit compiles and submits ──────────────────────────────────
 
 
 class TestHRNS7SubmitCompilesAndSubmits:
-    """HRNS-7: Rationaliser adapter compiles KScript and submits entries one at a time."""
+    """Rationaliser adapter compiles KScript and submits entries one at a time."""
 
     @requires_tokenizer_data
     def test_submit_compiles_and_submits(self) -> None:
@@ -189,11 +188,11 @@ class TestHRNS7SubmitCompilesAndSubmits:
         assert adapter._sender_map[key_b] == "trainer"
 
 
-# ── HRNS-8: Compilation error response ──────────────────────────────────
+# ── Compilation error response ──────────────────────────────────
 
 
 class TestHRNS8CompilationErrorResponse:
-    """HRNS-8: Rationaliser adapter sends compilation errors back to sender."""
+    """Rationaliser adapter sends compilation errors back to sender."""
 
     def test_compilation_error_response(self) -> None:
         """Invalid KScript triggers an error message to the sender."""
@@ -225,12 +224,12 @@ class TestHRNS8CompilationErrorResponse:
         rationaliser.rationalise.assert_not_called()
 
 
-# ── HRNS-9: Sender map response routing ──────────────────────────────
+# ── Sender map response routing ──────────────────────────────
 
 
 @requires_tokenizer_data
 class TestHRNS9SenderMapResponseRouting:
-    """HRNS-9: Rationaliser adapter maintains sender map; responses routed to sender."""
+    """Rationaliser adapter maintains sender map; responses routed to sender."""
 
     def test_sender_map_response_routing(self) -> None:
         """Callback event is routed to the original sender."""
@@ -304,11 +303,11 @@ class TestHRNS9SenderMapResponseRouting:
         assert len(ui_msgs) == 1
 
 
-# ── HRNS-10: Countersign action ─────────────────────────────────────────
+# ── Countersign action ─────────────────────────────────────────
 
 
 class TestHRNS10CountersignAction:
-    """HRNS-10: Rationaliser adapter handles countersign action."""
+    """Rationaliser adapter handles countersign action."""
 
     def test_countersign_live_kvalue(self) -> None:
         """A live KValue payload is passed through unchanged to countersign.
@@ -331,7 +330,7 @@ class TestHRNS10CountersignAction:
     def test_countersign_action(self) -> None:
         """Countersign message triggers rationaliser.countersign with the payload.
 
-        A legacy bare KLine is wrapped at SIG_S1 (KP-2: countersign is an S1
+        A legacy bare KLine is wrapped at SIG_S1 (: countersign is an S1
         ratification) before being handed to ``countersign`` as a KValue.
         """
         bus = MessageBus()
@@ -403,7 +402,7 @@ class TestRationaliseAction:
     """The ``rationalise`` action delivers a participant-constructed KValue
     straight to ``rationaliser.rationalise`` — the path a participant uses to hand
     Kalvin a KValue with its own declared significance (the MVP uses it for a
-    declared-S4 drop signal). Mirrors HRNS-10's countersign shape but routes
+    declared-S4 drop signal). Mirrors 's countersign shape but routes
     to ``rationalise`` instead of ``countersign``.
     """
 
@@ -521,12 +520,12 @@ class TestRationaliseAction:
         assert adapter._sender_map[key] == "trainer"
 
 
-# ── HRNS-22: Rationaliser calls adapter directly ───────────────────────────────
+# ── Rationaliser calls adapter directly ───────────────────────────────
 
 
 @requires_tokenizer_data
 class TestHRNS22RationaliserCallsAdapterDirectly:
-    """HRNS-22: Rationaliser calls adapter directly (no internal EventBus)."""
+    """Rationaliser calls adapter directly (no internal EventBus)."""
 
     def test_rationaliser_calls_adapter_directly(self) -> None:
         """Real Rationaliser with adapter as callback produces events via on_event."""
@@ -760,7 +759,7 @@ class TestLoadAction:
         adapter.bind(rationaliser)
 
         # Teach the agent something so the model is non-empty.
-        # rationalise takes a KValue (KB-354); an empty-nodes KLine is an
+        # rationalise takes a KValue; an empty-nodes KLine is an
         # identity/S4 entry — wrap it at SIG_S1.
         rationaliser.rationalise(KValue(KLine(0xFF, []), SIG_S1))
         old_model = rationaliser._model

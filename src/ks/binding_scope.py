@@ -1,10 +1,9 @@
 """Lightweight scope stack for word binding resolution.
 
-Implements the BindingScope data structure described in spec §10
-(Word Binding Resolution), specifically §10.1 Rule B3 (First-Letter
-Matching) and §10.3 (BindingScope API).
+Implements the BindingScope data structure for Word Binding Resolution:
+First-Letter Matching and the BindingScope API.
 
-Resolution algorithm (§10.1 Rule B3):
+Resolution algorithm:
   - Walk scopes innermost-first (reversed stack).
   - Within each scope, walk word lists most-recent-first (reversed).
   - For each word list, collect words where ``word[0].lower() == char.lower()``.
@@ -131,7 +130,7 @@ class BindingScope:
         iterates through word lists in reverse order (most-recent-first).
         For each word list, collects words whose first letter matches
         ``char`` (case-insensitive).  Uses the scope's occurrence counter
-        for disambiguation per §10.1 Rule B3.
+        for disambiguation.
 
         Args:
             char: Single character to resolve.

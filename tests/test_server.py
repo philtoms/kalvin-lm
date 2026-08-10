@@ -1,4 +1,4 @@
-"""Tests for the harness server (HRNS-5, HRNS-6).
+"""Tests for the harness server.
 
 Covers config loading, embedded participant setup, WebSocket client
 connections, config validation, and the participant registry.
@@ -170,7 +170,7 @@ class TestConfigValidation:
 
 
 class TestLoadEmbeddedParticipants:
-    """HRNS-5: Harness loads embedded participants from config file."""
+    """Harness loads embedded participants from config file."""
 
     def test_load_embedded_participants(self, tmp_path: Path) -> None:
         config_data = {
@@ -282,7 +282,7 @@ class TestUnregisteredEmbeddedClass:
 
 
 class TestWebSocketClientConnect:
-    """HRNS-6: Harness accepts WebSocket client connections."""
+    """Harness accepts WebSocket client connections."""
 
     @pytest.mark.asyncio
     async def test_websocket_client_connect(self, tmp_path: Path) -> None:

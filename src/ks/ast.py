@@ -41,19 +41,19 @@ class Annotation:
 
 @dataclass
 class OperatorScope:
-    """A scope created by an operator boundary (§3).
+    """A scope created by an operator boundary.
 
-    Scopes are identified by operator boundaries (spec §3).
+    Scopes are identified by operator boundaries.
 
     Fields:
         sig: The identifier preceding the operator (the scope's signature).
         op: The operator token type, or None for bare (unsigned) signatures.
         items: Nodes and child constructs within this scope. Typed as
             ScopeItem (Signature | Annotation | OperatorScope) to accommodate
-            bare Signature nodes per grammar §4: item ::= sig | annotation | operator_scope.
+            bare Signature nodes: item ::= sig | annotation | operator_scope.
             A Signature item may carry its own ``inline_annotation`` (bound
             unconditionally to that item per Word Binding).
-        child_block: Indented child scope extending this operator's scope (§3 Rule S4).
+        child_block: Indented child scope extending this operator's scope.
         inline_annotation: Annotation attached to sig-side, e.g. S(ubject) = M.
             A top-level (signature-prefix) annotation: binds fill-if-empty per
             Word Binding (never overriding an outer binding on the same char).
@@ -88,11 +88,11 @@ class KScriptFile:
 
 ConstructItem: TypeAlias = "Annotation | OperatorScope | Block"
 """Top-level construct types — what can appear in Block.constructs and KScriptFile.constructs.
-Per grammar §4: construct ::= block | annotation | operator_scope.
+construct ::= block | annotation | operator_scope.
 """
 
 ScopeItem: TypeAlias = "Signature | Annotation | OperatorScope"
 """Items within an OperatorScope — what can appear in OperatorScope.items.
-Per grammar §4: item ::= sig | annotation | operator_scope.
+item ::= sig | annotation | operator_scope.
 Note: Block is NOT a ScopeItem. Indented content goes to child_block, not items.
 """

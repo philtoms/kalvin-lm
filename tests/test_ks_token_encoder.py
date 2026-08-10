@@ -50,7 +50,7 @@ def dev_encoder(tz: NLPTokenizer) -> TokenEncoder:
 class MockMultiTokenTokenizer(KTokenizer):
     """Mock tokenizer that returns multiple tokens for certain words.
 
-    Used to test multi-token BPE MTS (§11.4) without depending on the exact
+    Used to test multi-token BPE MTS without depending on the exact
     BPE tokenisation of any particular word.
     """
 
@@ -80,7 +80,7 @@ class MockMultiTokenTokenizer(KTokenizer):
         return None
 
 
-# ── KS-32: unresolved characters encode as typed nodes ──────────────
+# ── unresolved characters encode as typed nodes ──────────────
 
 
 class TestUnresolvedCharEncoding:
@@ -105,7 +105,7 @@ class TestUnresolvedCharEncoding:
         assert sig != 67108864  # not the legacy character-bit encoding
 
 
-# ── KS-34: nodes always list ─────────────────────────────────────────
+# ── nodes always list ─────────────────────────────────────────
 
 
 class TestNodesAlwaysList:
@@ -248,7 +248,7 @@ class TestFullUint64:
         assert results[-1].kline.signature == expected
 
 
-# ── Multi-token word MTS (§11.4) ─────────────────────────────────────
+# ── Multi-token word MTS ─────────────────────────────────────
 
 
 class TestMultiTokenMTS:
@@ -263,7 +263,7 @@ class TestMultiTokenMTS:
 
         compound = signifier.signature_of([10, 20])
 
-        # §11.3 emits only the self-referential identity {compound:[compound]}
+        #  emits only the self-referential identity {compound:[compound]}
         # (S1) — no per-subword component entries.
         identity_entries = [
             r for r in results
@@ -314,7 +314,7 @@ class TestMultiTokenMTS:
         """Compiled source precedes any MTS entries in the output.
 
         A source entry (CONNOTES) whose node triggers BPE MTS is emitted
-        first; its §11.3 MTS expansion (subword identities + compound-word
+        first; its MTS expansion (subword identities + compound-word
         identity) follows. This is the output-ordering contract: source
         before MTS.
         """
@@ -325,7 +325,7 @@ class TestMultiTokenMTS:
 
         # Source entry is first
         assert results[0].kline.dbg.op == "CONNOTES"
-        # All remaining entries are §11.3 decomposition: subword UNKNOWN or
+        # All remaining entries are decomposition: subword UNKNOWN or
         # the compound self-ref identity (op IDENTITY).
         for r in results[1:]:
             assert r.kline.dbg.op in ("UNKNOWN", "IDENTITY")

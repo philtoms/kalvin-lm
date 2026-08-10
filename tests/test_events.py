@@ -17,7 +17,7 @@ class TestRationaliseEvent:
         assert e.kind == "frame"
         assert e.query is q
         assert e.proposal is p
-        # Significance lives on the KValues, not the event (KE-3).
+        # Significance lives on the KValues, not the event.
         assert e.proposal.significance == 42
         assert e.query.significance == 0x10
 

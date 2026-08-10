@@ -1,4 +1,4 @@
-"""Tests for KValue — structural equality and hashing (KV-1, KV-2, KV-3)."""
+"""Tests for KValue — structural equality and hashing."""
 
 from dataclasses import FrozenInstanceError
 
@@ -9,7 +9,7 @@ from kalvin.kvalue import KValue
 
 
 class TestKValueConstruction:
-    """KV-1 — Construction requires both kline and significance (no default)."""
+    """Construction requires both kline and significance (no default)."""
 
     def test_both_fields_stored(self):
         kl = KLine(5, [1, 2])
@@ -34,7 +34,7 @@ class TestKValueConstruction:
 
 
 class TestKValueEquality:
-    """KV-2 — Equality ignores significance (compares kline only)."""
+    """Equality ignores significance (compares kline only)."""
 
     def test_same_kline_different_significance_equal(self):
         kl = KLine(5, [1, 2])
@@ -79,7 +79,7 @@ class TestKValueEquality:
 
 
 class TestKValueHash:
-    """KV-3 — Hash ignores significance (hashes over kline only)."""
+    """Hash ignores significance (hashes over kline only)."""
 
     def test_same_kline_different_significance_equal_hash(self):
         kl = KLine(5, [1, 2])

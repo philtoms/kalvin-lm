@@ -1,6 +1,6 @@
 """KScript v3 parser — transforms a token stream into a scope-model AST.
 
-Grammar (spec §4)::
+Grammar::
 
     script          ::= construct*
     construct       ::= block | annotation | operator_scope
@@ -12,14 +12,14 @@ Grammar (spec §4)::
     sig             ::= SIGNATURE
     operator        ::= COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES
 
-Scope rules enforced (spec §3):
+Scope rules enforced:
 
     S2  Preceding identifier is the signature.
     S3  Succeeding identifiers are nodes (items).
     S4  INDENT creates child scope → stored in OperatorScope.child_block.
     S5  DEDENT closes child scope.
 
-Inline annotations (spec §5.1):
+Inline annotations:
 
     Sig-side   S(ubject) = M   →  OperatorScope.inline_annotation
     Node-side  A = D(et)       →  Signature.inline_annotation (per-item)

@@ -1,46 +1,4 @@
-"""Integration tests for the KScript v3 pipeline (src/ks/).
-
-This module covers the full pipeline behaviour:
-
-    KS-1   — Token types recognized                          TestTokenType
-    KS-1   — Token types recognized (also in TestLexer)      TestLexer
-    KS-2   — Multi-char operator priority                    TestLexer
-    KS-3   — BPE annotations                                 TestLexer
-    KS-4   — INDENT/DEDENT tracking                          TestLexer
-    KS-5   — Edge cases (empty, whitespace, errors)          TestLexer
-    KS-6   — AST scope model                                 TestParserAST
-    KS-7   — Block parsing                                   TestParserAST
-    KS-8   — Annotations preserved                           TestParserAST
-    KS-9   — Inline annotation attachment                    TestParserAST
-    KS-10  — Empty source                                    TestParserAST
-    KS-11  — COUNTERSIGNS per-item                            TestEmitterOperators
-    KS-12  — DENOTES per-item reversed                     TestEmitterOperators
-    KS-13  — CONNOTES per-item                              TestEmitterOperators
-    KS-14  — CANONIZES aggregates                             TestEmitterOperators
-    KS-15  — Operator chain                                  TestEmitterOperators
-    KS-16  — Indent extends scope                            TestEmitterOperators
-    KS-17  — DEDENT returns to parent                        TestEmitterOperators
-    KS-18  — Non-CANONIZES with indent                        TestEmitterOperators
-    KS-19  — MTS expansion                                   TestEmitterMTS
-    KS-20  — No MTS for single-char                          TestEmitterMTS
-    KS-21  — MTS on node side                                TestEmitterMTS
-    KS-22  — Node count invariant                            TestEmitterMTS
-    KS-23  — First-letter matching                           TestBindingScope
-    KS-24  — Occurrence counter                              TestBindingScope
-    KS-25  — Inline binding bypass                           TestEmitterOperators
-    KS-26  — Rule B4 override                                TestEmitterBinding
-    KS-27  — Scope inheritance                               TestBindingScope
-    KS-28  — Scope shadowing                                 TestBindingScope
-    KS-29  — Counter reset                                   TestBindingScope
-    KS-30  — Unresolved identifier (no fallback state)     TestBindingScope
-    KS-31  — Inert annotation                                TestBindingScope
-    KS-32  — Unresolved char typed-node encoding             TestEncoding
-    KS-33  — Self-identity                                   TestEmitterOperators
-    KS-34  — Nodes always a list                             TestStructure
-    KS-35  — §14.11 complex nested (master regression)       TestComplexExamples
-    KS-36  — §14.12 Word-bound example                        TestComplexExamples
-    KS-37  — Uniform tokenizer integration                   TestComplexExamples
-"""
+"""Integration tests for the KScript v3 pipeline (src/ks/)."""
 
 from __future__ import annotations
 
@@ -140,58 +98,12 @@ def has_entry(
 
 
 # ---------------------------------------------------------------------------
-# Spec coverage audit comment
-# ---------------------------------------------------------------------------
-# KS-1  : test_token_type_members, test_ks1_token_recognition
-# KS-2  : test_ks2_multi_char_operator_priority
-# KS-3  : test_ks3_bpe_annotations, test_ks3_nested_parens
-# KS-4  : test_ks4_indent_dedent
-# KS-5  : test_ks5_empty_input, test_ks5_whitespace_only, test_ks5_unknown_char,
-#          test_ks5_angle_bracket_error
-# KS-6  : test_ks6_scope_model_ast
-# KS-7  : test_ks7_block_parsing
-# KS-8  : test_ks8_annotations_preserved
-# KS-9  : test_ks9_sig_inline_annotation, test_ks9_node_inline_annotation
-# KS-10 : test_ks10_empty_source
-# KS-11 : test_ks11_countersign_per_item
-# KS-12 : test_ks12_denote_per_item_reversed
-# KS-13 : test_ks13_connote_per_item
-# KS-14 : test_ks14_canonize_aggregates
-# KS-15 : test_ks15_operator_chain
-# KS-16 : test_ks16_indent_extends_scope
-# KS-17 : test_ks17_dedent_returns_to_parent
-# KS-18 : test_ks18_non_canonize_with_indent
-# KS-19 : test_ks19_mts_expansion
-# KS-20 : test_ks20_no_mts_for_single_char
-# KS-21 : test_ks21_mts_on_node_side
-# KS-22 : test_ks22_node_count_invariant
-# KS-23 : test_ks23_first_letter_matching
-# KS-24 : test_ks24_occurrence_counter
-# KS-25 : test_ks25_inline_binding_bypass
-# KS-26 : test_ks26_rule_b4_override
-# KS-27 : test_ks27_scope_inheritance
-# KS-28 : test_ks28_scope_shadowing
-# KS-29 : test_ks29_counter_reset
-# KS-30 : test_ks30_unresolved_identifier
-# KS-31 : test_ks31_inert_annotation
-# KS-32 : test_ks32_unresolved_char_typed_encoding
-# KS-33 : test_ks33_self_identity
-# KS-34 : test_ks34_nodes_always_list_canonize, test_ks34_nodes_always_list_unsigned
-# KS-35 : test_ks35_complex_nested_master_regression
-# KS-36 : test_ks36_word_bound_example
-# KS-37 : test_ks37_uniform_tokenizer
-
-
-# ===================================================================
-# TestTokenType — KS-1 (token types and Token dataclass)
-# ===================================================================
-
 
 class TestTokenType:
-    """KS-1: All token types recognized; Token is a frozen dataclass."""
+    """All token types recognized; Token is a frozen dataclass."""
 
     def test_token_type_members(self):
-        """KS-1: All 10 TokenType members exist."""
+        """All 10 TokenType members exist."""
         expected = {
             "COUNTERSIGNS",
             "CANONIZES",
@@ -208,15 +120,15 @@ class TestTokenType:
         assert actual == expected
 
     def test_token_is_frozen_dataclass(self):
-        """KS-1: Token is a frozen dataclass with type, value, line, column."""
+        """Token is a frozen dataclass with type, value, line, column."""
         assert dataclasses.is_dataclass(Token)
         assert getattr(Token, "__dataclass_params__").frozen is True
 
         fields = {f.name for f in dataclasses.fields(Token)}
         assert fields == {"type", "value", "line", "column"}
 
-    def test_ks1_token_recognition(self):
-        """KS-1: Lexer produces correct token types for A == B."""
+    def test_token_recognition(self):
+        """Lexer produces correct token types for A == B."""
         tokens = Lexer("A == B").tokenize()
         # Expect: SIGNATURE("A"), COUNTERSIGNS("=="), SIGNATURE("B"), EOF
         types = [t.type for t in tokens]
@@ -227,19 +139,12 @@ class TestTokenType:
             TokenType.EOF,
         ]
 
-
-# ===================================================================
-# TestLexer — KS-1 through KS-5
-# ===================================================================
-
-
 class TestLexer:
-    """Lexer tests covering KS-1 through KS-5."""
 
-    # -- KS-2: Multi-char operator priority --------------------------------
+    # -- Multi-char operator priority --------------------------------
 
-    def test_ks2_multi_char_operator_priority_eq(self):
-        """KS-2: '==' is lexed as COUNTERSIGNS, not two DENOTES tokens."""
+    def test_multi_char_operator_priority_eq(self):
+        """'==' is lexed as COUNTERSIGNS, not two DENOTES tokens."""
         tokens = Lexer("A == B").tokenize()
         types = [t.type for t in tokens]
         assert types == [
@@ -251,8 +156,8 @@ class TestLexer:
         # Confirm no DENOTES tokens
         assert TokenType.DENOTES not in types
 
-    def test_ks2_multi_char_operator_priority_arrow(self):
-        """KS-2: '=>' is lexed as CANONIZES, not DENOTES + CONNOTES."""
+    def test_multi_char_operator_priority_arrow(self):
+        """'=>' is lexed as CANONIZES, not DENOTES + CONNOTES."""
         tokens = Lexer("A => B").tokenize()
         types = [t.type for t in tokens]
         assert types == [
@@ -264,27 +169,27 @@ class TestLexer:
         assert TokenType.DENOTES not in types
         assert TokenType.CONNOTES not in types
 
-    # -- KS-3: BPE annotations --------------------------------------------
+    # -- BPE annotations --------------------------------------------
 
-    def test_ks3_bpe_annotations(self):
-        """KS-3: '(hello world)' produces a single ANNOTATION token."""
+    def test_bpe_annotations(self):
+        """'(hello world)' produces a single ANNOTATION token."""
         tokens = Lexer("(hello world)").tokenize()
         # Expect: ANNOTATION("(hello world)"), EOF
         assert tokens[0].type == TokenType.ANNOTATION
         assert tokens[0].value == "(hello world)"
         assert tokens[1].type == TokenType.EOF
 
-    def test_ks3_nested_parens(self):
-        """KS-3: Nested parens produce a single ANNOTATION preserving content."""
+    def test_nested_parens(self):
+        """Nested parens produce a single ANNOTATION preserving content."""
         tokens = Lexer("(a (b c) d)").tokenize()
         assert tokens[0].type == TokenType.ANNOTATION
         assert tokens[0].value == "(a (b c) d)"
         assert tokens[1].type == TokenType.EOF
 
-    # -- KS-4: INDENT/DEDENT ----------------------------------------------
+    # -- INDENT/DEDENT ----------------------------------------------
 
-    def test_ks4_indent_dedent(self):
-        """KS-4: Indentation produces INDENT and DEDENT tokens."""
+    def test_indent_dedent(self):
+        """Indentation produces INDENT and DEDENT tokens."""
         tokens = Lexer("A\n  B\nC").tokenize()
         types = [t.type for t in tokens]
         # Expect: SIGNATURE(A), NEWLINE, INDENT, SIGNATURE(B), NEWLINE, DEDENT, SIGNATURE(C), EOF
@@ -305,46 +210,39 @@ class TestLexer:
         idx_dedent = next(i for i, t in enumerate(tokens) if t.type == TokenType.DEDENT)
         assert idx_dedent < idx_c
 
-    def test_ks4_dedent_at_eof(self):
-        """KS-4: Remaining indent levels produce DEDENT tokens at EOF."""
+    def test_dedent_at_eof(self):
+        """Remaining indent levels produce DEDENT tokens at EOF."""
         tokens = Lexer("A\n  B").tokenize()
         types = [t.type for t in tokens]
         # INDENT for B, then DEDENT at EOF
         assert types.count(TokenType.INDENT) == 1
         assert types.count(TokenType.DEDENT) == 1
 
-    # -- KS-5: Edge cases -------------------------------------------------
+    # -- Edge cases -------------------------------------------------
 
-    def test_ks5_empty_input(self):
-        """KS-5: Empty input produces only EOF."""
+    def test_empty_input(self):
+        """Empty input produces only EOF."""
         tokens = Lexer("").tokenize()
         assert len(tokens) == 1
         assert tokens[0].type == TokenType.EOF
 
-    def test_ks5_whitespace_only(self):
-        """KS-5: Whitespace-only input produces only EOF (per spec)."""
+    def test_whitespace_only(self):
+        """Whitespace-only input produces only EOF (per spec)."""
         tokens = Lexer("   ").tokenize()
         assert len(tokens) == 1
         assert tokens[0].type == TokenType.EOF
 
-    def test_ks5_angle_bracket_error(self):
-        """KS-5: '<' raises LexerError."""
+    def test_angle_bracket_error(self):
+        """'<' raises LexerError."""
         with pytest.raises(LexerError):
             Lexer("A < B").tokenize()
 
-    def test_ks5_unknown_char_error(self):
-        """KS-5: Unknown characters raise LexerError."""
+    def test_unknown_char_error(self):
+        """Unknown characters raise LexerError."""
         with pytest.raises(LexerError):
             Lexer("A @ B").tokenize()
 
-
-# ===================================================================
-# TestParserAST — KS-6 through KS-10
-# ===================================================================
-
-
 class TestParserAST:
-    """Parser/AST tests covering KS-6 through KS-10."""
 
     @staticmethod
     def _parse(source: str) -> KScriptFile:
@@ -352,10 +250,10 @@ class TestParserAST:
         tokens = Lexer(source).tokenize()
         return Parser(tokens).parse()
 
-    # -- KS-6: Scope model AST -------------------------------------------
+    # -- Scope model AST -------------------------------------------
 
-    def test_ks6_scope_model_ast(self):
-        """KS-6: Parse 'A == B > C = D' into chained OperatorScope nodes."""
+    def test_scope_model_ast(self):
+        """Parse 'A == B > C = D' into chained OperatorScope nodes."""
         ast = self._parse("A == B > C = D")
         assert len(ast.constructs) == 1
 
@@ -380,10 +278,10 @@ class TestParserAST:
         assert deepest.sig.id == "C"
         assert deepest.op == TokenType.DENOTES
 
-    # -- KS-7: Block parsing ---------------------------------------------
+    # -- Block parsing ---------------------------------------------
 
-    def test_ks7_block_parsing(self):
-        """KS-7: Indented source creates Block nodes with correct constructs."""
+    def test_block_parsing(self):
+        """Indented source creates Block nodes with correct constructs."""
         source = "A =>\n  B\n  C"
         ast = self._parse(source)
 
@@ -396,20 +294,20 @@ class TestParserAST:
         assert isinstance(scope.child_block, Block)
         assert len(scope.child_block.constructs) == 2
 
-    # -- KS-8: Annotations preserved -------------------------------------
+    # -- Annotations preserved -------------------------------------
 
-    def test_ks8_annotations_preserved(self):
-        """KS-8: '(Mary Had)' produces an Annotation node in the AST."""
+    def test_annotations_preserved(self):
+        """'(Mary Had)' produces an Annotation node in the AST."""
         ast = self._parse("(Mary Had)")
         assert len(ast.constructs) == 1
         ann = ast.constructs[0]
         assert isinstance(ann, Annotation)
         assert ann.text == "(Mary Had)"
 
-    # -- KS-9: Inline annotations ----------------------------------------
+    # -- Inline annotations ----------------------------------------
 
-    def test_ks9_sig_inline_annotation(self):
-        """KS-9: 'S(ubject) = M' attaches inline_annotation to scope."""
+    def test_sig_inline_annotation(self):
+        """'S(ubject) = M' attaches inline_annotation to scope."""
         ast = self._parse("S(ubject) = M")
         scope = ast.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -417,8 +315,8 @@ class TestParserAST:
         assert scope.inline_annotation is not None
         assert scope.inline_annotation.text == "(ubject)"
 
-    def test_ks9_node_inline_annotation(self):
-        """KS-9: 'A = D(et)' attaches the inline annotation to the D item."""
+    def test_node_inline_annotation(self):
+        """'A = D(et)' attaches the inline annotation to the D item."""
         ast = self._parse("A = D(et)")
         scope = ast.constructs[0]
         assert isinstance(scope, OperatorScope)
@@ -429,27 +327,20 @@ class TestParserAST:
         assert d_item.inline_annotation is not None
         assert d_item.inline_annotation.text == "(et)"
 
-    # -- KS-10: Empty source ---------------------------------------------
+    # -- Empty source ---------------------------------------------
 
-    def test_ks10_empty_source(self):
-        """KS-10: Empty source produces empty script (no error)."""
+    def test_empty_source(self):
+        """Empty source produces empty script (no error)."""
         ast = self._parse("")
         assert isinstance(ast, KScriptFile)
         assert ast.constructs == []
 
-
-# ===================================================================
-# TestBindingScope — KS-23, KS-24, KS-27 through KS-31
-# ===================================================================
-
-
 class TestBindingScope:
-    """BindingScope unit tests covering KS-23, KS-24, KS-27–KS-31."""
 
-    # -- KS-23: First-letter matching ------------------------------------
+    # -- First-letter matching ------------------------------------
 
-    def test_ks23_first_letter_matching(self):
-        """KS-23: resolve('M') → 'Mary', resolve('H') → 'Had', resolve('A') → 'A'."""
+    def test_first_letter_matching(self):
+        """resolve('M') → 'Mary', resolve('H') → 'Had', resolve('A') → 'A'."""
         scope = BindingScope()
         scope.push_scope()
         scope.add_words(["Mary", "Had", "A", "Little", "Lamb"])
@@ -458,10 +349,10 @@ class TestBindingScope:
         assert scope.resolve("H") == "Had"
         assert scope.resolve("A") == "A"
 
-    # -- KS-24: Occurrence counter ---------------------------------------
+    # -- Occurrence counter ---------------------------------------
 
-    def test_ks24_occurrence_counter(self):
-        """KS-24: First resolve('L') → 'Little', second → 'Lamb'."""
+    def test_occurrence_counter(self):
+        """First resolve('L') → 'Little', second → 'Lamb'."""
         scope = BindingScope()
         scope.push_scope()
         scope.add_words(["Little", "Lamb"])
@@ -469,10 +360,10 @@ class TestBindingScope:
         assert scope.resolve("L") == "Little"
         assert scope.resolve("L") == "Lamb"
 
-    # -- KS-27: Scope inheritance ----------------------------------------
+    # -- Scope inheritance ----------------------------------------
 
-    def test_ks27_scope_inheritance(self):
-        """KS-27: Inner scope with no matching words falls through to outer."""
+    def test_scope_inheritance(self):
+        """Inner scope with no matching words falls through to outer."""
         scope = BindingScope()
         scope.push_scope()  # outer
         scope.add_words(["Alpha"])
@@ -480,10 +371,10 @@ class TestBindingScope:
 
         assert scope.resolve("A") == "Alpha"
 
-    # -- KS-28: Scope shadowing ------------------------------------------
+    # -- Scope shadowing ------------------------------------------
 
-    def test_ks28_scope_shadowing(self):
-        """KS-28: Inner scope binding shadows outer for same character."""
+    def test_scope_shadowing(self):
+        """Inner scope binding shadows outer for same character."""
         scope = BindingScope()
         scope.push_scope()  # outer
         scope.add_words(["Alpha"])
@@ -492,10 +383,10 @@ class TestBindingScope:
 
         assert scope.resolve("A") == "Another"
 
-    # -- KS-29: Counter reset --------------------------------------------
+    # -- Counter reset --------------------------------------------
 
-    def test_ks29_counter_reset(self):
-        """KS-29: Pushing a new scope resets counters for resolution."""
+    def test_counter_reset(self):
+        """Pushing a new scope resets counters for resolution."""
         scope = BindingScope()
         scope.push_scope()  # scope 1
         scope.add_words(["Little", "Lamb"])
@@ -506,43 +397,36 @@ class TestBindingScope:
         # → "Little" again (not "Lamb")
         assert scope.resolve("L") == "Little"
 
-    # -- KS-30: Unresolved identifier (no fallback state) -------------
+    # -- Unresolved identifier (no fallback state) -------------
 
-    def test_ks30_unresolved_identifier(self):
-        """KS-30: An unresolved identifier (BindingScope.resolve returns None)
+    def test_unresolved_identifier(self):
+        """An unresolved identifier (BindingScope.resolve returns None)
         is encoded as its own raw BPE token — no special fallback state.
 
         At the BindingScope level, resolve('Z') with no matching words
         returns None. The encoding behavior (single typed node, same
-        path as any resolved character) is covered by KS-32.
+        path as any resolved character) is covered by .
         """
         scope = BindingScope()
         scope.push_scope()
         scope.add_words(["Alpha", "Beta"])
         assert scope.resolve("Z") is None
 
-    # -- KS-31: Inert annotation -----------------------------------------
+    # -- Inert annotation -----------------------------------------
 
-    def test_ks31_inert_annotation(self):
-        """KS-31: Words with no matching characters have no effect."""
+    def test_inert_annotation(self):
+        """Words with no matching characters have no effect."""
         scope = BindingScope()
         scope.push_scope()
         scope.add_words(["Xray", "Yankee"])
         assert scope.resolve("M") is None
 
-
-# ===================================================================
-# TestEmitterOperators — KS-11 through KS-18, KS-25, KS-33
-# ===================================================================
-
-
 class TestEmitterOperators:
-    """Emitter operator tests covering KS-11–KS-18, KS-25, KS-33."""
 
-    # -- KS-11: COUNTERSIGNS per-item -------------------------------------
+    # -- COUNTERSIGNS per-item -------------------------------------
 
-    def test_ks11_countersign_per_item(self):
-        """KS-11: A == B C → {A:[B]}, {B:[A]}, {A:[C]}, {C:[A]} COUNTERSIGNS."""
+    def test_countersign_per_item(self):
+        """A == B C → {A:[B]}, {B:[A]}, {A:[C]}, {C:[A]} COUNTERSIGNS."""
         entries = compile_dev("A == B C")
         assert len(entries) == 4
         assert all(e.kline.dbg.op == "COUNTERSIGNS" for e in entries)
@@ -551,65 +435,65 @@ class TestEmitterOperators:
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["C"])
         assert has_entry(entries, sig="C", op="COUNTERSIGNS", nodes=["A"])
 
-    def test_ks11_countersign_entries_present(self):
-        """KS-11 (relaxed): The 4 COUNTERSIGNS pairs are present regardless of extras."""
+    def test_countersign_entries_present(self):
+        """relaxed): The 4 COUNTERSIGNS pairs are present regardless of extras."""
         entries = compile_dev("A == B C")
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
         assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["C"])
         assert has_entry(entries, sig="C", op="COUNTERSIGNS", nodes=["A"])
 
-    # -- KS-12: DENOTES per-item reversed -------------------------------
+    # -- DENOTES per-item reversed -------------------------------
 
-    def test_ks12_denote_per_item_reversed(self):
-        """KS-12: A = B C → {B:[A]}, {C:[A]} DENOTES."""
+    def test_denote_per_item_reversed(self):
+        """A = B C → {B:[A]}, {C:[A]} DENOTES."""
         entries = compile_dev("A = B C")
         assert len(entries) == 2
         assert all(e.kline.dbg.op == "DENOTES" for e in entries)
         assert has_entry(entries, sig="B", op="DENOTES", nodes=["A"])
         assert has_entry(entries, sig="C", op="DENOTES", nodes=["A"])
 
-    def test_ks12_denote_entries_present(self):
-        """KS-12 (relaxed): The 2 DENOTES entries are present."""
+    def test_denote_entries_present(self):
+        """relaxed): The 2 DENOTES entries are present."""
         entries = compile_dev("A = B C")
         assert has_entry(entries, sig="B", op="DENOTES", nodes=["A"])
         assert has_entry(entries, sig="C", op="DENOTES", nodes=["A"])
 
-    # -- KS-13: CONNOTES per-item ----------------------------------------
+    # -- CONNOTES per-item ----------------------------------------
 
-    def test_ks13_connote_per_item(self):
-        """KS-13: A > B C → {A:[B]}, {A:[C]} CONNOTES."""
+    def test_connote_per_item(self):
+        """A > B C → {A:[B]}, {A:[C]} CONNOTES."""
         entries = compile_dev("A > B C")
         assert len(entries) == 2
         assert all(e.kline.dbg.op == "CONNOTES" for e in entries)
         assert has_entry(entries, sig="A", op="CONNOTES", nodes=["B"])
         assert has_entry(entries, sig="A", op="CONNOTES", nodes=["C"])
 
-    def test_ks13_connote_entries_present(self):
-        """KS-13 (relaxed): The 2 CONNOTES entries are present."""
+    def test_connote_entries_present(self):
+        """relaxed): The 2 CONNOTES entries are present."""
         entries = compile_dev("A > B C")
         assert has_entry(entries, sig="A", op="CONNOTES", nodes=["B"])
         assert has_entry(entries, sig="A", op="CONNOTES", nodes=["C"])
 
-    # -- KS-14: CANONIZES aggregates ---------------------------------------
+    # -- CANONIZES aggregates ---------------------------------------
 
-    def test_ks14_canonize_aggregates(self):
-        """KS-14: A => B C D → {A:[B,C,D]} CANONIZES."""
+    def test_canonize_aggregates(self):
+        """A => B C D → {A:[B,C,D]} CANONIZES."""
         entries = compile_dev("A => B C D")
         assert len(entries) == 1
         assert entries[0].kline.dbg.op == "CANONIZES"
         assert _sig_str(entries[0]) == "A"
         assert _node_strs(entries[0]) == ["B", "C", "D"]
 
-    def test_ks14_canonize_entry_present(self):
-        """KS-14 (relaxed): The CANONIZES aggregate entry is present."""
+    def test_canonize_entry_present(self):
+        """relaxed): The CANONIZES aggregate entry is present."""
         entries = compile_dev("A => B C D")
         assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C", "D"])
 
-    # -- KS-15: Operator chain -------------------------------------------
+    # -- Operator chain -------------------------------------------
 
-    def test_ks15_operator_chain(self):
-        """KS-15: A == B > C = D → entries per §14.7 table."""
+    def test_operator_chain(self):
+        """A == B > C = D → entries per table."""
         entries = compile_dev("A == B > C = D")
         assert len(entries) == 4
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
@@ -617,27 +501,27 @@ class TestEmitterOperators:
         assert has_entry(entries, sig="B", op="CONNOTES", nodes=["C"])
         assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
 
-    def test_ks15_operator_chain_entries_present(self):
-        """KS-15 (relaxed): The 4 operator chain entries are present."""
+    def test_operator_chain_entries_present(self):
+        """relaxed): The 4 operator chain entries are present."""
         entries = compile_dev("A == B > C = D")
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
         assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
         assert has_entry(entries, sig="B", op="CONNOTES", nodes=["C"])
         assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
 
-    # -- KS-16: Indent extends scope --------------------------------------
+    # -- Indent extends scope --------------------------------------
 
-    def test_ks16_indent_extends_scope(self):
-        """KS-16: Indented items under CANONIZES belong to parent's node list."""
+    def test_indent_extends_scope(self):
+        """Indented items under CANONIZES belong to parent's node list."""
         source = "A =>\n  B\n  C"
         entries = compile_dev(source)
         # CANONIZES should have B and C as nodes
         assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
 
-    # -- KS-17: DEDENT returns to parent ----------------------------------
+    # -- DEDENT returns to parent ----------------------------------
 
-    def test_ks17_dedent_returns_to_parent(self):
-        """KS-17: After dedent, subsequent constructs compile at parent level."""
+    def test_dedent_returns_to_parent(self):
+        """After dedent, subsequent constructs compile at parent level."""
         source = "A =>\n  B\nC = D"
         entries = compile_dev(source)
         # A CANONIZES with B as node (from indented block)
@@ -645,18 +529,18 @@ class TestEmitterOperators:
         # D DENOTES [C] (at parent level after dedent)
         assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
 
-    # -- KS-18: Non-CANONIZES with indent ---------------------------------
+    # -- Non-CANONIZES with indent ---------------------------------
 
-    def test_ks18_non_canonize_with_indent(self):
-        """KS-18: A == B\\n  C\\n  D → 6 COUNTERSIGNS entries (§14.10)."""
+    def test_non_canonize_with_indent(self):
+        """A == B\\n  C\\n  D → 6 COUNTERSIGNS entries."""
         source = "A == B\n  C\n  D"
         entries = compile_dev(source)
         assert len(entries) == 6
         # All should be COUNTERSIGNS (bidirectional pairs)
         assert all(e.kline.dbg.op == "COUNTERSIGNS" for e in entries)
 
-    def test_ks18_non_canonize_entries_present(self):
-        """KS-18 (relaxed): The 6 COUNTERSIGNS pairs are present."""
+    def test_non_canonize_entries_present(self):
+        """relaxed): The 6 COUNTERSIGNS pairs are present."""
         source = "A == B\n  C\n  D"
         entries = compile_dev(source)
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
@@ -666,19 +550,19 @@ class TestEmitterOperators:
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["D"])
         assert has_entry(entries, sig="D", op="COUNTERSIGNS", nodes=["A"])
 
-    # -- KS-25: Inline binding bypass ------------------------------------
+    # -- Inline binding bypass ------------------------------------
 
-    def test_ks25_inline_binding_bypass(self):
-        """KS-25: S(ubject) = M — inline annotation resolves S to 'Subject'."""
+    def test_inline_binding_bypass(self):
+        """S(ubject) = M — inline annotation resolves S to 'Subject'."""
         entries = compile_dev("S(ubject) = M")
         # The signature side should resolve to "Subject" via inline annotation
         sig_entries = _find_entries(entries, sig="Subject")
         assert len(sig_entries) > 0, "Expected entries with sig='Subject'"
 
-    # -- KS-33: Self-identity --------------------------------------------
+    # -- Self-identity --------------------------------------------
 
-    def test_ks33_self_identity(self):
-        """KS-33: A = A → single {A:[A]} IDENTITY (self-referential, S1)."""
+    def test_self_identity(self):
+        """A = A → single {A:[A]} IDENTITY (self-referential, S1)."""
         entries = compile_dev("A = A")
         assert len(entries) == 1
         assert entries[0].kline.dbg.op == "IDENTITY"
@@ -686,24 +570,24 @@ class TestEmitterOperators:
         assert entries[0].kline.nodes == [entries[0].kline.signature]
         assert entries[0].significance == SIG_S1
 
-    def test_ks33_self_identity_unsigned_present(self):
-        """KS-33: A = A → self-referential IDENTITY (no empty-form Unknown)."""
+    def test_self_identity_unsigned_present(self):
+        """A = A → self-referential IDENTITY (no empty-form Unknown)."""
         entries = compile_dev("A = A")
         assert has_entry(entries, sig="A", op="IDENTITY")
         assert not has_entry(entries, sig="A", op="UNKNOWN", nodes=[])
 
-    # -- KS-33a/b/c: Singleton Identity vs Unknown (binding-aware) ---------
+    # -- /b/c: Singleton Identity vs Unknown (binding-aware) ---------
 
-    def test_ks33a_bare_singleton_unbound_is_unknown(self):
-        """KS-33a: A bare unbound singleton → {A:[]} UNKNOWN, S4."""
+    def test_bare_singleton_unbound_is_unknown(self):
+        """A bare unbound singleton → {A:[]} UNKNOWN, S4."""
         entries = compile_dev("A")
         assert has_entry(entries, sig="A", op="UNKNOWN", nodes=[])
         unknown = _find_entries(entries, sig="A", op="UNKNOWN")[0]
         assert unknown.kline.nodes == []
         assert unknown.significance == SIG_S4
 
-    def test_ks33b_bare_singleton_word_bound_is_identity(self):
-        """KS-33b: A bare word-bound singleton → self-ref IDENTITY, S1.
+    def test_bare_singleton_word_bound_is_identity(self):
+        """A bare word-bound singleton → self-ref IDENTITY, S1.
 
         Binding is the sole Identity/Unknown discriminator.
         """
@@ -715,8 +599,8 @@ class TestEmitterOperators:
         # No empty-form Unknown for the bound singleton.
         assert not has_entry(entries, sig="Mary", op="UNKNOWN", nodes=[])
 
-    def test_ks33c_binding_is_sole_discriminator(self):
-        """KS-33c: an unbound singleton stays Unknown even when referenced as
+    def test_binding_is_sole_discriminator(self):
+        """an unbound singleton stays Unknown even when referenced as
         a node or introduced via MTS — only word binding elevates it."""
         # A is referenced as a node (A == A would self-denote → IDENTITY, so
         # use a distinct node B that is unbound). B is introduced only by
@@ -727,19 +611,12 @@ class TestEmitterOperators:
         assert not has_entry(entries, sig="B", op="IDENTITY")
         assert not has_entry(entries, sig="B", op="UNKNOWN", nodes=[])
 
-
-# ===================================================================
-# TestEmitterMTS — KS-19 through KS-22
-# ===================================================================
-
-
 class TestEmitterMTS:
-    """MTS expansion tests covering KS-19 through KS-22."""
 
-    # -- KS-19: MTS expansion --------------------------------------------
+    # -- MTS expansion --------------------------------------------
 
-    def test_ks19_mts_expansion(self):
-        """KS-19: ABC → only the CANONIZES canon (no per-component entries).
+    def test_mts_expansion(self):
+        """ABC → only the CANONIZES canon (no per-component entries).
 
         MTS emits exactly one entry: the canon {ABC:[A,B,C]} (S2). The
         characters are values inside the canon, not headed klines.
@@ -750,10 +627,10 @@ class TestEmitterMTS:
         assert _sig_str(entries[0]) == "ABC" and entries[0].kline.dbg.op == "CANONIZES"
         assert _node_strs(entries[0]) == ["A", "B", "C"]
 
-    def test_ks19a_mts_component_uniformity(self):
-        """KS-19a: word-bound MTS constituents → IDENTITY; unbound → UNKNOWN.
+    def test_mts_component_uniformity(self):
+        """word-bound MTS constituents → IDENTITY; unbound → UNKNOWN.
 
-        Same binding-aware rule as a bare singleton (KS-33a/b). A word-bound
+        Same binding-aware rule as a bare singleton. A word-bound
         compound's constituent compiles to a self-referential Identity; an
         unbound compound's constituent stays an empty Unknown.
         """
@@ -765,20 +642,20 @@ class TestEmitterMTS:
         assert has_entry(unbound, sig="M", op="UNKNOWN", nodes=[])
         assert not has_entry(unbound, sig="M", op="IDENTITY")
 
-    # -- KS-20: No MTS for single-char -----------------------------------
+    # -- No MTS for single-char -----------------------------------
 
-    def test_ks20_no_mts_for_single_char(self):
-        """KS-20: A → single UNKNOWN entry, no component expansion."""
+    def test_no_mts_for_single_char(self):
+        """A → single UNKNOWN entry, no component expansion."""
         entries = compile_dev("A")
         assert len(entries) == 1
         assert entries[0].kline.dbg.op == "UNKNOWN"
         assert _sig_str(entries[0]) == "A"
         assert entries[0].kline.nodes == []
 
-    # -- KS-21: MTS on node side -----------------------------------------
+    # -- MTS on node side -----------------------------------------
 
-    def test_ks21_mts_on_node_side(self):
-        """KS-21: A == MHALL triggers MTS expansion for MHALL on the node side."""
+    def test_mts_on_node_side(self):
+        """A == MHALL triggers MTS expansion for MHALL on the node side."""
         entries = compile_dev("A == MHALL")
         # MTS for MHALL: component unsigned entries + CANONIZES entry
         assert has_entry(entries, sig="MHALL", op="CANONIZES")
@@ -789,10 +666,10 @@ class TestEmitterMTS:
         mhall_cs = _find_entries(entries, sig="MHALL", op="COUNTERSIGNS")
         assert len(mhall_cs) >= 1, "Expected MHALL COUNTERSIGNS entry"
 
-    # -- KS-22: Node count invariant --------------------------------------
+    # -- Node count invariant --------------------------------------
 
-    def test_ks22_node_count_invariant(self):
-        """KS-22: MTS canonization entry has N nodes for an N-char identifier."""
+    def test_node_count_invariant(self):
+        """MTS canonization entry has N nodes for an N-char identifier."""
         for ident in ["AB", "ABC", "ABCD", "MHALL"]:
             entries = compile_dev(ident)
             canonize_entries = _find_entries(entries, sig=ident, op="CANONIZES")
@@ -803,21 +680,14 @@ class TestEmitterMTS:
                 f"MTS canonize for {ident}: expected {len(ident)} nodes, got {actual}"
             )
 
-
-# ===================================================================
-# TestEmitterBinding — KS-26 (Rule B4 override)
-# ===================================================================
-
-
 class TestEmitterBinding:
-    """Binding integration tests covering KS-26."""
 
-    # -- KS-26: Rule B4 override -----------------------------------------
+    # -- Rule B4 override -----------------------------------------
 
-    def test_ks26_rule_b4_override(self):
-        """KS-26: Inline annotation patches parent MTS CANONIZES entry.
+    def test_rule_b4_override(self):
+        """Inline annotation patches parent MTS CANONIZES entry.
 
-        In the §14.12 source, S(ubject) inside a subscript block patches
+        In the source, S(ubject) inside a subscript block patches
         the parent SVO CANONIZES entry: S → 'Subject'.
         """
         source = (
@@ -839,32 +709,25 @@ class TestEmitterBinding:
         subject_entries = _find_entries(entries, sig="Subject")
         assert len(subject_entries) > 0, "Expected entries for 'Subject' (from inline annotation)"
 
-
-# ===================================================================
-# TestStructure — KS-34 (nodes always a list)
-# ===================================================================
-
-
 class TestStructure:
-    """Structural invariant tests covering KS-34."""
 
-    def test_ks34_nodes_always_list_canonize(self):
-        """KS-34: CANONIZES entry nodes is a list of length 1+ (not scalar)."""
+    def test_nodes_always_list_canonize(self):
+        """CANONIZES entry nodes is a list of length 1+ (not scalar)."""
         entries = compile_dev("A => B")
         canon = _find_entries(entries, sig="A", op="CANONIZES")
         assert len(canon) == 1
         assert isinstance(canon[0].kline.nodes, list)
         assert len(canon[0].kline.nodes) >= 1
 
-    def test_ks34_nodes_always_list_unsigned(self):
-        """KS-34: UNKNOWN entry nodes is an empty list (not None)."""
+    def test_nodes_always_list_unsigned(self):
+        """UNKNOWN entry nodes is an empty list (not None)."""
         entries = compile_dev("A")
         assert len(entries) == 1
         assert isinstance(entries[0].kline.nodes, list)
         assert entries[0].kline.nodes == []
 
-    def test_ks34_all_entries_nodes_are_lists(self):
-        """KS-34: For every compiled entry, nodes is a list."""
+    def test_all_entries_nodes_are_lists(self):
+        """For every compiled entry, nodes is a list."""
         for source in ["A", "A == B", "A => B C", "ABC", "A > B\n  C"]:
             entries = compile_dev(source)
             for e in entries:
@@ -872,17 +735,10 @@ class TestStructure:
                     f"Entry {e!r} has nodes of type {type(e.kline.nodes)}, expected list"
                 )
 
-
-# ===================================================================
-# TestEncoding — KS-32 (Unresolved char typed-node encoding)
-# ===================================================================
-
-
 class TestEncoding:
-    """Encoding tests covering KS-32."""
 
-    def test_ks32_unresolved_char_typed_encoding(self):
-        """KS-32: An unresolved single character (e.g. 'Z') encodes to a single typed node.
+    def test_unresolved_char_typed_encoding(self):
+        """An unresolved single character (e.g. 'Z') encodes to a single typed node.
 
         Under the kalvin tokenizer there is no character-bit fallback.  An
         unresolved character is encoded as its own raw BPE token, producing a
@@ -899,11 +755,6 @@ class TestEncoding:
         # Must NOT be the legacy character-bit encoding (single-bit)
         assert entry.kline.signature != 67108864, "Signature should not be a legacy bit value"
         assert entry.kline.dbg.op == "UNKNOWN"
-
-
-# ===================================================================
-# TestComplexExamples — KS-35 through KS-37 + §14.8 secondary regression
-# ===================================================================
 
 _SEC1411_SOURCE = "MHALL == SVO =>\n  S = M\n  V = H\n  O = ALL =>\n    A = D\n    L = M\n    L > O"
 
@@ -922,12 +773,13 @@ _SEC1412_SOURCE = (
 
 
 class TestComplexExamples:
-    """Complex integration tests covering KS-35 through KS-37 plus §14.8."""
 
-    # -- §14.8 secondary regression (simpler nested case) ----------------
+
+
+    # -- secondary regression (simpler nested case) ----------------
 
     def test_sec148_strict(self):
-        """§14.8 secondary regression — strict spec count (5 entries)."""
+        """ secondary regression — strict spec count (5 entries)."""
         entries = compile_dev(_SEC148_SOURCE)
         assert len(entries) == 5
         assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
@@ -937,12 +789,12 @@ class TestComplexExamples:
         assert has_entry(entries, sig="D", op="UNKNOWN", nodes=[])
 
     def test_sec148_presence(self):
-        """§14.8 secondary regression — key entries present (5 entries).
+        """ secondary regression — key entries present (5 entries).
 
         CANONIZES subscript blocks emit identity for
         bare scopes, DENOTES scope sigs, and leaf Signature items.
         identity entries use UNKNOWN op.
-        Now matches spec §14.8 exactly (5 entries).
+        Now matches spec exactly (5 entries).
         """
         entries = compile_dev(_SEC148_SOURCE)
         assert len(entries) == 5
@@ -952,10 +804,10 @@ class TestComplexExamples:
         assert has_entry(entries, sig="C", op="UNKNOWN", nodes=[])
         assert has_entry(entries, sig="D", op="UNKNOWN", nodes=[])
 
-    # -- KS-35: §14.11 complex nested (master regression) ----------------
+    # -- complex nested (master regression) ----------------
 
-    def test_ks35_complex_nested_strict(self):
-        """KS-35: §14.11 master regression — strict spec count (18 entries).
+    def test_complex_nested_strict(self):
+        """master regression — strict spec count (18 entries).
 
         Output ordering is source-first: compiled source klines precede
         every MTS expansion kline. MTS component UNKNOWN dedup, no
@@ -1023,8 +875,8 @@ class TestComplexExamples:
                 f"Unexpected component entry for {char}"
             )
 
-    def test_ks35_complex_nested_presence(self):
-        """KS-35: §14.11 master regression — key entries present (11 entries)."""
+    def test_complex_nested_presence(self):
+        """master regression — key entries present (11 entries)."""
         entries = compile_dev(_SEC1411_SOURCE)
         assert len(entries) == 11
 
@@ -1085,10 +937,10 @@ class TestComplexExamples:
         con_entries = _find_entries(entries, op="CONNOTES")
         assert all(sig_level(e.kline, _sgf) == "S3" for e in con_entries)
 
-    # -- KS-36: §14.12 Word-bound example ---------------------------------
+    # -- Word-bound example ---------------------------------
 
-    def test_ks36_word_bound_example(self):
-        """KS-36: §14.12 Word-bound example — key resolved entries present.
+    def test_word_bound_example(self):
+        """Word-bound example — key resolved entries present.
 
         The block annotation (Mary Had A Little Lamb) provides words for
         MHALL's character resolution. Inline annotation S(ubject) triggers
@@ -1099,7 +951,7 @@ class TestComplexExamples:
 
         # MTS for MHALL should resolve M→Mary, H→Had, A→"A", L→Little, L→Lamb.
         # Each word-bound constituent compiles to a self-referential IDENTITY
-        # (§7.1/§8); Mary is no longer an empty Unknown.
+        # (/); Mary is no longer an empty Unknown.
         assert has_entry(entries, sig="Mary", op="IDENTITY"), (
             "Expected 'Mary' IDENTITY from MHALL MTS resolution"
         )
@@ -1117,10 +969,10 @@ class TestComplexExamples:
         assert has_entry(entries, sig="MHALL", op="COUNTERSIGNS")
         assert has_entry(entries, sig="SVO", op="COUNTERSIGNS")
 
-    # -- KS-37: Uniform tokenizer integration ----------------------------
+    # -- Uniform tokenizer integration ----------------------------
 
-    def test_ks37_uniform_tokenizer(self):
-        """KS-37: §14.12 example compiles under the kalvin tokenizer (uniform typing).
+    def test_uniform_tokenizer(self):
+        """example compiles under the kalvin tokenizer (uniform typing).
 
         Every character — both word-bound (resolved via word lists) and
         unresolved — produces a valid typed node.  There is no

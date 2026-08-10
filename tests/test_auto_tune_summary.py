@@ -3,7 +3,7 @@
 ``summarize`` aggregates a run's event stream and trainer state into a
 verdict (``run-summary.json``) that tells the agent whether the goal was
 met and, if not, where to look. It replaces per-turn supervision prose
-with a machine-readable signal (see SKILL.md §Pi-in-the-Loop Model).
+with a machine-readable signal (see SKILL.md).
 """
 
 from __future__ import annotations

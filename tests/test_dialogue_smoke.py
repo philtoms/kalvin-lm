@@ -131,7 +131,7 @@ def test_accept_divergence_continues_the_run(_decoded_mhall):
 
 
 def test_canon_reciprocal_grounded_when_all_operand_pairings_resolve():
-    """DDT-4: when the relationship entry between two canons has every operand
+    """when the relationship entry between two canons has every operand
     pairing resolved, cogitation grounds both directions of the canonical
     reciprocal pair — ``{A:[B]}`` and ``{B:[A]}`` — at S1.
 

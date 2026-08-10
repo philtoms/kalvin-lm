@@ -98,7 +98,8 @@ def similar_fit_candidates(
                 continue
             if kline.signature == entry.signature and is_canon(kline, signifier):
                 continue
-            if entry_nodes & set(kline.nodes):
+            kline_nodes = set(kline.nodes)
+            if entry_nodes & kline_nodes and len(kline_nodes.difference(entry_nodes)):
                 candidates.append(kline)
     return candidates
 

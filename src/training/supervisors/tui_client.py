@@ -287,7 +287,7 @@ class TUIApp(App):
 
         Feeds input text through ``parse_command()`` and dispatches the
         resulting messages via the HarnessClient. The input field is cleared
-        by InputBar automatically after submission (HRNS-28).
+        by InputBar automatically after submission ().
         """
         command = parse_command(event.text)
         for role, action, message in command.to_messages(self._latest_ratify_proposal):

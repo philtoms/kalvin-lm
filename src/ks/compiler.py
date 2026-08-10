@@ -3,7 +3,7 @@
 The Compiler class is a pure orchestrator: it creates and connects the
 pipeline stages but contains no encoding logic of its own.
 
-Pipeline (spec §1.1)::
+Pipeline::
 
     Source → Lexer → Parser → ASTEmitter (+ BindingScope) → TokenEncoder
                                                         ↓

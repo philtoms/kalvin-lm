@@ -3,22 +3,22 @@
 Final stage of the KScript v3 compilation pipeline. Takes the symbolic
 (string) entries produced by ASTEmitter and encodes them into uint64
 values via a pluggable tokenizer, wrapping each KLine in a KValue whose
-significance is derived from the production op (KP-1, D3).
+significance is derived from the production op.
 
-Encoding rules (spec §11):
+Encoding rules:
   - Signature → tokenizer.encode(sig) → uint64 (multi-token results are
     OR-reduced via signature_of()). A compound signature heads its kline
     like any other — including an empty-form UNKNOWN `{compound: []}`.
   - Nodes → each encoded individually via _encode_node(); a multi-token
     word (a resolved word the tokenizer splits into ≥2 subwords) triggers
-    §11.3 compound-word decomposition, which emits a self-referential
-    identity whose signature is the OR-reduction of the subword tokens.
-  - Canonical encoding (§11.4): a declared compound identifier's
-    signature is computed once at its MTS CANONIZES definition (OR of its
-    resolved component node values) and reused by every reference via the
-    ``_compound_sigs`` registry; declared compounds are exempt from §11.3
-    (their decomposition is their §8 MTS entry, not a re-encoding of the
-    literal string).
+    compound-word decomposition, which emits a self-referential identity
+    whose signature is the OR-reduction of the subword tokens.
+  - Canonical encoding: a declared compound identifier's signature is
+    computed once at its MTS CANONIZES definition (OR of its resolved
+    component node values) and reused by every reference via the
+    ``_compound_sigs`` registry; declared compounds are exempt from
+    compound-word decomposition (their decomposition is their MTS entry,
+    not a re-encoding of the literal string).
 
 Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.significance.band_significance(op), computed from the production op at
@@ -31,8 +31,8 @@ Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.signifier.NLPSignifier, ks.ast_emitter.SymbolicEntry.
 
 Output ordering: compiled source (operator + identity klines from the
-script) precedes every decomposition kline — §8 MTS expansions (declared
-compounds) and §11.3 compound-word decompositions (BPE-split words).
+script) precedes every decomposition kline — MTS expansions (declared
+compounds) and compound-word decompositions (BPE-split words).
 See ``encode_entries``.
 """
 
@@ -70,10 +70,10 @@ class TokenEncoder:
         self._tokenizer = tokenizer
         self._signifier = signifier or NLPSignifier()
         self._dev = dev
-        # Track emitted compound-word identity signatures (§11.3) so a word
+        # Track emitted compound-word identity signatures so a word
         # used as a node more than once emits its identity only once.
         self._compound_identity_emitted: set[int] = set()
-        # Canonical encoding registry (§11.4): a declared compound
+        # Canonical encoding registry: a declared compound
         # identifier's signature uint64, computed once at its MTS CANONIZES
         # definition as OR of its resolved component node values, then reused
         # by every referencing entry. The ASTEmitter emits definitions before
@@ -99,8 +99,8 @@ class TokenEncoder:
             Ordered list of KValue objects (each wrapping a KLine).
             **Compiled source precedes any decomposition entries:** operator
             and identity klines that come from the script appear first,
-            followed by every auxiliary decomposition kline — §8 MTS
-            expansions (declared compounds) and §11.3 compound-word
+            followed by every auxiliary decomposition kline — MTS
+            expansions (declared compounds) and compound-word
             decompositions (BPE-split words).
 
             Encoding runs in def-before-ref order internally (so a declared
@@ -111,7 +111,7 @@ class TokenEncoder:
             ``KDbg.annotation`` are carried through so downstream consumers
             can group by owning scope regardless of this partition. Every
             KValue carries a band-representative significance derived from
-            the production ``op`` (KP-1).
+            the production ``op``.
         """
         if not symbolic:
             return []
@@ -132,19 +132,19 @@ class TokenEncoder:
         """Process one SymbolicEntry into one or more (KValue, is_bpe_mts) pairs.
 
         Steps:
-          1. Encode signature → uint64 (with §11.3 compound-word
+          1. Encode signature → uint64 (with compound-word
              decomposition if the sig is a multi-token word).
-          2. Encode each node → uint64 (with §11.3 compound-word
+          2. Encode each node → uint64 (with compound-word
              decomposition if the node is a multi-token word).
           3. Emit the main entry wrapped as a KValue.
 
         Returns:
             List of (KValue, is_bpe_mts).  ``is_bpe_mts`` marks KValues
-            that are §11.3 compound-word decomposition extras; the main
-            entry is tagged ``False``.  The entry-level §8 MTS flag
+            that are compound-word decomposition extras; the main
+            entry is tagged ``False``.  The entry-level MTS flag
             (``entry.is_mts``) is combined with this in
             :meth:`encode_entries` so the final output can push every
-            decomposition kline (§8 MTS or §11.3 compound-word) after
+            decomposition kline after
             compiled source.
         """
         extras: list[tuple[KValue, bool]] = []
@@ -192,7 +192,7 @@ class TokenEncoder:
                 node_values.append(node_val)
 
         # 3. Declared-compound definition: sig = OR of resolved component
-        #    node values (§11.4); register for reuse by references.
+        #    node values; register for reuse by references.
         #    Only the DEFINING entry registers — the MTS CANONIZES entry
         #    (declared compound → its declared characters), which is
         #    emitted before any block canon. A block-canon entry
@@ -200,7 +200,7 @@ class TokenEncoder:
         #    REFERENCE: it reuses the registered signature and must NOT
         #    recompute it from its own (possibly partial/misfit) operands,
         #    or it would clobber the compound's true signature with
-        #    signature_of(block_nodes) (§11.4: signature is a registry
+        #    signature_of(block_nodes) ( signature is a registry
         #    lookup, not a per-entry reduction of nodes).
         if is_compound_def and not is_compound_ref:
             sig_uint64 = self._signifier.signature_of(node_values)
@@ -247,13 +247,13 @@ class TokenEncoder:
             self.node_labels.setdefault(tokens[0], word)
             return (tokens[0], [])
 
-        # Multi-token word → §11.3 compound-word decomposition.
+        # Multi-token word → compound-word decomposition.
         return self._emit_mts_for_tokens(
             tokens, dbg_label=word, op="UNKNOWN",
             annotation=annotation, scope=scope,
         )
 
-    # §11.3 compound-word decomposition for multi-token results
+    # compound-word decomposition for multi-token results
 
     def _emit_mts_for_tokens(
         self,
@@ -264,7 +264,7 @@ class TokenEncoder:
         annotation: str = "",
         scope: int = 0,
     ) -> tuple[int, list[KValue]]:
-        """Emit the §11.3 compound-word identity for a multi-token word.
+        """Emit the compound-word identity for a multi-token word.
 
         A resolved word the external tokenizer splits into ≥2 subwords
         (e.g. ``Mary`` → ``[mar, y]``) is a *compound-word*: one lexical
@@ -276,7 +276,7 @@ class TokenEncoder:
         Emits exactly one entry: the self-referential identity
         ``{compound → [compound]}`` (S1). No per-subword component entries
         are emitted — the subwords are values inside the signature, not headed
-        klines. This mirrors §8 MTS, which emits only the canon.
+        klines. This mirrors MTS, which emits only the canon.
 
         Args:
             tokens: List of BPE token uint64 values.
@@ -293,7 +293,7 @@ class TokenEncoder:
         # block-canon under the same word).
         compound = self._signifier.signature_of(tokens)
 
-        # Register the compound-word's signature (§11.4: the compound-word
+        # Register the compound-word's signature ( the compound-word
         # DEFINES the signature; a later block-canon entry with the same
         # word id is a REFERENCE that must reuse this value, not recompute it
         # from its own operands). Only register when ``dbg_label`` names the
@@ -303,9 +303,9 @@ class TokenEncoder:
             self._compound_labels.setdefault(compound, dbg_label)
 
         # Self-referential identity: compound sig → [compound]. An identity
-        # claims S1 (kline spec KL-21; sig_level returns S1 for {S:[S]};
-        # kscript §11.3). Emitted once per compound-word signature (a word
-        # reused as a node does not re-emit its identity).
+        # claims S1 (sig_level returns S1 for {S:[S]}). Emitted once per
+        # compound-word signature (a word reused as a node does not re-emit
+        # its identity).
         extras: list[KValue] = []
         if compound not in self._compound_identity_emitted:
             self._compound_identity_emitted.add(compound)
@@ -314,7 +314,7 @@ class TokenEncoder:
                 id_dbg = self._build_dbg(compound, dbg_label, op="IDENTITY")
             else:
                 id_dbg = KDbg(op="IDENTITY")
-            # A compound-word identity is a §11.3 decomposition extra —
+            # A compound-word identity is a  decomposition extra —
             # scope+1 relative to the entry that triggered it.
             id_dbg.scope = scope + 1
             id_dbg.annotation = annotation

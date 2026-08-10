@@ -139,7 +139,7 @@ class SlackParticipant:
         except asyncio.CancelledError:
             pass
 
-    # -- Slack rendering (HRNS-18) ------------------------------------------
+    # -- Slack rendering () ------------------------------------------
 
     async def _render_to_slack(self, content: Any, action: str = "notify") -> None:
         """Post *content* to the configured Slack channel.
@@ -175,7 +175,7 @@ class SlackParticipant:
             self._slack_web_client = WebClient(token=self._slack_token)
         return self._slack_web_client
 
-    # -- Slack event listener (HRNS-17) -------------------------------------
+    # -- Slack event listener () -------------------------------------
 
     async def _start_slack_listener(self) -> None:
         """Listen for supervisor messages in the training channel via Socket Mode.
