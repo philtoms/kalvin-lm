@@ -162,8 +162,8 @@ class TestStructuralPredicates:
     def test_kl26a_is_terminal_compound_word_self_ref(self):
         # A §11.3 compound-word is a self-referential identity: its
         # signature is the OR-reduction of its subword tokens.
-        packed = 0b110
-        assert is_terminal(KLine(packed, [packed])) is True
+        sig = 0b110
+        assert is_terminal(KLine(sig, [sig])) is True
 
     def test_is_terminal_canon_shaped_is_not_terminal(self):
         assert is_terminal(KLine(0b110, [0b100, 0b010])) is False
@@ -181,8 +181,8 @@ class TestStructuralPredicates:
 
     def test_is_identity_compound_word_self_ref(self):
         # A §11.3 compound-word is a self-referential identity.
-        packed = 0b110
-        assert is_identity(KLine(packed, [packed])) is True
+        sig = 0b110
+        assert is_identity(KLine(sig, [sig])) is True
 
     def test_is_identity_canon_shaped_is_not_identity(self):
         assert is_identity(KLine(0b110, [0b100, 0b010])) is False
@@ -201,8 +201,8 @@ class TestStructuralPredicates:
     def test_kl27_is_canon_compound_word_self_ref_is_not_canon(self):
         # A compound-word is a self-referential identity (a terminal), so it
         # is not a canon.
-        packed = 0b110
-        assert is_canon(KLine(packed, [packed]), signifier) is False
+        sig = 0b110
+        assert is_canon(KLine(sig, [sig]), signifier) is False
 
     def test_is_canon_mismatched_sig(self):
         assert is_canon(KLine(0b100, [0b110]), signifier) is False

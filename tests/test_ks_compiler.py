@@ -293,8 +293,8 @@ class TestKS36WordBound:
         """
         tok = self._get_tokenizer()
         # dev=True so dbg.label carries the resolved symbolic signature
-        # string. A packed signature is opaque per §11.6 and cannot be
-        # decoded as a single BPE token, so the label is the reliable text.
+        # string. A compound signature cannot be decoded as a single BPE
+        # token, so the label is the reliable text.
         entries = compile_source(SOURCE_14_12, tokenizer=tok, dev=True)
 
         all_text: list[str] = []
@@ -307,7 +307,7 @@ class TestKS36WordBound:
                     if decoded:
                         all_text.append(decoded)
                 except Exception:
-                    pass  # packed node — opaque
+                    pass  # compound node — opaque
 
         for word in ("Mary", "Had", "A", "Little", "Lamb"):
             assert any(word == t for t in all_text), (
@@ -380,15 +380,20 @@ class TestCanonicalEncoding:
                 f"{compound}: expected 1 CANONIZES, got {counts.get(compound, 0)}"
             )
 
-    def test_no_packed_identity(self, tokenizer):
-        """KS-42: no UNKNOWN kline carries a packed (compound) signature."""
+    def test_no_compound_identity(self, tokenizer):
+        """KS-42: a CANONIZES-defined compound is not also emitted as a bare UNKNOWN.
+
+        A compound defined via CANONIZES is represented by its canon (and
+        its identity when used as a node); it does not also appear as an
+        empty-form Unknown headed by the same signature.
+        """
         entries = self._entries(tokenizer)
-        packed_sigs = {e.kline.signature for e in entries if e.kline.dbg.op == "CANONIZES"}
+        compound_sigs = {e.kline.signature for e in entries if e.kline.dbg.op == "CANONIZES"}
         bad = [
             e for e in entries
-            if e.kline.dbg.op == "UNKNOWN" and e.kline.signature in packed_sigs
+            if e.kline.dbg.op == "UNKNOWN" and e.kline.signature in compound_sigs
         ]
-        assert bad == [], f"UNKNOWN klines with packed sigs: {bad}"
+        assert bad == [], f"UNKNOWN klines with compound sigs: {bad}"
 
     def test_compound_resolution_consistent(self, tokenizer):
         """KS-41: a compound resolves identically wherever it appears.

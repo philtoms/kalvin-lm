@@ -36,7 +36,7 @@ Rules when it resolves.
 - `KDbg.annotation` carries the owning scope's annotation (parens stripped); `KDbg.scope` is 0 for source, 1 for MTS.
 - Each kline owns its own annotation; MTS spawned by a signature inherits it.
 - Compiler output order ≠ authored order: all source entries first, then all MTS. Symbolic-entry indices do not align with compiled-KValue indices.
-- A single-token node word that never heads an entry is labelled via `TokenEncoder.node_labels`; the harness decoder is unsafe for packed-signature-as-node values.
+- A single-token node word that never heads an entry is labelled via `TokenEncoder.node_labels`; the harness decoder is unsafe for compound-signature-as-node values.
 
 ## Active state of K
 

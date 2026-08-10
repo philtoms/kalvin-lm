@@ -98,10 +98,10 @@ def kvalue_display(kvalue, tokenizer, model=None) -> str:
     declared significance, proposal = Kalvin's) is visible at a glance.
 
     When *model* is supplied, signature and node values are decoded by
-    flattening each through model.unpack (correct for packed/multi-token
+    flattening each through model.unpack (correct for compound/multi-token
     values); the dbg record, if present, contributes only type metadata.
     Otherwise (no model) the dbg label and a direct per-node decode are
-    used (lossy for packed values, but the best available before the
+    used (lossy for compound values, but the best available before the
     graph is populated). Falls back to a raw signature if neither is
     available.
     """
@@ -124,7 +124,7 @@ def kvalue_display(kvalue, tokenizer, model=None) -> str:
         else:
             node_strs = [_decode_value(n, model, tokenizer) or f"#{n:#x}" for n in nodes]
             body = f"{label}: {node_strs}"
-    # Fallback path: compile-time dbg (lossy for packed values).
+    # Fallback path: compile-time dbg (lossy for compound values).
     elif dbg:
         label = dbg.label
         if dbg.decoded and dbg.decoded != label:
@@ -212,7 +212,7 @@ def main() -> None:
     adapter.subscribe(on_event)
 
     if args.verbose:
-        # Build a display model from the compiled klines so that packed
+        # Build a display model from the compiled klines so that compound
         # signatures can be unpacked to their identity tokens for display
         # (the agent model is still empty at this point).
         from kalvin.model import Model

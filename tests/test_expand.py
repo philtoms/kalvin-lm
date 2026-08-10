@@ -554,8 +554,8 @@ class TestSigLevel:
     def test_compound_word_is_s1(self):
         # A §11.3 compound-word is a self-referential identity: its signature
         # is the OR-reduction of its subword tokens. A self-ref is S1.
-        packed = 0b110
-        kl = KLine(packed, [packed])
+        sig = 0b110
+        kl = KLine(sig, [sig])
         assert sig_level(kl, signifier) == "S1"
 
     def test_canon_is_s1(self):

@@ -44,8 +44,8 @@ class TestMakeSignature:
         """BPE-style tokens: full OR."""
         assert signifier.signature_of([42, 100]) == 42 | 100
 
-    def test_or_reduction_of_packed_nodes(self):
-        """OR-reduction of two packed node values produces their union (SIG-14)."""
+    def test_or_reduction_of_compound_nodes(self):
+        """OR-reduction of two compound node values produces their union (SIG-14)."""
         assert signifier.signature_of([0b10, 0b100]) == 0b110
 
 

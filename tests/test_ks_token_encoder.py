@@ -102,7 +102,7 @@ class TestUnresolvedCharEncoding:
         sig = results[0].kline.signature
         assert sig == tz.encode("Z")[0]
         assert (sig >> 32) > 0  # sig-word bits present
-        assert sig != 67108864  # not the legacy character-bit-packed value
+        assert sig != 67108864  # not the legacy character-bit encoding
 
 
 # ── KS-34: nodes always list ─────────────────────────────────────────
@@ -156,13 +156,12 @@ class TestSignatureEncoding:
         results = encoder.encode_entries([entry])
         assert results[0].kline.signature == tz.encode("A")[0]
 
-    def test_multi_char_sig_packed(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
-        """Multi-token identifier is packed via OR-reduction (signature_of).
+    def test_multi_char_sig_compound(self, encoder: TokenEncoder, tz: NLPTokenizer) -> None:
+        """Multi-token identifier is a compound signature via OR-reduction (signature_of).
 
-        A multi-token signature heading an UNKNOWN entry is decomposed into
-        per-token UNKNOWN entries plus a self-referential identity entry (the
-        last result) whose signature is ``signature_of(tokens)`` — the
-        subwords live in the signature; no marker token is used.
+        A multi-token signature heading an UNKNOWN entry heads its kline
+        like any other sig: it compiles to an empty-form Unknown whose
+        signature is ``signature_of(tokens)``.
         """
         entry = SymbolicEntry(sig="HELLO", nodes=[], op="UNKNOWN")
         results = encoder.encode_entries([entry])
@@ -253,7 +252,7 @@ class TestFullUint64:
 
 
 class TestMultiTokenMTS:
-    """Multi-token BPE words produce unsigned per token + CANONIZES packed."""
+    """Multi-token BPE words produce unsigned per token + CANONIZES compound signature."""
 
     def test_multi_token_node_emits_mts(self) -> None:
         """A multi-token node triggers only the compound-word identity entry."""
@@ -262,17 +261,17 @@ class TestMultiTokenMTS:
         entry = SymbolicEntry(sig="A", nodes=["Mary"], op="CONNOTES")
         results = enc.encode_entries([entry])
 
-        packed = signifier.signature_of([10, 20])
+        compound = signifier.signature_of([10, 20])
 
-        # §11.3 emits only the self-referential identity {packed:[packed]}
+        # §11.3 emits only the self-referential identity {compound:[compound]}
         # (S1) — no per-subword component entries.
         identity_entries = [
             r for r in results
             if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.nodes == [r.kline.signature]
         ]
         assert len(identity_entries) == 1
-        assert identity_entries[0].kline.signature == packed
-        assert identity_entries[0].kline.nodes == [packed]
+        assert identity_entries[0].kline.signature == compound
+        assert identity_entries[0].kline.nodes == [compound]
 
         # No subword UNKNOWN entries.
         assert not [
@@ -284,35 +283,32 @@ class TestMultiTokenMTS:
         assert len(connote_entries) == 1
         # The compound's signature is reused as a node value — references
         # share the same value as the definition.
-        assert connote_entries[0].kline.nodes == [packed]
+        assert connote_entries[0].kline.nodes == [compound]
 
-    def test_multi_token_sig_emits_mts(self) -> None:
-        """A multi-token signature heading an UNKNOWN entry is represented
-        solely by its §11.3 compound-word identity — no standalone packed-sig
-        UNKNOWN and no subword entries (CONTEXT.md "Identity").
+    def test_multi_token_sig_unknown_heads_kline(self) -> None:
+        """A multi-token signature heading an UNKNOWN entry is an empty-form
+        Unknown `{compound: []}` — the same shape as any single-token
+        UNKNOWN. A compound signature is just a signature; it heads its
+        kline like any other.
         """
         mock = MockMultiTokenTokenizer({"WORD": [50, 60]})
         enc = TokenEncoder(mock, dev=True)
         entry = SymbolicEntry(sig="WORD", nodes=[], op="UNKNOWN")
         results = enc.encode_entries([entry])
 
-        packed = signifier.signature_of([50, 60])
+        compound = signifier.signature_of([50, 60])
 
-        # §11.3: only the identity(packed, [packed]).
-        identity_entries = [
-            r for r in results
-            if r.kline.dbg and r.kline.dbg.op == "IDENTITY" and r.kline.nodes == [r.kline.signature]
-        ]
-        assert len(identity_entries) == 1
-        assert identity_entries[0].kline.signature == packed
-        assert identity_entries[0].kline.nodes == [packed]
+        # One entry: the empty-form Unknown headed by the compound sig.
+        assert len(results) == 1
+        assert results[0].kline.signature == compound
+        assert results[0].kline.nodes == []
+        assert results[0].kline.dbg.op == "UNKNOWN"
 
-        # No subword UNKNOWN entries, no standalone UNKNOWN at the packed sig.
+        # No identity, no subword entries.
         assert not [
             r for r in results
-            if r.kline.dbg and r.kline.dbg.op == "UNKNOWN"
+            if r.kline.dbg and r.kline.dbg.op == "IDENTITY"
         ]
-        assert len(results) == 1
 
     def test_source_precedes_mts(self) -> None:
         """Compiled source precedes any MTS entries in the output.
@@ -366,9 +362,9 @@ class TestDedupMTS:
         assert len(connote_entries) == 2  # both main entries
 
         # Both main entries use the same compound signature as the node value
-        packed = signifier.signature_of([10, 20])
-        assert connote_entries[0].kline.nodes == [packed]
-        assert connote_entries[1].kline.nodes == [packed]
+        compound = signifier.signature_of([10, 20])
+        assert connote_entries[0].kline.nodes == [compound]
+        assert connote_entries[1].kline.nodes == [compound]
 
 
 # ── KLine identity ──────────────────────────────────────────────────

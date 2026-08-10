@@ -90,7 +90,7 @@ Spec and docs (read for what the code _means_; do not re-derive in comments):
      exercised nothing). To confirm _which_ klines landed (the histogram only
      gives the S-level distribution), match the goal against the event's
      `query.values`/`proposal.values` — never the `for_display` label, which
-     is a decode and may mislead on a packed signature.
+     is a decode and may mislead on a compound signature.
    - `crashed` → reproduce with a minimal test, fix, verify, re-run.
    - `deadlocked` → the diagnosis pointer names the gap; state the intended
      semantics, edit the model code, re-run.

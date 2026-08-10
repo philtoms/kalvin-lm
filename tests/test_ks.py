@@ -782,7 +782,7 @@ class TestEmitterMTS:
         entries = compile_dev("A == MHALL")
         # MTS for MHALL: component unsigned entries + CANONIZES entry
         assert has_entry(entries, sig="MHALL", op="CANONIZES")
-        # Countersign pairs: A ↔ MHALL (node is the packed uint64 for MHALL,
+        # Countersign pairs: A ↔ MHALL (node is the compound uint64 for MHALL,
         # which decodes to sorted chars, so we check by sig and op only)
         a_cs = _find_entries(entries, sig="A", op="COUNTERSIGNS")
         assert len(a_cs) >= 1, "Expected A COUNTERSIGNS entry"
@@ -896,7 +896,7 @@ class TestEncoding:
         # Typed node: high 32 bits carry the sig word; low 32 bits carry BPE id
         assert sig_word > 0, f"Expected sig-word bits in high word, got {sig_word}"
         assert bpe_id > 0, f"Expected a valid BPE token id, got {bpe_id}"
-        # Must NOT be the legacy character-bit-packed value (single-bit encoding)
+        # Must NOT be the legacy character-bit encoding (single-bit)
         assert entry.kline.signature != 67108864, "Signature should not be a legacy bit value"
         assert entry.kline.dbg.op == "UNKNOWN"
 

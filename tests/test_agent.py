@@ -151,8 +151,8 @@ class TestAgentRationalise:
         """Novel kline with no candidates → S4."""
         a = Rationaliser(adapter=EventBus())
         t = a.tokenizer
-        packed = t.encode("XYZ")[0]
-        k = KLine(packed, [packed])
+        sig = t.encode("XYZ")[0]
+        k = KLine(sig, [sig])
         result = a.rationalise(_kv(k, a.model))
         assert result is True
 
