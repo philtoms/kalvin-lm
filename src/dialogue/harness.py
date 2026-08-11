@@ -20,7 +20,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from dialogue.engine import Engine, EngineState
+from dialogue.engine import Engine
+from dialogue.engine_state import EngineState
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -82,12 +83,11 @@ class Harness:
     ) -> None:
         self._signifier = signifier
         self._tokenizer = tokenizer
-        self._engine = Engine(signifier, strategy=strategy)
-        self._state = state if state is not None else EngineState()
+        self._engine = Engine(signifier, state=state, strategy=strategy)
 
     @property
     def state(self) -> EngineState:
-        return self._state
+        return self._engine.state
 
     def run(self, source: str) -> list[StepResult]:
         """Compile ``source`` and drive the engine one entry per step.
@@ -103,7 +103,7 @@ class Harness:
         identities = _identity_offers(entries)
         results: list[StepResult] = []
         for i, entry in enumerate(entries):
-            batch, observations = self._engine.rationalise(self._state, [entry])
+            batch, observations = self._engine.rationalise([entry])
             offered: list[KValue] = []
             seen: set[int] = set()
             while True:
@@ -117,7 +117,7 @@ class Harness:
                 seen.add(signature)
                 offer = identities[signature]
                 offered.append(offer)
-                batch, obs = self._engine.rationalise(self._state, [offer])
+                batch, obs = self._engine.rationalise([offer])
                 observations.extend(obs)
             results.append(StepResult(i, entry, batch, observations, offered))
         return results

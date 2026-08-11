@@ -12,11 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from dialogue.misfit import (
-    grounded_nodes,
-    is_grounded,
-    similar_fit_candidates,
-)
+from dialogue.engine_state import EngineState
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S2
@@ -24,7 +20,6 @@ from kalvin.significance import SIG_S2
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from collections.abc import Callable
 
-    from dialogue.engine import EngineState
     from kalvin.abstract import KSignifier
 
 __all__ = ["SimilarFit"]
@@ -33,21 +28,38 @@ __all__ = ["SimilarFit"]
 class SimilarFit:
     """The original S2 strategy: recombine grounded klines onto the entry."""
 
+    def __init__(
+        self,
+        signifier: KSignifier,
+        *,
+        state: EngineState | None = None,
+    ) -> None:
+        self._signifier = signifier
+        self._state: EngineState = state if state is not None else EngineState()
+
+    @property
+    def signifier(self) -> KSignifier:
+        return self._signifier
+
+    @property
+    def state(self) -> EngineState:
+        return self._state
+
     def propose(
         self,
-        state: EngineState,
-        signifier: KSignifier,
         entry: KLine,
         ground: Callable[[KLine], None],
     ) -> list[KValue]:
+        state = self.state
+        signifier = self._signifier
         target = _expand_nodes(state, list(entry.nodes))
-        for candidate in similar_fit_candidates(state, signifier, entry):
+        for candidate in state.similar_fit_candidates(signifier, entry):
             core = _resolve_against(state, target, list(candidate.nodes))
             if core:
                 target = core + [n for n in candidate.nodes if n not in core]
 
         proposal = KLine(entry.signature, target)
-        if is_grounded(state, proposal.signature, proposal.nodes):
+        if state.is_grounded(proposal):
             return []
         return [KValue(proposal, SIG_S2)]
 
@@ -56,7 +68,7 @@ def _expand_nodes(state: EngineState, target: list[int]) -> list[int]:
     """Rule 1 — replace each node that is a grounded kline's signature with its nodes."""
     expanded: list[int] = []
     for node in target:
-        sub = grounded_nodes(state, node)
+        sub = state.grounded_nodes(node)
         expanded.extend(sub if sub is not None else [node])
     return expanded
 

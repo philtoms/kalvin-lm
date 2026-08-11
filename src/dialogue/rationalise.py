@@ -32,8 +32,6 @@ from kalvin.kline import (
 )
 from kalvin.kvalue import KValue
 
-from dialogue.misfit import GroundedModel
-
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
@@ -55,6 +53,13 @@ class RationaliserState:
     grounded: dict[int, list[KLine]] = field(default_factory=dict)
     frame: dict[int, list[KLine]] = field(default_factory=dict)
     _dbg_step: int = 0
+
+    # -- grounded-store queries -------------------------------------
+
+    def find(self, signature: int) -> KLine | None:
+        """The last grounded kline under ``signature``, or ``None``."""
+        bucket = self.grounded.get(signature)
+        return bucket[-1] if bucket else None
 
     # -- persistence -------------------------------------------------
     #
@@ -124,7 +129,7 @@ class Rationaliser:
         """Route every incoming query, then cogitate. Returns ``(batch, observations)``."""
         state._dbg_step += 1
         turn = _Turn(state, self._signifier)
-        resolver = GroundedModel(state).find
+        resolver = state.find
         with using_resolver(resolver):
             for query in incoming:
                 turn.route(query)

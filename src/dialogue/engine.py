@@ -8,14 +8,11 @@ actor.
 
 from __future__ import annotations
 
-import json
-from collections.abc import Sequence
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import TYPE_CHECKING
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from dialogue.engine_state import EngineState
 from dialogue.expand_fit import ExpandFit
-from dialogue.misfit import GroundedModel, MisfitStrategy
 from dialogue.similar_fit import SimilarFit
 from kalvin.kline import (
     KLine,
@@ -38,11 +35,30 @@ from kalvin.significance import (
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
-__all__ = ["Engine", "EngineState"]
+__all__ = ["Engine", "EngineState", "MisfitStrategy"]
+
+
+@runtime_checkable
+class MisfitStrategy(Protocol):
+    """Propose for one pending misfit ``entry`` against the grounded store.
+
+    Returns S2 proposals for the actor to emit, and may ground an entry
+    directly via ``ground`` when a candidate fully accounts for it (the
+    expand strategy's S1 case). The strategy's ``state`` and ``signifier``
+    are set at construction.
+    """
+
+    def propose(
+        self,
+        entry: KLine,
+        ground: Callable[[KLine], None],
+    ) -> list[KValue]:
+        ...
+
 
 # Named cogitation strategies for the misfit (S2) arm of ``cogitate``.
 # "similar_fit" — the work-list graft heuristic (the original scheme).
-# "expand"      — grade grounded candidates via ``kalvin.expand.expand`` and
+# "expand"      — grade grounded candidates via ``ExpandFit._expand`` and
 #                 propose under the entry's signature at the computed band.
 _STRATEGIES = {
     "similar_fit": SimilarFit,
@@ -50,104 +66,50 @@ _STRATEGIES = {
 }
 
 
-@dataclass
-class EngineState:
-    """The engine's mutable memory, owned by the actor.
-
-    - **work_list** — pending klines awaiting cogitation. Entries carry no
-      significance band; dispatch is structural.
-    - **grounded** — K's grounded model, keyed by signature.
-    - **frame** — klines K has previously emitted, keyed by signature. The
-      fast route matches incoming S1/S4 queries against it.
-    """
-
-    work_list: list[KLine] = field(default_factory=list)
-    grounded: dict[int, list[KLine]] = field(default_factory=dict)
-    frame: dict[int, list[KLine]] = field(default_factory=dict)
-    _dbg_step: int = 0
-
-    # -- persistence -------------------------------------------------
-    #
-    # State is plain ints (signature + node lists); ``dbg`` is debug-only and
-    # dropped on save. A saved state is a grounded prior injected into an actor
-    # at construction.
-
-    def to_dict(self) -> dict:
-        """A JSON-serialisable snapshot of the model (no ``dbg``)."""
-        def _kl(k: KLine) -> list[int]:
-            return [k.signature, list(k.nodes)]
-        return {
-            "work_list": [_kl(k) for k in self.work_list],
-            "grounded": {
-                str(sig): [_kl(k) for k in bucket]
-                for sig, bucket in self.grounded.items()
-            },
-            "frame": {
-                str(sig): [_kl(k) for k in bucket]
-                for sig, bucket in self.frame.items()
-            },
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> EngineState:
-        """Rebuild a state from :meth:`to_dict` output."""
-        def _kl(pair: list[int]) -> KLine:
-            sig, nodes = pair[0], pair[1]
-            return KLine(sig, list(nodes))
-        return cls(
-            work_list=[_kl(p) for p in data.get("work_list", [])],
-            grounded={
-                int(sig): [_kl(k) for k in bucket]
-                for sig, bucket in data.get("grounded", {}).items()
-            },
-            frame={
-                int(sig): [_kl(k) for k in bucket]
-                for sig, bucket in data.get("frame", {}).items()
-            },
-        )
-
-    def save(self, path: str | Path) -> None:
-        """Write the state snapshot to ``path`` (JSON). Creates parent dirs."""
-        p = Path(path)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(self.to_dict()))
-
-    @classmethod
-    def load(cls, path: str | Path) -> EngineState:
-        """Load a state snapshot from ``path`` (JSON)."""
-        return cls.from_dict(json.loads(Path(path).read_text()))
-
-
 class Engine:
-    """Derives one turn from ``(state, incoming)``.
+    """Derives one turn from ``incoming``.
 
-    Holds only the signifier and the significance boundaries; all per-turn
-    state lives on :class:`EngineState` (passed in, mutated in place).
+    Holds the signifier, the significance boundaries, and the
+    :class:`EngineState` it mutates in place (set at construction, exposed via
+    :attr:`state`).
     """
 
-    def __init__(self, signifier: KSignifier, *, strategy: str = "similar_fit") -> None:
+    def __init__(
+        self,
+        signifier: KSignifier,
+        *,
+        state: EngineState | None = None,
+        strategy: str = "similar_fit",
+    ) -> None:
         if strategy not in _STRATEGIES:
             raise ValueError(
                 f"unknown cogitation strategy {strategy!r}; "
                 f"expected one of {sorted(_STRATEGIES)}"
             )
         self._signifier = signifier
-        self._misfit: MisfitStrategy = _STRATEGIES[strategy]()
+        self._state: EngineState = state if state is not None else EngineState()
+        self._misfit: MisfitStrategy = _STRATEGIES[strategy](
+            signifier, state=self._state
+        )
+
+    @property
+    def state(self) -> EngineState:
+        """The engine's mutable memory, mutated in place each turn."""
+        return self._state
 
     def rationalise(
-        self, state: EngineState, incoming: Sequence[KValue]
+        self, incoming: Sequence[KValue]
     ) -> tuple[list[KValue], list[KValue]]:
         """Route every incoming query, then cogitate. Returns ``(batch, observations)``."""
-        state._dbg_step += 1
+        self._state._dbg_step += 1
 
-        self._state = state
         self.observations: list[KValue] = []
         # The incoming queries this turn, in arrival order, retained so
         # cogitation can reply to them. The engine always replies when it
         # can support a reply from its own state; the actor filters per role.
         self._incoming: list[KValue] = []
 
-        resolver = GroundedModel(state).find
+        resolver = self._state.find
         with using_resolver(resolver):
             for query in incoming:
                 self.route(query)
@@ -266,9 +228,7 @@ class Engine:
 
             elif is_misfit(kline, self._signifier):
                 batch.extend(
-                    self._misfit.propose(
-                        self._state, self._signifier, kline, self._promote
-                    )
+                    self._misfit.propose(kline, self._promote)
                 )
 
             elif self._is_groundable(kline):
