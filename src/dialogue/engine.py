@@ -5,9 +5,10 @@ A :class:`Engine` derives one turn from ``(state, incoming)`` and returns
 this turn. The engine is stateless about its own emissions; dedup lives in the
 actor.
 
-Engines are built through :func:`make_engine`, the single construction path
-that wires signifier → state → strategy → engine so the signifier lives in one
-place (the :class:`EngineState`).
+The engine is pure mechanism: it holds a :class:`EngineState` and a
+:class:`MisfitStrategy`, both fully constructed by the caller. The factories
+that assemble them (signifier, state, strategy, engine) live in
+:mod:`dialogue.harness`.
 """
 
 from __future__ import annotations
@@ -16,8 +17,6 @@ from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from dialogue.engine_state import EngineState
-from dialogue.expand_fit import ExpandFit
-from dialogue.similar_fit import SimilarFit
 from kalvin.kline import (
     KLine,
     is_canon,
@@ -33,12 +32,11 @@ from kalvin.significance import (
     SIG_S3,
     SIG_S4,
 )
-from kalvin.signifier import NLPSignifier
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
-__all__ = ["Engine", "EngineState", "MisfitStrategy", "make_engine"]
+__all__ = ["Engine", "EngineState", "MisfitStrategy"]
 
 
 @runtime_checkable
@@ -47,8 +45,8 @@ class MisfitStrategy(Protocol):
 
     Returns S2 proposals for the actor to emit, and may ground an entry
     directly via ``ground`` when a candidate fully accounts for it (the
-    expand strategy's S1 case). The strategy reads the shared
-    :class:`EngineState` (and its signifier) set at construction.
+    expand strategy's S1 case). The strategy shares the engine's
+    :class:`EngineState` (set at construction).
     """
 
     def propose(
@@ -59,37 +57,21 @@ class MisfitStrategy(Protocol):
         ...
 
 
-# Named cogitation strategies for the misfit (S2) arm of ``cogitate``.
-# "similar_fit" — the work-list graft heuristic (the original scheme).
-# "expand"      — grade grounded candidates via ``ExpandFit._expand`` and
-#                 propose under the entry's signature at the computed band.
-_STRATEGIES = {
-    "similar_fit": SimilarFit,
-    "expand": ExpandFit,
-}
-
-
 class Engine:
     """Derives one turn from ``incoming``.
 
-    Holds the :class:`EngineState` it mutates in place (set at construction,
-    exposed via :attr:`state`); the signifier is read off the state. Construct
-    via :func:`make_engine`.
+    Holds the :class:`EngineState` it mutates in place and the
+    :class:`MisfitStrategy` it consults for the S2 arm — both supplied fully
+    constructed. The signifier is read off the state.
     """
 
     def __init__(
         self,
         state: EngineState,
-        *,
-        strategy: str = "similar_fit",
+        misfit: MisfitStrategy,
     ) -> None:
-        if strategy not in _STRATEGIES:
-            raise ValueError(
-                f"unknown cogitation strategy {strategy!r}; "
-                f"expected one of {sorted(_STRATEGIES)}"
-            )
         self._state: EngineState = state
-        self._misfit: MisfitStrategy = _STRATEGIES[strategy](state)
+        self._misfit: MisfitStrategy = misfit
 
     @property
     def state(self) -> EngineState:
@@ -328,21 +310,3 @@ class Engine:
             list(kline.nodes) == [rhs_node]
             for kline in self._state.grounded.get(head_sig, [])
         )
-
-
-def make_engine(
-    *,
-    strategy: str = "similar_fit",
-    state: EngineState | None = None,
-) -> Engine:
-    """The single construction path: signifier → state → strategy → engine.
-
-    With no ``state``, builds a fresh :class:`NLPSignifier`, wraps it in an
-    :class:`EngineState`, selects the misfit ``strategy``, and returns an
-    :class:`Engine` wired to that state. With a ``state`` (a loaded prior),
-    reuses its signifier. The returned engine's signifier is reachable via
-    ``engine.state.signifier``.
-    """
-    if state is None:
-        state = EngineState(NLPSignifier())
-    return Engine(state, strategy=strategy)
