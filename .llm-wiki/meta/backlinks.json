@@ -1,131 +1,624 @@
 {
   "concepts/agent": [
+    "concepts/harness",
+    "concepts/trainee",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/canon": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/grounding",
+    "concepts/misfit",
+    "concepts/mts-multi-token-signature",
+    "concepts/rational-significance",
+    "concepts/relational-tokens",
+    "concepts/relationship",
+    "concepts/structural-significance",
+    "concepts/terminal",
+    "entities/isgroundable",
+    "sources/SRC-2026-08-11-001",
+    "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in"
+  ],
+  "concepts/canonical-synthesis": [
+    "concepts/cogitation",
+    "concepts/proposal",
+    "concepts/s2-expansion",
+    "concepts/silent-synthesis",
+    "entities/cogitate",
+    "entities/expand",
+    "entities/mhall",
+    "entities/similarfit",
+    "entities/wdmh",
+    "sources/SRC-2026-08-11-002"
   ],
   "concepts/cogitation": [
+    "concepts/engine-first",
+    "concepts/escalation",
+    "concepts/expectation",
+    "concepts/fast-route-vs-slow-route",
+    "concepts/learned-preferences",
+    "concepts/misfit",
+    "concepts/node",
+    "concepts/priming",
+    "concepts/proposal",
+    "concepts/rational-significance",
+    "concepts/s2-expansion",
+    "concepts/structural-significance",
+    "concepts/study",
+    "concepts/terminal",
+    "concepts/trainee",
+    "concepts/trainer",
+    "entities/auto-tune",
+    "entities/cogitate",
+    "entities/contextmd",
+    "entities/k-engine",
+    "entities/kalvin",
+    "entities/route",
     "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/convergence": [
+    "concepts/distributed-rationality",
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/curriculum": [
+    "concepts/convergence",
+    "concepts/monotonic-growth",
+    "concepts/priming",
     "sources/SRC-2026-08-11-001"
   ],
+  "concepts/distributed-rationality": [
+    "concepts/convergence",
+    "sources/SRC-2026-08-11-003"
+  ],
+  "concepts/engine-first": [
+    "concepts/non-judging-harness",
+    "entities/auto-tune",
+    "entities/k-engine",
+    "sources/SRC-2026-08-11-002"
+  ],
   "concepts/escalation": [
+    "concepts/agent",
+    "concepts/ratify",
+    "concepts/supervisor",
+    "concepts/trainer",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/expectation": [
+    "concepts/expectation",
     "sources/SRC-2026-08-11-001"
   ],
+  "concepts/fast-route-vs-slow-route": [
+    "concepts/signature-discovery",
+    "concepts/significance-spectrum-s1s4",
+    "concepts/structural-significance",
+    "entities/route",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "concepts/fit": [
+    "concepts/learned-preferences",
+    "concepts/significance",
+    "entities/kalvin",
+    "sources/SRC-2026-08-11-003"
+  ],
   "concepts/frame": [
+    "concepts/monotonic-growth",
+    "concepts/per-turn-scoping",
+    "entities/ltm-long-term-memory",
+    "entities/rationalise",
+    "entities/stm-short-term-memory",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/grounding": [
+    "concepts/canon",
+    "concepts/engine-first",
+    "concepts/fast-route-vs-slow-route",
+    "concepts/fit",
+    "concepts/identity",
+    "concepts/ratify",
+    "concepts/rational-significance",
+    "concepts/scaffolding",
+    "concepts/signature-discovery",
+    "concepts/target-significance",
+    "entities/isgroundable",
+    "entities/k-engine",
+    "entities/ltm-long-term-memory",
+    "entities/promote",
+    "entities/route",
     "sources/SRC-2026-08-11-001"
   ],
+  "concepts/harness": [
+    "concepts/agent",
+    "concepts/curriculum",
+    "concepts/kvalue",
+    "concepts/non-judging-harness",
+    "concepts/supervisor",
+    "concepts/trainee",
+    "concepts/trainer",
+    "entities/harness",
+    "entities/kalvin",
+    "sources/SRC-2026-08-11-003"
+  ],
   "concepts/identity": [
+    "concepts/canon",
+    "concepts/fit",
+    "concepts/grounding",
+    "concepts/querying",
+    "concepts/rational-significance",
+    "concepts/relational-tokens",
+    "concepts/structural-significance",
+    "concepts/terminal",
+    "concepts/unknown",
+    "concepts/word-binding",
+    "entities/isgroundable",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/kline": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/kvalue",
+    "concepts/node",
+    "concepts/signature",
+    "entities/contextmd",
+    "entities/kalvin",
+    "entities/kdbg",
+    "entities/kscript",
+    "entities/tokenencoder",
+    "sources/SRC-2026-08-11-001",
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/kvalue": [
+    "concepts/kline",
     "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/learned-preferences": [
+    "concepts/fit",
+    "entities/kalvin",
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/misfit": [
+    "concepts/canon",
+    "concepts/fit",
+    "concepts/grounding",
+    "concepts/relationship",
+    "concepts/s2-expansion",
+    "concepts/structural-significance",
+    "concepts/terminal",
+    "entities/isgroundable",
     "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/monotonic-growth": [
+    "concepts/curriculum",
+    "concepts/distributed-rationality",
+    "concepts/frame",
+    "concepts/learned-preferences",
+    "entities/ltm-long-term-memory",
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/mts-multi-token-signature": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/canon",
+    "concepts/signature",
+    "entities/kdbg",
+    "entities/kscript",
+    "entities/tokenencoder",
+    "sources/SRC-2026-08-11-001",
+    "sources/SRC-2026-08-11-002",
+    "sources/wiki-duplicate-consolidation"
   ],
   "concepts/node": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/fit",
+    "concepts/kline",
+    "concepts/signature",
+    "sources/SRC-2026-08-11-001",
+    "sources/SRC-2026-08-11-003"
+  ],
+  "concepts/non-judging-harness": [
+    "concepts/engine-first",
+    "concepts/harness",
+    "concepts/per-turn-scoping",
+    "entities/auto-tune",
+    "entities/harness",
+    "entities/k-engine",
+    "entities/kdbg",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "concepts/per-turn-scoping": [
+    "entities/k-engine",
+    "entities/rationalise",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "concepts/priming": [
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/proposal": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/canonical-synthesis",
+    "concepts/cogitation",
+    "concepts/escalation",
+    "concepts/expectation",
+    "concepts/misfit",
+    "concepts/s2-expansion",
+    "concepts/scaffolding",
+    "concepts/silent-synthesis",
+    "concepts/supervisor",
+    "concepts/trainer",
+    "entities/mhall",
+    "entities/similarfit",
+    "sources/SRC-2026-08-11-001",
+    "sources/SRC-2026-08-11-003"
+  ],
+  "concepts/querying": [
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/ratify": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/cogitation",
+    "concepts/distributed-rationality",
+    "concepts/escalation",
+    "concepts/grounding",
+    "concepts/proposal",
+    "concepts/querying",
+    "concepts/rational-significance",
+    "concepts/relationship",
+    "concepts/significance-spectrum-s1s4",
+    "concepts/study",
+    "concepts/supervisor",
+    "concepts/trainer",
+    "entities/kalvin",
+    "entities/ltm-long-term-memory",
+    "sources/SRC-2026-08-11-001",
+    "sources/SRC-2026-08-11-003",
+    "sources/wiki-duplicate-consolidation"
   ],
   "concepts/rational-significance": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/agent",
+    "concepts/cogitation",
+    "concepts/convergence",
+    "concepts/grounding",
+    "concepts/kvalue",
+    "concepts/signature",
+    "concepts/significance",
+    "concepts/significance-spectrum-s1s4",
+    "concepts/structural-significance",
+    "concepts/target-significance",
+    "sources/SRC-2026-08-11-001",
+    "sources/wiki-duplicate-consolidation"
   ],
   "concepts/relational-tokens": [
+    "concepts/canon",
+    "concepts/mts-multi-token-signature",
+    "concepts/ratify",
+    "concepts/relationship",
+    "concepts/target-significance",
+    "concepts/word-binding",
+    "entities/kscript",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/relationship": [
+    "concepts/fit",
+    "concepts/grounding",
+    "concepts/misfit",
+    "concepts/relational-tokens",
+    "entities/isgroundable",
     "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/s2-expansion": [
+    "concepts/canonical-synthesis",
+    "concepts/cogitation",
+    "concepts/misfit",
+    "concepts/silent-synthesis",
+    "entities/expand",
+    "entities/mhall",
+    "entities/similarfit",
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/scaffolding": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/escalation",
+    "concepts/priming",
+    "concepts/proposal",
+    "concepts/supervisor",
+    "entities/marys-world",
+    "sources/SRC-2026-08-11-001",
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/signature": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/kline",
+    "concepts/node",
+    "concepts/signature-discovery",
+    "sources/SRC-2026-08-11-001",
+    "sources/SRC-2026-08-11-003"
+  ],
+  "concepts/signature-discovery": [
+    "concepts/fast-route-vs-slow-route",
+    "concepts/identity",
+    "concepts/signature",
+    "concepts/unknown",
+    "entities/promote",
+    "entities/route",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "concepts/significance": [
+    "concepts/distributed-rationality",
+    "concepts/fit",
+    "concepts/harness",
+    "concepts/kvalue",
+    "concepts/learned-preferences",
+    "concepts/monotonic-growth",
+    "concepts/priming",
+    "concepts/scaffolding",
+    "entities/contextmd",
+    "entities/kalvin",
+    "sources/SRC-2026-08-11-003"
+  ],
+  "concepts/significance-spectrum-s1s4": [
+    "concepts/kline",
+    "concepts/proposal",
+    "concepts/querying",
+    "concepts/rational-significance",
+    "concepts/significance",
+    "concepts/structural-significance",
+    "concepts/study",
+    "concepts/target-significance",
+    "entities/cogitate",
+    "sources/SRC-2026-08-11-002",
+    "sources/SRC-2026-08-11-003",
+    "sources/wiki-duplicate-consolidation"
+  ],
+  "concepts/silent-synthesis": [
+    "concepts/canonical-synthesis",
+    "concepts/cogitation",
+    "concepts/proposal",
+    "concepts/s2-expansion",
+    "entities/cogitate",
+    "entities/expand",
+    "entities/mhall",
+    "entities/similarfit",
+    "entities/wdmh",
+    "sources/SRC-2026-08-11-002"
   ],
   "concepts/structural-significance": [
-    "sources/SRC-2026-08-11-001"
+    "concepts/cogitation",
+    "concepts/fast-route-vs-slow-route",
+    "concepts/kline",
+    "concepts/rational-significance",
+    "concepts/relational-tokens",
+    "concepts/signature",
+    "concepts/significance",
+    "concepts/significance-spectrum-s1s4",
+    "concepts/target-significance",
+    "concepts/unknown",
+    "entities/route",
+    "sources/SRC-2026-08-11-001",
+    "sources/wiki-duplicate-consolidation"
+  ],
+  "concepts/study": [
+    "sources/SRC-2026-08-11-003"
   ],
   "concepts/supervisor": [
+    "concepts/agent",
+    "concepts/escalation",
+    "concepts/harness",
+    "concepts/scaffolding",
+    "concepts/trainee",
+    "concepts/trainer",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/target-significance": [
+    "concepts/convergence",
+    "concepts/curriculum",
+    "concepts/expectation",
+    "concepts/identity",
+    "concepts/rational-significance",
+    "concepts/relational-tokens",
+    "concepts/significance",
+    "concepts/significance-spectrum-s1s4",
+    "concepts/word-binding",
+    "entities/kscript",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/terminal": [
+    "concepts/identity",
+    "concepts/node",
+    "concepts/unknown",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/trainee": [
+    "concepts/agent",
+    "concepts/harness",
+    "concepts/trainer",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/trainer": [
+    "concepts/agent",
+    "concepts/escalation",
+    "concepts/harness",
+    "concepts/supervisor",
+    "concepts/trainee",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/unknown": [
+    "concepts/identity",
+    "concepts/querying",
+    "concepts/relational-tokens",
+    "concepts/signature-discovery",
+    "concepts/structural-significance",
+    "concepts/terminal",
+    "concepts/word-binding",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/word-binding": [
+    "concepts/identity",
+    "concepts/relational-tokens",
+    "entities/kscript",
+    "entities/tokenencoder",
     "sources/SRC-2026-08-11-001"
   ],
   "entities/auto-tune": [
+    "concepts/engine-first",
+    "concepts/non-judging-harness",
+    "concepts/supervisor",
+    "entities/harness",
+    "entities/k-engine",
     "sources/SRC-2026-08-11-001"
+  ],
+  "entities/cogitate": [
+    "concepts/cogitation",
+    "entities/expand",
+    "entities/k-engine",
+    "entities/promote",
+    "entities/rationalise",
+    "entities/route",
+    "entities/similarfit",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "entities/contextmd": [
+    "sources/SRC-2026-08-11-002",
+    "sources/SRC-2026-08-11-003"
+  ],
+  "entities/expand": [
+    "concepts/canonical-synthesis",
+    "concepts/cogitation",
+    "concepts/s2-expansion",
+    "concepts/silent-synthesis",
+    "entities/auto-tune",
+    "entities/cogitate",
+    "entities/mhall",
+    "entities/similarfit",
+    "entities/wdmh",
+    "sources/SRC-2026-08-11-002"
   ],
   "entities/harness": [
+    "concepts/harness",
+    "concepts/non-judging-harness",
+    "entities/auto-tune",
+    "entities/k-engine",
+    "entities/kalvin",
     "sources/SRC-2026-08-11-001"
+  ],
+  "entities/isgroundable": [
+    "concepts/grounding",
+    "entities/k-engine",
+    "entities/promote",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "entities/k-engine": [
+    "concepts/convergence",
+    "concepts/trainee",
+    "concepts/trainer",
+    "entities/harness",
+    "entities/kalvin",
+    "entities/rationalise",
+    "entities/route",
+    "sources/SRC-2026-08-11-002"
   ],
   "entities/kalvin": [
-    "sources/SRC-2026-08-11-001"
+    "sources/SRC-2026-08-11-001",
+    "sources/SRC-2026-08-11-003"
+  ],
+  "entities/kdbg": [
+    "sources/SRC-2026-08-11-002"
   ],
   "entities/kscript": [
+    "concepts/curriculum",
+    "concepts/engine-first",
+    "concepts/expectation",
+    "concepts/non-judging-harness",
+    "concepts/relational-tokens",
+    "concepts/target-significance",
+    "concepts/word-binding",
+    "entities/kdbg",
+    "entities/tokenencoder",
     "sources/SRC-2026-08-11-001"
   ],
   "entities/ltm-long-term-memory": [
+    "concepts/frame",
+    "concepts/grounding",
+    "concepts/monotonic-growth",
+    "concepts/per-turn-scoping",
+    "entities/rationalise",
+    "entities/stm-short-term-memory",
     "sources/SRC-2026-08-11-001"
   ],
+  "entities/marys-world": [
+    "entities/mhall",
+    "sources/SRC-2026-08-11-003"
+  ],
+  "entities/mhall": [
+    "concepts/canonical-synthesis",
+    "concepts/silent-synthesis",
+    "entities/expand",
+    "entities/marys-world",
+    "entities/similarfit",
+    "entities/wdmh",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "entities/promote": [
+    "concepts/grounding",
+    "entities/isgroundable",
+    "entities/k-engine",
+    "entities/rationalise",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "entities/rationalise": [
+    "concepts/per-turn-scoping",
+    "entities/auto-tune",
+    "entities/k-engine",
+    "entities/route",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "entities/route": [
+    "concepts/fast-route-vs-slow-route",
+    "entities/k-engine",
+    "entities/rationalise",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "entities/similarfit": [
+    "concepts/canonical-synthesis",
+    "concepts/cogitation",
+    "concepts/s2-expansion",
+    "entities/auto-tune",
+    "entities/cogitate",
+    "entities/expand",
+    "entities/mhall",
+    "entities/wdmh",
+    "sources/SRC-2026-08-11-002"
+  ],
   "entities/stm-short-term-memory": [
+    "entities/ltm-long-term-memory",
     "sources/SRC-2026-08-11-001"
+  ],
+  "entities/tokenencoder": [
+    "concepts/word-binding",
+    "entities/kdbg",
+    "entities/kscript",
+    "sources/SRC-2026-08-11-002"
+  ],
+  "entities/wdmh": [
+    "concepts/silent-synthesis",
+    "entities/marys-world",
+    "entities/mhall",
+    "sources/SRC-2026-08-11-002"
   ],
   "sources/SRC-2026-08-11-001": [
     "concepts/agent",
     "concepts/canon",
     "concepts/cogitation",
+    "concepts/convergence",
     "concepts/curriculum",
     "concepts/escalation",
     "concepts/expectation",
     "concepts/frame",
     "concepts/grounding",
+    "concepts/harness",
     "concepts/identity",
     "concepts/kline",
     "concepts/kvalue",
     "concepts/misfit",
+    "concepts/monotonic-growth",
     "concepts/mts-multi-token-signature",
     "concepts/node",
     "concepts/proposal",
+    "concepts/querying",
     "concepts/ratify",
     "concepts/rational-significance",
     "concepts/relational-tokens",
     "concepts/relationship",
     "concepts/scaffolding",
     "concepts/signature",
+    "concepts/significance-spectrum-s1s4",
     "concepts/structural-significance",
     "concepts/supervisor",
     "concepts/target-significance",
@@ -135,12 +628,71 @@
     "concepts/unknown",
     "concepts/word-binding",
     "entities/auto-tune",
+    "entities/contextmd",
     "entities/harness",
     "entities/kalvin",
     "entities/kscript",
     "entities/ltm-long-term-memory",
-    "entities/stm-short-term-memory"
+    "entities/stm-short-term-memory",
+    "entities/tokenencoder"
   ],
+  "sources/SRC-2026-08-11-002": [
+    "concepts/canonical-synthesis",
+    "concepts/cogitation",
+    "concepts/engine-first",
+    "concepts/fast-route-vs-slow-route",
+    "concepts/grounding",
+    "concepts/identity",
+    "concepts/mts-multi-token-signature",
+    "concepts/non-judging-harness",
+    "concepts/per-turn-scoping",
+    "concepts/s2-expansion",
+    "concepts/signature",
+    "concepts/signature-discovery",
+    "concepts/significance-spectrum-s1s4",
+    "concepts/silent-synthesis",
+    "concepts/structural-significance",
+    "concepts/unknown",
+    "entities/auto-tune",
+    "entities/cogitate",
+    "entities/expand",
+    "entities/harness",
+    "entities/isgroundable",
+    "entities/k-engine",
+    "entities/kdbg",
+    "entities/mhall",
+    "entities/promote",
+    "entities/rationalise",
+    "entities/route",
+    "entities/similarfit",
+    "entities/tokenencoder",
+    "entities/wdmh"
+  ],
+  "sources/SRC-2026-08-11-003": [
+    "concepts/cogitation",
+    "concepts/convergence",
+    "concepts/distributed-rationality",
+    "concepts/fit",
+    "concepts/harness",
+    "concepts/kline",
+    "concepts/learned-preferences",
+    "concepts/misfit",
+    "concepts/monotonic-growth",
+    "concepts/priming",
+    "concepts/proposal",
+    "concepts/querying",
+    "concepts/ratify",
+    "concepts/rational-significance",
+    "concepts/s2-expansion",
+    "concepts/scaffolding",
+    "concepts/significance",
+    "concepts/significance-spectrum-s1s4",
+    "concepts/study",
+    "entities/kalvin",
+    "entities/marys-world"
+  ],
+  "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": [],
   "sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists": [],
-  "sources/obs-2026-08-11-readme-md-updated-to-match-actual-source-tree": []
+  "sources/obs-2026-08-11-readme-md-updated-to-match-actual-source-tree": [],
+  "sources/wiki-duplicate-consolidation": []
 }
