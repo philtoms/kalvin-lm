@@ -301,8 +301,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "-s", "--strategy", choices=("similar_fit", "expand"), default="expand",
         help="Cogitation strategy for the misfit (S2) arm. "
-             "'similar_fit' (default) is the graft heuristic; 'expand' grades "
-             "grounded candidates via kalvin.expand.expand.",
+             "'expand' (default) grades grounded candidates via "
+             "kalvin.expand.expand; 'similar_fit' is the graft heuristic.",
     )
     args = parser.parse_args(argv)
 

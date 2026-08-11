@@ -1,0 +1,146 @@
+{
+  "concepts/agent": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/canon": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/cogitation": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/curriculum": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/escalation": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/expectation": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/frame": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/grounding": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/identity": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/kline": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/kvalue": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/misfit": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/mts-multi-token-signature": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/node": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/proposal": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/ratify": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/rational-significance": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/relational-tokens": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/relationship": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/scaffolding": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/signature": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/structural-significance": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/supervisor": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/target-significance": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/terminal": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/trainee": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/trainer": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/unknown": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/word-binding": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "entities/auto-tune": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "entities/harness": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "entities/kalvin": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "entities/kscript": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "entities/ltm-long-term-memory": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "entities/stm-short-term-memory": [
+    "sources/SRC-2026-08-11-001"
+  ],
+  "sources/SRC-2026-08-11-001": [
+    "concepts/agent",
+    "concepts/canon",
+    "concepts/cogitation",
+    "concepts/curriculum",
+    "concepts/escalation",
+    "concepts/expectation",
+    "concepts/frame",
+    "concepts/grounding",
+    "concepts/identity",
+    "concepts/kline",
+    "concepts/kvalue",
+    "concepts/misfit",
+    "concepts/mts-multi-token-signature",
+    "concepts/node",
+    "concepts/proposal",
+    "concepts/ratify",
+    "concepts/rational-significance",
+    "concepts/relational-tokens",
+    "concepts/relationship",
+    "concepts/scaffolding",
+    "concepts/signature",
+    "concepts/structural-significance",
+    "concepts/supervisor",
+    "concepts/target-significance",
+    "concepts/terminal",
+    "concepts/trainee",
+    "concepts/trainer",
+    "concepts/unknown",
+    "concepts/word-binding",
+    "entities/auto-tune",
+    "entities/harness",
+    "entities/kalvin",
+    "entities/kscript",
+    "entities/ltm-long-term-memory",
+    "entities/stm-short-term-memory"
+  ],
+  "sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists": [],
+  "sources/obs-2026-08-11-readme-md-updated-to-match-actual-source-tree": []
+}

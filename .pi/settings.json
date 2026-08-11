@@ -1,5 +1,8 @@
 {
   "autoTune": {
     "contextCeiling": 0.5
+  },
+  "llm-wiki": {
+    "trajectories": true
   }
 }

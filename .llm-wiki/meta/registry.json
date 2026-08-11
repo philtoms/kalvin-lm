@@ -1,0 +1,292 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-08-11T14:57:51.674Z",
+  "pages": {
+    "concepts/agent": {
+      "type": "concept",
+      "title": "Agent",
+      "description": "A participant that forms its own significance on a kline; three roles: Trainee, Trainer, Supervisor.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/canon": {
+      "type": "concept",
+      "title": "Canon",
+      "description": "A kline structure where signature = signature_of(nodes), claiming S1 — the signature stands for its nodes.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/cogitation": {
+      "type": "concept",
+      "title": "Cogitation",
+      "description": "The slow path of rationalisation through model traversal that tests a kline's structural claim, emitting proposals for ratification.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/curriculum": {
+      "type": "concept",
+      "title": "Curriculum",
+      "description": "A living structured document owned by the Harness with three sections: objective, approach, and lessons; never rolled back.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/escalation": {
+      "type": "concept",
+      "title": "Escalation",
+      "description": "The trainer deferring a proposal to the supervisor when its cogitation yields no reply.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/expectation": {
+      "type": "concept",
+      "title": "Expectation",
+      "description": "A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/frame": {
+      "type": "concept",
+      "title": "Frame",
+      "description": "Recognised working context persisted across sessions; monotonic.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/grounding": {
+      "type": "concept",
+      "title": "Grounding",
+      "description": "The model's mechanism for realising S1 — either by structure (canon self-grounds) or by LTM residency through ratification.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/identity": {
+      "type": "concept",
+      "title": "Identity",
+      "description": "A terminal kline structure that is directly decodable (self-referential {S: [S]}), claiming S1 — 'I know this.'",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/kline": {
+      "type": "concept",
+      "title": "KLine",
+      "description": "The fundamental unit of Kalvin's memory: a structure containing a signature (head node) and a nodes list, between which holds a relationship rationalised as Structural Significance.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/kvalue": {
+      "type": "concept",
+      "title": "KValue",
+      "description": "The unit of exchange between participants: a KLine paired with a significance (the sender's assessment).",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/misfit": {
+      "type": "concept",
+      "title": "Misfit",
+      "description": "A kline structure where the signature does not equal signature_of(nodes); sub-shapes include no-fit (S2), underfit (S2), overfit (S2), and connote/denote (S3).",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/mts-multi-token-signature": {
+      "type": "concept",
+      "title": "MTS (Multi-Token Signature)",
+      "description": "A KScript device for representing a multi-token signature via compiler expansion of a multi-character identifier into constituent character identities.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/node": {
+      "type": "concept",
+      "title": "Node",
+      "description": "A structural slot in a kline's nodes list, containing either a Token ID or the signature of another kline.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/proposal": {
+      "type": "concept",
+      "title": "Proposal",
+      "description": "A KLine emitted by an agent during rationalisation.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/ratify": {
+      "type": "concept",
+      "title": "Ratify",
+      "description": "The action of countersigning a selected proposal, usually performed by the Trainer.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/rational-significance": {
+      "type": "concept",
+      "title": "Rational Significance",
+      "description": "A participant's measurement of whether a kline's structural claim holds against what Kalvin holds, classified into S1–S4.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/relational-tokens": {
+      "type": "concept",
+      "title": "Relational Tokens",
+      "description": "The closed set of KScript tokens (==, =>, >, =, none) declaring how a kline is produced and its provenance intent.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/relationship": {
+      "type": "concept",
+      "title": "Relationship",
+      "description": "A single-node misfit ({A: [B]} where A != B) treated as a distinct routing class for reciprocal grounding / countersignature.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/scaffolding": {
+      "type": "concept",
+      "title": "Scaffolding",
+      "description": "KScript entries providing grounding context; either pre-compiled (by curriculum designer) or reactive (written by supervisor on mismatch).",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/signature": {
+      "type": "concept",
+      "title": "Signature",
+      "description": "The value occupying a kline's head position; also a value other klines hold as nodes to evaluate Rational Significance.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/structural-significance": {
+      "type": "concept",
+      "title": "Structural Significance",
+      "description": "The significance a kline's structure claims on its own, derived from the signature–nodes relationship alone, without model traversal.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/supervisor": {
+      "type": "concept",
+      "title": "Supervisor",
+      "description": "An agent that resolves escalated proposals, deciding ratify, scaffold, or continue; independent of medium (human or LLM).",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/target-significance": {
+      "type": "concept",
+      "title": "Target Significance",
+      "description": "The significance a compiled kline is labelled with — the answer the script asserts the trainee should learn to derive.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/terminal": {
+      "type": "concept",
+      "title": "Terminal",
+      "description": "A kline whose structure carries no further decomposition; three shapes: empty nodes, self-referential nodes, and compound-word form.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/trainee": {
+      "type": "concept",
+      "title": "Trainee",
+      "description": "The participant under instruction — the rationalising system being trained, using Cogitation.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/trainer": {
+      "type": "concept",
+      "title": "Trainer",
+      "description": "The trainer-side peer sharing the trainee's rationalising engine; cogitates over proposals, escalates to supervisor on cogitation-empty.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/unknown": {
+      "type": "concept",
+      "title": "Unknown",
+      "description": "A terminal kline structure with empty nodes that claims S4 — the structural form of an ask requesting Identity ratification.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "concepts/word-binding": {
+      "type": "concept",
+      "title": "Word Binding",
+      "description": "The association of a single-character KScript signature with a word, resolved through scoped annotations (top-level fill-if-empty, inline unconditional).",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "entities/auto-tune": {
+      "type": "entity",
+      "title": "Auto-Tune",
+      "description": "Experimental loop where an LLM coding agent tunes Kalvin's rationalisation code by running sessions and editing the significance model.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "entities/harness": {
+      "type": "entity",
+      "title": "Harness",
+      "description": "The multi-agent runtime that loads agents as participants and routes role-addressed messages between them.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "entities/kalvin": {
+      "type": "entity",
+      "title": "Kalvin",
+      "description": "The rationalising system whose entire world is built from klines.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "entities/kscript": {
+      "type": "entity",
+      "title": "KScript",
+      "description": "The language that authors training material by declaring klines and labelling them with Target Significance.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "entities/ltm-long-term-memory": {
+      "type": "entity",
+      "title": "LTM (Long-Term Memory)",
+      "description": "Persistent knowledge surviving across sessions; a kline in LTM is grounded.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "entities/stm-short-term-memory": {
+      "type": "entity",
+      "title": "STM (Short-Term Memory)",
+      "description": "The lowest tier in the write cascade and Kalvin's event register; empty at session start.",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "sources/SRC-2026-08-11-001": {
+      "type": "source",
+      "title": "CONTEXT.md",
+      "status": "ingested",
+      "raw_path": "raw/sources/SRC-2026-08-11-001/extracted.md",
+      "source_id": "SRC-2026-08-11-001",
+      "format": "markdown",
+      "captured": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists": {
+      "type": "source",
+      "title": "Observation: No `python -m kscript` entrypoint exists",
+      "tags": [
+        "kscript",
+        "cli",
+        "entrypoint"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-11-no-python-m-kscript-entrypoint-exists",
+      "relevance": "high",
+      "observed_at": "2026-08-11T14:57:51.661Z",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "sources/obs-2026-08-11-readme-md-updated-to-match-actual-source-tree": {
+      "type": "source",
+      "title": "Observation: README.md updated to match actual source tree",
+      "tags": [
+        "docs",
+        "readme",
+        "project-structure"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-11-readme-md-updated-to-match-actual-source-tree",
+      "relevance": "high",
+      "observed_at": "2026-08-11T14:57:51.658Z",
+      "source_context": "Updating README.md after initializing the LLM wiki",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    }
+  }
+}
