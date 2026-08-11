@@ -263,7 +263,7 @@ class ExpandFit:
         # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1).
         for n in matched:
             kl = state.find(n)
-            if kl is not None and state.is_grounded(kl):
+            if kl is not None and state.is_in_ltm(kl):
                 slot_values.append(1.0)
             else:
                 # Ungrounded match OR not in the store: one hop of doubt.

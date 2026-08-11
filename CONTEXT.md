@@ -159,8 +159,8 @@ _Avoid_: auto-ratify failure (the earlier path's trigger — the trainer now esc
 A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
 
 **Grounding**:
-The model's mechanism for realising **S1** (recognised). A kline is **grounded** when the model counts it as S1 — either by its own structure (a canon self-grounds) or by residing in LTM via ratification (a structural fact the model owns). Grounding is how S1 is _produced_, not what S1 _means_; "recognised" is the significance-level concept.
-_Avoid_: self-grounded (legacy; conflates the mechanism with the level), grounded identity (grounding applies to any kline that attains S1, not just identities)
+The model's mechanism for realising **S1** (recognised). A signature grounds only once every one of its nodes is grounded; an identity is the exception — self-referential (`{S:[S]}`), it grounds unconditionally. Grounding is how S1 is _produced_, not what S1 _means_; "recognised" is the significance-level concept.
+_Avoid_: self-grounded (a canon does NOT self-ground — its nodes must be grounded first), grounded identity (grounding applies to any kline that attains S1, not just identities)
 
 **Auto-Tune**:
 The project's experimental loop for tuning Kalvin's rationalisation behaviour. An LLM coding agent runs repeated sessions against a curriculum, observes how the reactor/cogitator/rationaliser actually behave, edits the significance-model code (`expand()`, `significance.py`, the rationaliser), and re-runs to confirm.

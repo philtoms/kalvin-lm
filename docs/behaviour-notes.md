@@ -9,21 +9,25 @@ Rules when it resolves.
 
 ### Engine — routing
 
-- `route()` dispatches on **structural** significance (`sig_level`), not the producer's compiled stamp.
-- The fast route admits identities and seen-signature canons when their signature is seen; unseen-signature canons take the slow route (nodes unpacked as asks); unseen-signature identities are dropped.
+- `route()` dispatches when **structural** significance (`sig_level`) **agrees with** the query's stamped significance (classified via `BandLayout`): both must be S1/S4 for the fast route, else slow route.
+- The fast route grounds a seen-signature **identity** unconditionally (self-referential `{S:[S]}`); a seen-signature **canon** grounds only once `_is_groundable` holds (all its nodes are in LTM), else it slow-routes to await them.
 - An incoming S4 (`{X:[]}`) is a reply to K's own framed ask — feeding one never discovers a signature.
 - A signature is only discovered when the slow route unpacks it from an S2/S3 incoming; unreferenced signatures stay invisible.
 
 ### Engine — grounding & cogitation
 
-- `_is_groundable` branches, in order: identity → signature grounded; canon → all nodes grounded; single-node relationship → reciprocal grounded; any misfit → signature grounded AND all nodes grounded.
+- **Universal grounding rule:** a signature grounds only once every one of its nodes is in LTM. An identity is the exception — self-referential (`{S:[S]}`), it grounds unconditionally when promoted.
+- `_is_groundable` is that rule: identity → True; anything else → all nodes in LTM.
 - The `_promote` cascade grounds groundable entries to fixed point at S1; it does not emit S2 proposals.
-- `cogitate` runs one full LIFO pass over the work-list (no short-circuit): per entry it asks (S4), countersigns (S3), proposes (S2), or grounds (S1).
+- `cogitate` runs one full LIFO pass over the work-list (no short-circuit): per entry it asks (S4), countersigns (S3), proposes (S2), or grounds (S1). The loop re-checks each index because the `_promote` cascade can remove arbitrary work-list entries mid-pass.
 - The engine speaks in semantic predicates (`is_identity`, `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
 
 ### Engine — state
 
-- `observations` and `_incoming` reset to fresh lists at the top of every `rationalise()` call (per-turn scoping).
+- `observations` resets to a fresh list at the top of every `rationalise()` call (per-turn scoping).
+- EngineState holds four stores mirroring the kalvin memory tiers: `work_list` (the cogitator queue — incoming entries and the ungrounded sigs/nodes unpacked from them), `ltm` (ratified klines), `frame` (outgoing proposals and identity requests), and `stm` (Short-Term Memory, reserved for the expansion strategies' exclusive use).
+- `work_list` and `stm` are maintained independently — work-list writes do not cascade to STM, and no logic reads or writes STM yet.
+- The scoped reads (`is_in_ltm`, `is_seen`, `signature_seen`) each check one store; none is a union across stores.
 
 ### Harness
 

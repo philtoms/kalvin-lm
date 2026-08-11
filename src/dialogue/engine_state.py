@@ -1,8 +1,17 @@
 r"""The engine's mutable memory.
 
-:class:`EngineState` holds the work-list, K's grounded model, and the emission
-frame. It is plain ints (signature + node lists); ``dbg`` is debug-only and
-dropped on save. A saved state is a grounded prior injected into an actor at
+:class:`EngineState` holds four stores that mirror the original kalvin memory
+tiers:
+
+- **work_list** — the cogitator queue: incoming entries plus the ungrounded
+  signatures and nodes their routing unpacked.
+- **ltm** — ratified klines (Long-Term Memory).
+- **frame** — the outgoing kline proposals and identity requests K has emitted.
+- **stm** — Short-Term Memory: reserved for the expansion strategies' exclusive
+  use. Not wired into any logic; maintained independently of the other stores.
+
+State is plain ints (signature + node lists); ``dbg`` is debug-only and dropped
+on save. A saved state is a ratified prior injected into an actor at
 construction.
 
 The :class:`dialogue.engine.Engine` is stateless about its own emissions; all
@@ -26,6 +35,7 @@ from kalvin.kline import (
     is_unknown,
     sig_level,
 )
+from kalvin.stm import STM
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
@@ -39,83 +49,102 @@ class EngineState:
 
     - **_signifier** — the structural-significance oracle the state's queries
       dispatch through; set at construction.
-    - **work_list** — pending klines awaiting cogitation. Entries carry no
-      significance band; dispatch is structural.
-    - **grounded** — K's grounded model, keyed by signature.
+    - **work_list** — the cogitator queue: incoming entries and the ungrounded
+      signatures/nodes unpacked from them. Entries carry no significance band;
+      dispatch is structural.
+    - **ltm** — ratified klines, keyed by signature.
     - **frame** — klines K has previously emitted, keyed by signature. The
       fast route matches incoming S1/S4 queries against it.
+    - **stm** — Short-Term Memory. Reserved for the expansion strategies; not
+      wired into any logic and maintained independently of the other stores.
     """
 
     _signifier: KSignifier
     work_list: list[KLine] = field(default_factory=list)
-    grounded: dict[int, list[KLine]] = field(default_factory=dict)
+    ltm: dict[int, list[KLine]] = field(default_factory=dict)
     frame: dict[int, list[KLine]] = field(default_factory=dict)
+    stm: STM = field(init=False)
     _dbg_step: int = 0
+
+    def __post_init__(self) -> None:
+        self.stm = STM(signifier=self._signifier)
 
     @property
     def signifier(self) -> KSignifier:
         """The structural-significance oracle this state's queries dispatch through."""
         return self._signifier
 
-    # -- grounded-store queries -------------------------------------
+    # -- LTM queries -------------------------------------------------
     #
-    # The graph-expansion walk (``ExpandFit._expand``) reads the grounded
-    # store through these instead of a separate adapter. Named ``is_grounded``
-    # (not ``grounded``) so as not to shadow the ``grounded`` dict field.
+    # The graph-expansion walk (``ExpandFit._expand``) reads LTM through these.
+    # Named ``is_in_ltm`` (not ``ltm``) so as not to shadow the ``ltm`` field.
 
     def find(self, signature: int) -> KLine | None:
-        """The last grounded kline under ``signature``, or ``None``."""
-        bucket = self.grounded.get(signature)
+        """The last ratified kline under ``signature``, or ``None``."""
+        bucket = self.ltm.get(signature)
         return bucket[-1] if bucket else None
 
-    def _is_groundable(self, kline: KLine) -> bool:
-        """Can ``kline`` be grounded at S1 right now?
+    # -- work-list (cogitator queue) ---------------------------------
 
-        An identity whose signature is grounded; a canon whose nodes are all
-        grounded; a single-node relationship whose reciprocal is grounded;
-        or — the general misfit rule — a misfit whose signature and every
-        node are grounded (the relationship is fully supported by what K
-        already holds).
+    def add_work(self, kline: KLine) -> None:
+        """Append ``kline`` to the work-list."""
+        self.work_list.append(kline)
+
+    def remove_work_at(self, idx: int) -> KLine:
+        """Remove and return the work-list entry at ``idx``."""
+        return self.work_list.pop(idx)
+
+    def note_ratified(self, kline: KLine) -> bool:
+        """Record ``kline`` in LTM. Idempotent on nodes.
+
+        Returns ``True`` when a new entry was added, ``False`` when an
+        isomorphic kline (same signature and nodes) was already ratified.
         """
-        signifier = self._signifier
+        bucket = self.ltm.setdefault(kline.signature, [])
+        if any(existing.nodes == kline.nodes for existing in bucket):
+            return False
+        bucket.append(kline)
+        return True
+
+    def _is_groundable(self, kline: KLine) -> bool:
+        """Can ``kline`` be ratified at S1 right now?
+
+        Universal rule: a signature grounds only once every one of its nodes
+        is in LTM. An identity is the exception — it is self-referential
+        (``{S:[S]}``), so its single node is itself and it grounds
+        unconditionally when promoted.
+        """
         if is_identity(kline):
-            return kline.signature in self.grounded
-        if is_canon(kline, signifier):
-            return all(node in self.grounded for node in kline.nodes)
-        if len(kline.nodes) == 1 and self.is_grounded(kline):
             return True
-        if kline.signature in self.grounded:
-            return all(node in self.grounded for node in kline.nodes)
+        return all(node in self.ltm for node in kline.nodes)
 
-        return False
-
-    def is_grounded(self, kline: KLine) -> bool:
-        """Is an isomorphic kline (same signature and nodes) in the grounded store?"""
+    def is_in_ltm(self, kline: KLine) -> bool:
+        """Is an isomorphic kline (same signature and nodes) in LTM?"""
         return any(
             existing.nodes == kline.nodes
-            for existing in self.grounded.get(kline.signature, [])
+            for existing in self.ltm.get(kline.signature, [])
         )
 
     def where(self, predicate: Callable[[KLine], bool]) -> list[KLine]:
-        """All grounded klines matching ``predicate``."""
+        """All ratified klines matching ``predicate``."""
         return [
             kline
-            for bucket in self.grounded.values()
+            for bucket in self.ltm.values()
             for kline in bucket
             if predicate(kline)
         ]
 
-    def grounded_nodes(self, signature: int) -> list[int] | None:
-        """The nodes of any grounded kline under ``signature`` with non-empty nodes."""
-        for kline in self.grounded.get(signature, []):
+    def ltm_nodes(self, signature: int) -> list[int] | None:
+        """The nodes of any ratified kline under ``signature`` with non-empty nodes."""
+        for kline in self.ltm.get(signature, []):
             if kline.nodes:
                 return list(kline.nodes)
         return None
 
     def canon_nodes(self, signature: int) -> list[int] | None:
-        """The nodes of ``signature``'s canon, in grounded memory or the work-list."""
+        """The nodes of ``signature``'s canon, in LTM or the work-list."""
         signifier = self._signifier
-        for kline in self.grounded.get(signature, []):
+        for kline in self.ltm.get(signature, []):
             if is_canon(kline, signifier):
                 return list(kline.nodes)
         for entry in self.work_list:
@@ -124,8 +153,8 @@ class EngineState:
         return None
 
     def is_seen(self, signature: int) -> bool:
-        """Has K seen ``signature`` — grounded or pending as an Unknown ask?"""
-        if signature in self.grounded:
+        """Has K seen ``signature`` — ratified or pending as an Unknown ask?"""
+        if signature in self.ltm:
             return True
         return any(
             entry.signature == signature and is_unknown(entry)
@@ -133,10 +162,10 @@ class EngineState:
         )
 
     def signature_seen(self, signature: int) -> bool:
-        """Has ``signature`` been seen — framed, pending on the work-list, or grounded?"""
+        """Has ``signature`` been seen — framed, pending on the work-list, or ratified?"""
         if self.in_frame(KLine(signature, [])):
             return True
-        if signature in self.grounded:
+        if signature in self.ltm:
             return True
         return any(
             entry.signature == signature and is_unknown(entry)
@@ -147,7 +176,7 @@ class EngineState:
         """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
         for i, entry in enumerate(self.work_list):
             if entry.signature == signature and is_unknown(entry):
-                del self.work_list[i]
+                self.remove_work_at(i)
                 return
 
     def is_countersignable(self, entry: KLine) -> bool:
@@ -166,7 +195,7 @@ class EngineState:
 
         Terminals are keyed by signature alone: a terminal is one lexical
         item with multiple shapes (the S4 Unknown ask ``X:[]`` and the S1
-        Identity groundings ``X:[X]``, ``X:[COMPOUND, x, y]``), and any shape
+        Identity ratifications ``X:[X]``, ``X:[COMPOUND, x, y]``), and any shape
         recognises any other — an S4 ask framed by K matches the S1 reply T
         sends back. Non-terminals match on structural significance, as before.
         """
@@ -215,12 +244,12 @@ class EngineState:
     def similar_fit_candidates(
         self, entry: KLine
     ) -> list[KLine]:
-        """Grounded klines sharing at least one but not all node values with ``entry``,
+        """Ratified klines sharing at least one but not all node values with ``entry``,
         excluding the entry's own canon (its resolution, not a recombination ingredient)."""
         signifier = self._signifier
         entry_nodes = set(entry.nodes)
         candidates: list[KLine] = []
-        for bucket in self.grounded.values():
+        for bucket in self.ltm.values():
             for kline in bucket:
                 if kline is entry or not kline.nodes or entry.nodes == kline.nodes:
                     continue
@@ -234,8 +263,9 @@ class EngineState:
     # -- persistence -------------------------------------------------
     #
     # State is plain ints (signature + node lists); ``dbg`` is debug-only and
-    # dropped on save. A saved state is a grounded prior injected into an actor
-    # at construction.
+    # dropped on save. A saved state is a ratified prior injected into an actor
+    # at construction. STM is not persisted: it is empty at session start and
+    # reserved for the expansion strategies' working memory.
 
     def to_dict(self) -> dict:
         """A JSON-serialisable snapshot of the model (no ``dbg``)."""
@@ -243,9 +273,9 @@ class EngineState:
             return [k.signature, list(k.nodes)]
         return {
             "work_list": [_kl(k) for k in self.work_list],
-            "grounded": {
+            "ltm": {
                 str(sig): [_kl(k) for k in bucket]
-                for sig, bucket in self.grounded.items()
+                for sig, bucket in self.ltm.items()
             },
             "frame": {
                 str(sig): [_kl(k) for k in bucket]
@@ -262,9 +292,9 @@ class EngineState:
         return cls(
             signifier,
             work_list=[_kl(p) for p in data.get("work_list", [])],
-            grounded={
+            ltm={
                 int(sig): [_kl(k) for k in bucket]
-                for sig, bucket in data.get("grounded", {}).items()
+                for sig, bucket in data.get("ltm", {}).items()
             },
             frame={
                 int(sig): [_kl(k) for k in bucket]

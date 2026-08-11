@@ -236,12 +236,12 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
 
 
 def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
-    if not state.grounded:
+    if not state.ltm:
         return "  (grounded nothing)"
     lines = []
-    for signature in sorted(state.grounded, key=lambda s: (s.bit_length(), s)):
+    for signature in sorted(state.ltm, key=lambda s: (s.bit_length(), s)):
         owner = _label(signature, labels, verbose)
-        bucket = state.grounded[signature]
+        bucket = state.ltm[signature]
         for kl in bucket:
             nodes = ", ".join(_label(n, labels, verbose) for n in kl.nodes)
             lines.append(f"      {owner}:[{nodes}]")

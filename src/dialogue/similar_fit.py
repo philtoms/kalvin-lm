@@ -55,7 +55,7 @@ class SimilarFit:
                 target = core + [n for n in candidate.nodes if n not in core]
 
         proposal = KLine(entry.signature, target)
-        if state.is_grounded(proposal):
+        if state.is_in_ltm(proposal):
             return []
         return [KValue(proposal, SIG_S2)]
 
@@ -64,7 +64,7 @@ def _expand_nodes(state: EngineState, target: list[int]) -> list[int]:
     """Rule 1 — replace each node that is a grounded kline's signature with its nodes."""
     expanded: list[int] = []
     for node in target:
-        sub = state.grounded_nodes(node)
+        sub = state.ltm_nodes(node)
         expanded.extend(sub if sub is not None else [node])
     return expanded
 
@@ -105,7 +105,7 @@ def _cover_with_groundeds(state: EngineState, failed: list[int]) -> list[int]:
     failed_set = set(failed)
     covers: list[tuple[tuple[int, ...], int]] = []
     seen_sigs: set[int] = set()
-    for bucket in state.grounded.values():
+    for bucket in state.ltm.values():
         for kline in bucket:
             if kline.signature in seen_sigs or not kline.nodes:
                 continue
