@@ -52,6 +52,11 @@ class EngineState:
     frame: dict[int, list[KLine]] = field(default_factory=dict)
     _dbg_step: int = 0
 
+    @property
+    def signifier(self) -> KSignifier:
+        """The structural-significance oracle this state's queries dispatch through."""
+        return self._signifier
+
     # -- grounded-store queries -------------------------------------
     #
     # The graph-expansion walk (``ExpandFit._expand``) reads the grounded

@@ -4,6 +4,10 @@ A :class:`Engine` derives one turn from ``(state, incoming)`` and returns
 ``(batch, observations)`` — dialogue emissions and K's internal S1 groundings
 this turn. The engine is stateless about its own emissions; dedup lives in the
 actor.
+
+Engines are built through :func:`make_engine`, the single construction path
+that wires signifier → state → strategy → engine so the signifier lives in one
+place (the :class:`EngineState`).
 """
 
 from __future__ import annotations
@@ -29,11 +33,12 @@ from kalvin.significance import (
     SIG_S3,
     SIG_S4,
 )
+from kalvin.signifier import NLPSignifier
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
-__all__ = ["Engine", "EngineState", "MisfitStrategy"]
+__all__ = ["Engine", "EngineState", "MisfitStrategy", "make_engine"]
 
 
 @runtime_checkable
@@ -42,8 +47,8 @@ class MisfitStrategy(Protocol):
 
     Returns S2 proposals for the actor to emit, and may ground an entry
     directly via ``ground`` when a candidate fully accounts for it (the
-    expand strategy's S1 case). The strategy's ``state`` and ``signifier``
-    are set at construction.
+    expand strategy's S1 case). The strategy reads the shared
+    :class:`EngineState` (and its signifier) set at construction.
     """
 
     def propose(
@@ -67,16 +72,15 @@ _STRATEGIES = {
 class Engine:
     """Derives one turn from ``incoming``.
 
-    Holds the signifier, the significance boundaries, and the
-    :class:`EngineState` it mutates in place (set at construction, exposed via
-    :attr:`state`).
+    Holds the :class:`EngineState` it mutates in place (set at construction,
+    exposed via :attr:`state`); the signifier is read off the state. Construct
+    via :func:`make_engine`.
     """
 
     def __init__(
         self,
-        signifier: KSignifier,
+        state: EngineState,
         *,
-        state: EngineState | None = None,
         strategy: str = "similar_fit",
     ) -> None:
         if strategy not in _STRATEGIES:
@@ -84,18 +88,18 @@ class Engine:
                 f"unknown cogitation strategy {strategy!r}; "
                 f"expected one of {sorted(_STRATEGIES)}"
             )
-        self._signifier = signifier
-        self._state: EngineState = (
-            state if state is not None else EngineState(signifier)
-        )
-        self._misfit: MisfitStrategy = _STRATEGIES[strategy](
-            signifier, state=self._state
-        )
+        self._state: EngineState = state
+        self._misfit: MisfitStrategy = _STRATEGIES[strategy](state)
 
     @property
     def state(self) -> EngineState:
         """The engine's mutable memory, mutated in place each turn."""
         return self._state
+
+    @property
+    def signifier(self) -> KSignifier:
+        """The state's signifier (the single source of truth)."""
+        return self._state.signifier
 
     def rationalise(
         self, incoming: Sequence[KValue]
@@ -131,7 +135,7 @@ class Engine:
         """
         self._incoming.append(query)
         kline = query.kline
-        if sig_level(kline, self._signifier) in ("S1", "S4"):
+        if sig_level(kline, self._state.signifier) in ("S1", "S4"):
             self._fast_route(query)
             return
         self._slow_route(query)
@@ -153,7 +157,7 @@ class Engine:
         # same turn's cogitation (route-all-then-cogitate ordering), so the
         # work-list and grounded views matter as much as the frame.
         kline = query.kline
-        if is_identity(kline) or is_canon(kline, self._signifier):
+        if is_identity(kline) or is_canon(kline, self._state.signifier):
             if not self._state.signature_seen(kline.signature):
                 self._slow_route(query)
                 return
@@ -198,7 +202,7 @@ class Engine:
                     del self._state.work_list[idx]
                     self._promote(kline)
 
-            elif is_misfit(kline, self._signifier):
+            elif is_misfit(kline, self._state.signifier):
                 batch.extend(
                     self._misfit.propose(kline, self._promote)
                 )
@@ -243,7 +247,7 @@ class Engine:
         bucket.append(kline)
         self.observations.append(KValue(kline, SIG_S1))
         if not countersigning and self._state.is_countersignable(kline):
-            reciprocal = KLine(self._signifier.signature_of(kline.nodes), [kline.signature])
+            reciprocal = KLine(self._state.signifier.signature_of(kline.nodes), [kline.signature])
             self._ground(reciprocal, countersigning=True)
 
     # ── Frame (emission memory) ──────────────────────────────────────
@@ -276,7 +280,7 @@ class Engine:
         for lhs_sig, rhs_node, residual in self._operand_pairings(left_nodes, right_nodes):
             if self._pairing_resolved(lhs_sig, rhs_node, residual):
                 continue
-            head_sig = self._signifier.signature_of(residual) if residual else lhs_sig
+            head_sig = self._state.signifier.signature_of(residual) if residual else lhs_sig
             batch.append(KValue(KLine(head_sig, [rhs_node]), SIG_S3))
         return batch
 
@@ -289,6 +293,7 @@ class Engine:
         when one side reaches a single node, group the other's entire residual
         into one synthesised operand (returned as ``residual``).
         """
+        signifier = self._state.signifier
         plan: list[tuple[int, int, list[int]]] = []
         i = j = 0
         while i < len(left_nodes) and j < len(right_nodes):
@@ -300,11 +305,11 @@ class Engine:
                 j += 1
             elif left_rem == 1:
                 residual = list(right_nodes[j:])
-                plan.append((left_nodes[i], self._signifier.signature_of(residual), residual))
+                plan.append((left_nodes[i], signifier.signature_of(residual), residual))
                 break
             elif right_rem == 1:
                 residual = list(left_nodes[i:])
-                plan.append((self._signifier.signature_of(residual), right_nodes[j], residual))
+                plan.append((signifier.signature_of(residual), right_nodes[j], residual))
                 break
             else:
                 plan.append((left_nodes[i], right_nodes[j], []))
@@ -318,11 +323,26 @@ class Engine:
         For a grouped residual, ``head_sig`` is synthesised from the residual;
         for a 1:1 pair it is ``lhs_sig``.
         """
-        head_sig = self._signifier.signature_of(residual) if residual else lhs_sig
+        head_sig = self._state.signifier.signature_of(residual) if residual else lhs_sig
         return any(
             list(kline.nodes) == [rhs_node]
             for kline in self._state.grounded.get(head_sig, [])
         )
 
 
+def make_engine(
+    *,
+    strategy: str = "similar_fit",
+    state: EngineState | None = None,
+) -> Engine:
+    """The single construction path: signifier → state → strategy → engine.
 
+    With no ``state``, builds a fresh :class:`NLPSignifier`, wraps it in an
+    :class:`EngineState`, selects the misfit ``strategy``, and returns an
+    :class:`Engine` wired to that state. With a ``state`` (a loaded prior),
+    reuses its signifier. The returned engine's signifier is reachable via
+    ``engine.state.signifier``.
+    """
+    if state is None:
+        state = EngineState(NLPSignifier())
+    return Engine(state, strategy=strategy)

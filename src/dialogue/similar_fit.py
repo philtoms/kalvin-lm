@@ -30,18 +30,13 @@ class SimilarFit:
 
     def __init__(
         self,
-        signifier: KSignifier,
-        *,
-        state: EngineState | None = None,
+        state: EngineState,
     ) -> None:
-        self._signifier = signifier
-        self._state: EngineState = (
-            state if state is not None else EngineState(signifier)
-        )
+        self._state: EngineState = state
 
     @property
     def signifier(self) -> KSignifier:
-        return self._signifier
+        return self._state.signifier
 
     @property
     def state(self) -> EngineState:

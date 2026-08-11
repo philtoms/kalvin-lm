@@ -19,8 +19,9 @@ import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
-from dialogue.engine import Engine
+from dialogue.engine import Engine, make_engine
 from dialogue.engine_state import EngineState
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
@@ -75,19 +76,26 @@ class Harness:
 
     def __init__(
         self,
-        signifier: NLPSignifier,
         tokenizer: NLPTokenizer,
         *,
         state: EngineState | None = None,
         strategy: str = "similar_fit",
     ) -> None:
-        self._signifier = signifier
         self._tokenizer = tokenizer
-        self._engine = Engine(signifier, state=state, strategy=strategy)
+        self._engine = make_engine(state=state, strategy=strategy)
+
+    @property
+    def engine(self) -> Engine:
+        return self._engine
 
     @property
     def state(self) -> EngineState:
         return self._engine.state
+
+    @property
+    def signifier(self) -> NLPSignifier:
+        # make_engine stores an NLPSignifier; the state types it as KSignifier.
+        return cast(NLPSignifier, self._engine.state.signifier)
 
     def run(self, source: str) -> list[StepResult]:
         """Compile ``source`` and drive the engine one entry per step.
@@ -98,7 +106,7 @@ class Harness:
         without judgement; it changes the order K assimilates the curriculum.
         """
         entries = compile_source(
-            source, tokenizer=self._tokenizer, signifier=self._signifier, dev=True
+            source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True
         )
         identities = _identity_offers(entries)
         results: list[StepResult] = []
@@ -265,10 +273,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     tok = NLPTokenizer()
-    sigf = NLPSignifier()
-    harness = Harness(sigf, tok, strategy=args.strategy)
+    harness = Harness(tok, strategy=args.strategy)
     results = harness.run(source)
-    present(results, harness.state, source, tok, sigf, verbose=args.verbose)
+    present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
     return 0
 
 

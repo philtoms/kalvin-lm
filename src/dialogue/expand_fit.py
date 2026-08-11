@@ -54,18 +54,13 @@ class ExpandFit:
 
     def __init__(
         self,
-        signifier: KSignifier,
-        *,
-        state: EngineState | None = None,
+        state: EngineState,
     ) -> None:
-        self._signifier = signifier
-        self._state: EngineState = (
-            state if state is not None else EngineState(signifier)
-        )
+        self._state: EngineState = state
 
     @property
     def signifier(self) -> KSignifier:
-        return self._signifier
+        return self._state.signifier
 
     @property
     def state(self) -> EngineState:
@@ -98,7 +93,7 @@ class ExpandFit:
         candidate whose signature faithfully covers its nodes (terminals and
         canons included).
         """
-        signifier = self._signifier
+        signifier = self._state.signifier
         underfit, overfit = classify_misfit(candidate, signifier)
         if not underfit and not overfit:
             return []
@@ -141,7 +136,7 @@ class ExpandFit:
         Stops at a dead end, an identity kline, a canonical kline, or a cycle.
         """
         state = self._state
-        signifier = self._signifier
+        signifier = self._state.signifier
         hop_count = 0
         visited: set[int] = set()
         while hop_count < _MAX_HOP:
@@ -190,7 +185,7 @@ class ExpandFit:
         _visited.add(key)
 
         state = self._state
-        signifier = self._signifier
+        signifier = self._state.signifier
         q_set = set(query.nodes)
         c_set = set(candidate.nodes)
         mismatched_q = q_set - c_set
@@ -285,7 +280,7 @@ class ExpandFit:
         self, kline: KLine, gap: int
     ) -> list[KLine]:
         """Add a contributor's nodes when they cover the gap."""
-        signifier = self._signifier
+        signifier = self._state.signifier
         out: list[KLine] = []
         for contributor in self._state.where(lambda k: signifier.signifies(k.signature, gap)):
             expanded_nodes = list(kline.nodes) + list(contributor.nodes)
@@ -295,7 +290,7 @@ class ExpandFit:
 
     def _overfit(self, kline: KLine, excess: int) -> list[KLine]:
         """Drop the nodes whose bits contribute to the excess."""
-        signifier = self._signifier
+        signifier = self._state.signifier
         remaining = [n for n in kline.nodes if not signifier.signifies(n, excess)]
         if remaining == list(kline.nodes):
             return []
@@ -305,7 +300,7 @@ class ExpandFit:
         self, kline: KLine, gap: int, excess: int
     ) -> list[KLine]:
         """Swap the excess nodes for a gap-filling contributor's nodes."""
-        signifier = self._signifier
+        signifier = self._state.signifier
         remaining = [n for n in kline.nodes if not signifier.signifies(n, excess)]
         out: list[KLine] = []
         for contributor in self._state.where(lambda k: signifier.signifies(k.signature, gap)):
