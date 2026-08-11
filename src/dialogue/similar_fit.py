@@ -35,7 +35,9 @@ class SimilarFit:
         state: EngineState | None = None,
     ) -> None:
         self._signifier = signifier
-        self._state: EngineState = state if state is not None else EngineState()
+        self._state: EngineState = (
+            state if state is not None else EngineState(signifier)
+        )
 
     @property
     def signifier(self) -> KSignifier:
@@ -51,9 +53,8 @@ class SimilarFit:
         ground: Callable[[KLine], None],
     ) -> list[KValue]:
         state = self.state
-        signifier = self._signifier
         target = _expand_nodes(state, list(entry.nodes))
-        for candidate in state.similar_fit_candidates(signifier, entry):
+        for candidate in state.similar_fit_candidates(entry):
             core = _resolve_against(state, target, list(candidate.nodes))
             if core:
                 target = core + [n for n in candidate.nodes if n not in core]

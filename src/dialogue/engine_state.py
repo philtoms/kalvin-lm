@@ -37,6 +37,8 @@ __all__ = ["EngineState"]
 class EngineState:
     """The engine's mutable memory, owned by the actor.
 
+    - **_signifier** — the structural-significance oracle the state's queries
+      dispatch through; set at construction.
     - **work_list** — pending klines awaiting cogitation. Entries carry no
       significance band; dispatch is structural.
     - **grounded** — K's grounded model, keyed by signature.
@@ -44,6 +46,7 @@ class EngineState:
       fast route matches incoming S1/S4 queries against it.
     """
 
+    _signifier: KSignifier
     work_list: list[KLine] = field(default_factory=list)
     grounded: dict[int, list[KLine]] = field(default_factory=dict)
     frame: dict[int, list[KLine]] = field(default_factory=dict)
@@ -60,7 +63,7 @@ class EngineState:
         bucket = self.grounded.get(signature)
         return bucket[-1] if bucket else None
 
-    def _is_groundable(self, signifier: KSignifier, kline: KLine) -> bool:
+    def _is_groundable(self, kline: KLine) -> bool:
         """Can ``kline`` be grounded at S1 right now?
 
         An identity whose signature is grounded; a canon whose nodes are all
@@ -69,6 +72,7 @@ class EngineState:
         node are grounded (the relationship is fully supported by what K
         already holds).
         """
+        signifier = self._signifier
         if is_identity(kline):
             return kline.signature in self.grounded
         if is_canon(kline, signifier):
@@ -103,8 +107,9 @@ class EngineState:
                 return list(kline.nodes)
         return None
 
-    def canon_nodes(self, signifier: KSignifier, signature: int) -> list[int] | None:
+    def canon_nodes(self, signature: int) -> list[int] | None:
         """The nodes of ``signature``'s canon, in grounded memory or the work-list."""
+        signifier = self._signifier
         for kline in self.grounded.get(signature, []):
             if is_canon(kline, signifier):
                 return list(kline.nodes)
@@ -122,9 +127,9 @@ class EngineState:
             for entry in self.work_list
         )
 
-    def signature_seen(self, signifier: KSignifier, signature: int) -> bool:
+    def signature_seen(self, signature: int) -> bool:
         """Has ``signature`` been seen — framed, pending on the work-list, or grounded?"""
-        if self.in_frame(signifier, KLine(signature, [])):
+        if self.in_frame(KLine(signature, [])):
             return True
         if signature in self.grounded:
             return True
@@ -140,18 +145,18 @@ class EngineState:
                 del self.work_list[i]
                 return
 
-    def is_countersignable(self, signifier: KSignifier, entry: KLine) -> bool:
+    def is_countersignable(self, entry: KLine) -> bool:
         """Is ``entry`` a relationship whose two operands both have canons?"""
         if not is_relationship(entry):
             return False
         return (
-            self.canon_nodes(signifier, entry.signature) is not None
-            and self.canon_nodes(signifier, entry.nodes[0]) is not None
+            self.canon_nodes(entry.signature) is not None
+            and self.canon_nodes(entry.nodes[0]) is not None
         )
 
     # -- frame (emission memory) ------------------------------------
 
-    def in_frame(self, signifier: KSignifier, kline: KLine) -> bool:
+    def in_frame(self, kline: KLine) -> bool:
         """Is ``kline`` already in play in the frame?
 
         Terminals are keyed by signature alone: a terminal is one lexical
@@ -160,6 +165,7 @@ class EngineState:
         recognises any other — an S4 ask framed by K matches the S1 reply T
         sends back. Non-terminals match on structural significance, as before.
         """
+        signifier = self._signifier
         bucket = self.frame.get(kline.signature, [])
         if is_terminal(kline):
             return any(is_terminal(framed) for framed in bucket)
@@ -202,10 +208,11 @@ class EngineState:
             del self.frame[kline.signature]
 
     def similar_fit_candidates(
-        self, signifier: KSignifier, entry: KLine
+        self, entry: KLine
     ) -> list[KLine]:
         """Grounded klines sharing at least one but not all node values with ``entry``,
         excluding the entry's own canon (its resolution, not a recombination ingredient)."""
+        signifier = self._signifier
         entry_nodes = set(entry.nodes)
         candidates: list[KLine] = []
         for bucket in self.grounded.values():
@@ -242,12 +249,13 @@ class EngineState:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> EngineState:
+    def from_dict(cls, signifier: KSignifier, data: dict) -> EngineState:
         """Rebuild a state from :meth:`to_dict` output."""
         def _kl(pair: list[int]) -> KLine:
             sig, nodes = pair[0], pair[1]
             return KLine(sig, list(nodes))
         return cls(
+            signifier,
             work_list=[_kl(p) for p in data.get("work_list", [])],
             grounded={
                 int(sig): [_kl(k) for k in bucket]
@@ -266,6 +274,6 @@ class EngineState:
         p.write_text(json.dumps(self.to_dict()))
 
     @classmethod
-    def load(cls, path: str | Path) -> EngineState:
+    def load(cls, signifier: KSignifier, path: str | Path) -> EngineState:
         """Load a state snapshot from ``path`` (JSON)."""
-        return cls.from_dict(json.loads(Path(path).read_text()))
+        return cls.from_dict(signifier, json.loads(Path(path).read_text()))

@@ -85,7 +85,9 @@ class Engine:
                 f"expected one of {sorted(_STRATEGIES)}"
             )
         self._signifier = signifier
-        self._state: EngineState = state if state is not None else EngineState()
+        self._state: EngineState = (
+            state if state is not None else EngineState(signifier)
+        )
         self._misfit: MisfitStrategy = _STRATEGIES[strategy](
             signifier, state=self._state
         )
@@ -152,7 +154,7 @@ class Engine:
         # work-list and grounded views matter as much as the frame.
         kline = query.kline
         if is_identity(kline) or is_canon(kline, self._signifier):
-            if not self._state.signature_seen(self._signifier, kline.signature):
+            if not self._state.signature_seen(kline.signature):
                 self._slow_route(query)
                 return
             self._state.unframe(kline)
@@ -160,7 +162,7 @@ class Engine:
             self._promote(kline)
             return
 
-        if not self._state.in_frame(self._signifier, kline):
+        if not self._state.in_frame(kline):
             return
         self._state.unframe(kline)
         if is_unknown(kline):
@@ -187,7 +189,7 @@ class Engine:
                 del self._state.work_list[idx]
                 batch.append(KValue(KLine(kline.signature, []), SIG_S4))
 
-            elif self._state.is_countersignable(self._signifier, kline):
+            elif self._state.is_countersignable(kline):
                 pairings = self._countersignature_proposals(kline)
                 if pairings:
                     batch.extend(pairings)
@@ -201,7 +203,7 @@ class Engine:
                     self._misfit.propose(kline, self._promote)
                 )
 
-            elif self._state._is_groundable(self._signifier, kline):
+            elif self._state._is_groundable(kline):
                 del self._state.work_list[idx]
                 self._promote(kline)
 
@@ -222,7 +224,7 @@ class Engine:
         while changed:
             changed = False
             for i, entry in enumerate(self._state.work_list):
-                if self._state._is_groundable(self._signifier, entry):
+                if self._state._is_groundable(entry):
                     del self._state.work_list[i]
                     self._ground(entry)
                     changed = True
@@ -240,7 +242,7 @@ class Engine:
             return
         bucket.append(kline)
         self.observations.append(KValue(kline, SIG_S1))
-        if not countersigning and self._state.is_countersignable(self._signifier, kline):
+        if not countersigning and self._state.is_countersignable(kline):
             reciprocal = KLine(self._signifier.signature_of(kline.nodes), [kline.signature])
             self._ground(reciprocal, countersigning=True)
 
@@ -265,8 +267,8 @@ class Engine:
         """
         right = entry.nodes
         assert len(right) == 1, "S3 pairings expect a single-node relationship entry"
-        left_nodes = self._state.canon_nodes(self._signifier, entry.signature)
-        right_nodes = self._state.canon_nodes(self._signifier, right[0])
+        left_nodes = self._state.canon_nodes(entry.signature)
+        right_nodes = self._state.canon_nodes(right[0])
         if left_nodes is None or right_nodes is None:
             raise NotImplementedError("S3 pairings: an operand canon is missing")
 

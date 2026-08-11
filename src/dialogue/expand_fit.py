@@ -59,7 +59,9 @@ class ExpandFit:
         state: EngineState | None = None,
     ) -> None:
         self._signifier = signifier
-        self._state: EngineState = state if state is not None else EngineState()
+        self._state: EngineState = (
+            state if state is not None else EngineState(signifier)
+        )
 
     @property
     def signifier(self) -> KSignifier:
@@ -75,9 +77,8 @@ class ExpandFit:
         ground: Callable[[KLine], None],
     ) -> list[KValue]:
         state = self._state
-        signifier = self._signifier
         graded: list[KValue] = []
-        for candidate in state.similar_fit_candidates(signifier, entry):
+        for candidate in state.similar_fit_candidates(entry):
             graded.extend(self._expand(entry, candidate))
         if not graded:
             return []
