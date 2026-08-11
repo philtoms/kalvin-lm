@@ -17,7 +17,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from kalvin.kline import KLine, is_canon
+from kalvin.kline import (
+    KLine,
+    is_canon,
+    is_identity,
+    is_relationship,
+    is_terminal,
+    is_unknown,
+    sig_level,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
@@ -52,6 +60,26 @@ class EngineState:
         bucket = self.grounded.get(signature)
         return bucket[-1] if bucket else None
 
+    def _is_groundable(self, signifier: KSignifier, kline: KLine) -> bool:
+        """Can ``kline`` be grounded at S1 right now?
+
+        An identity whose signature is grounded; a canon whose nodes are all
+        grounded; a single-node relationship whose reciprocal is grounded;
+        or — the general misfit rule — a misfit whose signature and every
+        node are grounded (the relationship is fully supported by what K
+        already holds).
+        """
+        if is_identity(kline):
+            return kline.signature in self.grounded
+        if is_canon(kline, signifier):
+            return all(node in self.grounded for node in kline.nodes)
+        if len(kline.nodes) == 1 and self.is_grounded(kline):
+            return True
+        if kline.signature in self.grounded:
+            return all(node in self.grounded for node in kline.nodes)
+
+        return False
+
     def is_grounded(self, kline: KLine) -> bool:
         """Is an isomorphic kline (same signature and nodes) in the grounded store?"""
         return any(
@@ -74,6 +102,104 @@ class EngineState:
             if kline.nodes:
                 return list(kline.nodes)
         return None
+
+    def canon_nodes(self, signifier: KSignifier, signature: int) -> list[int] | None:
+        """The nodes of ``signature``'s canon, in grounded memory or the work-list."""
+        for kline in self.grounded.get(signature, []):
+            if is_canon(kline, signifier):
+                return list(kline.nodes)
+        for entry in self.work_list:
+            if entry.signature == signature and is_canon(entry, signifier):
+                return list(entry.nodes)
+        return None
+
+    def is_seen(self, signature: int) -> bool:
+        """Has K seen ``signature`` — grounded or pending as an Unknown ask?"""
+        if signature in self.grounded:
+            return True
+        return any(
+            entry.signature == signature and is_unknown(entry)
+            for entry in self.work_list
+        )
+
+    def signature_seen(self, signifier: KSignifier, signature: int) -> bool:
+        """Has ``signature`` been seen — framed, pending on the work-list, or grounded?"""
+        if self.in_frame(signifier, KLine(signature, [])):
+            return True
+        if signature in self.grounded:
+            return True
+        return any(
+            entry.signature == signature and is_unknown(entry)
+            for entry in self.work_list
+        )
+
+    def pop_identity(self, signature: int) -> None:
+        """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
+        for i, entry in enumerate(self.work_list):
+            if entry.signature == signature and is_unknown(entry):
+                del self.work_list[i]
+                return
+
+    def is_countersignable(self, signifier: KSignifier, entry: KLine) -> bool:
+        """Is ``entry`` a relationship whose two operands both have canons?"""
+        if not is_relationship(entry):
+            return False
+        return (
+            self.canon_nodes(signifier, entry.signature) is not None
+            and self.canon_nodes(signifier, entry.nodes[0]) is not None
+        )
+
+    # -- frame (emission memory) ------------------------------------
+
+    def in_frame(self, signifier: KSignifier, kline: KLine) -> bool:
+        """Is ``kline`` already in play in the frame?
+
+        Terminals are keyed by signature alone: a terminal is one lexical
+        item with multiple shapes (the S4 Unknown ask ``X:[]`` and the S1
+        Identity groundings ``X:[X]``, ``X:[COMPOUND, x, y]``), and any shape
+        recognises any other — an S4 ask framed by K matches the S1 reply T
+        sends back. Non-terminals match on structural significance, as before.
+        """
+        bucket = self.frame.get(kline.signature, [])
+        if is_terminal(kline):
+            return any(is_terminal(framed) for framed in bucket)
+        target = sig_level(kline, signifier)
+        return any(
+            sig_level(framed, signifier) == target
+            for framed in bucket
+        )
+
+    def is_framed(self, kline: KLine) -> bool:
+        """Is an isomorphic kline in the frame?
+
+        Terminals match by signature (any shape); everything else by exact
+        nodes, as before.
+        """
+        bucket = self.frame.get(kline.signature, [])
+        if is_terminal(kline):
+            return any(is_terminal(existing) for existing in bucket)
+        return any(existing.nodes == kline.nodes for existing in bucket)
+
+    def frame_kline(self, kline: KLine) -> None:
+        self.frame.setdefault(kline.signature, []).append(kline)
+
+    def unframe(self, kline: KLine) -> None:
+        bucket = self.frame.get(kline.signature)
+        if not bucket:
+            return
+        if is_terminal(kline):
+            # A terminal reply consumes the framed ask (any shape): drop every
+            # terminal entry under this signature.
+            kept = [k for k in bucket if not is_terminal(k)]
+        else:
+            kept = [
+                k for k in bucket
+                if not (k.signature == kline.signature and k.nodes == kline.nodes)
+            ]
+        if kept:
+            self.frame[kline.signature] = kept
+        else:
+            del self.frame[kline.signature]
 
     def similar_fit_candidates(
         self, signifier: KSignifier, entry: KLine

@@ -19,8 +19,6 @@ from kalvin.kline import (
     is_canon,
     is_identity,
     is_misfit,
-    is_relationship,
-    is_terminal,
     is_unknown,
     sig_level,
     using_resolver,
@@ -140,9 +138,9 @@ class Engine:
         kline = query.kline
         self._state.work_list.append(kline)
         for node in kline.nodes:
-            if not self._is_seen(node):
+            if not self._state.is_seen(node):
                 self._state.work_list.append(KLine(node, [], kline.dbg))
-        if not self._is_seen(kline.signature):
+        if not self._state.is_seen(kline.signature):
             self._state.work_list.append(KLine(kline.signature, [], kline.dbg))
 
     def _fast_route(self, query: KValue) -> None:
@@ -153,50 +151,22 @@ class Engine:
         # same turn's cogitation (route-all-then-cogitate ordering), so the
         # work-list and grounded views matter as much as the frame.
         kline = query.kline
-        if is_identity(kline):
-            if not self._signature_seen(kline.signature):
-                return
-            self._unframe(kline)
-            self._pop_identity(kline.signature)
-            self._promote(kline)
-            return
-        if is_canon(kline, self._signifier):
-            # A canon whose signature has been seen grounds (a known
-            # composition); an unseen-signature canon carries novel structure,
-            # so it takes the slow route and its nodes are discovered there.
-            if not self._signature_seen(kline.signature):
+        if is_identity(kline) or is_canon(kline, self._signifier):
+            if not self._state.signature_seen(self._signifier, kline.signature):
                 self._slow_route(query)
                 return
-            self._unframe(kline)
-            self._pop_identity(kline.signature)
+            self._state.unframe(kline)
+            self._state.pop_identity(kline.signature)
             self._promote(kline)
             return
 
-        if not self._in_frame(kline):
+        if not self._state.in_frame(self._signifier, kline):
             return
-        self._unframe(kline)
+        self._state.unframe(kline)
         if is_unknown(kline):
-            self._pop_identity(kline.signature)
+            self._state.pop_identity(kline.signature)
         else:
             self._promote(kline)
-
-    def _signature_seen(self, signature: int) -> bool:
-        """Has ``signature`` been seen — framed, pending on the work-list, or grounded?"""
-        if self._in_frame(KLine(signature, [])):
-            return True
-        if signature in self._state.grounded:
-            return True
-        return any(
-            entry.signature == signature and is_unknown(entry)
-            for entry in self._state.work_list
-        )
-
-    def _pop_identity(self, signature: int) -> None:
-        """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
-        for i, entry in enumerate(self._state.work_list):
-            if entry.signature == signature and is_unknown(entry):
-                del self._state.work_list[i]
-                return
 
     # ── Cogitation ───────────────────────────────────────────────────
 
@@ -217,7 +187,7 @@ class Engine:
                 del self._state.work_list[idx]
                 batch.append(KValue(KLine(kline.signature, []), SIG_S4))
 
-            elif self._is_countersignable(kline):
+            elif self._state.is_countersignable(self._signifier, kline):
                 pairings = self._countersignature_proposals(kline)
                 if pairings:
                     batch.extend(pairings)
@@ -231,7 +201,7 @@ class Engine:
                     self._misfit.propose(kline, self._promote)
                 )
 
-            elif self._is_groundable(kline):
+            elif self._state._is_groundable(self._signifier, kline):
                 del self._state.work_list[idx]
                 self._promote(kline)
 
@@ -252,7 +222,7 @@ class Engine:
         while changed:
             changed = False
             for i, entry in enumerate(self._state.work_list):
-                if self._is_groundable(entry):
+                if self._state._is_groundable(self._signifier, entry):
                     del self._state.work_list[i]
                     self._ground(entry)
                     changed = True
@@ -270,113 +240,18 @@ class Engine:
             return
         bucket.append(kline)
         self.observations.append(KValue(kline, SIG_S1))
-        if not countersigning and self._is_countersignable(kline):
+        if not countersigning and self._state.is_countersignable(self._signifier, kline):
             reciprocal = KLine(self._signifier.signature_of(kline.nodes), [kline.signature])
             self._ground(reciprocal, countersigning=True)
-
-    def _is_groundable(self, kline: KLine) -> bool:
-        """Can ``kline`` be grounded at S1 right now?
-
-        An identity whose signature is grounded; a canon whose nodes are all
-        grounded; a single-node relationship whose reciprocal is grounded;
-        or — the general misfit rule — a misfit whose signature and every
-        node are grounded (the relationship is fully supported by what K
-        already holds).
-        """
-        if is_identity(kline):
-            return kline.signature in self._state.grounded
-        if is_canon(kline, self._signifier):
-            return all(node in self._state.grounded for node in kline.nodes)
-        if len(kline.nodes) == 1 and self._is_grounded(kline.nodes[0], [kline.signature]):
-            return True
-        if kline.signature in self._state.grounded:
-            return all(node in self._state.grounded for node in kline.nodes)
-
-        return False
-
-    def _is_grounded(self, signature: int, nodes: list[int]) -> bool:
-        """Is an isomorphic kline (same signature and nodes) in grounded memory?"""
-        return any(
-            existing.nodes == nodes
-            for existing in self._state.grounded.get(signature, [])
-        )
-
-    def _is_seen(self, signature: int) -> bool:
-        """Has K seen ``signature`` — grounded or pending as an Unknown ask?"""
-        if signature in self._state.grounded:
-            return True
-        return any(
-            entry.signature == signature and is_unknown(entry)
-            for entry in self._state.work_list
-        )
-
-    def _is_countersignable(self, entry: KLine) -> bool:
-        """Is ``entry`` a relationship whose two operands both have canons?"""
-        if not is_relationship(entry):
-            return False
-        return (
-            self._canon_nodes(entry.signature) is not None
-            and self._canon_nodes(entry.nodes[0]) is not None
-        )
 
     # ── Frame (emission memory) ──────────────────────────────────────
 
     def finish(self, batch: list[KValue]) -> tuple[list[KValue], list[KValue]]:
         """Keep only genuinely-new emissions (adding them to the frame) and return ``(batch, observations)``."""
-        new_batch = [v for v in batch if not self._is_framed(v.kline)]
+        new_batch = [v for v in batch if not self._state.is_framed(v.kline)]
         for value in new_batch:
-            self._frame(value.kline)
+            self._state.frame_kline(value.kline)
         return new_batch, self.observations
-
-    def _in_frame(self, kline: KLine) -> bool:
-        """Is ``kline`` already in play in the frame?
-
-        Terminals are keyed by signature alone: a terminal is one lexical
-        item with multiple shapes (the S4 Unknown ask ``X:[]`` and the S1
-        Identity groundings ``X:[X]``, ``X:[COMPOUND, x, y]``), and any shape
-        recognises any other — an S4 ask framed by K matches the S1 reply T
-        sends back. Non-terminals match on structural significance, as before.
-        """
-        bucket = self._state.frame.get(kline.signature, [])
-        if is_terminal(kline):
-            return any(is_terminal(framed) for framed in bucket)
-        target = sig_level(kline, self._signifier)
-        return any(
-            sig_level(framed, self._signifier) == target
-            for framed in bucket
-        )
-
-    def _is_framed(self, kline: KLine) -> bool:
-        """Is an isomorphic kline in the frame?
-
-        Terminals match by signature (any shape); everything else by exact
-        nodes, as before.
-        """
-        bucket = self._state.frame.get(kline.signature, [])
-        if is_terminal(kline):
-            return any(is_terminal(existing) for existing in bucket)
-        return any(existing.nodes == kline.nodes for existing in bucket)
-
-    def _frame(self, kline: KLine) -> None:
-        self._state.frame.setdefault(kline.signature, []).append(kline)
-
-    def _unframe(self, kline: KLine) -> None:
-        bucket = self._state.frame.get(kline.signature)
-        if not bucket:
-            return
-        if is_terminal(kline):
-            # A terminal reply consumes the framed ask (any shape): drop every
-            # terminal entry under this signature.
-            kept = [k for k in bucket if not is_terminal(k)]
-        else:
-            kept = [
-                k for k in bucket
-                if not (k.signature == kline.signature and k.nodes == kline.nodes)
-            ]
-        if kept:
-            self._state.frame[kline.signature] = kept
-        else:
-            del self._state.frame[kline.signature]
 
     # ── S3 path: countersignature ────────────────────────────────────
 
@@ -390,8 +265,8 @@ class Engine:
         """
         right = entry.nodes
         assert len(right) == 1, "S3 pairings expect a single-node relationship entry"
-        left_nodes = self._canon_nodes(entry.signature)
-        right_nodes = self._canon_nodes(right[0])
+        left_nodes = self._state.canon_nodes(self._signifier, entry.signature)
+        right_nodes = self._state.canon_nodes(self._signifier, right[0])
         if left_nodes is None or right_nodes is None:
             raise NotImplementedError("S3 pairings: an operand canon is missing")
 
@@ -447,13 +322,5 @@ class Engine:
             for kline in self._state.grounded.get(head_sig, [])
         )
 
-    def _canon_nodes(self, signature: int) -> list[int] | None:
-        """The nodes of ``signature``'s canon, in grounded memory or the work-list."""
-        for kline in self._state.grounded.get(signature, []):
-            if is_canon(kline, self._signifier):
-                return list(kline.nodes)
-        for entry in self._state.work_list:
-            if entry.signature == signature and is_canon(entry, self._signifier):
-                return list(entry.nodes)
-        return None
+
 
