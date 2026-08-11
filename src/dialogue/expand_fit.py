@@ -1,33 +1,42 @@
-"""The expand S2 strategy — a faithful port of ``cogitator._run_work_item``.
+"""The expand S2 strategy — emit the single most significant proposal.
 
-For each grounded kline sharing a node value with the misfit ``entry`` (the
-candidate set the production ``_route`` submits as S2/S3 work items), the
-``(entry, candidate)`` pair is expanded via ``kalvin.expand.expand`` and
-**every yield** is routed by band, exactly as the cogitator does:
+For a pending misfit ``entry``, every grounded candidate sharing a node value
+with it is graded via ``kalvin.expand.expand``. Each yield carries a real
+significance byte (a graded distance, not a band). The strategy keeps the one
+yield with the highest byte — the most significant — reshapes it through
+:func:`propose_expansions`, and emits that single proposal, stamped with the
+yield's actual byte.
 
-- **S4** — skip.
-- **S1** — the candidate is a structural exact match for the entry; ground it
-  via the ``ground`` callback (the lean-engine analogue of the cogitator's
-  ``on_s1`` promote) and stop expanding this pair.
-- **S2/S3** — hand the yielded (possibly-misfit) kline to
-  ``dialogue.proposals.propose_expansions``, which reshapes it into
-  self-consistent proposal klines; each is emitted at its computed band.
+Significance — not banding — is the selection criterion. S1 (0xFF) and S4
+(0x00) are not gated: they are positions in the cascade. An S1-graded yield is
+simply the highest byte and wins; an S4-graded yield is the lowest and loses.
+No proposal is invented: every node in the reshape comes from a grounded
+contributor.
 
-The reshape step is what was missing from the earlier grade-only shortcut:
-``propose_expansions`` turns a misfit candidate into underfit/overfit/dual
-proposals rather than copying the candidate's nodes verbatim.
+``propose_expansions`` (below) reshapes a misfit candidate into one kline
+per reshape (no companions; excess nodes are dropped, not re-wrapped). A
+candidate is a misfit when its signature (what it promises) and the
+signature of its nodes (what it delivers) diverge. Three shapes are
+recognised, all preserving the candidate's own signature:
+
+- **underfit** — the signature promises more than the nodes deliver → add a
+  contributor's nodes.
+- **overfit** — the nodes deliver more than the signature captures → trim the
+  excess nodes.
+- **dual** — both → swap the excess nodes for a contributor's nodes.
+
+No invention: every node added comes from a grounded contributor.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from dialogue.misfit import GroundedModel, similar_fit_candidates
-from dialogue.proposals import propose_expansions
 from kalvin.expand import expand
-from kalvin.kline import KLine
+from kalvin.kline import KLine, classify_misfit, is_terminal
 from kalvin.kvalue import KValue
-from kalvin.significance import SIG_S2, SIG_S3, BandLayout
+from kalvin.significance import SIG_MASK
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from collections.abc import Callable
@@ -35,16 +44,79 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from dialogue.engine import EngineState
     from kalvin.abstract import KSignifier
 
-__all__ = ["ExpandFit"]
+__all__ = ["ExpandFit", "propose_expansions", "SupportsWhere"]
 
-_BAND_REP = {"S2": SIG_S2, "S3": SIG_S3}
+
+@runtime_checkable
+class SupportsWhere(Protocol):
+    """The model surface :func:`propose_expansions` reads — just ``where``."""
+
+    def where(self, predicate) -> list[KLine]: ...  # type: ignore[no-untyped-def]
+
+
+def propose_expansions(
+    model: SupportsWhere,
+    candidate: KLine,
+    signifier: KSignifier,
+) -> list[KLine]:
+    """Reshape a misfit ``candidate`` into self-consistent proposal klines.
+
+    Returns one kline per reshape (no companions). Yields nothing for a
+    candidate whose signature faithfully covers its nodes (terminals and
+    canons included).
+    """
+    underfit, overfit = classify_misfit(candidate, signifier)
+    if not underfit and not overfit:
+        return []
+
+    candidate_sig = candidate.signature
+    nodes_sig = signifier.signature_of(candidate.nodes)
+    underfit_gap = signifier.residual(candidate_sig, nodes_sig)
+    overfit_mask = signifier.residual(nodes_sig, candidate_sig)
+
+    if underfit_gap and overfit_mask:
+        proposals = _dual(model, candidate, underfit_gap, overfit_mask, signifier)
+    elif underfit_gap:
+        proposals = _underfit(model, candidate, underfit_gap, signifier)
+    else:
+        proposals = _overfit(candidate, overfit_mask, signifier)
+
+    return [p for p in proposals if not is_terminal(p)]
+
+
+def _underfit(
+    model: SupportsWhere, kline: KLine, gap: int, signifier: KSignifier
+) -> list[KLine]:
+    """Add a contributor's nodes when they cover the gap."""
+    out: list[KLine] = []
+    for contributor in model.where(lambda k: signifier.signifies(k.signature, gap)):
+        expanded_nodes = list(kline.nodes) + list(contributor.nodes)
+        if signifier.signifies(signifier.signature_of(expanded_nodes), kline.signature):
+            out.append(KLine(kline.signature, expanded_nodes, kline.dbg))
+    return out
+
+
+def _overfit(kline: KLine, excess: int, signifier: KSignifier) -> list[KLine]:
+    """Drop the nodes whose bits contribute to the excess."""
+    remaining = [n for n in kline.nodes if not signifier.signifies(n, excess)]
+    if remaining == list(kline.nodes):
+        return []
+    return [KLine(kline.signature, remaining, kline.dbg)]
+
+
+def _dual(
+    model: SupportsWhere, kline: KLine, gap: int, excess: int, signifier: KSignifier
+) -> list[KLine]:
+    """Swap the excess nodes for a gap-filling contributor's nodes."""
+    remaining = [n for n in kline.nodes if not signifier.signifies(n, excess)]
+    out: list[KLine] = []
+    for contributor in model.where(lambda k: signifier.signifies(k.signature, gap)):
+        out.append(KLine(kline.signature, remaining + list(contributor.nodes), kline.dbg))
+    return out
 
 
 class ExpandFit:
-    """The alternative S2 strategy: route ``expand`` yields like the cogitator."""
-
-    def __init__(self) -> None:
-        self._layout = BandLayout()
+    """The S2 strategy: grade every candidate, emit the most significant proposal."""
 
     def propose(
         self,
@@ -54,46 +126,26 @@ class ExpandFit:
         ground: Callable[[KLine], None],
     ) -> list[KValue]:
         model = GroundedModel(state)
-        batch: list[KValue] = []
+        graded: list[KValue] = []
         for candidate in similar_fit_candidates(state, signifier, entry):
-            batch.extend(self._expand_pair(model, signifier, entry, candidate, ground))
-        return batch
-
-    def _expand_pair(
-        self,
-        model: GroundedModel,
-        signifier: KSignifier,
-        entry: KLine,
-        candidate: KLine,
-        ground: Callable[[KLine], None],
-    ) -> list[KValue]:
-        """Route every yield of ``expand(entry, candidate)`` by band."""
-        emissions: list[KValue] = []
-        kv: KValue
-        for kv in expand(model, entry, candidate, signifier):
-            band = self._layout.classify(kv.significance)
-            if band == "S4":
-                continue
-            if band == "S1":
-                # Structural exact match — promote the candidate (the lean
-                # analogue of on_s1) and stop expanding this pair.
-                ground(candidate)
-                return emissions
-            emissions.extend(self._expansion_proposals(model, signifier, kv.kline, kv.significance))
-        return emissions
-
-    def _expansion_proposals(
-        self,
-        model: GroundedModel,
-        signifier: KSignifier,
-        candidate: KLine,
-        significance: int,
-    ) -> list[KValue]:
-        """Reshape a graded S2/S3 candidate into self-consistent proposals."""
-        rep = _BAND_REP.get(self._layout.classify(significance))
-        if rep is None:
+            graded.extend(expand(model, entry, candidate, signifier))
+        if not graded:
             return []
-        return [
-            KValue(proposal, rep)
-            for proposal in propose_expansions(model, candidate, signifier)
-        ]
+        best = max(graded, key=lambda kv: kv.significance & SIG_MASK)
+        proposals = propose_expansions(model, best.kline, signifier)
+        if not proposals:
+            return []
+        chosen = self._most_significant(model, entry, proposals, signifier)
+        return [KValue(chosen.kline, chosen.significance & SIG_MASK)]
+
+    @staticmethod
+    def _most_significant(
+        model: GroundedModel, entry: KLine, proposals: list[KLine], signifier: KSignifier
+    ) -> KValue:
+        """The reshape that grades highest when re-expanded against ``entry``.
+
+        ``expand``'s final yield is the grade for the pair itself; that is the
+        byte compared.
+        """
+        graded = [list(expand(model, entry, p, signifier))[-1] for p in proposals]
+        return max(graded, key=lambda kv: kv.significance & SIG_MASK)

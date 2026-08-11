@@ -4,7 +4,7 @@ Each strategy proposes for a pending misfit kline by recombining what the
 engine has already grounded. Two implementations live alongside this module
 (``similar_fit`` / ``expand_fit``); the engine selects one at construction
 via the ``strategy`` knob. Shared grounding-store helpers and the read-only
-``Model`` adapter that ``kalvin.expand`` and ``dialogue.proposals`` expect
+``Model`` adapter that ``kalvin.expand`` and ``dialogue.expand_fit`` expect
 live here.
 """
 
@@ -53,7 +53,7 @@ class GroundedModel:
     """A read-only ``Model``-shaped view over an :class:`EngineState`'s grounded store.
 
     Satisfies the subset of the :class:`kalvin.model.Model` contract that
-    ``kalvin.expand.expand`` and ``dialogue.proposals.propose_expansions``
+    ``kalvin.expand.expand`` and ``dialogue.expand_fit.propose_expansions``
     call: ``find``, ``find_all``, ``grounded``, and ``where``. Lets the expand
     strategy traverse the engine's grounded model without importing the full
     Model (the lean engine keeps none).
