@@ -35,3 +35,21 @@
 ## [2026-08-11T15:20:29.389Z] observe
 - slug: "obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in", title: "All Kalvin wiki stub pages filled in", relevance: "high"
 
+## [2026-08-11T16:18:58.509Z] observe
+- slug: "obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index", title: "STM introduced into EngineState as write-cascade index", relevance: "high"
+
+## [2026-08-11T16:18:58.511Z] retro
+- slug: "stm-cascade-removals-orphan-check", title: "STM cascade removals must be orphan-checked", category: "backend"
+
+## [2026-08-11T16:32:17.309Z] observe
+- slug: "obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected", title: "EngineState four-store model: grounded→ltm, STM disconnected", relevance: "high"
+
+## [2026-08-11T16:35:44.459Z] lint
+- orphans: 6, missing_pages: 0, contradictions: 0, auto_fix: true, legacy_pages_repaired: 0
+
+## [2026-08-11T16:36:43.774Z] observe
+- slug: "obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model", title: "Wiki corrected for EngineState four-store model", relevance: "medium"
+
+## [2026-08-11T17:16:34.727Z] observe
+- slug: "obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d", title: "Universal nodes-grounded rule; fast-route canon bug fixed; a:[Det] unblocks", relevance: "high"
+

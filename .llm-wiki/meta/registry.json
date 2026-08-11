@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-11T15:48:53.984Z",
+  "last_updated": "2026-08-11T17:16:34.754Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -460,7 +460,7 @@
     "entities/stm-short-term-memory": {
       "type": "entity",
       "title": "STM (Short-Term Memory)",
-      "description": "The lowest tier in the write cascade and Kalvin's event register — every write reaches it. Empty at session start.",
+      "description": "The lowest tier in the write cascade (production Model) and Kalvin's event register. In the lean EngineState, reserved for expansion and currently unwired. Empty at session start.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
@@ -524,6 +524,25 @@
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
+    "sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected": {
+      "type": "source",
+      "title": "Observation: EngineState four-store model: grounded→ltm, STM disconnected",
+      "tags": [
+        "engine",
+        "ltm",
+        "stm",
+        "dialogue",
+        "engine-state",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected",
+      "relevance": "high",
+      "observed_at": "2026-08-11T16:32:17.306Z",
+      "source_context": "Lean harness: correcting the EngineState four-store memory model",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
     "sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists": {
       "type": "source",
       "title": "Observation: No `python -m kscript` entrypoint exists",
@@ -552,6 +571,67 @@
       "relevance": "high",
       "observed_at": "2026-08-11T14:57:51.658Z",
       "source_context": "Updating README.md after initializing the LLM wiki",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "sources/obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index": {
+      "type": "source",
+      "title": "Observation: STM introduced into EngineState as write-cascade index",
+      "tags": [
+        "engine",
+        "stm",
+        "dialogue",
+        "engine-state"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index",
+      "relevance": "high",
+      "observed_at": "2026-08-11T16:18:58.495Z",
+      "source_context": "Lean harness: introducing STM into EngineState for O(1) cross-reference",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "sources/obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d": {
+      "type": "source",
+      "title": "Observation: Universal nodes-grounded rule; fast-route canon bug fixed; a:[Det] unblocks",
+      "tags": [
+        "engine",
+        "grounding",
+        "fast-route",
+        "ltm"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d",
+      "relevance": "high",
+      "observed_at": "2026-08-11T17:16:34.723Z",
+      "source_context": "Lean harness: new universal grounding rule (all nodes grounded before signature)",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "sources/obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model": {
+      "type": "source",
+      "title": "Observation: Wiki corrected for EngineState four-store model",
+      "tags": [
+        "wiki",
+        "engine",
+        "ltm",
+        "stm",
+        "frame"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model",
+      "relevance": "medium",
+      "observed_at": "2026-08-11T16:36:43.772Z",
+      "source_context": "Fixing the LLM wiki after the EngineState grounded→ltm / STM-disconnect refactor",
+      "created": "2026-08-11",
+      "updated": "2026-08-11"
+    },
+    "sources/stm-cascade-removals-orphan-check": {
+      "type": "source",
+      "title": "STM cascade removals must be orphan-checked",
+      "category": "backend",
+      "status": "insight",
+      "slug": "stm-cascade-removals-orphan-check",
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },

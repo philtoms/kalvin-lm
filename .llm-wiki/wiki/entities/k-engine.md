@@ -22,6 +22,16 @@ and returns `(batch, observations)` — dialogue emissions and K's internal S1
 groundings this turn. The engine is stateless about its own emissions; dedup
 lives in the actor (see [[concepts/per-turn-scoping]]).
 
+`EngineState` holds four independent stores that mirror the kalvin memory
+tiers:
+
+- **`work_list`** — the cogitator queue: incoming entries plus the ungrounded
+  signatures and nodes their routing unpacked.
+- **`ltm`** — ratified klines (Long-Term Memory).
+- **`frame`** — the outgoing kline proposals and identity requests K has emitted.
+- **`stm`** — Short-Term Memory, reserved for the expansion strategies' exclusive
+  use; not wired into any logic and maintained independently of the other stores.
+
 The factories that assemble the engine (signifier, state, strategy, engine) live
 in `dialogue.harness`. Routing is done by [[entities/route|route()]];
 [[concepts/cogitation]] by [[entities/cogitate|cogitate()]];
@@ -38,3 +48,5 @@ and of [[entities/auto-tune|auto-tune]].
 - [[entities/harness]] — assembles and drives the engine
 - [[concepts/non-judging-harness]] — how the engine is exercised
 - [[concepts/engine-first]] — the discipline for editing it
+- [[entities/stm-short-term-memory]] — STM's distinct lean-engine role (reserved for expansion)
+- [obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected](/sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected.md) — the four-store model

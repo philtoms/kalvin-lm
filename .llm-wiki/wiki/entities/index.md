@@ -19,6 +19,6 @@
 - [rationalise()](rationalise.md) — The engine function driving one full rationalisation turn — resets observations and _incoming, runs route → cogitate → _promote, and emits the turn's batch.
 - [route()](route.md) — The engine function that dispatches an incoming kline on its structural significance (sig_level), not on the producer's compiled stamp. The entry to fast/slow routing.
 - [similar_fit](similarfit.md) — A cogitation strategy for the S2 arm — the graft heuristic. Emits many proposals (12 on mhall), including the canonical synthesis at step 16.
-- [STM (Short-Term Memory)](stm-short-term-memory.md) — The lowest tier in the write cascade and Kalvin's event register — every write reaches it. Empty at session start.
+- [STM (Short-Term Memory)](stm-short-term-memory.md) — The lowest tier in the write cascade (production Model) and Kalvin's event register. In the lean EngineState, reserved for expansion and currently unwired. Empty at session start.
 - [TokenEncoder](tokenencoder.md) — The KScript compiler stage that resolves word bindings and produces encoded KLines from symbolic entries. Where identities receive their node labels.
 - [WDMH](wdmh.md) — Signature for 'we don't know Mary, had a little lamb' — the other half of the WDMH↔MHALL pair at the centre of the silent-synthesis open question.

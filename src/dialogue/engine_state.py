@@ -5,13 +5,13 @@ tiers:
 
 - **work_list** — the cogitator queue: incoming entries plus the ungrounded
   signatures and nodes their routing unpacked.
-- **ltm** — ratified klines (Long-Term Memory).
+- **ltm** — grounded klines (Long-Term Memory).
 - **frame** — the outgoing kline proposals and identity requests K has emitted.
 - **stm** — Short-Term Memory: reserved for the expansion strategies' exclusive
   use. Not wired into any logic; maintained independently of the other stores.
 
 State is plain ints (signature + node lists); ``dbg`` is debug-only and dropped
-on save. A saved state is a ratified prior injected into an actor at
+on save. A saved state is a grounded prior injected into an actor at
 construction.
 
 The :class:`dialogue.engine.Engine` is stateless about its own emissions; all
@@ -52,7 +52,7 @@ class EngineState:
     - **work_list** — the cogitator queue: incoming entries and the ungrounded
       signatures/nodes unpacked from them. Entries carry no significance band;
       dispatch is structural.
-    - **ltm** — ratified klines, keyed by signature.
+    - **ltm** — Long-Term Memory. Grounded klines, keyed by signature.
     - **frame** — klines K has previously emitted, keyed by signature. The
       fast route matches incoming S1/S4 queries against it.
     - **stm** — Short-Term Memory. Reserved for the expansion strategies; not
@@ -74,40 +74,64 @@ class EngineState:
         """The structural-significance oracle this state's queries dispatch through."""
         return self._signifier
 
-    # -- LTM queries -------------------------------------------------
-    #
-    # The graph-expansion walk (``ExpandFit._expand``) reads LTM through these.
-    # Named ``is_in_ltm`` (not ``ltm``) so as not to shadow the ``ltm`` field.
+    # -- LTM (grounded) memory -------------------------------------------------
 
     def find(self, signature: int) -> KLine | None:
-        """The last ratified kline under ``signature``, or ``None``."""
+        """The last grounded kline under ``signature``, or ``None``."""
         bucket = self.ltm.get(signature)
         return bucket[-1] if bucket else None
 
-    # -- work-list (cogitator queue) ---------------------------------
+    def similar_fit_candidates(
+        self, entry: KLine
+    ) -> list[KLine]:
+        """Grounded klines sharing at least one but not all node values with ``entry``,
+        excluding the entry's own canon (its resolution, not a recombination ingredient)."""
+        signifier = self._signifier
+        entry_nodes = set(entry.nodes)
+        candidates: list[KLine] = []
+        for bucket in self.ltm.values():
+            for kline in bucket:
+                if kline is entry or not kline.nodes or entry.nodes == kline.nodes:
+                    continue
+                if kline.signature == entry.signature and is_canon(kline, signifier):
+                    continue
+                kline_nodes = set(kline.nodes)
+                if entry_nodes & kline_nodes and len(kline_nodes.difference(entry_nodes)):
+                    candidates.append(kline)
+        return candidates
 
-    def add_work(self, kline: KLine) -> None:
-        """Append ``kline`` to the work-list."""
-        self.work_list.append(kline)
+    def is_grounded(self, kline: KLine) -> bool:
+        """Is an isomorphic kline (same signature and nodes) in LTM?"""
+        return any(
+            existing.nodes == kline.nodes
+            for existing in self.ltm.get(kline.signature, [])
+        )
 
-    def remove_work_at(self, idx: int) -> KLine:
-        """Remove and return the work-list entry at ``idx``."""
-        return self.work_list.pop(idx)
+    def where(self, predicate: Callable[[KLine], bool]) -> list[KLine]:
+        """All grounded klines matching ``predicate``."""
+        return [
+            kline
+            for bucket in self.ltm.values()
+            for kline in bucket
+            if predicate(kline)
+        ]
 
-    def note_ratified(self, kline: KLine) -> bool:
+    def ground(self, kline: KLine, work_idx = -1) -> bool:
         """Record ``kline`` in LTM. Idempotent on nodes.
 
         Returns ``True`` when a new entry was added, ``False`` when an
-        isomorphic kline (same signature and nodes) was already ratified.
+        isomorphic kline (same signature and nodes) was already grounded.
         """
         bucket = self.ltm.setdefault(kline.signature, [])
         if any(existing.nodes == kline.nodes for existing in bucket):
             return False
+
         bucket.append(kline)
+        self.pop_identity(kline.signature, work_idx)
         return True
 
     def _is_groundable(self, kline: KLine) -> bool:
-        """Can ``kline`` be ratified at S1 right now?
+        """Can ``kline`` be grounded at S1 right now?
 
         Universal rule: a signature grounds only once every one of its nodes
         is in LTM. An identity is the exception — it is self-referential
@@ -118,24 +142,8 @@ class EngineState:
             return True
         return all(node in self.ltm for node in kline.nodes)
 
-    def is_in_ltm(self, kline: KLine) -> bool:
-        """Is an isomorphic kline (same signature and nodes) in LTM?"""
-        return any(
-            existing.nodes == kline.nodes
-            for existing in self.ltm.get(kline.signature, [])
-        )
-
-    def where(self, predicate: Callable[[KLine], bool]) -> list[KLine]:
-        """All ratified klines matching ``predicate``."""
-        return [
-            kline
-            for bucket in self.ltm.values()
-            for kline in bucket
-            if predicate(kline)
-        ]
-
     def ltm_nodes(self, signature: int) -> list[int] | None:
-        """The nodes of any ratified kline under ``signature`` with non-empty nodes."""
+        """The nodes of any grounded kline under ``signature`` with non-empty nodes."""
         for kline in self.ltm.get(signature, []):
             if kline.nodes:
                 return list(kline.nodes)
@@ -152,8 +160,27 @@ class EngineState:
                 return list(entry.nodes)
         return None
 
+    # -- work-list (cogitator queue) ---------------------------------
+
+    def add_work(self, kline: KLine) -> None:
+        """Append ``kline`` to the work-list."""
+        self.work_list.append(kline)
+
+    def remove_work_at(self, idx: int) -> KLine:
+        """Remove and return the work-list entry at ``idx``."""
+        return self.work_list.pop(idx)
+
+    def pop_identity(self, signature: int, idx = -1) -> None:
+        """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
+        if idx < 0:
+            for i, entry in enumerate(self.work_list):
+                if entry.signature == signature:
+                    idx = i
+        self.remove_work_at(idx)
+        return
+
     def is_seen(self, signature: int) -> bool:
-        """Has K seen ``signature`` — ratified or pending as an Unknown ask?"""
+        """Has K seen ``signature`` — grounded or pending as an Unknown ask?"""
         if signature in self.ltm:
             return True
         return any(
@@ -162,7 +189,7 @@ class EngineState:
         )
 
     def signature_seen(self, signature: int) -> bool:
-        """Has ``signature`` been seen — framed, pending on the work-list, or ratified?"""
+        """Has ``signature`` been seen — framed, pending on the work-list, or grounded?"""
         if self.in_frame(KLine(signature, [])):
             return True
         if signature in self.ltm:
@@ -171,13 +198,6 @@ class EngineState:
             entry.signature == signature and is_unknown(entry)
             for entry in self.work_list
         )
-
-    def pop_identity(self, signature: int) -> None:
-        """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
-        for i, entry in enumerate(self.work_list):
-            if entry.signature == signature and is_unknown(entry):
-                self.remove_work_at(i)
-                return
 
     def is_countersignable(self, entry: KLine) -> bool:
         """Is ``entry`` a relationship whose two operands both have canons?"""
@@ -241,29 +261,10 @@ class EngineState:
         else:
             del self.frame[kline.signature]
 
-    def similar_fit_candidates(
-        self, entry: KLine
-    ) -> list[KLine]:
-        """Ratified klines sharing at least one but not all node values with ``entry``,
-        excluding the entry's own canon (its resolution, not a recombination ingredient)."""
-        signifier = self._signifier
-        entry_nodes = set(entry.nodes)
-        candidates: list[KLine] = []
-        for bucket in self.ltm.values():
-            for kline in bucket:
-                if kline is entry or not kline.nodes or entry.nodes == kline.nodes:
-                    continue
-                if kline.signature == entry.signature and is_canon(kline, signifier):
-                    continue
-                kline_nodes = set(kline.nodes)
-                if entry_nodes & kline_nodes and len(kline_nodes.difference(entry_nodes)):
-                    candidates.append(kline)
-        return candidates
-
     # -- persistence -------------------------------------------------
     #
     # State is plain ints (signature + node lists); ``dbg`` is debug-only and
-    # dropped on save. A saved state is a ratified prior injected into an actor
+    # dropped on save. A saved state is a grounded prior injected into an actor
     # at construction. STM is not persisted: it is empty at session start and
     # reserved for the expansion strategies' working memory.
 

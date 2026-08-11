@@ -24,6 +24,11 @@ knowledge base. A kline residing in LTM is [[concepts/grounding|grounded]]
 LTM is [[concepts/monotonic-growth|monotonic]]: it only grows. Correction
 happens by outcompeting, not deletion.
 
+In the lean [[entities/k-engine|engine]], LTM is the `EngineState.ltm` field
+(ratified klines, keyed by signature). It was renamed from `grounded` to
+separate the store from the S1-realising action (`_ground`/`_promote`); see
+[obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected](/sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected.md).
+
 _Avoid_: persistent store (too vague), knowledge base, LTM frame.
 
 ## Links

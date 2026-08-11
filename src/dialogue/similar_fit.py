@@ -55,7 +55,7 @@ class SimilarFit:
                 target = core + [n for n in candidate.nodes if n not in core]
 
         proposal = KLine(entry.signature, target)
-        if state.is_in_ltm(proposal):
+        if state.is_grounded(proposal):
             return []
         return [KValue(proposal, SIG_S2)]
 

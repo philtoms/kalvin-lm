@@ -118,9 +118,15 @@ class Engine:
         kline = query.kline
         structural_sig = sig_level(kline, self._state.signifier)
         query_sig = _LAYOUT.classify(query.significance)
-        if structural_sig == query_sig and structural_sig in ("S1", "S4"):
-            if self._fast_route(query):
+
+        if query_sig == "S4":
+            self._state.pop_identity(kline.signature)
+            return 
+
+        if structural_sig == query_sig and structural_sig == "S1":
+            if self._fast_route(query, query_sig):
                 return
+            
         self._slow_route(query)
 
     def _slow_route(self, query: KValue) -> None:
@@ -132,7 +138,7 @@ class Engine:
         if not self._state.is_seen(kline.signature):
             self._state.add_work(KLine(kline.signature, [], kline.dbg))
 
-    def _fast_route(self, query: KValue) -> bool:
+    def _fast_route(self, query: KValue, query_sig: str) -> bool:
         # Identity grounds unconditionally.
         # Canon grounds only when its nodes are grounded. 
         kline = query.kline
@@ -140,8 +146,7 @@ class Engine:
             return False
 
         self._state.unframe(kline)
-        self._state.pop_identity(kline.signature)
-        self._promote(kline)
+        self._ground(kline)
         return True
 
     # ── Cogitation ───────────────────────────────────────────────────
@@ -178,16 +183,12 @@ class Engine:
                 else:
                     # All pairings resolved: the countersignature is complete.
                     self._state.remove_work_at(idx)
-                    self._promote(kline)
+                    self._ground(kline)
 
             elif is_misfit(kline, self._state.signifier):
                 batch.extend(
-                    self._misfit.propose(kline, self._promote)
+                    self._misfit.propose(kline, self._ground)
                 )
-
-            elif self._state._is_groundable(kline):
-                self._state.remove_work_at(idx)
-                self._promote(kline)
 
             idx -= 1
 
@@ -195,7 +196,7 @@ class Engine:
 
     # ── Grounding ────────────────────────────────────────────────────
 
-    def _promote(self, kline: KLine) -> None:
+    def _ground(self, kline: KLine) -> None:
         """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
 
         A grounding may make other work-list entries groundable (an identity
@@ -203,30 +204,17 @@ class Engine:
         relationship whose reciprocal just grounded). Cascade until fixed point.
 
         """
-        self._ground(kline)
+        self._state.ground(kline)
         changed = True
         while changed:
             changed = False
             for i, entry in enumerate(self._state.work_list):
                 if self._state._is_groundable(entry):
                     self._state.remove_work_at(i)
-                    self._ground(entry)
+                    self._state.ground(kline, i)
+                    self.observations.append(KValue(kline, SIG_S1))
                     changed = True
                     break
-
-    def _ground(self, kline: KLine, countersigning: bool = False) -> None:
-        """Record that K ratified ``kline`` and observe it at S1.
-
-        Idempotent on nodes. Ratifying a single-node relationship whose two
-        operands have seen canons also ratifies its reciprocal (both directions
-        end up at S1); ``countersigning`` guards against recursing on that mirror.
-        """
-        if not self._state.note_ratified(kline):
-            return
-        self.observations.append(KValue(kline, SIG_S1))
-        if not countersigning and self._state.is_countersignable(kline):
-            reciprocal = KLine(self._state.signifier.signature_of(kline.nodes), [kline.signature])
-            self._ground(reciprocal, countersigning=True)
 
     # ── Frame (emission memory) ──────────────────────────────────────
 

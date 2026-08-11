@@ -79,12 +79,17 @@
 ## Sources
 
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
+- [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists]] — Observation: No `python -m kscript` entrypoint exists *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-readme-md-updated-to-match-actual-source-tree]] — Observation: README.md updated to match actual source tree *(created: 2026-08-11)*
+- [[sources/obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index]] — Observation: STM introduced into EngineState as write-cascade index *(created: 2026-08-11)*
+- [[sources/obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d]] — Observation: Universal nodes-grounded rule; fast-route canon bug fixed; a:[Det] unblocks *(created: 2026-08-11)*
+- [[sources/obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model]] — Observation: Wiki corrected for EngineState four-store model *(created: 2026-08-11)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
+- [[sources/stm-cascade-removals-orphan-check]] — STM cascade removals must be orphan-checked *(created: 2026-08-11)*
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-11T15:48:53.984Z* | *Total pages: 75*
+*Last updated: 2026-08-11T17:16:34.754Z* | *Total pages: 80*

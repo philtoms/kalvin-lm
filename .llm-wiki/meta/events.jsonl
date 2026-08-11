@@ -9,3 +9,9 @@
 {"source_id":"SRC-2026-08-11-003","entities_created":1,"concepts_created":14,"contradictions":0,"background":true,"timestamp":"2026-08-11T15:01:37.663Z","kind":"ingest"}
 {"slug":"wiki-duplicate-consolidation","title":"Consolidated wiki duplicate concept pages","category":"wiki-maintenance","timestamp":"2026-08-11T15:13:57.938Z","kind":"retro"}
 {"slug":"obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in","title":"All Kalvin wiki stub pages filled in","relevance":"high","timestamp":"2026-08-11T15:20:29.389Z","kind":"observe"}
+{"slug":"obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index","title":"STM introduced into EngineState as write-cascade index","relevance":"high","timestamp":"2026-08-11T16:18:58.509Z","kind":"observe"}
+{"slug":"stm-cascade-removals-orphan-check","title":"STM cascade removals must be orphan-checked","category":"backend","timestamp":"2026-08-11T16:18:58.511Z","kind":"retro"}
+{"slug":"obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected","title":"EngineState four-store model: grounded→ltm, STM disconnected","relevance":"high","timestamp":"2026-08-11T16:32:17.309Z","kind":"observe"}
+{"orphans":6,"missing_pages":0,"contradictions":0,"auto_fix":true,"legacy_pages_repaired":0,"timestamp":"2026-08-11T16:35:44.459Z","kind":"lint"}
+{"slug":"obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model","title":"Wiki corrected for EngineState four-store model","relevance":"medium","timestamp":"2026-08-11T16:36:43.774Z","kind":"observe"}
+{"slug":"obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d","title":"Universal nodes-grounded rule; fast-route canon bug fixed; a:[Det] unblocks","relevance":"high","timestamp":"2026-08-11T17:16:34.727Z","kind":"observe"}
