@@ -159,32 +159,25 @@ class EngineState:
         """Append ``kline`` to STM — cogitation is now attending to it."""
         self.stm.append(kline)
 
-    def remove_stm_at(self, idx: int) -> KLine:
+    def remove_stm_at(self, idx: int) -> KLine | None:
         """Remove and return the STM entry at ``idx``."""
-        return self.stm.pop(idx)
-
-    def pop_identity(self, signature: int, idx = -1) -> None:
+        if idx < len(self.stm):
+            return self.stm.pop(idx)
+        return None
+    
+    def pop_identity(self, signature: int, idx = -1) -> KLine | None:
         """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
         if idx < 0:
             for i, entry in enumerate(self.stm):
                 if entry.signature == signature:
                     idx = i
-        self.remove_stm_at(idx)
+            
+        if idx >= 0:
+            self.remove_stm_at(idx)
         return
 
     def is_seen(self, signature: int) -> bool:
         """Has K seen ``signature`` — grounded or pending as an Unknown ask in STM?"""
-        if signature in self.ltm:
-            return True
-        return any(
-            entry.signature == signature and is_unknown(entry)
-            for entry in self.stm
-        )
-
-    def signature_seen(self, signature: int) -> bool:
-        """Has ``signature`` been seen — framed, pending in STM, or grounded?"""
-        if self.in_frame(KLine(signature, [])):
-            return True
         if signature in self.ltm:
             return True
         return any(
@@ -202,25 +195,6 @@ class EngineState:
         )
 
     # -- frame (emission memory) ------------------------------------
-
-    def in_frame(self, kline: KLine) -> bool:
-        """Is ``kline`` already in play in the frame?
-
-        Terminals are keyed by signature alone: a terminal is one lexical
-        item with multiple shapes (the S4 Unknown ask ``X:[]`` and the S1
-        Identity ratifications ``X:[X]``, ``X:[COMPOUND, x, y]``), and any shape
-        recognises any other — an S4 ask framed by K matches the S1 reply T
-        sends back. Non-terminals match on structural significance, as before.
-        """
-        signifier = self._signifier
-        bucket = self.frame.get(kline.signature, [])
-        if is_terminal(kline):
-            return any(is_terminal(framed) for framed in bucket)
-        target = sig_level(kline, signifier)
-        return any(
-            sig_level(framed, signifier) == target
-            for framed in bucket
-        )
 
     def is_framed(self, kline: KLine) -> bool:
         """Is an isomorphic kline in the frame?

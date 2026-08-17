@@ -46,36 +46,17 @@ _SIG_TO_BAND = {SIG_S1: "S1", SIG_S2: "S2", SIG_S3: "S3", SIG_S4: "S4"}
 _BAND_ORDER = ("S1", "S2", "S3", "S4")
 
 
-def _identity_offers(entries: list[KValue]) -> dict[int, KValue]:
-    """``{signature: X:[X] at S1}`` for every signature the curriculum defines
-    as a self-identity. The first such entry per signature wins."""
-    offers: dict[int, KValue] = {}
-    for entry in entries:
-        if entry.significance != SIG_S1:
-            continue
-        sig = entry.kline.signature
-        if sig in offers:
-            continue
-        nodes = entry.kline.nodes
-        if len(nodes) == 1 and nodes[0] == sig:
-            offers[sig] = KValue(KLine(sig, [sig]), SIG_S1)
-    return offers
-
-
 @dataclass
 class StepResult:
-    """One loop iteration: the input entry and the engine's responses to it.
-
-    A step may span several engine calls. ``offers`` are the S1 identities the
-    harness fed to answer S4 asks the engine emitted — presented for
-    observability, not as a verdict.
-    """
+    """One loop iteration: the input entry, the engine's asks, and the
+    ratifying answers the harness fed back. """
 
     index: int
     entry: KValue
     batch: list[KValue] = field(default_factory=list)
     observations: list[KValue] = field(default_factory=list)
-    offers: list[KValue] = field(default_factory=list)
+    answers: list[KValue] = field(default_factory=list)
+    stopped_on: KValue | None = None
 
 
 class Harness:
@@ -111,37 +92,100 @@ class Harness:
         return cast(NLPSignifier, self._engine.state.signifier)
 
     def run(self, source: str) -> list[StepResult]:
-        """Compile ``source`` and drive the engine one entry per step.
+        """Compile ``source``, open each sub-script's dialogue, and let the
+        engine drive.
 
-        After each step, scan the batch for S4 identity asks whose signature
-        the curriculum defines as an S1 identity ``X:[X]`` and feed those
-        identities directly. This answers K's asks without supervision and
-        without judgement; it changes the order K assimilates the curriculum.
+        Each sub-script (annotation group) is opened with its first entry.
+        From there the engine asks; the harness answers each ask from the
+        script or the run stops.
         """
         entries = compile_source(
             source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True
         )
-        identities = _identity_offers(entries)
+        heads: dict[int, list[KValue]] = {}
+        exact: dict[tuple[int, tuple[int, ...]], KValue] = {}
+        words: set[int] = set()
+        openers: list[KValue] = []
+        opened: set[str] = set()
+        for entry in entries:
+            kline = entry.kline
+            heads.setdefault(kline.signature, []).append(entry)
+            exact.setdefault(
+                (kline.signature, tuple(kline.nodes)), entry
+            )
+            if (
+                kline.nodes != [kline.signature]
+                and kline.signature == self.signifier.signature_of(kline.nodes)
+            ):
+                # A compound self-ref (e.g. DH unpacking to did, have): its
+                # nodes are script-known words.
+                words.update(kline.nodes)
+            annotation = kline.dbg.annotation if kline.dbg else ""
+            if annotation and annotation not in opened:
+                opened.add(annotation)
+                openers.append(entry)
+        answered: set[tuple[int, tuple[int, ...]]] = set()
         results: list[StepResult] = []
-        for i, entry in enumerate(entries):
-            batch, observations = self._engine.rationalise([entry])
-            offered: list[KValue] = []
-            seen: set[int] = set()
-            while True:
-                asks = {
-                    v.kline.signature for v in batch
-                    if v.significance == SIG_S4 and not v.kline.nodes
-                }
-                signature = next((s for s in asks if s in identities and s not in seen), None)
-                if signature is None:
-                    break
-                seen.add(signature)
-                offer = identities[signature]
-                offered.append(offer)
-                batch, obs = self._engine.rationalise([offer])
-                observations.extend(obs)
-            results.append(StepResult(i, entry, batch, observations, offered))
+        for i, opener in enumerate(openers):
+            step = StepResult(i, opener)
+            results.append(step)
+            queue: list[KValue] = [opener]
+            while queue:
+                batch, observations = self._engine.rationalise([queue.pop(0)])
+                step.observations.extend(observations)
+                step.batch = batch
+                for ask in batch:
+                    reply = self._answer(ask, heads, exact, words, answered)
+                    if reply is None:
+                        step.stopped_on = ask
+                        return results
+                    step.answers.extend(reply)
+                    queue.extend(reply)
         return results
+
+    def _answer(
+        self,
+        ask: KValue,
+        heads: dict[int, list[KValue]],
+        exact: dict[tuple[int, tuple[int, ...]], KValue],
+        words: set[int],
+        answered: set[tuple[int, tuple[int, ...]]],
+    ) -> list[KValue] | None:
+        """The ratifying reply to ``ask``, or ``None`` when the script cannot
+        answer it.
+
+        An identity ask ``X:[]`` is answered by an identity ``X:[X]`` plus the
+        script klines headed ``X``. A proposal ask ``A:[B]`` is answered by the
+        matching script kline plus its countersignature ``B:[A]``.
+        """
+        kline = ask.kline
+        key = (kline.signature, tuple(kline.nodes))
+        if key in answered:
+            return []
+        answered.add(key)
+        if not kline.nodes:
+            script_klines = [
+                e for e in heads.get(kline.signature, [])
+                if e.kline.nodes != [kline.signature]
+            ]
+            is_word = kline.signature in words or any(
+                e.kline.nodes == [kline.signature]
+                for e in heads.get(kline.signature, [])
+            )
+            if not script_klines and not is_word:
+                return None
+            identity = KValue(
+                KLine(kline.signature, [kline.signature]), SIG_S1
+            )
+            return [identity, *script_klines]
+        hit = exact.get(key)
+        if hit is None:
+            return None
+        countersigns = [
+            KValue(KLine(node, [kline.signature]), SIG_S3)
+            for node in kline.nodes
+        ]
+        return [hit, *countersigns]
 
 
 # ── Construction (single source of truth) ────────────────────────────────
@@ -222,8 +266,10 @@ def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier)
 def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str:
     lines = [f"── Step {step.index + 1}  in  {_band(step.entry)}  "
              f"{_render_kline(step.entry, labels, verbose)} ──"]
-    for v in step.offers:
-        lines.append(f"  offer   {_render_kline(v, labels, verbose)}")
+    for v in step.answers:
+        lines.append(f"  answer  {_render_kline(v, labels, verbose)}")
+    if step.stopped_on is not None:
+        lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
     if step.batch:
         for v in step.batch:
             lines.append(f"  out   {_band(v)}  {_render_kline(v, labels, verbose)}")

@@ -30,9 +30,10 @@ Rules when it resolves.
 
 ### Harness
 
-- Non-judging: compiles, feeds, retrieves, presents. No verdict, no band-matching.
-- S4 identity asks whose signature the curriculum defines as `X:[X]` are answered inline, mechanically, per-step dedup.
-- Feeding an S1 identity alone doesn't ground it; the engine grounds it only once K has framed the signature first.
+- K-driven dialogue: each sub-script (annotation group) is opened with its first entry; from there the engine drives. Each engine emission is an ask; the harness answers from the script or the run stops.
+- Ratifying answers: an identity ask `X:[]` → identity `X:[X]` + the script klines headed `X`; a proposal ask `A:[B]` → the matching script kline + its countersignature `B:[A]`. All other emissions are scaffolding.
+- A node of a compound self-ref entry (`DH:[did,have]`) is a script-known word; its identity ask answers with `X:[X]` alone.
+- Never judges — feeding and answering only.
 
 ### Compilation — annotation & scope
 
@@ -43,9 +44,7 @@ Rules when it resolves.
 
 ## Active state of K
 
-⚠️ **The two cogitation strategies diverge on S2 emissions, not on the grounded model.** `similar_fit` and `expand` (the harness default) reach the same grounded model on `mhall` and both leave `WDMH:[Mary, had, a, little, lamb]` ungrounded. `similar_fit` emits 12 S2 proposals (the canonical synthesis at step 16, plus spurious recombinations under wrong signatures); `expand` emits 1 (`WDMH:[Mary]` at step 10) and never surfaces the synthesis.
-
-Open: is `expand`'s silent synthesis correct (the WDMH↔MHALL pair grades S1/S3, so nothing is proposed) or a regression (the S2 path should propose the recombination regardless of band)? Read what `expand` grades for `(WDMH:[Mary,DH], MHALL:[Mary,had,a,little,lamb])` and why it is not S2.
+⚠️ **No relationship ever reaches the S3 countersign arm.** Every relationship entry (`a:[Det]`, `DH:[had]`, `MHALL:[SVO]`) is consumed by the misfit arm in the same turn — popped regardless of whether `propose` returned anything — so `is_countersignable` never sees a live entry. The WDMH↔MHALL synthesis question is unreachable until a no-proposal misfit survives in STM. Candidate: pop only when the strategy produced a batch.
 
 ## Process — discipline
 

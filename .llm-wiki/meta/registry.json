@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-17T12:14:00.168Z",
+  "last_updated": "2026-08-17T14:54:41.721Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -657,6 +657,22 @@
       "created": "2026-08-17",
       "updated": "2026-08-17"
     },
+    "sources/obs-2026-08-17-k-driven-harness-rewrite-mhall-completes-22-groundings": {
+      "type": "source",
+      "title": "Observation: K-driven harness rewrite: mhall completes, 22 groundings",
+      "tags": [
+        "dialogue",
+        "harness",
+        "engine"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-17-k-driven-harness-rewrite-mhall-completes-22-groundings",
+      "relevance": "high",
+      "observed_at": "2026-08-17T14:54:41.696Z",
+      "source_context": "Lean harness rewrite in src/dialogue/harness.py + engine cascade fix",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
+    },
     "sources/obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto": {
       "type": "source",
       "title": "Observation: Model/Memory definitions settled: tiers are relations, not storage",
@@ -675,6 +691,23 @@
       "relevance": "high",
       "observed_at": "2026-08-17T11:16:52.277Z",
       "source_context": "Working up Model/Memory glossary definitions after user discarded working-tree changes",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
+    },
+    "sources/obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner": {
+      "type": "source",
+      "title": "Observation: Proposal-pops-STM + frame removal: dedup lost, residue cleaner",
+      "tags": [
+        "dialogue",
+        "engine",
+        "stm",
+        "frame"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner",
+      "relevance": "high",
+      "observed_at": "2026-08-17T14:09:44.918Z",
+      "source_context": "Lean harness tuning session on src/dialogue/engine.py",
       "created": "2026-08-17",
       "updated": "2026-08-17"
     },

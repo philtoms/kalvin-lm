@@ -68,3 +68,9 @@
 ## [2026-08-17T12:14:00.147Z] observe
 - slug: "obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed", title: "work_list renamed to stm; duplicate STM index removed", relevance: "high"
 
+## [2026-08-17T14:09:44.920Z] observe
+- slug: "obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner", title: "Proposal-pops-STM + frame removal: dedup lost, residue cleaner", relevance: "high"
+
+## [2026-08-17T14:54:41.699Z] observe
+- slug: "obs-2026-08-17-k-driven-harness-rewrite-mhall-completes-22-groundings", title: "K-driven harness rewrite: mhall completes, 22 groundings", relevance: "high"
+

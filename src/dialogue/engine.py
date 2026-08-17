@@ -99,7 +99,8 @@ class Engine:
         with using_resolver(resolver):
             for query in incoming:
                 self.route(query)
-            return self.finish(self.cogitate())
+            return self.cogitate(), self.observations
+
 
     # ── Routing ──────────────────────────────────────────────────────
 
@@ -108,10 +109,9 @@ class Engine:
 
         Dispatch is on the query's **structural** significance:
 
-        - **S1/S4 (fast route)** — match against the frame. An S1 (identity or
-          canon) match promotes the kline (grounds it at S1 and cascades); an
-          S4 (the empty ask ``{X:[]}``) pops the matching identity ask. Either
-          way the framed kline is consumed. Unmatched queries are dropped.
+        - **S1/S4 (fast route)** — an S1 (identity or canon) match grounds the 
+          kline (and cascades); an S4 (the empty ask ``{X:[]}``) pops the matching
+          identity ask.
         - **S2/S3 (slow route)** — append to STM, then unpack an S2
           misfit's unrecognised nodes and signature as identity asks.
         """
@@ -129,6 +129,16 @@ class Engine:
             
         self._slow_route(query)
 
+    def _fast_route(self, query: KValue, query_sig: str) -> bool:
+        # Identity grounds unconditionally.
+        # Canon grounds only when its nodes are grounded. 
+        kline = query.kline
+        if is_canon(kline, self._state.signifier) and not self._state._is_groundable(kline):
+            return False
+
+        self._ground(kline)
+        return True
+
     def _slow_route(self, query: KValue) -> None:
         kline = query.kline
         self._state.add_stm(kline)
@@ -137,17 +147,6 @@ class Engine:
                 self._state.add_stm(KLine(node, [], kline.dbg))
         if not self._state.is_seen(kline.signature):
             self._state.add_stm(KLine(kline.signature, [], kline.dbg))
-
-    def _fast_route(self, query: KValue, query_sig: str) -> bool:
-        # Identity grounds unconditionally.
-        # Canon grounds only when its nodes are grounded. 
-        kline = query.kline
-        if is_canon(kline, self._state.signifier) and not self._state._is_groundable(kline):
-            return False
-
-        self._state.unframe(kline)
-        self._ground(kline)
-        return True
 
     # ── Cogitation ───────────────────────────────────────────────────
 
@@ -159,7 +158,7 @@ class Engine:
         takes the S2 path. a structurally-S1 entry is promoted (grounded).
         Entries that match no path persist for a later turn.
         """
-        batch: list[KValue] = []
+        proposals: list[KValue] = []
 
         idx = len(self._state.stm) - 1
         while idx >= 0:
@@ -174,25 +173,25 @@ class Engine:
 
             if is_unknown(kline):
                 self._state.remove_stm_at(idx)
-                batch.append(KValue(KLine(kline.signature, []), SIG_S4))
+                proposals.append(KValue(KLine(kline.signature, []), SIG_S4))
 
             elif self._state.is_countersignable(kline):
                 pairings = self._countersignature_proposals(kline)
                 if pairings:
-                    batch.extend(pairings)
+                    proposals.extend(pairings)
                 else:
                     # All pairings resolved: the countersignature is complete.
                     self._state.remove_stm_at(idx)
                     self._ground(kline)
 
             elif is_misfit(kline, self._state.signifier):
-                batch.extend(
-                    self._misfit.propose(kline, self._ground)
-                )
+                batch = self._misfit.propose(kline, self._ground)
+                self._state.remove_stm_at(idx)
+                proposals.extend(batch)
 
             idx -= 1
 
-        return batch
+        return proposals
 
     # ── Grounding ────────────────────────────────────────────────────
 
@@ -211,19 +210,11 @@ class Engine:
             for i, entry in enumerate(self._state.stm):
                 if self._state._is_groundable(entry):
                     self._state.remove_stm_at(i)
-                    self._state.ground(kline, i)
-                    self.observations.append(KValue(kline, SIG_S1))
+                    self._state.ground(entry)
+                    self.observations.append(KValue(entry, SIG_S1))
                     changed = True
                     break
 
-    # ── Frame (emission memory) ──────────────────────────────────────
-
-    def finish(self, batch: list[KValue]) -> tuple[list[KValue], list[KValue]]:
-        """Keep only genuinely-new emissions (adding them to the frame) and return ``(batch, observations)``."""
-        new_batch = [v for v in batch if not self._state.is_framed(v.kline)]
-        for value in new_batch:
-            self._state.frame_kline(value.kline)
-        return new_batch, self.observations
 
     # ── S3 path: countersignature ────────────────────────────────────
 
