@@ -269,15 +269,17 @@ class TestCaseInsensitive:
 
 
 class TestCounterExceeded:
-    """When counter exceeds available matches, returns None."""
+    """When counter exceeds available matches, falls to the resolved-binding
+    memory (the last resolved word for that char)."""
 
-    def test_third_resolve_returns_none(self):
+    def test_third_resolve_returns_resolved_binding(self):
         bs = BindingScope()
         bs.push_scope()
         bs.add_words(["Alice", "Alpha"])
         assert bs.resolve("A") == "Alice"
         assert bs.resolve("A") == "Alpha"
-        assert bs.resolve("A") is None
+        # Counter exceeded — resolved-binding tier supplies the last word
+        assert bs.resolve("A") == "Alpha"
 
     def test_counter_exceeded_falls_to_next_word_list(self):
         """If counter exceeded in one word list, continues to the next."""
@@ -286,14 +288,14 @@ class TestCounterExceeded:
         bs.add_words(["Alice", "Alpha"])
         assert bs.resolve("A") == "Alice"
         assert bs.resolve("A") == "Alpha"
-        # Counter at 2, exceeded for first list — but no second list yet
-        assert bs.resolve("A") is None
+        # Counter at 2, exceeded for the only list — resolved binding (last word)
+        assert bs.resolve("A") == "Alpha"
 
     def test_counter_exceeded_no_fallthrough_same_scope(self):
         """Counter is per-scope (shared across word lists).
 
         Once exhausted in newer list, older list in same scope also sees
-        the advanced counter and is skipped.
+        the advanced counter and is skipped — the resolved binding stands.
         """
         bs = BindingScope()
         bs.push_scope()
@@ -301,8 +303,8 @@ class TestCounterExceeded:
         bs.add_words(["Alice", "Alpha"])  # newer list (searched first)
         assert bs.resolve("A") == "Alice"
         assert bs.resolve("A") == "Alpha"
-        # Counter at 2, shared — OldAardvark also skipped (counter >= 1)
-        assert bs.resolve("A") is None
+        # Counter at 2, shared — OldAardvark also skipped; resolved binding
+        assert bs.resolve("A") == "Alpha"
 
     def test_counter_exceeded_falls_through_to_different_scope(self):
         """Counter exceeded in inner scope falls to outer scope."""
@@ -442,3 +444,61 @@ class TestEdgeCases:
         bs.pop_scope()
         # Back to outer scope
         assert bs.resolve("A") == "Alpha"
+
+
+# ---------------------------------------------------------------------------
+# Binding precedence tiers
+# ---------------------------------------------------------------------------
+
+
+class TestBindingTiers:
+    """Uppercase letters bind to the nearest annotation, else a resolved
+    binding. Inline annotations additionally bind the parent scope."""
+
+    def test_inline_override_binds_immediate_parent_only(self):
+        bs = BindingScope()
+        bs.push_scope()  # root
+        bs.push_scope()  # parent
+        bs.push_scope()  # inner
+        bs.bind_override("O", "Object")
+        bs.pop_scope()
+        # Bound in the immediate parent — not in root
+        assert bs.resolve("O") == "Object"
+        bs.pop_scope()
+        assert bs.resolve("O") is None
+
+    def test_inline_override_binds_parent_scope(self):
+        bs = BindingScope()
+        bs.push_scope()
+        bs.add_words(["Mary", "had"])
+        bs.push_scope()
+        bs.bind_override("O", "Object")
+        bs.pop_scope()
+        # Survives the subscript popping — bound in the immediate parent
+        assert bs.resolve("O") == "Object"
+
+    def test_inline_override_lowercase_stays_in_scope(self):
+        bs = BindingScope()
+        bs.push_scope()
+        bs.push_scope()
+        bs.bind_override("o", "object")
+        bs.pop_scope()
+        # Lowercase chars do not propagate to the parent scope
+        assert bs.resolve("o") is None
+
+    def test_resolved_binding_after_all_annotations(self):
+        bs = BindingScope()
+        bs.push_scope()
+        bs.add_words(["Object"])
+        assert bs.resolve("O") == "Object"
+        # No annotation binds O anywhere — resolved binding still applies
+        assert bs.resolved_bindings["o"] == "Object"
+        assert bs.resolve("O") == "Object"
+
+    def test_word_list_beats_resolved_binding(self):
+        bs = BindingScope()
+        bs.push_scope()
+        bs.add_words(["Ox"])
+        assert bs.resolve("O") == "Ox"
+        bs.push_scope()  # clears counters, no words
+        assert bs.resolve("O") == "Ox"  # word list first

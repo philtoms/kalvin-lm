@@ -61,6 +61,7 @@ SymbolicEntry tuples to encoded uint64 values.
 from __future__ import annotations
 
 from typing import NamedTuple
+from collections import deque
 
 from .ast import (
     Annotation,
@@ -125,6 +126,12 @@ class ASTEmitter:
         # Cached resolved components per identifier so the
         # BindingScope occurrence counter never re-advances for one.
         self._resolution_cache: dict[str, list[str]] = {}
+        # Per-char queues of already-resolved node occurrences (innermost
+        # scope's resolution is consumed first by child scope sigs), so each
+        # textual occurrence resolves exactly once — the canon's operand
+        # resolution is reused by the child kline, not re-resolved against
+        # the occurrence counter.
+        self._node_res_q: dict[str, deque] | None = None
 
         # Rule B4 parent kline tracking (saved/restored on scope entry/exit).
         self._parent_kline_chars: str | None = None
@@ -262,11 +269,19 @@ class ASTEmitter:
 
         resolved_nodes = self._resolve_nodes(node_ids, scope)
 
+        saved_q = self._node_res_q
+        q: dict[str, deque] = {}
+        for nid, word in zip(node_ids, resolved_nodes):
+            if len(nid) == 1 and word != nid:
+                q.setdefault(nid, deque()).append(word)
+        self._node_res_q = q
+
         self._emit_operator_entries(sig_resolved, resolved_nodes, op)
         self._compile_children(scope, op, mts_idx, pushed_scope=pushed_scope)
 
         self._parent_kline_chars = saved_chars
         self._parent_kline_canonize_idx = saved_idx
+        self._node_res_q = saved_q
 
     # Operator emission (Step 2)
 
@@ -403,7 +418,14 @@ class ASTEmitter:
         if sig in self._resolution_cache:
             chars = list(self._resolution_cache[sig])
         else:
+            # MTS is a decoding aid — its char resolution must not consume
+            # the occurrence counters that belong to the identity occurrences
+            # emitted later as item klines (e.g. the two Ls in ALL => L > M(od)
+            # / L > O must resolve to little and lamb respectively).
+            snap = self._scope.counters_snapshot() if self._scope is not None else None
             chars = [self._resolve_char(c) for c in sig]
+            if snap is not None:
+                self._scope.counters_restore(snap)
             self._resolution_cache[sig] = list(chars)
 
         key = (sig, tuple(chars))
@@ -619,6 +641,9 @@ class ASTEmitter:
                 return word
             return existing  # already bound — top-level annotation is inert
         if len(sig) == 1:
+            q = self._node_res_q
+            if q is not None and q.get(sig):
+                return q[sig].popleft()
             return self._resolve_char(sig)
         return sig
 

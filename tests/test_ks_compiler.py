@@ -902,3 +902,31 @@ class TestKV4CompilerSignificance:
         countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNS"]
         assert len(countersigned) >= 1
         assert all(kv.significance == SIG_S1 for kv in countersigned)
+
+
+class TestDuplicateCharOccurrences:
+    """Duplicate chars in a CANONIZES subscript resolve to distinct words,
+    once each — the canon's operand resolution is reused by the child klines
+    rather than re-resolved against the occurrence counter (which would make
+    both Ls resolve to lamb)."""
+
+    def _entries(self, tokenizer):
+        source = (
+            "(Mary had a little lamb)\n"
+            "MHALL == SVO =>\n"
+            "   O(bject) = ALL =>\n"
+            "     A > D(et)\n"
+            "     L > M(od)\n"
+            "     L > O\n"
+        )
+        return compile_source(source, tokenizer=tokenizer, dev=True)
+
+    def test_two_ls_resolve_to_little_and_lamb(self, tokenizer):
+        entries = self._entries(tokenizer)
+        connotes = [
+            e.kline.dbg.decoded
+            for e in entries
+            if e.kline.dbg.op == "CONNOTES" and e.kline.dbg.label in ("little", "lamb", "L")
+        ]
+        assert "little:[Mod]" in connotes
+        assert "lamb:[Object]" in connotes
