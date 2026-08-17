@@ -67,17 +67,27 @@ The measurement of whether a kline's structural claim holds against what Kalvin 
 The slow path of rationalisation — model traversal that tests a kline's structural **claim** against what Kalvin holds. Where **Structural Significance** is derived from the signature–nodes relationship alone, Cogitation expands the kline through the model: retracing paths, discovering connections, classifying each against the **Rational Significance** levels. It drains a backlog of unresolved (S2/S3) klines, emitting **proposals** for ratification; it is the work whose result is a Rationally Significant KLine - A kline that Kalvin understands.
 _Avoid_: thinking (informal), background thread (implementation), the cogitator (the implementation class)
 
-**Frame**:
-Recognised working context persisted across sessions. Monotonic.
-_Avoid_: session log (Frame is not a log), session
+**Model**:
+The whole of what Kalvin holds and how it holds it: the klines, their signature/node references, the memory tiers as relations of attention and commitment, and the signifier's compositional interpretation that makes the whole traversable. Cogitation traverses the model through the tiers — conscious of what it just thought (**STM**), of where its focus lies and is shifting (**Frame**), and of what it counts as grounded (**Frame** and **LTM**).
+_Avoid_: the learned function (Kalvin has no weights; understanding is traversal over held klines), using model and memory interchangeably (memory is the tiered structure inside the model)
+
+**Memory**:
+The tiered structure inside the **Model** — not a substrate beneath it. The tiers are modes of relation to held klines, not storage locations: **STM** is recent attention, **Frame** is current focus and its shift, **LTM** is held knowledge. A tier change (promotion, framing, eviction) is a change in how Kalvin relates to a kline, so tier changes belong to rationalisation, not storage bookkeeping. Untiered klines in a file are a serialisation; they become memory only when loaded into a model that can attend to them.
 
 **STM (Short-Term Memory)**:
-The lowest tier in the write cascade and Kalvin's event register — every write reaches it. Empty at session start.
-_Avoid_: STM caching (too vague), working memory (too vague), context window (implies a passive buffer)
+What Kalvin was just thinking about — the recency-of-attention relation to held klines. Written by attention: whatever cogitation touches hits STM. This is how traversal is temporally situated and how Kalvin can notice it is revisiting something. Empty at session start.
+_Avoid_: STM caching (too vague), working memory (too vague), context window (implies a passive buffer), an index (an implementation detail of the attention relation, not the concept)
+
+**Frame**:
+Kalvin's focus of attention and how it is shifting. The active kline in **Cogitation** is held in Frame, and the S1-grounded klines and proposals with their S4 disposition that focused attention produces are registered there. Monotonic and signature-keyed: a signature accumulates a set of klines, so S4 rejection is additive (`Mary:[identity, canon]` → S4 → `Mary:[identity, canon, unknown]`).
+_Avoid_: session log (Frame is not a log), session, a bucket of working context (Frame is a relation — where Kalvin's attention currently is — not a location)
 
 **LTM (Long-Term Memory)**:
-Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic. A kline residing in LTM is **grounded** (see Grounding).
+What Kalvin holds as grounded knowledge. Structurally identical to Frame; the distinction is the relation — LTM is what is counted on, Frame is what is in focus. A kline residing in LTM is **grounded** (see Grounding).
 _Avoid_: persistent store (too vague), knowledge base, LTM frame
+
+**Grounding**:
+The model's mechanism for realising significance. If a signature is grounded, then Kalvin knows that all of its nodes are grounded also. KLines grounded in a **Frame** are available for cogitation. KLines grounded in _LTM_ are frame promotions that Kalvin deems important enough to remember.
 
 **KValue**:
 The unit of exchange between participants — a **KLine** (objective structure) paired with a **significance** (the sender's assessment of it).
@@ -157,10 +167,6 @@ _Avoid_: auto-ratify failure (the earlier path's trigger — the trainer now esc
 
 **Expectation**:
 A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
-
-**Grounding**:
-The model's mechanism for realising **S1** (recognised). A signature grounds only once every one of its nodes is grounded; an identity is the exception — self-referential (`{S:[S]}`), it grounds unconditionally. Grounding is how S1 is _produced_, not what S1 _means_; "recognised" is the significance-level concept.
-_Avoid_: self-grounded (a canon does NOT self-ground — its nodes must be grounded first), grounded identity (grounding applies to any kline that attains S1, not just identities)
 
 **Auto-Tune**:
 The project's experimental loop for tuning Kalvin's rationalisation behaviour. An LLM coding agent runs repeated sessions against a curriculum, observes how the reactor/cogitator/rationaliser actually behave, edits the significance-model code (`expand()`, `significance.py`, the rationaliser), and re-runs to confirm.
