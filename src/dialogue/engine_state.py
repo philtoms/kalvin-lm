@@ -1,14 +1,14 @@
 r"""The engine's mutable memory.
 
-:class:`EngineState` holds four stores that mirror the original kalvin memory
-tiers:
+:class:`EngineState` holds three stores that mirror the kalvin memory
+relations:
 
-- **work_list** — the cogitator queue: incoming entries plus the ungrounded
-  signatures and nodes their routing unpacked.
-- **ltm** — grounded klines (Long-Term Memory).
+- **stm** — Short-Term Memory: what cogitation is currently attending to —
+  incoming entries plus the ungrounded signatures and nodes their routing
+  unpacked. Written by attention: whatever routing or cogitation touches
+  lands here until it grounds or is asked about.
+- **ltm** — grounded klines (Long-Term Memory): what Kalvin counts on.
 - **frame** — the outgoing kline proposals and identity requests K has emitted.
-- **stm** — Short-Term Memory: reserved for the expansion strategies' exclusive
-  use. Not wired into any logic; maintained independently of the other stores.
 
 State is plain ints (signature + node lists); ``dbg`` is debug-only and dropped
 on save. A saved state is a grounded prior injected into an actor at
@@ -35,7 +35,6 @@ from kalvin.kline import (
     is_unknown,
     sig_level,
 )
-from kalvin.stm import STM
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
@@ -49,25 +48,19 @@ class EngineState:
 
     - **_signifier** — the structural-significance oracle the state's queries
       dispatch through; set at construction.
-    - **work_list** — the cogitator queue: incoming entries and the ungrounded
-      signatures/nodes unpacked from them. Entries carry no significance band;
-      dispatch is structural.
+    - **stm** — Short-Term Memory: what cogitation is attending to — incoming
+      entries and the ungrounded signatures/nodes unpacked from them. Written
+      by attention. Entries carry no significance band; dispatch is structural.
     - **ltm** — Long-Term Memory. Grounded klines, keyed by signature.
     - **frame** — klines K has previously emitted, keyed by signature. The
       fast route matches incoming S1/S4 queries against it.
-    - **stm** — Short-Term Memory. Reserved for the expansion strategies; not
-      wired into any logic and maintained independently of the other stores.
     """
 
     _signifier: KSignifier
-    work_list: list[KLine] = field(default_factory=list)
+    stm: list[KLine] = field(default_factory=list)
     ltm: dict[int, list[KLine]] = field(default_factory=dict)
     frame: dict[int, list[KLine]] = field(default_factory=dict)
-    stm: STM = field(init=False)
     _dbg_step: int = 0
-
-    def __post_init__(self) -> None:
-        self.stm = STM(signifier=self._signifier)
 
     @property
     def signifier(self) -> KSignifier:
@@ -116,7 +109,7 @@ class EngineState:
             if predicate(kline)
         ]
 
-    def ground(self, kline: KLine, work_idx = -1) -> bool:
+    def ground(self, kline: KLine, stm_idx = -1) -> bool:
         """Record ``kline`` in LTM. Idempotent on nodes.
 
         Returns ``True`` when a new entry was added, ``False`` when an
@@ -127,7 +120,7 @@ class EngineState:
             return False
 
         bucket.append(kline)
-        self.pop_identity(kline.signature, work_idx)
+        self.pop_identity(kline.signature, stm_idx)
         return True
 
     def _is_groundable(self, kline: KLine) -> bool:
@@ -150,53 +143,53 @@ class EngineState:
         return None
 
     def canon_nodes(self, signature: int) -> list[int] | None:
-        """The nodes of ``signature``'s canon, in LTM or the work-list."""
+        """The nodes of ``signature``'s canon, in LTM or STM."""
         signifier = self._signifier
         for kline in self.ltm.get(signature, []):
             if is_canon(kline, signifier):
                 return list(kline.nodes)
-        for entry in self.work_list:
+        for entry in self.stm:
             if entry.signature == signature and is_canon(entry, signifier):
                 return list(entry.nodes)
         return None
 
-    # -- work-list (cogitator queue) ---------------------------------
+    # -- STM (attention) ---------------------------------------------
 
-    def add_work(self, kline: KLine) -> None:
-        """Append ``kline`` to the work-list."""
-        self.work_list.append(kline)
+    def add_stm(self, kline: KLine) -> None:
+        """Append ``kline`` to STM — cogitation is now attending to it."""
+        self.stm.append(kline)
 
-    def remove_work_at(self, idx: int) -> KLine:
-        """Remove and return the work-list entry at ``idx``."""
-        return self.work_list.pop(idx)
+    def remove_stm_at(self, idx: int) -> KLine:
+        """Remove and return the STM entry at ``idx``."""
+        return self.stm.pop(idx)
 
     def pop_identity(self, signature: int, idx = -1) -> None:
         """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
         if idx < 0:
-            for i, entry in enumerate(self.work_list):
+            for i, entry in enumerate(self.stm):
                 if entry.signature == signature:
                     idx = i
-        self.remove_work_at(idx)
+        self.remove_stm_at(idx)
         return
 
     def is_seen(self, signature: int) -> bool:
-        """Has K seen ``signature`` — grounded or pending as an Unknown ask?"""
+        """Has K seen ``signature`` — grounded or pending as an Unknown ask in STM?"""
         if signature in self.ltm:
             return True
         return any(
             entry.signature == signature and is_unknown(entry)
-            for entry in self.work_list
+            for entry in self.stm
         )
 
     def signature_seen(self, signature: int) -> bool:
-        """Has ``signature`` been seen — framed, pending on the work-list, or grounded?"""
+        """Has ``signature`` been seen — framed, pending in STM, or grounded?"""
         if self.in_frame(KLine(signature, [])):
             return True
         if signature in self.ltm:
             return True
         return any(
             entry.signature == signature and is_unknown(entry)
-            for entry in self.work_list
+            for entry in self.stm
         )
 
     def is_countersignable(self, entry: KLine) -> bool:
@@ -265,15 +258,14 @@ class EngineState:
     #
     # State is plain ints (signature + node lists); ``dbg`` is debug-only and
     # dropped on save. A saved state is a grounded prior injected into an actor
-    # at construction. STM is not persisted: it is empty at session start and
-    # reserved for the expansion strategies' working memory.
+    # at construction.
 
     def to_dict(self) -> dict:
         """A JSON-serialisable snapshot of the model (no ``dbg``)."""
         def _kl(k: KLine) -> list[int]:
             return [k.signature, list(k.nodes)]
         return {
-            "work_list": [_kl(k) for k in self.work_list],
+            "stm": [_kl(k) for k in self.stm],
             "ltm": {
                 str(sig): [_kl(k) for k in bucket]
                 for sig, bucket in self.ltm.items()
@@ -292,7 +284,7 @@ class EngineState:
             return KLine(sig, list(nodes))
         return cls(
             signifier,
-            work_list=[_kl(p) for p in data.get("work_list", [])],
+            stm=[_kl(p) for p in data.get("stm", [])],
             ltm={
                 int(sig): [_kl(k) for k in bucket]
                 for sig, bucket in data.get("ltm", {}).items()

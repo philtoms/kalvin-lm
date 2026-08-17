@@ -19,14 +19,13 @@ Rules when it resolves.
 - **Universal grounding rule:** a signature grounds only once every one of its nodes is in LTM. An identity is the exception — self-referential (`{S:[S]}`), it grounds unconditionally when promoted.
 - `_is_groundable` is that rule: identity → True; anything else → all nodes in LTM.
 - The `_promote` cascade grounds groundable entries to fixed point at S1; it does not emit S2 proposals.
-- `cogitate` runs one full LIFO pass over the work-list (no short-circuit): per entry it asks (S4), countersigns (S3), proposes (S2), or grounds (S1). The loop re-checks each index because the `_promote` cascade can remove arbitrary work-list entries mid-pass.
+- `cogitate` runs one full LIFO pass over STM (no short-circuit): per entry it asks (S4), countersigns (S3), proposes (S2), or grounds (S1). The loop re-checks each index because the `_promote` cascade can remove arbitrary STM entries mid-pass.
 - The engine speaks in semantic predicates (`is_identity`, `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
 
 ### Engine — state
 
 - `observations` resets to a fresh list at the top of every `rationalise()` call (per-turn scoping).
-- EngineState holds four stores mirroring the kalvin memory tiers: `work_list` (the cogitator queue — incoming entries and the ungrounded sigs/nodes unpacked from them), `ltm` (ratified klines), `frame` (outgoing proposals and identity requests), and `stm` (Short-Term Memory, reserved for the expansion strategies' exclusive use).
-- `work_list` and `stm` are maintained independently — work-list writes do not cascade to STM, and no logic reads or writes STM yet.
+- EngineState holds three stores realising the kalvin memory relations: `stm` (Short-Term Memory — what cogitation is attending to: incoming entries and the ungrounded sigs/nodes unpacked from them; formerly `work_list`, renamed once recognised as already the attention store), `ltm` (ratified klines), and `frame` (outgoing proposals and identity requests). The separate `kalvin.stm.STM` index field was removed — the lean engine had two STM-shaped stores.
 - The scoped reads (`is_in_ltm`, `is_seen`, `signature_seen`) each check one store; none is a union across stores.
 
 ### Harness

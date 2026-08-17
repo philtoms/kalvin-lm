@@ -30,9 +30,12 @@ STM is the first tier of the write cascade — every write reaches it, and
 `grounded()` deliberately excludes it (transient entries have not been
 rationalised).
 
-In the lean dialogue harness's `EngineState`, STM is reserved for the expansion
-strategies' exclusive use and is currently not wired into any logic — on this
-framing, a missing mode of self-awareness rather than an unused index.
+In the lean dialogue harness's `EngineState`, the pending-attention store
+(formerly `work_list`) **is** STM: incoming entries and the ungrounded
+signatures/nodes their routing unpacks sit in `stm` until they ground or are
+asked about — exactly the written-by-attention relation. The separate
+`kalvin.stm.STM` index field was removed once the two were recognised as the
+same concept.
 
 _Avoid_: STM caching (too vague), working memory (too vague), context window
 (implies a passive buffer), an index (implementation detail, not the concept).

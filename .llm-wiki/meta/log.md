@@ -65,3 +65,6 @@
 ## [2026-08-17T11:52:25.091Z] observe
 - slug: "obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n", title: "Grounding broadened to all significance levels; glossary is normative", relevance: "critical"
 
+## [2026-08-17T12:14:00.147Z] observe
+- slug: "obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed", title: "work_list renamed to stm; duplicate STM index removed", relevance: "high"
+

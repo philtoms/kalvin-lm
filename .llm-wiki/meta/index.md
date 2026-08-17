@@ -89,6 +89,7 @@
 - [[sources/obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model]] — Observation: Wiki corrected for EngineState four-store model *(created: 2026-08-11)*
 - [[sources/obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n]] — Observation: Grounding broadened to all significance levels; glossary is normative *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto]] — Observation: Model/Memory definitions settled: tiers are relations, not storage *(created: 2026-08-17)*
+- [[sources/obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed]] — Observation: work_list renamed to stm; duplicate STM index removed *(created: 2026-08-17)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -96,4 +97,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-17T11:52:25.198Z* | *Total pages: 84*
+*Last updated: 2026-08-17T12:14:00.168Z* | *Total pages: 85*

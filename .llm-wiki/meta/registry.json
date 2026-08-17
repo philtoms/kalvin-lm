@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-17T11:52:25.198Z",
+  "last_updated": "2026-08-17T12:14:00.168Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -675,6 +675,24 @@
       "relevance": "high",
       "observed_at": "2026-08-17T11:16:52.277Z",
       "source_context": "Working up Model/Memory glossary definitions after user discarded working-tree changes",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
+    },
+    "sources/obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed": {
+      "type": "source",
+      "title": "Observation: work_list renamed to stm; duplicate STM index removed",
+      "tags": [
+        "engine",
+        "stm",
+        "refactor",
+        "engine-state",
+        "rename"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed",
+      "relevance": "high",
+      "observed_at": "2026-08-17T12:14:00.145Z",
+      "source_context": "Renaming work_list to stm — work_list was already the attention store",
       "created": "2026-08-17",
       "updated": "2026-08-17"
     },

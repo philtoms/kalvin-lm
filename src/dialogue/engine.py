@@ -112,7 +112,7 @@ class Engine:
           canon) match promotes the kline (grounds it at S1 and cascades); an
           S4 (the empty ask ``{X:[]}``) pops the matching identity ask. Either
           way the framed kline is consumed. Unmatched queries are dropped.
-        - **S2/S3 (slow route)** — append to the work-list, then unpack an S2
+        - **S2/S3 (slow route)** — append to STM, then unpack an S2
           misfit's unrecognised nodes and signature as identity asks.
         """
         kline = query.kline
@@ -131,12 +131,12 @@ class Engine:
 
     def _slow_route(self, query: KValue) -> None:
         kline = query.kline
-        self._state.add_work(kline)
+        self._state.add_stm(kline)
         for node in kline.nodes:
             if not self._state.is_seen(node):
-                self._state.add_work(KLine(node, [], kline.dbg))
+                self._state.add_stm(KLine(node, [], kline.dbg))
         if not self._state.is_seen(kline.signature):
-            self._state.add_work(KLine(kline.signature, [], kline.dbg))
+            self._state.add_stm(KLine(kline.signature, [], kline.dbg))
 
     def _fast_route(self, query: KValue, query_sig: str) -> bool:
         # Identity grounds unconditionally.
@@ -152,7 +152,7 @@ class Engine:
     # ── Cogitation ───────────────────────────────────────────────────
 
     def cogitate(self) -> list[KValue]:
-        """One LIFO pass over the work-list: ask, countersign, propose, or ground.
+        """One LIFO pass over STM: ask, countersign, propose, or ground.
 
         Per entry, in priority order: an identity becomes an S4 ask; a
         countersignable entry takes the S3 path and eventually grounds; a misfit
@@ -161,19 +161,19 @@ class Engine:
         """
         batch: list[KValue] = []
 
-        idx = len(self._state.work_list) - 1
+        idx = len(self._state.stm) - 1
         while idx >= 0:
             # Re-check the index each iteration: the _promote cascade (via the
             # S2 strategy's ground callback, or the countersign/groundable
-            # arms) can remove arbitrary work-list entries, shrinking the list
+            # arms) can remove arbitrary STM entries, shrinking the list
             # below the index this loop intends to visit.
-            if idx >= len(self._state.work_list):
+            if idx >= len(self._state.stm):
                 idx -= 1
                 continue
-            kline = self._state.work_list[idx]
+            kline = self._state.stm[idx]
 
             if is_unknown(kline):
-                self._state.remove_work_at(idx)
+                self._state.remove_stm_at(idx)
                 batch.append(KValue(KLine(kline.signature, []), SIG_S4))
 
             elif self._state.is_countersignable(kline):
@@ -182,7 +182,7 @@ class Engine:
                     batch.extend(pairings)
                 else:
                     # All pairings resolved: the countersignature is complete.
-                    self._state.remove_work_at(idx)
+                    self._state.remove_stm_at(idx)
                     self._ground(kline)
 
             elif is_misfit(kline, self._state.signifier):
@@ -199,7 +199,7 @@ class Engine:
     def _ground(self, kline: KLine) -> None:
         """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
 
-        A grounding may make other work-list entries groundable (an identity
+        A grounding may make other STM entries groundable (an identity
         whose signature just landed, a canon whose nodes are now all seen, a
         relationship whose reciprocal just grounded). Cascade until fixed point.
 
@@ -208,9 +208,9 @@ class Engine:
         changed = True
         while changed:
             changed = False
-            for i, entry in enumerate(self._state.work_list):
+            for i, entry in enumerate(self._state.stm):
                 if self._state._is_groundable(entry):
-                    self._state.remove_work_at(i)
+                    self._state.remove_stm_at(i)
                     self._state.ground(kline, i)
                     self.observations.append(KValue(kline, SIG_S1))
                     changed = True

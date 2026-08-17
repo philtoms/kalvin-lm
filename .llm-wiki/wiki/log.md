@@ -2,6 +2,7 @@
 
 ## 2026-08-17
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed","title":"work_list renamed to stm; duplicate STM index removed"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n","title":"Grounding broadened to all significance levels; glossary is normative"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto","title":"Model/Memory definitions settled: tiers are relations, not storage"}
 - **ensure\_page**: {"page_type":"concept","path":"concepts/memory","title":"Memory"}

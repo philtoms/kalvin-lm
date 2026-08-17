@@ -22,15 +22,16 @@ and returns `(batch, observations)` — dialogue emissions and K's internal S1
 groundings this turn. The engine is stateless about its own emissions; dedup
 lives in the actor (see [[concepts/per-turn-scoping]]).
 
-`EngineState` holds four independent stores that mirror the kalvin memory
-tiers:
+`EngineState` holds three stores realising the kalvin memory relations (see
+[[concepts/memory]]):
 
-- **`work_list`** — the cogitator queue: incoming entries plus the ungrounded
-  signatures and nodes their routing unpacked.
+- **`stm`** — Short-Term Memory: what cogitation is attending to — incoming
+  entries plus the ungrounded signatures and nodes their routing unpacked.
+  Written by attention; formerly named `work_list`, renamed once recognised
+  as already the attention store (the separate `kalvin.stm.STM` index field
+  was removed).
 - **`ltm`** — ratified klines (Long-Term Memory).
 - **`frame`** — the outgoing kline proposals and identity requests K has emitted.
-- **`stm`** — Short-Term Memory, reserved for the expansion strategies' exclusive
-  use; not wired into any logic and maintained independently of the other stores.
 
 The factories that assemble the engine (signifier, state, strategy, engine) live
 in `dialogue.harness`. Routing is done by [[entities/route|route()]];

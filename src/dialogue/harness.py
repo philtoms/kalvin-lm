@@ -34,7 +34,7 @@ from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 
 # Named cogitation strategies for the misfit (S2) arm of ``cogitate``.
-# "similar_fit" — the work-list graft heuristic (the original scheme).
+# "similar_fit" — the STM graft heuristic (the original scheme).
 # "expand"      — grade grounded candidates via ``ExpandFit._expand`` and
 #                 propose under the entry's signature at the computed band.
 _STRATEGIES: dict[str, Callable[[EngineState], MisfitStrategy]] = {
@@ -248,11 +248,11 @@ def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool) 
     return "\n".join(lines)
 
 
-def _render_work_list(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
-    if not state.work_list:
+def _render_stm(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
+    if not state.stm:
         return "  (empty)"
     return "\n".join(
-        f"      {_render_kline_struct(kl, labels, verbose)}" for kl in state.work_list
+        f"      {_render_kline_struct(kl, labels, verbose)}" for kl in state.stm
     )
 
 
@@ -268,7 +268,7 @@ def _render_summary(results: list[StepResult], state: EngineState,
         f"  steps: {len(results)}\n"
         f"  batch by band: {band_str}\n"
         f"  grounded:\n{_render_grounded(state, labels, verbose)}\n"
-        f"  work_list (pending at end of run):\n{_render_work_list(state, labels, verbose)}"
+        f"  stm (attending to at end of run):\n{_render_stm(state, labels, verbose)}"
     )
 
 

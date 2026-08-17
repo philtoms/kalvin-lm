@@ -14,5 +14,6 @@
 - [Observation: Wiki corrected for EngineState four-store model](obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model.md)
 - [Observation: Grounding broadened to all significance levels; glossary is normative](obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n.md)
 - [Observation: Model/Memory definitions settled: tiers are relations, not storage](obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto.md)
+- [Observation: work_list renamed to stm; duplicate STM index removed](obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)
