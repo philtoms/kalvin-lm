@@ -47,14 +47,22 @@ _BAND_ORDER = ("S1", "S2", "S3", "S4")
 
 
 @dataclass
+class Turn:
+    """One engine call within a step: the feed and its response."""
+
+    feed: KValue
+    grounds: list[KValue] = field(default_factory=list)
+    asks: list[KValue] = field(default_factory=list)
+
+
+@dataclass
 class StepResult:
     """One loop iteration: the input entry, the engine's asks, and the
     ratifying answers the harness fed back. """
 
     index: int
     entry: KValue
-    batch: list[KValue] = field(default_factory=list)
-    observations: list[KValue] = field(default_factory=list)
+    turns: list[Turn] = field(default_factory=list)
     answers: list[KValue] = field(default_factory=list)
     stopped_on: KValue | None = None
 
@@ -131,9 +139,9 @@ class Harness:
             results.append(step)
             queue: list[KValue] = [opener]
             while queue:
-                batch, observations = self._engine.rationalise([queue.pop(0)])
-                step.observations.extend(observations)
-                step.batch = batch
+                feed = queue.pop(0)
+                batch, observations = self._engine.rationalise([feed])
+                step.turns.append(Turn(feed, observations, batch))
                 for ask in batch:
                     reply = self._answer(ask, heads, exact, words, answered)
                     if reply is None:
@@ -266,18 +274,14 @@ def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier)
 def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str:
     lines = [f"── Step {step.index + 1}  in  {_band(step.entry)}  "
              f"{_render_kline(step.entry, labels, verbose)} ──"]
-    for v in step.answers:
-        lines.append(f"  answer  {_render_kline(v, labels, verbose)}")
+    for t, turn in enumerate(step.turns, 1):
+        lines.append(f"  T{t:02d}  feed    {_render_kline(turn.feed, labels, verbose)}")
+        for v in turn.grounds:
+            lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
+        for v in turn.asks:
+            lines.append(f"        asks    {_render_kline(v, labels, verbose)}")
     if step.stopped_on is not None:
         lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
-    if step.batch:
-        for v in step.batch:
-            lines.append(f"  out   {_band(v)}  {_render_kline(v, labels, verbose)}")
-    else:
-        lines.append("  out   (none)")
-    if step.observations:
-        for v in step.observations:
-            lines.append(f"  ground  {_render_kline(v, labels, verbose)}")
     return "\n".join(lines)
 
 
@@ -306,13 +310,14 @@ def _render_summary(results: list[StepResult], state: EngineState,
                     labels: dict[int, str], verbose: bool) -> str:
     bands: Counter = Counter()
     for step in results:
-        for v in step.batch:
-            bands[_band(v)] += 1
+        for turn in step.turns:
+            for v in turn.asks:
+                bands[_band(v)] += 1
     band_str = "  ".join(f"{b}={bands.get(b, 0)}" for b in _BAND_ORDER) or "-"
     return (
         f"── summary ──\n"
         f"  steps: {len(results)}\n"
-        f"  batch by band: {band_str}\n"
+        f"  asks by band: {band_str}\n"
         f"  grounded:\n{_render_grounded(state, labels, verbose)}\n"
         f"  stm (attending to at end of run):\n{_render_stm(state, labels, verbose)}"
     )
