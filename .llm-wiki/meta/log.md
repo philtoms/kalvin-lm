@@ -53,3 +53,15 @@
 ## [2026-08-11T17:16:34.727Z] observe
 - slug: "obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d", title: "Universal nodes-grounded rule; fast-route canon bug fixed; a:[Det] unblocks", relevance: "high"
 
+## [2026-08-17T11:15:58.341Z] ensure_page
+- page_type: "concept", title: "Model", path: "concepts/model"
+
+## [2026-08-17T11:16:07.720Z] ensure_page
+- page_type: "concept", title: "Memory", path: "concepts/memory"
+
+## [2026-08-17T11:16:52.278Z] observe
+- slug: "obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto", title: "Model/Memory definitions settled: tiers are relations, not storage", relevance: "high"
+
+## [2026-08-17T11:52:25.091Z] observe
+- slug: "obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n", title: "Grounding broadened to all significance levels; glossary is normative", relevance: "critical"
+

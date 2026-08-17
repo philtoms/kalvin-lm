@@ -14,14 +14,16 @@
 - [Expectation](expectation.md) — A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
 - [Fast route vs slow route](fast-route-vs-slow-route.md) — Engine routing paths — fast admits identities and seen-signature canons; slow unpacks unseen-signature canons as asks and discovers signatures. Dispatch is on sig_level, not the compiled stamp.
 - [Fit](fit.md) — How closely a new kline's nodes resolve (or fail to resolve) to grounded identities and relationships — the structural basis from which significance emerges.
-- [Frame](frame.md) — Recognised working context persisted across sessions; monotonic. Not a log.
-- [Grounding](grounding.md) — The model's mechanism for realising S1 — either by structure (a canon self-grounds) or by LTM residency through ratification. Grounding is how S1 is produced, not what S1 means.
+- [Frame](frame.md) — Kalvin's focus of attention and how it is shifting — the active cogitation kline, plus what focused attention produces. Monotonic, signature-keyed, multi-valued.
+- [Grounding](grounding.md) — The model's mechanism for realising significance — at any level. A grounded signature guarantees its nodes are grounded; Frame-grounded klines are available for cogitation; LTM-grounded klines are frame promotions Kalvin deems important enough to remember.
 - [Harness](harness.md) — The multi-agent runtime that loads agents as participants and runs a dialogue loop between them — a message broker routing role-addressed messages.
 - [Identity](identity.md) — A terminal kline structure that is directly decodable — a known value (`{S: [S]}`) that claims S1, 'I know this.'
 - [KLine](kline.md) — The fundamental unit of Kalvin's memory — a structure containing a signature (head) and a nodes list, between which holds a relationship Kalvin rationalises as Structural Significance.
 - [KValue](kvalue.md) — The unit of exchange between participants — a KLine paired with a significance (the sender's assessment of it).
 - [Learned Preferences](learned-preferences.md) — The paths through the model Kalvin favours when multiple candidates compete — learned, not fixed; there is no utility function. What Kalvin values is itself teachable.
+- [Memory](memory.md)
 - [Misfit](misfit.md) — A kline structure where the signature does not equal signature_of(nodes); sub-shapes include no-fit (S2), underfit (S2), overfit (S2), and connote/denote (S3).
+- [Model](model.md)
 - [Monotonic Growth](monotonic-growth.md) — The property that Kalvin's knowledge base only grows, never shrinks. Correction occurs by outcompeting, not deletion.
 - [MTS (Multi-Token Signature)](mts-multi-token-signature.md) — A KScript compiler device that expands a multi-character signature identifier into its constituent character identities plus one MTS relationship.
 - [Node](node.md) — A structural slot in a kline's nodes list — either a Token Id or the signature of another kline.

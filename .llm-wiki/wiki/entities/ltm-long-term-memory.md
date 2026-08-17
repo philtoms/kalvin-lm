@@ -1,9 +1,9 @@
 ---
 type: entity
 title: LTM (Long-Term Memory)
-description: Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic. A kline residing in LTM is grounded.
+description: What Kalvin holds as grounded knowledge — the commitment relation to held klines. Structurally identical to Frame; the distinction is what is counted on vs what is in focus.
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-14
 sources:
   - id: SRC-2026-08-11-001
     resource: /sources/SRC-2026-08-11-001.md
@@ -11,30 +11,34 @@ sources:
 
 # LTM (Long-Term Memory)
 
-Persistent knowledge that survives across sessions.
+What Kalvin **holds as grounded knowledge**.
 
 ## Overview
 
-LTM is structurally identical to [[concepts/frame|Frame]]; the distinction is
-semantic — Frame holds recognised working context, LTM holds the durable
-knowledge base. A kline residing in LTM is [[concepts/grounding|grounded]]
-(counted as S1), whether by its own structure or via
-[[concepts/ratify|ratification]].
+LTM is a mode of relation to held klines, not a storage location (see
+[[concepts/memory]]): a kline in LTM is *counted on*. Structurally identical to
+[[concepts/frame|Frame]]; the distinction is the relation — Frame is what is
+in focus, LTM is what is held as knowledge. A kline residing in LTM is
+[[concepts/grounding|grounded]].
 
 LTM is [[concepts/monotonic-growth|monotonic]]: it only grows. Correction
 happens by outcompeting, not deletion.
 
-In the lean [[entities/k-engine|engine]], LTM is the `EngineState.ltm` field
-(ratified klines, keyed by signature). It was renamed from `grounded` to
-separate the store from the S1-realising action (`_ground`/`_promote`); see
-[obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected](/sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected.md).
+**Promotion (open).** How a kline moves from Frame to LTM is not established —
+candidate ideas (edge-count thresholds like `MIN_EDGES`, counted across frames)
+exist but are unimplemented. Currently, both implementations populate their
+LTM-equivalent directly on grounding/ratification.
+
+In the lean dialogue harness's `EngineState`, LTM is the `ltm` field (ratified
+klines, keyed by signature; renamed from `grounded`).
 
 _Avoid_: persistent store (too vague), knowledge base, LTM frame.
 
 ## Links
 
-- [SRC-2026-08-11-001](/sources/SRC-2026-08-11-001.md) — canonical definition (CONTEXT.md)
-- [[concepts/frame]] — structurally identical, semantically distinct
-- [[entities/stm-short-term-memory]] — the tier below
-- [[concepts/grounding]] — LTM residency is grounding
+- [SRC-2026-08-11-001](/sources/SRC-2026-08-11-001.md) — canonical seed (CONTEXT.md)
+- [[concepts/memory]] — the tiered structure LTM belongs to
+- [[concepts/model]] — the model whose commitment relation LTM carries
+- [[concepts/frame]] — focus of attention; structurally identical, relationally distinct
+- [[concepts/grounding]] — what LTM residency means
 - [[concepts/monotonic-growth]] — LTM only grows

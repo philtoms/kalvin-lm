@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-11T17:16:34.754Z",
+  "last_updated": "2026-08-17T11:52:25.198Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -89,16 +89,16 @@
     "concepts/frame": {
       "type": "concept",
       "title": "Frame",
-      "description": "Recognised working context persisted across sessions; monotonic. Not a log.",
+      "description": "Kalvin's focus of attention and how it is shifting — the active cogitation kline, plus what focused attention produces. Monotonic, signature-keyed, multi-valued.",
       "created": "2026-08-11",
-      "updated": "2026-08-11"
+      "updated": "2026-08-14"
     },
     "concepts/grounding": {
       "type": "concept",
       "title": "Grounding",
-      "description": "The model's mechanism for realising S1 — either by structure (a canon self-grounds) or by LTM residency through ratification. Grounding is how S1 is produced, not what S1 means.",
+      "description": "The model's mechanism for realising significance — at any level. A grounded signature guarantees its nodes are grounded; Frame-grounded klines are available for cogitation; LTM-grounded klines are frame promotions Kalvin deems important enough to remember.",
       "created": "2026-08-11",
-      "updated": "2026-08-11"
+      "updated": "2026-08-17"
     },
     "concepts/harness": {
       "type": "concept",
@@ -135,12 +135,24 @@
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
+    "concepts/memory": {
+      "type": "concept",
+      "title": "Memory",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
+    },
     "concepts/misfit": {
       "type": "concept",
       "title": "Misfit",
       "description": "A kline structure where the signature does not equal signature_of(nodes); sub-shapes include no-fit (S2), underfit (S2), overfit (S2), and connote/denote (S3).",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "concepts/model": {
+      "type": "concept",
+      "title": "Model",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
     },
     "concepts/monotonic-growth": {
       "type": "concept",
@@ -411,9 +423,9 @@
     "entities/ltm-long-term-memory": {
       "type": "entity",
       "title": "LTM (Long-Term Memory)",
-      "description": "Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic. A kline residing in LTM is grounded.",
+      "description": "What Kalvin holds as grounded knowledge — the commitment relation to held klines. Structurally identical to Frame; the distinction is what is counted on vs what is in focus.",
       "created": "2026-08-11",
-      "updated": "2026-08-11"
+      "updated": "2026-08-14"
     },
     "entities/marys-world": {
       "type": "entity",
@@ -460,9 +472,9 @@
     "entities/stm-short-term-memory": {
       "type": "entity",
       "title": "STM (Short-Term Memory)",
-      "description": "The lowest tier in the write cascade (production Model) and Kalvin's event register. In the lean EngineState, reserved for expansion and currently unwired. Empty at session start.",
+      "description": "Recent attention — what Kalvin was just thinking about. Written by attention itself; the temporally-situated relation to held klines. Empty at session start.",
       "created": "2026-08-11",
-      "updated": "2026-08-11"
+      "updated": "2026-08-14"
     },
     "entities/tokenencoder": {
       "type": "entity",
@@ -625,6 +637,46 @@
       "source_context": "Fixing the LLM wiki after the EngineState grounded→ltm / STM-disconnect refactor",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "sources/obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n": {
+      "type": "source",
+      "title": "Observation: Grounding broadened to all significance levels; glossary is normative",
+      "tags": [
+        "grounding",
+        "frame",
+        "ltm",
+        "promotion",
+        "glossary",
+        "domain-model"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n",
+      "relevance": "critical",
+      "observed_at": "2026-08-17T11:52:25.090Z",
+      "source_context": "Redefining Grounding in CONTEXT.md; glossary confirmed normative (code follows glossary)",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
+    },
+    "sources/obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto": {
+      "type": "source",
+      "title": "Observation: Model/Memory definitions settled: tiers are relations, not storage",
+      "tags": [
+        "model",
+        "memory",
+        "frame",
+        "stm",
+        "ltm",
+        "grounding",
+        "glossary",
+        "domain-model"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto",
+      "relevance": "high",
+      "observed_at": "2026-08-17T11:16:52.277Z",
+      "source_context": "Working up Model/Memory glossary definitions after user discarded working-tree changes",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

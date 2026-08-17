@@ -5,7 +5,6 @@
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/canon": [
-    "concepts/grounding",
     "concepts/misfit",
     "concepts/mts-multi-token-signature",
     "concepts/rational-significance",
@@ -33,8 +32,11 @@
     "concepts/escalation",
     "concepts/expectation",
     "concepts/fast-route-vs-slow-route",
+    "concepts/frame",
+    "concepts/grounding",
     "concepts/learned-preferences",
     "concepts/misfit",
+    "concepts/model",
     "concepts/node",
     "concepts/priming",
     "concepts/proposal",
@@ -98,11 +100,13 @@
     "sources/SRC-2026-08-11-003"
   ],
   "concepts/frame": [
+    "concepts/grounding",
+    "concepts/memory",
+    "concepts/model",
     "concepts/monotonic-growth",
     "concepts/per-turn-scoping",
     "entities/ltm-long-term-memory",
     "entities/rationalise",
-    "entities/stm-short-term-memory",
     "sources/SRC-2026-08-11-001"
   ],
   "concepts/grounding": [
@@ -111,6 +115,8 @@
     "concepts/fast-route-vs-slow-route",
     "concepts/fit",
     "concepts/identity",
+    "concepts/memory",
+    "concepts/model",
     "concepts/ratify",
     "concepts/rational-significance",
     "concepts/scaffolding",
@@ -138,7 +144,6 @@
   "concepts/identity": [
     "concepts/canon",
     "concepts/fit",
-    "concepts/grounding",
     "concepts/querying",
     "concepts/rational-significance",
     "concepts/relational-tokens",
@@ -151,6 +156,8 @@
   ],
   "concepts/kline": [
     "concepts/kvalue",
+    "concepts/memory",
+    "concepts/model",
     "concepts/node",
     "concepts/signature",
     "entities/contextmd",
@@ -170,10 +177,16 @@
     "entities/kalvin",
     "sources/SRC-2026-08-11-003"
   ],
+  "concepts/memory": [
+    "concepts/frame",
+    "concepts/grounding",
+    "concepts/model",
+    "entities/ltm-long-term-memory",
+    "entities/stm-short-term-memory"
+  ],
   "concepts/misfit": [
     "concepts/canon",
     "concepts/fit",
-    "concepts/grounding",
     "concepts/relationship",
     "concepts/s2-expansion",
     "concepts/structural-significance",
@@ -181,11 +194,19 @@
     "entities/isgroundable",
     "sources/SRC-2026-08-11-001"
   ],
+  "concepts/model": [
+    "concepts/frame",
+    "concepts/grounding",
+    "concepts/memory",
+    "entities/ltm-long-term-memory",
+    "entities/stm-short-term-memory"
+  ],
   "concepts/monotonic-growth": [
     "concepts/curriculum",
     "concepts/distributed-rationality",
     "concepts/frame",
     "concepts/learned-preferences",
+    "concepts/memory",
     "entities/ltm-long-term-memory",
     "sources/SRC-2026-08-11-003"
   ],
@@ -202,6 +223,7 @@
   "concepts/node": [
     "concepts/fit",
     "concepts/kline",
+    "concepts/model",
     "concepts/signature",
     "sources/SRC-2026-08-11-001",
     "sources/SRC-2026-08-11-003"
@@ -248,7 +270,6 @@
     "concepts/cogitation",
     "concepts/distributed-rationality",
     "concepts/escalation",
-    "concepts/grounding",
     "concepts/proposal",
     "concepts/querying",
     "concepts/rational-significance",
@@ -258,7 +279,6 @@
     "concepts/supervisor",
     "concepts/trainer",
     "entities/kalvin",
-    "entities/ltm-long-term-memory",
     "sources/SRC-2026-08-11-001",
     "sources/SRC-2026-08-11-003",
     "sources/wiki-duplicate-consolidation"
@@ -269,6 +289,7 @@
     "concepts/convergence",
     "concepts/grounding",
     "concepts/kvalue",
+    "concepts/model",
     "concepts/signature",
     "concepts/significance",
     "concepts/significance-spectrum-s1s4",
@@ -289,7 +310,6 @@
   ],
   "concepts/relationship": [
     "concepts/fit",
-    "concepts/grounding",
     "concepts/misfit",
     "concepts/relational-tokens",
     "entities/isgroundable",
@@ -316,6 +336,7 @@
   ],
   "concepts/signature": [
     "concepts/kline",
+    "concepts/model",
     "concepts/node",
     "concepts/signature-discovery",
     "sources/SRC-2026-08-11-001",
@@ -481,13 +502,11 @@
     "sources/SRC-2026-08-11-002"
   ],
   "entities/harness": [
-    "concepts/frame",
     "concepts/harness",
     "concepts/non-judging-harness",
     "entities/auto-tune",
     "entities/k-engine",
     "entities/kalvin",
-    "entities/stm-short-term-memory",
     "sources/SRC-2026-08-11-001",
     "sources/stm-cascade-removals-orphan-check"
   ],
@@ -499,12 +518,11 @@
   ],
   "entities/k-engine": [
     "concepts/convergence",
-    "concepts/frame",
+    "concepts/model",
     "concepts/trainee",
     "concepts/trainer",
     "entities/harness",
     "entities/kalvin",
-    "entities/ltm-long-term-memory",
     "entities/rationalise",
     "entities/route",
     "entities/stm-short-term-memory",
@@ -532,6 +550,8 @@
   "entities/ltm-long-term-memory": [
     "concepts/frame",
     "concepts/grounding",
+    "concepts/memory",
+    "concepts/model",
     "concepts/monotonic-growth",
     "concepts/per-turn-scoping",
     "entities/rationalise",
@@ -552,7 +572,6 @@
     "sources/SRC-2026-08-11-002"
   ],
   "entities/promote": [
-    "concepts/grounding",
     "entities/isgroundable",
     "entities/k-engine",
     "entities/rationalise",
@@ -583,8 +602,9 @@
     "sources/SRC-2026-08-11-002"
   ],
   "entities/stm-short-term-memory": [
+    "concepts/memory",
+    "concepts/model",
     "entities/k-engine",
-    "entities/ltm-long-term-memory",
     "sources/SRC-2026-08-11-001"
   ],
   "entities/tokenencoder": [
@@ -608,7 +628,6 @@
     "concepts/escalation",
     "concepts/expectation",
     "concepts/frame",
-    "concepts/grounding",
     "concepts/harness",
     "concepts/identity",
     "concepts/kline",
@@ -648,7 +667,6 @@
     "concepts/cogitation",
     "concepts/engine-first",
     "concepts/fast-route-vs-slow-route",
-    "concepts/grounding",
     "concepts/identity",
     "concepts/mts-multi-token-signature",
     "concepts/non-judging-harness",
@@ -701,8 +719,6 @@
   "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": [],
   "sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected": [
     "entities/k-engine",
-    "entities/ltm-long-term-memory",
-    "entities/stm-short-term-memory",
     "sources/obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index",
     "sources/stm-cascade-removals-orphan-check"
   ],
@@ -711,6 +727,8 @@
   "sources/obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index": [],
   "sources/obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d": [],
   "sources/obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model": [],
+  "sources/obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n": [],
+  "sources/obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/wiki-duplicate-consolidation": []
 }

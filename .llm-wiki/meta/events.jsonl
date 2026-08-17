@@ -15,3 +15,7 @@
 {"orphans":6,"missing_pages":0,"contradictions":0,"auto_fix":true,"legacy_pages_repaired":0,"timestamp":"2026-08-11T16:35:44.459Z","kind":"lint"}
 {"slug":"obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model","title":"Wiki corrected for EngineState four-store model","relevance":"medium","timestamp":"2026-08-11T16:36:43.774Z","kind":"observe"}
 {"slug":"obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d","title":"Universal nodes-grounded rule; fast-route canon bug fixed; a:[Det] unblocks","relevance":"high","timestamp":"2026-08-11T17:16:34.727Z","kind":"observe"}
+{"page_type":"concept","title":"Model","path":"concepts/model","timestamp":"2026-08-17T11:15:58.341Z","kind":"ensure_page"}
+{"page_type":"concept","title":"Memory","path":"concepts/memory","timestamp":"2026-08-17T11:16:07.720Z","kind":"ensure_page"}
+{"slug":"obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto","title":"Model/Memory definitions settled: tiers are relations, not storage","relevance":"high","timestamp":"2026-08-17T11:16:52.278Z","kind":"observe"}
+{"slug":"obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n","title":"Grounding broadened to all significance levels; glossary is normative","relevance":"critical","timestamp":"2026-08-17T11:52:25.091Z","kind":"observe"}

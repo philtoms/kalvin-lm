@@ -1,9 +1,9 @@
 ---
 type: entity
 title: STM (Short-Term Memory)
-description: The lowest tier in the write cascade (production Model) and Kalvin's event register. In the lean EngineState, reserved for expansion and currently unwired. Empty at session start.
+description: Recent attention — what Kalvin was just thinking about. Written by attention itself; the temporally-situated relation to held klines. Empty at session start.
 created: 2026-08-11
-updated: 2026-08-11
+updated: 2026-08-14
 sources:
   - id: SRC-2026-08-11-001
     resource: /sources/SRC-2026-08-11-001.md
@@ -11,31 +11,36 @@ sources:
 
 # STM (Short-Term Memory)
 
-The lowest tier in the write cascade and Kalvin's event register.
+Recent attention — what Kalvin was just thinking about.
 
 ## Overview
 
-In the production [[entities/k-engine|engine]] memory model
-(`kalvin.Model`), every write reaches STM; it is the foundation on top of which
-[[entities/ltm-long-term-memory|LTM]] and [[concepts/frame|Frame]] are built. STM
-is empty at session start — it accumulates the session's events as
-rationalisation proceeds.
+STM is a mode of relation to held klines, not a storage location (see
+[[concepts/memory]]): a kline in STM is *recently attended to*. STM is written
+by attention itself — whatever cogitation touches hits it. This is how
+traversal is temporally situated, and how Kalvin can notice it is revisiting
+something. Empty at session start.
 
-In the lean [[entities/harness|dialogue harness]]'s `EngineState`, STM has a
-different, narrower role: it is **reserved for the expansion strategies'
-exclusive use** and is currently **not wired into any logic**. `EngineState`
-holds four independent stores — `work_list` (the cogitator queue), `ltm`
-(ratified klines), `frame` (outgoing proposals), and `stm` (empty until
-expansion uses it) — and writes to one store do not cascade to the others.
-See [[entities/k-engine]].
+**Writing STM is attending.** This is the concept, not a bookkeeping rule: any
+implementation (bounded window, dual-keyed index) is an embodiment of the
+attention relation.
+
+In the production [[entities/k-engine|engine]] memory model (`kalvin.Model`),
+STM is the first tier of the write cascade — every write reaches it, and
+`grounded()` deliberately excludes it (transient entries have not been
+rationalised).
+
+In the lean dialogue harness's `EngineState`, STM is reserved for the expansion
+strategies' exclusive use and is currently not wired into any logic — on this
+framing, a missing mode of self-awareness rather than an unused index.
 
 _Avoid_: STM caching (too vague), working memory (too vague), context window
-(implies a passive buffer).
+(implies a passive buffer), an index (implementation detail, not the concept).
 
 ## Links
 
-- [SRC-2026-08-11-001](/sources/SRC-2026-08-11-001.md) — canonical definition (CONTEXT.md)
-- [[entities/ltm-long-term-memory]] — the tier above STM (production model)
-- [[concepts/frame]] — persistent working context built on the memory tiers
-- [[entities/k-engine]] — the lean EngineState's four-store model
-- [obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected](/sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected.md) — lean-engine STM is reserved, not cascaded
+- [SRC-2026-08-11-001](/sources/SRC-2026-08-11-001.md) — canonical seed (CONTEXT.md)
+- [[concepts/memory]] — the tiered structure STM belongs to
+- [[concepts/model]] — the model whose attention relation STM carries
+- [[entities/ltm-long-term-memory]] — held knowledge (a different relation to the same klines)
+- [[entities/k-engine]] — both implementation senses
