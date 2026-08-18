@@ -80,3 +80,6 @@
 ## [2026-08-17T17:02:37.603Z] observe
 - slug: "obs-2026-08-17-word-binding-three-tier-precedence-settled", title: "Word Binding three-tier precedence settled", relevance: "high"
 
+## [2026-08-18T13:10:15.461Z] observe
+- slug: "obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words", title: "Underfit gap-fill measures connotation distance in BPE words", relevance: "high"
+

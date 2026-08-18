@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-08-18
+
+- **observe**: {"relevance":"high","slug":"obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words","title":"Underfit gap-fill measures connotation distance in BPE words"}
+
 ## 2026-08-17
 
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-word-binding-three-tier-precedence-settled","title":"Word Binding three-tier precedence settled"}

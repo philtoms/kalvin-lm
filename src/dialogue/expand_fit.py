@@ -53,6 +53,10 @@ __all__ = ["ExpandFit"]
 # Upper bound on edge hop chain depth (_edge_hops's traversal bound).
 _MAX_HOP = 100
 
+# The BPE token ID occupies the lower 32 bits of a node value; distance
+# calculations match word identity on this half (see NLPSignifier's packing).
+_BPE_MASK = 0xFFFF_FFFF
+
 
 class ExpandFit:
     """The S2 strategy: grade every candidate, emit the most significant proposal."""
@@ -89,12 +93,17 @@ class ExpandFit:
         overfit_mask = signifier.residual(nodes_sig, candidate_sig)
 
         if underfit_gap and overfit_mask:
-            proposals = self._expand_badfit(candidate, underfit_gap, overfit_mask)
+            graded = [
+                self._grade(candidate, p)
+                for p in self._expand_badfit(candidate, underfit_gap, overfit_mask)
+            ]
         elif underfit_gap:
-            proposals = self._expand_underfit(candidate, underfit_gap)
+            graded = self._expand_underfit(candidate, underfit_gap)
         else:
-            proposals = self._expand_overfit(candidate, overfit_mask)
-        graded = [self._grade(candidate, p) for p in proposals]
+            graded = [
+                self._grade(candidate, p)
+                for p in self._expand_overfit(candidate, overfit_mask)
+            ]
         graded.sort(key=lambda kv: kv.significance & SIG_MASK, reverse=True)
         return graded
 
@@ -316,31 +325,75 @@ class ExpandFit:
 
     def _expand_underfit(
         self, entry: KLine, gap: int
-    ) -> list[KLine]:
-        """Fill the gap with the co-denotations of a gap-covering kline's nodes.
+    ) -> list[KValue]:
+        """Fill the gap with co-denotations reached through the connotation chain.
 
-        A grounded kline whose signature covers the gap is a connotation bridge
-        (``what:[Object]`` bridging a W gap). The grounded klines sharing its
-        nodes (``lamb:[Object]``, ``ALL:[Object]``) denote what the gap stands
-        for; their signatures fill the gap.
+        Seeds are the grounded klines whose signatures cover the gap's
+        type-word bits (``what:[query]`` covering a W gap) and whose head is
+        not itself connoted by another gap-covering kline — the chain starts
+        at the word nothing upstream denotes. From the seeds' nodes the walk
+        follows word→word connotation edges (a kline headed by the same BPE
+        token as the node, e.g. ``Query:[Object]`` from the word ``query``),
+        hop by hop, and fills with the co-denotations
+        (``lamb:[Object]``, ``ALL:[Object]``) of every node reached. The fill's
+        accountedness is ``decay(hops)`` — the further the chain in BPE words,
+        the less the significance.
         """
         signifier = self._state.signifier
-        proposals: list[KLine] = []
-        for bridge in self._state.where(
-            lambda k: signifier.signifies(k.signature, gap)
-        ):
-            bridge_nodes = set(bridge.nodes)
-            for denotation in self._state.where(
-                lambda k: k is not bridge
-                and not is_identity(k)
-                and set(k.nodes) & bridge_nodes
+        aggregator = DEFAULT_AGGREGATOR
+        state = self._state
+        fills: dict[int, int] = {}  # denotation signature -> hops
+
+        covering = state.where(
+            lambda k: signifier.residual(gap, k.signature) == 0
+        )
+        for bridge in covering:
+            upstream = any(
+                other is not bridge and bridge.signature in other.nodes
+                for other in covering
+            )
+            if upstream:
+                continue
+            frontier: dict[int, int] = {n: 1 for n in bridge.nodes}
+            visited: set[int] = set(bridge.nodes)
+            while frontier:
+                next_frontier: dict[int, int] = {}
+                for node, hops in frontier.items():
+                    for denotation in state.where(
+                        lambda k: not is_identity(k) and node in k.nodes
+                    ):
+                        sig = denotation.signature
+                        if sig not in fills or hops < fills[sig]:
+                            fills[sig] = hops
+                    for connotation in state.where(
+                        lambda k: (k.signature & _BPE_MASK) == (node & _BPE_MASK)
+                        and not is_terminal(k)
+                        and not is_canon(k, signifier)
+                    ):
+                        for m in connotation.nodes:
+                            if m not in visited:
+                                visited.add(m)
+                                next_frontier[m] = hops + 1
+                frontier = next_frontier
+
+        graded: list[KValue] = []
+        base = [1.0] * len(entry.nodes)
+        for sig, hops in fills.items():
+            if signifier.residual(gap, sig) == 0:
+                # A gap-covering fill is the query word itself (or a synonym on
+                # the chain), not an answer to it.
+                continue
+            expanded = list(entry.nodes) + [sig]
+            if not signifier.signifies(
+                signifier.signature_of(expanded), entry.signature
             ):
-                expanded = list(entry.nodes) + [denotation.signature]
-                if signifier.signifies(
-                    signifier.signature_of(expanded), entry.signature
-                ):
-                    proposals.append(KLine(entry.signature, expanded, entry.dbg))
-        return proposals
+                continue
+            kline = KLine(entry.signature, expanded, entry.dbg)
+            if is_terminal(kline):
+                continue
+            byte = aggregator.compose_terminal(base + [aggregator.decay(hops)])
+            graded.append(KValue(kline, byte))
+        return graded
 
     def _expand_overfit(
         self, entry: KLine, excess: int

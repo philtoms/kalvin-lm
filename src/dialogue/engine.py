@@ -181,13 +181,17 @@ class Engine:
                 proposals.append(KValue(KLine(kline.signature, []), SIG_S4))
 
             else:
+                # if self._state._is_groundable(kline):
+                #     self._state.remove_stm_at(idx)
+                #     self._ground(kline)
+
                 if self._state.is_countersignable(kline):
                     pairings = self._countersignature_proposals(kline)
                     if pairings:
                         proposals.extend(pairings)
                     else:
                         # All pairings resolved: the countersignature is complete.
-                        self._state.remove_stm_at(idx)
+                        # self._state.remove_stm_at(idx)
                         self._ground(kline)
 
                 if is_misfit(kline, self._state.signifier):

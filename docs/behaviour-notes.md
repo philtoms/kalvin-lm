@@ -47,7 +47,7 @@ Rules when it resolves.
 
 ## Active state of K
 
-⚠️ **Gap-fill sorts, not filters.** On mhall's WDMH underfit, the W gap bridges via `what:[Object]` to the co-denotations of `Object` (identities excluded — an identity adds no new bits); every fill is emitted, graded by `_expand`'s terminal byte recomposed through `compose_terminal`, best-first. The engine asks each in turn and the harness stops on the first unanswerable ask. Open: multi-proposal ratification semantics, and whether `pop_identity` deleting a surviving misfit on same-signature grounding needs a fix (mhall no longer exercises it).
+⚠️ **Underfit gap-fill walks the connotation chain.** Seeds are gap-covering grounded klines not connoted by another gap-covering kline (the chain head); the walk follows word→word edges matched on the BPE half; fills are co-denotations graded `decay(hops)`. mhall: `W > O` grades ALL 0xfc (1 hop), `W > Q(uery) > O` grades ALL 0xfb (2 hops). Gap-covering fills (the query word and its chain synonyms) are suppressed. Open: multi-proposal ratification semantics; `pop_identity` deleting a surviving misfit on same-signature grounding.
 
 ## Process — discipline
 

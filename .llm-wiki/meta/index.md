@@ -94,6 +94,7 @@
 - [[sources/obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner]] — Observation: Proposal-pops-STM + frame removal: dedup lost, residue cleaner *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-word-binding-three-tier-precedence-settled]] — Observation: Word Binding three-tier precedence settled *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed]] — Observation: work_list renamed to stm; duplicate STM index removed *(created: 2026-08-17)*
+- [[sources/obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words]] — Observation: Underfit gap-fill measures connotation distance in BPE words *(created: 2026-08-18)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -101,4 +102,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-17T17:02:37.624Z* | *Total pages: 89*
+*Last updated: 2026-08-18T13:10:15.488Z* | *Total pages: 90*

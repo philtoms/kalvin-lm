@@ -19,5 +19,6 @@
 - [Observation: Proposal-pops-STM + frame removal: dedup lost, residue cleaner](obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner.md)
 - [Observation: Word Binding three-tier precedence settled](obs-2026-08-17-word-binding-three-tier-precedence-settled.md)
 - [Observation: work_list renamed to stm; duplicate STM index removed](obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed.md)
+- [Observation: Underfit gap-fill measures connotation distance in BPE words](obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

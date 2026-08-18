@@ -735,6 +735,7 @@
   "sources/obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner": [],
   "sources/obs-2026-08-17-word-binding-three-tier-precedence-settled": [],
   "sources/obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed": [],
+  "sources/obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/wiki-duplicate-consolidation": []
 }
