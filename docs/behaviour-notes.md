@@ -33,6 +33,7 @@ Rules when it resolves.
 
 ### Harness
 
+- Curriculum-driven: the CLI takes a curriculum markdown file (not a raw `.ks`); each lesson's kscript runs through a shared engine, state persisting across lessons; the label map accumulates the cumulative source.
 - K-driven dialogue: each sub-script (annotation group) is opened with its first entry; from there the engine drives. Each engine emission is an ask; the harness answers from the script or the run stops.
 - Ratifying answers: an identity ask `X:[]` → identity `X:[X]` + the script klines headed `X`; a proposal ask `A:[B]` → the matching script kline + its countersignature `B:[A]`. All other emissions are scaffolding.
 - A node of a compound self-ref entry (`DH:[did,have]`) is a script-known word; its identity ask answers with `X:[X]` alone.

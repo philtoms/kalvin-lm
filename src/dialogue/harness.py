@@ -32,6 +32,10 @@ from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
+from training.trainer.curriculum_document import (
+    CurriculumDocument,
+    CurriculumParseError,
+)
 
 # Named cogitation strategies for the misfit (S2) arm of ``cogitate``.
 # "similar_fit" — the STM graft heuristic (the original scheme).
@@ -366,9 +370,9 @@ def present(results: list[StepResult], state: EngineState, source: str,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run a KScript source through the lean engine and present the trace.",
+        description="Run a curriculum through the lean engine and present the trace.",
     )
-    parser.add_argument("source", help="Path to a .ks KScript file")
+    parser.add_argument("source", help="Path to a curriculum markdown file")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Show hex signatures alongside scripted labels.",
@@ -383,15 +387,20 @@ def main(argv: list[str] | None = None) -> int:
 
     source_path = Path(args.source)
     try:
-        source = source_path.read_text(encoding="utf-8")
-    except OSError as exc:
-        print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
+        document = CurriculumDocument.from_file(source_path)
+    except (CurriculumParseError, OSError) as exc:
+        print(f"harness: could not read curriculum {args.source!r}: {exc}", file=sys.stderr)
         return 2
 
     tok = NLPTokenizer()
     harness = make_engine(tok, _STRATEGIES[args.strategy])
-    results = harness.run(source)
-    present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
+    cumulative = ""
+    for lesson in document.lessons:
+        source = "\n".join(lesson.kscript)
+        cumulative = f"{cumulative}\n{source}"
+        print(f"\n══ lesson {lesson.label} ══")
+        results = harness.run(source)
+        present(results, harness.state, cumulative, tok, harness.signifier, verbose=args.verbose)
     return 0
 
 

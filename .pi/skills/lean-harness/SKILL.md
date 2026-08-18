@@ -5,7 +5,7 @@ description: Drives the lean dialogue harness (src/dialogue/harness.py + engine.
 
 # Lean Harness
 
-Tune **Kalvin's rationalising engine** by running a `.ks` curriculum
+Tune **Kalvin's rationalising engine** by running a curriculum
 through the lean harness, reading what the engine actually did from the
 trace + the grounded/work_list tails, changing the engine so it does
 better, and re-running. The engine is the target of the work; the
@@ -56,12 +56,17 @@ Every run ends with two lists. Read both before reading code.
 ## Run
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks        # the canonical curriculum
-PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks -v     # + hex signatures alongside labels
-PYTHONPATH=src .venv/bin/python -m dialogue.harness <your.ks>                    # any curriculum
+PYTHONPATH=src .venv/bin/python -m dialogue.harness curricula/wdmh-underfit.md  # the canonical curriculum
+PYTHONPATH=src .venv/bin/python -m dialogue.harness curricula/wdmh-underfit.md -v # + hex signatures alongside labels
+PYTHONPATH=src .venv/bin/python -m dialogue.harness <your.md>                     # any curriculum
 ```
 
-The harness compiles the `.ks`, feeds each compiled entry to the engine
+The harness parses the curriculum markdown (Objective/Approach/Goal/Lessons),
+runs each lesson's kscript through a shared engine (state persists across
+lessons), and presents the trace.
+```
+
+The harness compiles each lesson's kscript, feeds each compiled entry to the engine
 one at a time, answers S4 identity asks inline from the curriculum, and
 presents the trace. One linear pass, no waits, no convergence loop.
 
