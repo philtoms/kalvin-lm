@@ -329,20 +329,20 @@ class ExpandFit:
         """Fill the gap with co-denotations reached through the connotation chain.
 
         Seeds are the grounded klines whose signatures cover the gap's
-        type-word bits (``what:[query]`` covering a W gap) and whose head is
+        type-word bits (``what:[Query]`` covering a W gap) and whose head is
         not itself connoted by another gap-covering kline — the chain starts
-        at the word nothing upstream denotes. From the seeds' nodes the walk
-        follows word→word connotation edges (a kline headed by the same BPE
-        token as the node, e.g. ``Query:[Object]`` from the word ``query``),
-        hop by hop, and fills with the co-denotations
-        (``lamb:[Object]``, ``ALL:[Object]``) of every node reached. The fill's
-        accountedness is ``decay(hops)`` — the further the chain in BPE words,
-        the less the significance.
+        at the word nothing upstream denotes. Mirrors ``_expand``'s s3 bridge:
+        ``_edge_hops`` from the seed's nodes builds ``s3_connotations``
+        (sig → min hops); every grounded signature whose own ``_edge_hops``
+        chain crosses one of those connotations is a candidate fill, at
+        ``connotation_hops + crossing_hops``. The fill's accountedness is
+        ``decay(hops)`` — the further the crossed chain, the less the
+        significance.
         """
         signifier = self._state.signifier
         aggregator = DEFAULT_AGGREGATOR
         state = self._state
-        fills: dict[int, int] = {}  # denotation signature -> hops
+        fills: dict[int, int] = {}  # fill signature -> hops
 
         covering = state.where(
             lambda k: signifier.residual(gap, k.signature) == 0
@@ -354,27 +354,23 @@ class ExpandFit:
             )
             if upstream:
                 continue
-            frontier: dict[int, int] = {n: 1 for n in bridge.nodes}
-            visited: set[int] = set(bridge.nodes)
-            while frontier:
-                next_frontier: dict[int, int] = {}
-                for node, hops in frontier.items():
-                    for denotation in state.where(
-                        lambda k: not is_identity(k) and node in k.nodes
-                    ):
-                        sig = denotation.signature
-                        if sig not in fills or hops < fills[sig]:
-                            fills[sig] = hops
-                    for connotation in state.where(
-                        lambda k: (k.signature & _BPE_MASK) == (node & _BPE_MASK)
-                        and not is_terminal(k)
-                        and not is_canon(k, signifier)
-                    ):
-                        for m in connotation.nodes:
-                            if m not in visited:
-                                visited.add(m)
-                                next_frontier[m] = hops + 1
-                frontier = next_frontier
+            s3_connotations: dict[int, int] = {}
+            for node in bridge.nodes:
+                for hops, sig in self._edge_hops(node):
+                    if sig not in s3_connotations or hops < s3_connotations[sig]:
+                        s3_connotations[sig] = hops
+            if not s3_connotations:
+                continue
+            for candidate in state.where(lambda k: not is_identity(k)):
+                for hops, sig in self._edge_hops(candidate.signature):
+                    if sig in s3_connotations:
+                        total = s3_connotations[sig] + hops
+                        if (
+                            candidate.signature not in fills
+                            or total < fills[candidate.signature]
+                        ):
+                            fills[candidate.signature] = total
+                        break
 
         graded: list[KValue] = []
         base = [1.0] * len(entry.nodes)

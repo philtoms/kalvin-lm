@@ -47,7 +47,7 @@ Rules when it resolves.
 
 ## Active state of K
 
-⚠️ **Underfit gap-fill walks the connotation chain.** Seeds are gap-covering grounded klines not connoted by another gap-covering kline (the chain head); the walk follows word→word edges matched on the BPE half; fills are co-denotations graded `decay(hops)`. mhall: `W > O` grades ALL 0xfc (1 hop), `W > Q(uery) > O` grades ALL 0xfb (2 hops). Gap-covering fills (the query word and its chain synonyms) are suppressed. Open: multi-proposal ratification semantics; `pop_identity` deleting a surviving misfit on same-signature grounding.
+⚠️ **Underfit gap-fill bridges via s3 connotations.** Seed: gap-covering grounded kline not connoted by another gap-covering kline (chain head). `_edge_hops` from its nodes builds `s3_connotations` (sig → min hops); every grounded signature whose own `_edge_hops` chain crosses a connotation fills at `connotation_hops + crossing_hops`, graded `decay(total)`. mhall: lamb/pig fill at 2 hops (0xfb), ALL's mid-chain edge `ALL:[Query]` costs an extra crossing (0xf9). Gap-covering fills are suppressed. Open: lamb vs pig tie at equal hops (divergence-based ranking unexplored); multi-proposal ratification semantics; `pop_identity` deleting a surviving misfit on same-signature grounding.
 
 ## Process — discipline
 
