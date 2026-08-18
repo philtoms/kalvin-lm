@@ -1,8 +1,8 @@
 """Tests for the LLMSupervisor — the LLM decider supervisor participant.
 
-Validates the decision core (SD-2: the LLMSupervisor resolves ratify_request
+Validates the decision core (: the LLMSupervisor resolves ratify_request
 via a Cogitator and answers via supervisor_decision) and the
-LLMSupervisor-pipeline wiring (SD-16…21: misfit summaries decompiled,
+LLMSupervisor-pipeline wiring (…21: misfit summaries decompiled,
 curriculum context lifted). The Cogitator and display helpers are injected
 fakes so these tests run without tokenizer data or a live LLM.
 """
@@ -52,7 +52,7 @@ def _make_supervisor(cogitate_result) -> LLMSupervisor:
     )
 
 
-# ── decide(): decision mapping (SD-2) ─────────────────────────────────
+# ── decide(): decision mapping ─────────────────────────────────
 
 
 class TestDecideMapping:
@@ -145,7 +145,7 @@ class TestDecideMapping:
         assert cogitator.cogitate.call_count == 1
 
 
-# ── _build_request(): pipeline wiring (SD-16…21) ─────────────────────
+# ── _build_request(): pipeline wiring ─────────────────────
 
 
 class TestBuildRequest:
@@ -211,7 +211,7 @@ class TestBuildRequest:
         assert event.query.kline.signature == 0xFF
 
     def test_misfit_summaries_are_decompiled(self) -> None:
-        """RS-2 / SD-18: misfit summaries use the decompiled KScript (here the
+        """ / : misfit summaries use the decompiled KScript (here the
         injected fake kline_display output), not hex repr."""
         from unittest.mock import patch
 
@@ -228,7 +228,7 @@ class TestBuildRequest:
         assert info.proposal_summary == "KSCRIPT<0xf>"
 
     def test_misfit_summary_falls_back_on_decompile_failure(self) -> None:
-        """RS-2 / SD-19: when decompilation fails, summaries fall back to repr."""
+        """ / : when decompilation fails, summaries fall back to repr."""
         from unittest.mock import patch
 
         sup = _make_supervisor(None)

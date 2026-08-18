@@ -7,9 +7,9 @@ decision request to the supervisor and gates the run until answered. The
 Reactor never cogitates, never submits reactive scaffolding, and never
 escalates — those are decider concerns, owned by a supervisor participant.
 
-Loaded lesson entries and proposal events are KValues (`@kvalue` §Exchange):
-the reactor matches structurally (kline-only equality, ignoring significance —
-KV-2) and posts the proposal KValue on the countersign bus.
+Loaded lesson entries and proposal events are KValues: the reactor matches
+structurally (kline-only equality, ignoring significance) and posts
+the proposal KValue on the countersign bus.
 
 This module is synchronous — the Reactor receives events from the Trainer
 driver (which itself runs on the bus dispatch thread).
@@ -52,7 +52,7 @@ class Reactor:
     - **Recurrence** — the same proposal kline seen twice in one lesson
       (intra-expectation fan-out). The second sighting is re-submitted to
       Kalvin at a declared ``SIG_S4`` so rationalise drops it instead of
-      re-cogitating indefinitely (SD-14).
+      re-cogitating indefinitely.
 
     Every other proposal returns ``False`` from :meth:`process_s2_s3`; the
     Trainer then surfaces it as a decision request and gates the run.
@@ -80,7 +80,7 @@ class Reactor:
 
         self._current_entries: list[KValue] = []
         # Proposals that failed auto-countersign in this lesson, keyed by
-        # structural identity (KV-2). A second sighting of the same proposal
+        # structural identity. A second sighting of the same proposal
         # kline is intra-expectation recurrence — the trainer re-submits it
         # at a declared S4 so Kalvin's rationalise drops it instead of
         # re-cogitating it indefinitely. Reset per lesson (load_lesson).
@@ -144,9 +144,9 @@ class Reactor:
         """Check structural match and auto-countersign if found.
 
         Matches the proposal KValue against a loaded expectation using KValue
-        structural equality (kline-only, ignoring significance — KV-2). The
+        structural equality (kline-only, ignoring significance). The
         countersign bus message carries the proposal KValue itself (the agreed
-        payload contract with the adapter, KB-355).
+        payload contract with the adapter, ).
 
         Returns ``True`` if a match was found and countersigned.
         """

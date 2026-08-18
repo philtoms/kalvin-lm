@@ -1,4 +1,4 @@
-"""Tests for the shared command parser (HRNS-32).
+"""Tests for the shared command parser ().
 
 Covers all command types, case insensitivity, whitespace handling,
 and edge cases for parse_command and to_messages.
@@ -121,7 +121,7 @@ class TestRatifyCommand:
         cmd = parse_command("ratify")
         proposal = {"proposal": "MHALL = SVO"}
         msgs = cmd.to_messages(proposal)
-        # SD-9: ratify routes to the trainer as a supervisor_decision (the
+        # ratify routes to the trainer as a supervisor_decision (the
         # Trainer applies the countersign after replaying held events).
         assert msgs == [
             (
@@ -170,7 +170,7 @@ class TestFileGoalCommand:
 
 
 # ---------------------------------------------------------------------------
-# Scaffold command (reactive scaffolding — SD-10)
+# Scaffold command (reactive scaffolding)
 # ---------------------------------------------------------------------------
 
 
@@ -181,30 +181,30 @@ class TestScaffoldCommand:
     proposal it routes to the trainer as a scaffold decision; without one it
     is a free submission to the trainee. The compile-error round-trip
     (invalid KScript → ``error`` event) is exercised by Kalvin's adapter
-    tests (HRNS-8).
+    tests ().
     """
 
     def test_parse_with_colon(self):
-        # SD-10
+        # 
         cmd = parse_command("scaffold:MHALL = SVO")
         assert isinstance(cmd, ScaffoldCommand)
         assert cmd.text == "MHALL = SVO"
         assert cmd.original_text == "scaffold:MHALL = SVO"
 
     def test_parse_with_space(self):
-        # SD-10 (space variant)
+        # space variant)
         cmd = parse_command("scaffold MHALL = SVO")
         assert isinstance(cmd, ScaffoldCommand)
         assert cmd.text == "MHALL = SVO"
 
     def test_parse_case_insensitive(self):
-        # SD-10 (case insensitivity)
+        # case insensitivity)
         cmd = parse_command("SCAFFOLD:MHALL = SVO")
         assert isinstance(cmd, ScaffoldCommand)
         assert cmd.text == "MHALL = SVO"
 
     def test_parse_multiline(self):
-        # SD-10 (multi-line): the full multi-line source is preserved and is
+        # multi-line): the full multi-line source is preserved and is
         # not misclassified as a FileGoalCommand.
         cmd = parse_command("scaffold:\nMHALL = SVO\nSVO = agent")
         assert isinstance(cmd, ScaffoldCommand)
@@ -217,7 +217,7 @@ class TestScaffoldCommand:
         assert msgs == [(TRAINEE_ROLE, "submit", "MHALL = SVO")]
 
     def test_to_messages_decision_when_proposal_pending(self):
-        # SD-10: with a pending proposal, scaffold routes to the trainer as a
+        # with a pending proposal, scaffold routes to the trainer as a
         # supervisor_decision so the Trainer applies the answer.
         cmd = ScaffoldCommand(original_text="scaffold:M > H", text="M > H")
         proposal = {"signature": 5, "nodes": [1, 2]}

@@ -21,12 +21,7 @@ from dialogue.decoder import (
     load_script,
     load_script_file,
 )
-from dialogue.actors import (
-    RationalisingTrainee,
-    RationalisingTrainer,
-    ScriptTrainee,
-    ScriptTrainer,
-)
+
 from dialogue.runner import (
     Divergence,
     GroundingDivergence,

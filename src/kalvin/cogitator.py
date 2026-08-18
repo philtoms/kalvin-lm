@@ -49,7 +49,7 @@ class CogitationHandler(Protocol):
     def on_s1(self, query: KValue, candidate: KLine) -> None:
         """Called when cogitation discovers an S1 (exact) result.
 
-        ``query`` is the original inbound KValue (KE-2); ``candidate`` is the
+        ``query`` is the original inbound KValue; ``candidate`` is the
         KLine (from the model) that reached S1.
         """
         ...
@@ -76,7 +76,7 @@ class WorkItem(NamedTuple):
     """A single query|candidate pair queued for cogitation.
 
     ``query`` is a KValue (carries the declared significance into the slow
-    path, KE-2); ``candidate`` is the KLine from the model; ``level`` is the
+    path); ``candidate`` is the KLine from the model; ``level`` is the
     routing classification ("S2" or "S3").
     """
 
@@ -197,7 +197,7 @@ class Cogitator:
         1) discovered during expansion is a genuine structural exact match
         and triggers ``on_s1``.
 
-        ``item.query`` is a KValue (the original inbound, KE-2); the model API
+        ``item.query`` is a KValue (the original inbound); the model API
         (``expand``) stays KLine-based, so ``query_kline`` is extracted here.
         """
         query_value, candidate, level = item
@@ -217,7 +217,7 @@ class Cogitator:
             else:
                 # kv.kline is the expanded (possibly misfit) candidate.
                 # The query voice on the published event is the WorkItem's
-                # original inbound KValue (KE-2).
+                # original inbound KValue.
                 for proposal, sig in propose_expansions(
                     self._model, kv.kline, kv.significance, self._signifier
                 ):

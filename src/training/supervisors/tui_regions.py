@@ -103,7 +103,6 @@ class InputBar(Horizontal):
     carrying the text, and the input field is cleared. Empty or whitespace-only
     submissions are silently ignored.
 
-    Spec references: HRNS-26, HRNS-28.
     """
 
     DEFAULT_CSS = """

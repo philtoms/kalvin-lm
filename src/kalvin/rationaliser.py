@@ -201,7 +201,7 @@ class Rationaliser:
         counterpart to Kalvin's own assessment in a two-way significance
         dialog. It is consumed by the significance-comparison gate below
         (MVP: an S4 disagreement drops the query). The query voice on
-        published events also carries it (KE-2).
+        published events also carries it.
 
         Fast path: routing (no model calls). S1/S4 resolve instantly.
         Slow path: S2/S3 queued as individual work items for cogitation.
@@ -301,7 +301,7 @@ class Rationaliser:
         for candidate in candidates:
             level = self._route(kline, candidate)
             # The query KValue flows into the cogitator so the declared
-            # significance rides the slow path's published events (KE-2).
+            # significance rides the slow path's published events.
             self._cogitator.submit(WorkItem(value, candidate, level))
 
         return False
@@ -367,7 +367,7 @@ class Rationaliser:
     def on_s1(self, query_value: KValue, candidate: KLine) -> None:
         """CogitationHandler.on_s1: promote, publish frame event.
 
-        ``query_value`` is the original inbound KValue (KE-2); its kline is the
+        ``query_value`` is the original inbound KValue; its kline is the
         query voice for promotion. The candidate kline becomes the proposal,
         wrapped at ``SIG_S1`` (S1 ratification).
         """
@@ -384,9 +384,9 @@ class Rationaliser:
     ) -> None:
         """CogitationHandler.on_expansion: write proposal to Frame, publish frame event.
 
-        The proposal kline carries the ``expand()``-computed significance (KP-3),
+        The proposal kline carries the ``expand()``-computed significance,
         not a band-representative value. ``query_value`` is the original inbound
-        KValue (KE-2).
+        KValue.
 
         ``original_candidate`` is retained on the signature for the cogitator's
         dispatch but is no longer carried onto the event (the ``candidate``
@@ -414,7 +414,7 @@ class Rationaliser:
 
         ``query_value`` is the inbound KValue (the sender's declared
         assessment); ``proposal_value`` is Kalvin's assessment of it. On the
-        fast path both wrap the same immutable KLine (KE-1).
+        fast path both wrap the same immutable KLine.
         """
         self._adapter.on_event(RationaliseEvent(kind, query_value, proposal_value))
 
@@ -422,7 +422,7 @@ class Rationaliser:
         """Generate the reciprocal kline ({Q:[V]} → {V:[Q]}) and rationalise it.
 
         The reciprocal kline is wrapped in a KValue at ``SIG_S1`` — the act of
-        countersigning is an S1 ratification (KP-2). Requires non-empty nodes;
+        countersigning is an S1 ratification. Requires non-empty nodes;
         returns the result of ``rationalise``.
         """
         kline = value.kline

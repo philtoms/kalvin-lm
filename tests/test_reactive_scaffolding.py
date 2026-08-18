@@ -1,9 +1,7 @@
 """Tests for reactive scaffolding submission.
 
-Spec criteria live in the cogitator spec §Reactive Scaffolding Submission
-(test matrix AGT-49 through AGT-57). Validates the fixes that ensure
-LLM-generated scaffolding is compiled, sanitised, and submitted to Kalvin
-instead of discarded.
+Validates that LLM-generated scaffolding is compiled, sanitised, and submitted
+to Kalvin instead of discarded.
 """
 
 from __future__ import annotations
@@ -22,14 +20,14 @@ from training.supervisors.llm_supervisor import (
     _strip_hash_comments,
 )
 
-# ── AGT-49: System prompt contains no hex literal syntax ────────────
+# ── System prompt contains no hex literal syntax ────────────
 
 
 class TestSystemPrompt:
     """Validate the corrected system prompt."""
 
     def test_system_prompt_no_hex(self):
-        """AGT-49: Prompt must not instruct LLM to use hex literals."""
+        """Prompt must not instruct LLM to use hex literals."""
         # The prompt should not tell the LLM to USE hex - it may
         # mention hex in a "never use" warning, which is correct.
         lines = _SYSTEM_PROMPT.split("\n")
@@ -45,7 +43,7 @@ class TestSystemPrompt:
         assert "Signatures and nodes are hexadecimal" not in _SYSTEM_PROMPT
 
     def test_system_prompt_no_invalid_operators(self):
-        """AGT-50: Prompt must not list ~>, <-, -> as valid operators."""
+        """Prompt must not list ~>, <-, -> as valid operators."""
         # The prompt should warn AGAINST these, not endorse them
         # Check the syntax overview section doesn't list them as valid
         lines = _SYSTEM_PROMPT.split("\n")
@@ -69,26 +67,26 @@ class TestSystemPrompt:
         assert "=>" in _SYSTEM_PROMPT  # canonize
 
 
-# ── AGT-51, AGT-52: Hash comment stripping ─────────────────────────
+# ── Hash comment stripping ─────────────────────────
 
 
 class TestStripHashComments:
     """Validate _strip_hash_comments utility."""
 
     def test_strips_hash_comments(self):
-        """AGT-51: Lines starting with # are removed."""
+        """Lines starting with # are removed."""
         source = "# This is a comment\nM > H\n# Another comment\nH => M"
         result = _strip_hash_comments(source)
         assert result == "M > H\nH => M"
 
     def test_all_comments_returns_empty(self):
-        """AGT-52: All-comment input returns empty string."""
+        """All-comment input returns empty string."""
         source = "# comment 1\n# comment 2\n# comment 3"
         result = _strip_hash_comments(source)
         assert result == ""
 
     def test_preserves_kscript(self):
-        """AGT-51: Valid KScript lines are preserved unchanged."""
+        """Valid KScript lines are preserved unchanged."""
         source = "M > H\nMH => H A\nH == M"
         result = _strip_hash_comments(source)
         assert result == source
@@ -106,7 +104,7 @@ class TestStripHashComments:
         assert "M" in result
 
 
-# ── AGT-51, AGT-53: Cogitator sanitisation ──────────────────────────
+# ── Cogitator sanitisation ──────────────────────────
 
 
 class TestCogitatorSanitisation:
@@ -114,7 +112,7 @@ class TestCogitatorSanitisation:
 
     @requires_tokenizer_data
     def test_cogitator_strips_and_logs(self, caplog):
-        """AGT-51: Cogitator logs when # comments are stripped."""
+        """Cogitator logs when # comments are stripped."""
         client = MagicMock()
         client.complete.return_value = LLMResponse(
             content=None,
@@ -163,7 +161,7 @@ class TestCogitatorSanitisation:
         assert any("stripped # comments" in r.message for r in caplog.records)
 
     def test_cogitator_all_comments_returns_none(self):
-        """AGT-53: Cogitator returns None when scaffolding is all comments."""
+        """Cogitator returns None when scaffolding is all comments."""
         client = MagicMock()
         client.complete.return_value = LLMResponse(
             content=None,
@@ -209,9 +207,9 @@ class TestCogitatorSanitisation:
         assert result.scaffolding is None
 
 
-# ── AGT-57: [removed] - the Reactor no longer submits reactive scaffolding ──
-# The "submitted reactive scaffolding" log line (AGT-57) belonged to the
+# ── [removed] - the Reactor no longer submits reactive scaffolding ──
+# The "submitted reactive scaffolding" log line belonged to the
 # Reactor's inline cogitation path, which is removed. The LLMSupervisor
 # participant will own its own logging when implemented (T1). The prompt
 # and sanitisation tests above (TestSystemPrompt, TestStripHashComments,
-# TestCogitatorSanitisation) cover the relocated SD-16...21 contract.
+# TestCogitatorSanitisation) cover the relocated ...21 contract.

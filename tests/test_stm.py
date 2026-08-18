@@ -32,7 +32,7 @@ class TestSTMAdd:
         assert stm.get(5) == [k2]
 
     def test_add_same_pair_refreshes_fifo(self):
-        """STM-5: adding same (sig, nodes) pair refreshes FIFO position."""
+        """Adding same (sig, nodes) pair refreshes FIFO position."""
         stm = make_stm(bound=5)
         k1 = KLine(5, [1, 2])
         k2 = KLine(5, [1, 2])
@@ -75,14 +75,14 @@ class TestSTMDualKey:
         stm = STM(bound=256)
         # Create kline where sig != nodes_sig; node values are OR-reducible
         # literals (no tokenizer needed for this STM dual-key test).
-        packed_a = 0b010
-        packed_b = 0b100
-        k = KLine(signature=100, nodes=[packed_a, packed_b])
+        node_a = 0b010
+        node_b = 0b100
+        k = KLine(signature=100, nodes=[node_a, node_b])
         stm.add(k)
         # Should be found by signature
         assert stm.get(100) == [k]
-        # Should be found by nodes signature (packed_a | packed_b)
-        nodes_sig = packed_a | packed_b
+        # Should be found by nodes signature (node_a | node_b)
+        nodes_sig = node_a | node_b
         assert stm.get(nodes_sig) == [k]
 
 

@@ -5,8 +5,8 @@ of structurally matching proposals and within-lesson recurrence dedup. Every
 proposal it cannot resolve itself returns ``False`` so the Trainer can
 escalate it to the supervisor as a decision.
 
-Covers: auto-countersign matching (SD-13), recurrence dedup (SD-14), and the
-``False``→escalation contract (SD-1).
+Covers: auto-countersign matching, recurrence dedup, and the
+``False``→escalation contract.
 """
 
 from __future__ import annotations
@@ -46,10 +46,10 @@ def _make_event(
     proposal: KLine,
     significance: int = _S2_SIGNIFICANCE,
 ) -> RationaliseEvent:
-    """Create a RationaliseEvent with KValue query/proposal (KB-354 shape).
+    """Create a RationaliseEvent with KValue query/proposal ( shape).
 
     Both query and proposal are wrapped in KValues carrying ``significance``
-    (Kalvin's assessment for the proposal voice). For the two-voice KV-15
+    (Kalvin's assessment for the proposal voice). For the two-voice 
     case — where query and proposal carry *different* significances —
     construct the KValues directly.
     """
@@ -102,11 +102,11 @@ def _make_reactor() -> tuple[Reactor, BusCapture]:
     return reactor, capture
 
 
-# ── Auto-countersign (SD-13) ──────────────────────────────────────────
+# ── Auto-countersign ──────────────────────────────────────────
 
 
 class TestAutoCountersign:
-    """SD-13: a structurally matching proposal is auto-countersigned and
+    """a structurally matching proposal is auto-countersigned and
     never reaches a decider."""
 
     def test_matching_proposal_countersigns(self) -> None:
@@ -152,7 +152,7 @@ class TestAutoCountersign:
         assert capture.find_all(SUPERVISOR_ROLE, "notify") == []
 
     def test_structural_match_ignores_significance(self) -> None:
-        """KV-2: a proposal matches an entry with the same kline regardless of significance.
+        """a proposal matches an entry with the same kline regardless of significance.
 
         The entry is loaded at ``_S2_SIGNIFICANCE``; the proposal wraps the
         same kline at ``SIG_S1`` (a different assessment). KValue structural
@@ -199,11 +199,11 @@ class TestAutoCountersign:
         assert len(capture.find_all(TRAINEE_ROLE, "countersign")) == 1
 
 
-# ── No-match → escalation (SD-1) ──────────────────────────────────────
+# ── No-match → escalation ──────────────────────────────────────
 
 
 class TestNoMatchEscalates:
-    """SD-1: a proposal the Reactor cannot resolve returns False, producing
+    """a proposal the Reactor cannot resolve returns False, producing
     no side effects. The Trainer surfaces it as a ratify_request."""
 
     def test_no_match_returns_false_with_no_side_effects(self) -> None:
@@ -233,11 +233,11 @@ class TestNoMatchEscalates:
         assert _entry_key(event.proposal) in reactor._seen_proposals
 
 
-# ── Recurrence dedup (SD-14) ──────────────────────────────────────────
+# ── Recurrence dedup ──────────────────────────────────────────
 
 
 class TestRecurrenceDeclaresS4:
-    """SD-14: intra-expectation fan-out — the same proposal reappears across
+    """intra-expectation fan-out — the same proposal reappears across
     two events against one expectation. The first sighting is surfaced for
     escalation; the second sighting is re-submitted at a declared S4 so
     Kalvin's rationalise drops it instead of re-cogitating indefinitely."""
@@ -386,7 +386,7 @@ def _make_trainer(
 
 @requires_tokenizer_data
 class TestAutoCountersignStructuralMatch:
-    """SD-13: a structurally matching proposal is auto-countersigned
+    """a structurally matching proposal is auto-countersigned
     end-to-end through the Trainer → Reactor stack."""
 
     @patch("training.trainer.trainer.compile_source")

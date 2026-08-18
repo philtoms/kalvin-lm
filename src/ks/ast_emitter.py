@@ -1,11 +1,11 @@
 """AST Emitter for KScript v3 — walks scope-model AST and emits SymbolicEntry tuples.
 
 Central compilation stage that transforms the KScript v3 scope-model AST
-(spec §3) into a list of symbolic entries (spec §6).  No token encoding
-happens here — all values are strings.  The TokenEncoder (separate module)
-converts SymbolicEntry tuples to encoded uint64 values.
+into a list of symbolic entries.  No token encoding happens here — all
+values are strings.  The TokenEncoder (separate module) converts
+SymbolicEntry tuples to encoded uint64 values.
 
-**Scope processing rules (spec §7):**
+**Scope processing rules:**
   Each OperatorScope is processed by resolving its signature, collecting
   node identifiers from items and child_block, and emitting operator-specific
   entries:
@@ -16,27 +16,27 @@ converts SymbolicEntry tuples to encoded uint64 values.
   - CONNOTES (>):         {sig: [node]} per item  — forward direction
   - CANONIZES (=>):       {sig: [all_nodes]}  — aggregated single entry
 
-  Self-identity (A = A) collapses to UNKNOWN with empty nodes (spec §7.3).
+  Self-identity (A = A) collapses to UNKNOWN with empty nodes.
 
-**MTS expansion (spec §8):**
+**MTS expansion:**
   Multi-character all-uppercase identifiers (compounds: MHALL, SVO, ALL)
   trigger emission of exactly one CANONIZES entry mapping the compound to
   its resolved constituent characters. MTS emits only the canon — the
   characters are values inside the canon, not headed klines of their own.
   An author who wants a headed kline for a character writes it as a bare
-  singleton (§7.1).
+  singleton.
 
   MTS applies to compounds wherever they appear — signature side or node
   side, any operator.  Single-character identifiers and lowercase/mixed-case
   words (had, did, all) do NOT trigger MTS — they are single-word tokens,
   not multi-token compounds. The case distinction is what separates a
   compound from a word, both admitted by the case-insensitive SIGNATURE
-  rule (§2).
+  rule.
 
-**MTS deduplication (§8.3):**
+**MTS deduplication:**
   CANONIZES entries are deduplicated on (sig, nodes).
 
-**Word binding integration (spec §10):**
+**Word binding integration:**
   When a BindingScope is provided, single-character identifiers are resolved
   inline during the AST walk:
 
@@ -55,15 +55,13 @@ converts SymbolicEntry tuples to encoded uint64 values.
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
   - No UNKNOWN op written — self-denote (A = A) emits UNKNOWN with empty nodes.
-  - No general deduplication beyond CANONIZES dedup per §8.3.
-
-Spec references: §3 (Scope Model), §6 (Entry Model), §7 (Operator Rules),
-§8 (MTS Expansion), §10 (Word Binding Resolution).
+  - No general deduplication beyond CANONIZES dedup.
 """
 
 from __future__ import annotations
 
 from typing import NamedTuple
+from collections import deque
 
 from .ast import (
     Annotation,
@@ -95,10 +93,12 @@ class SymbolicEntry(NamedTuple):
     nodes: list[str]
     op: str  # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | IDENTITY | UNKNOWN
     component_labels: list[str] | None = None
-    is_mts: bool = False  # True for §8 MTS-produced entries (component
+    is_mts: bool = False  # True for MTS-produced entries (component
                           # identity + MTS canonization). The TokenEncoder
-                          # combines this with its own §11.3 BPE-MTS tag to
+                          # combines this with its own BPE-MTS tag to
                           # push every MTS kline after compiled source.
+    annotation: str = ""   # the owning scope's annotation text
+    scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
 
 
 class ASTEmitter:
@@ -121,11 +121,17 @@ class ASTEmitter:
         self._scope = scope
         self._dev = dev
 
-        # MTS dedup tracking (§8.3).
+        # MTS dedup tracking.
         self._mts_canonize_seen: dict[tuple[str, tuple[str, ...]], int] = {}
-        # Cached resolved components per identifier (§8.3) so the
+        # Cached resolved components per identifier so the
         # BindingScope occurrence counter never re-advances for one.
         self._resolution_cache: dict[str, list[str]] = {}
+        # Per-char queues of already-resolved node occurrences (innermost
+        # scope's resolution is consumed first by child scope sigs), so each
+        # textual occurrence resolves exactly once — the canon's operand
+        # resolution is reused by the child kline, not re-resolved against
+        # the occurrence counter.
+        self._node_res_q: dict[str, deque] | None = None
 
         # Rule B4 parent kline tracking (saved/restored on scope entry/exit).
         self._parent_kline_chars: str | None = None
@@ -135,6 +141,10 @@ class ASTEmitter:
         # (subscript block); multi-char CANONIZES sigs trigger MTS (the
         # canon kline), so subscript identity filling is suppressed for them.
         self._in_canonize_subscript: bool = False
+
+        # Scope/annotation tracking for KDbg.annotation and KDbg.scope.
+        self._scope_annotation: str = ""
+        self._pending_annotation: str = ""
 
     # Public API
 
@@ -151,16 +161,45 @@ class ASTEmitter:
         if isinstance(construct, OperatorScope):
             self._process_scope(construct)
         elif isinstance(construct, Annotation):
+            self._pending_annotation = self._annotation_text(construct)
             self._feed_annotation(construct)
         elif isinstance(construct, Block):
             for c in construct.constructs:
                 self._process_construct(c)
 
+    @staticmethod
+    def _annotation_text(annotation: Annotation) -> str:
+        """The annotation's text with surrounding parens stripped."""
+        text = getattr(annotation, "text", "") or ""
+        if len(text) >= 2 and text[0] == "(" and text[-1] == ")":
+            return text[1:-1]
+        return text
+
     # Core scope processing (Steps 2–3)
 
     def _process_scope(self, scope: OperatorScope) -> None:
         """Process a single OperatorScope: resolve sig, emit MTS, emit
-        operator entries, then recurse into children."""
+        operator entries, then recurse into children.
+
+        The scope's annotation is its own — the pending scope annotation, or
+        its signature's inline annotation (resolved to the full bound word,
+        e.g. "S" + "(ubject)" → "Subject") — and does **not** propagate to
+        child scopes (each kline owns its own annotation). MTS spawned by the
+        scope's signature inherits this scope's annotation.
+        """
+        if scope.inline_annotation is not None and len(scope.sig.id) == 1:
+            annotation = self._extract_inline_word(scope.sig.id, scope.inline_annotation)
+        else:
+            annotation = self._pending_annotation
+        self._pending_annotation = ""
+        saved_annotation = self._scope_annotation
+        self._scope_annotation = annotation
+        try:
+            self._process_scope_body(scope)
+        finally:
+            self._scope_annotation = saved_annotation
+
+    def _process_scope_body(self, scope: OperatorScope) -> None:
         sig_resolved = self._resolve_inline_or_scope(
             scope.sig.id,
             scope.inline_annotation,
@@ -178,7 +217,7 @@ class ASTEmitter:
         if op == "UNKNOWN":
             # For multi-char sigs _emit_mts already introduced the compound
             # via CANONIZES (mts_idx is not None) — a compound can't form an
-            # identity (§8). Single-char sigs refine by Word Binding (§7.1):
+            # identity. Single-char sigs refine by Word Binding:
             # word-bound → self-referential IDENTITY {S:[S]} (S1); unbound →
             # empty UNKNOWN {S:[]} (S4). Binding is the sole discriminator.
             if mts_idx is None:
@@ -190,7 +229,7 @@ class ASTEmitter:
 
         node_ids = self._collect_node_ids(scope)
 
-        # A CANONIZES scope introduces a subscript scope (§3): push it BEFORE
+        # A CANONIZES scope introduces a subscript scope: push it BEFORE
         # expanding node MTS and resolving operands, so a node-compound's
         # chars (e.g. SVO's S,V,O) resolve against the subscript's bindings
         # (S->Subject, V->Verb, O->Object) rather than the outer scope where
@@ -230,11 +269,19 @@ class ASTEmitter:
 
         resolved_nodes = self._resolve_nodes(node_ids, scope)
 
+        saved_q = self._node_res_q
+        q: dict[str, deque] = {}
+        for nid, word in zip(node_ids, resolved_nodes):
+            if len(nid) == 1 and word != nid:
+                q.setdefault(nid, deque()).append(word)
+        self._node_res_q = q
+
         self._emit_operator_entries(sig_resolved, resolved_nodes, op)
         self._compile_children(scope, op, mts_idx, pushed_scope=pushed_scope)
 
         self._parent_kline_chars = saved_chars
         self._parent_kline_canonize_idx = saved_idx
+        self._node_res_q = saved_q
 
     # Operator emission (Step 2)
 
@@ -253,7 +300,7 @@ class ASTEmitter:
         elif op == "DENOTES":
             for node in nodes:
                 if node == sig:
-                    # Self-denote → self-referential IDENTITY {S:[S]} (§7.3).
+                    # Self-denote → self-referential IDENTITY {S:[S]}.
                     # Binding-independent: once the author writes the
                     # self-reference, the structure is fixed at S1.
                     self._emit_entry(sig, [sig], "IDENTITY")
@@ -266,7 +313,7 @@ class ASTEmitter:
 
         elif op == "CANONIZES":
             # A compound-headed CANONIZES scope produces TWO distinct
-            # relationships that share one signature (spec §11.4):
+            # relationships that share one signature:
             #   1. MTS CANONIZES  — compound → its declared character
             #      components (the decoding aid; already emitted by
             #      _emit_mts when the sig was expanded). This entry DEFINES
@@ -289,7 +336,7 @@ class ASTEmitter:
             #
             # When the block operands equal the character components (the
             # common case, e.g. `SVO => S V O`), both entries share the same
-            # (sig, nodes) and §8.3 CANONIZES dedup collapses them to one —
+            # (sig, nodes) and CANONIZES dedup collapses them to one —
             # preserving the prior single-entry behaviour.
             #
             # Rule B4 inline-override patching is unaffected: it patches the
@@ -334,23 +381,21 @@ class ASTEmitter:
             for c in construct.constructs:
                 self._collect_block_node_ids(c, node_ids)
 
-    # MTS expansion (§8)
+    # MTS expansion
 
     def _emit_mts(self, sig: str) -> int | None:
         """Emit the MTS canon entry for a multi-character identifier.
 
         MTS emits exactly one CANONIZES entry mapping the compound to its
         resolved constituent characters (one node per character, preserving
-        repeats — §8.2 node-count invariant). MTS emits no per-character
-        component entries: the characters are values inside the canon, not
-        headed klines. An author who wants a headed kline for a character
-        writes it as a bare singleton (§7.1).
+        repeats). MTS emits no per-character component entries: the characters
+        are values inside the canon, not headed klines. An author who wants a
+        headed kline for a character writes it as a bare singleton.
 
-        CANONIZES deduplication (§8.3): the same (sig, nodes) pair is
-        silently skipped.
+        CANONIZES deduplication: the same (sig, nodes) pair is silently
+        skipped.
 
-        A compound signature is the OR-reduction of multiple token IDs and
-        cannot form an identity (spec §8; CONTEXT.md "Identity" glossary).
+        A compound signature is the OR-reduction of multiple token IDs.
 
         Returns the index of the CANONIZES entry (for Rule B4), or None
         if no MTS was emitted (single-char or non-uppercase identifier).
@@ -359,21 +404,28 @@ class ASTEmitter:
         # multi-character identifiers (compounds: MHALL, SVO, ALL). A
         # lowercase/mixed-case multi-char identifier is a single word
         # (had, did, all) admitted by the case-insensitive SIGNATURE rule;
-        # decomposing it by character would be wrong. (§8)
+        # decomposing it by character would be wrong.
         if len(sig) <= 1 or not sig.isupper():
             return None
 
-        # Resolve once on first expansion (§8.3); reuse the cached list so
+        # Resolve once on first expansion; reuse the cached list so
         # the identifier resolves identically as node or signature. MTS emits
         # only the canon kline — its nodes are the resolved characters (one
-        # per character, preserving repeats; §8.2 node-count invariant). MTS
-        # no longer emits per-character component entries: components are
-        # values inside the canon, not headed klines. An author who wants a
-        # headed kline for a character writes it as a bare singleton (§7.1).
+        # per character, preserving repeats). MTS no longer emits per-character
+        # component entries: components are values inside the canon, not headed
+        # klines. An author who wants a
+        # headed kline for a character writes it as a bare singleton.
         if sig in self._resolution_cache:
             chars = list(self._resolution_cache[sig])
         else:
+            # MTS is a decoding aid — its char resolution must not consume
+            # the occurrence counters that belong to the identity occurrences
+            # emitted later as item klines (e.g. the two Ls in ALL => L > M(od)
+            # / L > O must resolve to little and lamb respectively).
+            snap = self._scope.counters_snapshot() if self._scope is not None else None
             chars = [self._resolve_char(c) for c in sig]
+            if snap is not None:
+                self._scope.counters_restore(snap)
             self._resolution_cache[sig] = list(chars)
 
         key = (sig, tuple(chars))
@@ -383,7 +435,7 @@ class ASTEmitter:
         self._emit_entry(sig, list(chars), "CANONIZES", is_mts=True)
         return len(self.entries) - 1
 
-    # Entry emission with CANONIZES dedup (§8.3, Step 4)
+    # Entry emission with CANONIZES dedup
 
     def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False) -> None:
         """Emit a SymbolicEntry with CANONIZES deduplication.
@@ -392,7 +444,7 @@ class ASTEmitter:
           are silently skipped.
         - All other ops: always emit (no dedup at this level).
 
-        ``is_mts`` marks entries produced by §8 MTS expansion (component
+        ``is_mts`` marks entries produced by MTS expansion (component
         identity + MTS canonization) so the TokenEncoder can push them
         after compiled source in the final output.  Operator-produced
         entries, subscript identities, and single-char CANONIZES scopes
@@ -406,16 +458,20 @@ class ASTEmitter:
                 return
             self._mts_canonize_seen[key] = len(self.entries)
 
-        self.entries.append(SymbolicEntry(sig=sig, nodes=nodes, op=op, is_mts=is_mts))
+        self.entries.append(SymbolicEntry(
+            sig=sig, nodes=nodes, op=op, is_mts=is_mts,
+            annotation=self._scope_annotation,
+            scope=1 if is_mts else 0,
+        ))
 
     # Identity emission for CANONIZES subscript blocks
 
     def _emit_identity_if_needed(self, raw_id: str) -> None:
-        """Emit a component entry for ``raw_id`` if none exists (§7.6).
+        """Emit a component entry for ``raw_id`` if none exists.
 
         Used in CANONIZES subscript blocks to ensure every identifier appears
         as the signature of at least one emitted entry. Applies the binding-
-        aware rule (§7.1): word-bound → self-referential IDENTITY {w:[w]};
+        aware rule: word-bound → self-referential IDENTITY {w:[w]};
         unbound → empty UNKNOWN {w:[]}.
 
         Dedup checks (in order):
@@ -426,7 +482,7 @@ class ASTEmitter:
         This prevents duplicate entries when the identifier already appears
         as the signature of an IDENTITY/UNKNOWN entry.  The CANONIZES check
         blocks compounds (which cannot form an identity) without affecting
-        single-char sigs that have only DENOTES entries (e.g., D in §14.8).
+        single-char sigs that have only DENOTES entries.
         """
         resolved = self._resolve_char(raw_id)
         if any(e.sig == resolved and e.op == "CANONIZES" for e in self.entries):
@@ -456,7 +512,7 @@ class ASTEmitter:
         identifiers by _collect_node_ids; under CANONIZES they still emit
         their own UNKNOWN (independent subscript identity).
 
-        **CANONIZES subscript identity (§7.6, §14.8, §14.9):**
+        **CANONIZES subscript identity:**
 
         A CANONIZES scope with recursive content forms a "subscript block"
         where every identifier must appear as the signature of at least
@@ -539,7 +595,7 @@ class ASTEmitter:
 
         self._in_canonize_subscript = saved_in_canonize
 
-    # Binding integration (§10, Step 5)
+    # Binding integration
 
     def _resolve_char(self, char: str) -> str:
         """Resolve a single character via BindingScope.
@@ -585,6 +641,9 @@ class ASTEmitter:
                 return word
             return existing  # already bound — top-level annotation is inert
         if len(sig) == 1:
+            q = self._node_res_q
+            if q is not None and q.get(sig):
+                return q[sig].popleft()
             return self._resolve_char(sig)
         return sig
 
@@ -662,7 +721,9 @@ class ASTEmitter:
             if isinstance(item, Signature):
                 anns.append(item.inline_annotation)
             elif isinstance(item, OperatorScope):
-                anns.append(None)  # nested scope — no per-item inline here
+                # A nested scope's node is its head; the head's sig-side
+                # inline annotation (W > Q(uery)) binds that node to the word.
+                anns.append(item.inline_annotation)
         if scope.child_block is not None:
             for construct in scope.child_block.constructs:
                 self._collect_block_item_inline_annotations(construct, anns)
@@ -746,7 +807,7 @@ class ASTEmitter:
             self.entries[self._parent_kline_canonize_idx] = entry._replace(
                 nodes=new_nodes,
             )
-            # Re-key the CANONIZES dedup registry (§8.3): the patched entry's
+            # Re-key the CANONIZES dedup registry: the patched entry's
             # (sig, nodes) changed, so the stale key under which it was
             # registered no longer matches. Without this, a block-canon entry
             # whose operands equal the PATCHED component list (the common case,

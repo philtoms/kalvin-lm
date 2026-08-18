@@ -1,4 +1,5 @@
-"""Tests for Curriculum and CurriculumState — HRNS-15, HRNS-16, CRS-24..CRS-31."""
+"""Tests for Curriculum and CurriculumState.
+"""
 
 from __future__ import annotations
 
@@ -307,25 +308,25 @@ class TestStateResetSession:
         assert state.event_log[0]["type"] == "test"
 
 
-# ── CRS-24..CRS-27: Label-based tracking ─────────────────────────────
+# ── Label-based tracking ─────────────────────────────
 
 
 class TestLabelTracking:
-    """CRS-24..CRS-27: Label-based tracking in CurriculumState."""
+    """Label-based tracking in CurriculumState."""
 
     def test_current_label_first_unsatisfied(self) -> None:
-        """CRS-24: current_label returns first unsatisfied label."""
+        """current_label returns first unsatisfied label."""
         state = CurriculumState(Curriculum(SAMPLE_DOCUMENT))
         assert state.current_label == "1"
 
     def test_current_label_advances_after_satisfied(self) -> None:
-        """CRS-24: current_label skips satisfied labels."""
+        """current_label skips satisfied labels."""
         state = CurriculumState(Curriculum(SAMPLE_DOCUMENT))
         state.mark_lesson_satisfied("1")
         assert state.current_label == "2"
 
     def test_current_label_none_when_all_satisfied(self) -> None:
-        """CRS-24: current_label is None when all lessons satisfied."""
+        """current_label is None when all lessons satisfied."""
         state = CurriculumState(Curriculum(SAMPLE_DOCUMENT))
         state.mark_lesson_satisfied("1")
         state.mark_lesson_satisfied("2")
@@ -334,14 +335,14 @@ class TestLabelTracking:
         assert state.current_label is None
 
     def test_mark_lesson_submitted(self) -> None:
-        """CRS-25: mark_lesson_submitted adds label to set."""
+        """mark_lesson_submitted adds label to set."""
         state = CurriculumState(Curriculum(SAMPLE_DOCUMENT))
         state.mark_lesson_submitted("1")
         assert state.is_lesson_submitted("1")
         assert not state.is_lesson_submitted("2")
 
     def test_mark_lesson_satisfied_advances(self) -> None:
-        """CRS-26: mark_lesson_satisfied advances curriculum position."""
+        """mark_lesson_satisfied advances curriculum position."""
         state = CurriculumState(Curriculum(SAMPLE_DOCUMENT))
         assert state.curriculum.position == 0
         state.mark_lesson_satisfied("1")
@@ -349,7 +350,7 @@ class TestLabelTracking:
         assert state.is_lesson_satisfied("1")
 
     def test_is_lesson_submitted_and_satisfied(self) -> None:
-        """CRS-27: is_lesson_submitted and is_lesson_satisfied check membership."""
+        """is_lesson_submitted and is_lesson_satisfied check membership."""
         state = CurriculumState(Curriculum(SAMPLE_DOCUMENT))
         assert not state.is_lesson_submitted("1")
         assert not state.is_lesson_satisfied("1")
@@ -359,7 +360,7 @@ class TestLabelTracking:
         assert state.is_lesson_satisfied("1")
 
     def test_label_and_entry_tracking_coexist(self) -> None:
-        """CRS-28: Label and EntryKey tracking are independent."""
+        """Label and EntryKey tracking are independent."""
         state = CurriculumState(Curriculum(SAMPLE_DOCUMENT))
 
         # Label tracking
@@ -394,14 +395,14 @@ class TestLabelTracking:
         assert state.current_label == "3"
 
 
-# ── CRS-29..CRS-31: Persistence ──────────────────────────────────────
+# ── Persistence ──────────────────────────────────────
 
 
 class TestLabelPersistence:
-    """CRS-29..CRS-31: Label-based state persistence."""
+    """Label-based state persistence."""
 
     def test_save_includes_label_state(self, tmp_path: Path) -> None:
-        """CRS-29: save() includes curriculum_file, labels, and label-based state."""
+        """save() includes curriculum_file, labels, and label-based state."""
         save_file = tmp_path / "state.json"
         state = CurriculumState(
             Curriculum(SAMPLE_DOCUMENT),
@@ -422,7 +423,7 @@ class TestLabelPersistence:
         assert data["version"] == 2
 
     def test_load_new_format_with_file(self, tmp_path: Path) -> None:
-        """CRS-30: load() reconstructs state from file when curriculum_file exists."""
+        """load() reconstructs state from file when curriculum_file exists."""
         # Write the curriculum document to disk
         curriculum_path = tmp_path / "curricula" / "test.md"
         curriculum_path.parent.mkdir(parents=True)
@@ -524,7 +525,7 @@ class TestLabelPersistence:
         assert state.current_label == "2"
 
     def test_load_legacy_format(self, tmp_path: Path) -> None:
-        """CRS-31: load() handles legacy format (flat lessons + position)."""
+        """load() handles legacy format (flat lessons + position)."""
         save_file = tmp_path / "state.json"
         data = {
             "position": 1,
@@ -618,11 +619,11 @@ class TestLabelPersistence:
         assert loaded.current_label == "2"
 
 
-# ── HRNS-15: State persistence across restart ──────────────────────
+# ── State persistence across restart ──────────────────────
 
 
 class TestStatePersistenceAcrossRestart:
-    """HRNS-15: Curriculum state round-trips through JSON persistence."""
+    """Curriculum state round-trips through JSON persistence."""
 
     def test_state_persistence_across_restart(self, tmp_path: Path) -> None:
         save_file = tmp_path / "state.json"

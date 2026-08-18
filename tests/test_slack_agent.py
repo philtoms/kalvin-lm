@@ -1,5 +1,4 @@
-"""Tests for SlackParticipant — HRNS-17, HRNS-18, HRNS-31, HRNS-34.
-
+"""Tests for SlackParticipant.
 Uses a stub WebSocket server to avoid requiring a running harness.
 Mocks the Slack SDK to avoid real API calls.
 """
@@ -111,7 +110,7 @@ async def _make_participant(stub: StubHarness) -> SlackParticipant:
 
 
 async def test_slack_registers_on_connect():
-    """HRNS-31: SlackParticipant sends ``{"register": "supervisor"}`` on connect."""
+    """SlackParticipant sends ``{"register": "supervisor"}`` on connect."""
     async with StubHarness() as stub:
         participant = SlackParticipant(
             harness_url=stub.url,
@@ -132,7 +131,7 @@ async def test_slack_registers_on_connect():
 
 
 async def test_slack_renders_progress():
-    """HRNS-18: SlackParticipant renders ``progress`` messages to Slack."""
+    """SlackParticipant renders ``progress`` messages to Slack."""
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
 
@@ -155,7 +154,7 @@ async def test_slack_renders_progress():
 
 
 async def test_slack_renders_event():
-    """HRNS-18: SlackParticipant renders ``event`` messages to Slack."""
+    """SlackParticipant renders ``event`` messages to Slack."""
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
 
@@ -177,7 +176,7 @@ async def test_slack_renders_event():
 
 
 async def test_slack_renders_escalation():
-    """HRNS-18: SlackParticipant renders ``escalation`` messages to Slack."""
+    """SlackParticipant renders ``escalation`` messages to Slack."""
     async with StubHarness() as stub:
         participant = await _make_participant(stub)
 
@@ -199,7 +198,7 @@ async def test_slack_renders_escalation():
 
 
 async def test_slack_renders_ratify_request():
-    """HRNS-18: SlackParticipant renders ``ratify_request`` with hint and stores proposal.
+    """SlackParticipant renders ``ratify_request`` with hint and stores proposal.
 
     The harness sends a full ``{proposal, query, significance}`` envelope.
     Slack rendering must still receive the **full** message (proving the
@@ -243,7 +242,7 @@ async def test_slack_renders_ratify_request():
 
 
 async def test_slack_forwards_human_input():
-    """HRNS-17: SlackParticipant forwards human input via command parser.
+    """SlackParticipant forwards human input via command parser.
 
     "hello" is parsed as a GuidanceCommand, which sends input to trainer role.
     """
@@ -266,7 +265,7 @@ async def test_slack_forwards_human_input():
 
 
 async def test_slack_ratify_command_routes_supervisor_decision():
-    """HRNS-34: ``ratify`` command routes a ``supervisor_decision`` to the trainer.
+    """``ratify`` command routes a ``supervisor_decision`` to the trainer.
 
     The buffered ``_latest_ratify_proposal`` (canonical KLine wire dict) is
     carried verbatim inside the decision payload.

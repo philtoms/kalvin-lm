@@ -146,80 +146,80 @@ class TestStructuralPredicates:
     """is_terminal / is_unknown / is_identity / is_canon / is_misfit — structural predicates."""
 
     # ── is_unknown ───────────────────────────────────────────────────────
-    def test_kl20_is_unknown_empty(self):
+    def test_is_unknown_empty(self):
         assert is_unknown(KLine(0xFF, [])) is True
 
-    def test_kl20_is_unknown_false_for_self_referential(self):
+    def test_is_unknown_false_for_self_referential(self):
         assert is_unknown(KLine(0xFF, [0xFF])) is False
 
     # ── is_terminal (genus: empty Unknown / self-ref Identity) ─
-    def test_kl20a_is_terminal_empty(self):
+    def test_is_terminal_empty(self):
         assert is_terminal(KLine(0xFF, [])) is True
 
-    def test_kl21a_is_terminal_self_referential(self):
+    def test_is_terminal_self_referential(self):
         assert is_terminal(KLine(0xFF, [0xFF])) is True
 
-    def test_kl26a_is_terminal_compound_word_self_ref(self):
-        # A §11.3 compound-word is a self-referential identity: its
+    def test_is_terminal_compound_word_self_ref(self):
+        # A compound-word is a self-referential identity: its
         # signature is the OR-reduction of its subword tokens.
-        packed = 0b110
-        assert is_terminal(KLine(packed, [packed])) is True
+        sig = 0b110
+        assert is_terminal(KLine(sig, [sig])) is True
 
     def test_is_terminal_canon_shaped_is_not_terminal(self):
         assert is_terminal(KLine(0b110, [0b100, 0b010])) is False
 
     # ── is_identity (strict: decodable terminals only) ──────────────────
-    def test_kl20b_is_identity_empty_is_false(self):
+    def test_is_identity_empty_is_false(self):
         # The empty form is an Unknown, not an Identity.
         assert is_identity(KLine(0xFF, [])) is False
 
-    def test_kl21_is_identity_self_referential(self):
+    def test_is_identity_self_referential(self):
         assert is_identity(KLine(0xFF, [0xFF])) is True
 
-    def test_kl22_is_identity_single_different_node(self):
+    def test_is_identity_single_different_node(self):
         assert is_identity(KLine(0xFF, [0x01])) is False
 
     def test_is_identity_compound_word_self_ref(self):
-        # A §11.3 compound-word is a self-referential identity.
-        packed = 0b110
-        assert is_identity(KLine(packed, [packed])) is True
+        # A compound-word is a self-referential identity.
+        sig = 0b110
+        assert is_identity(KLine(sig, [sig])) is True
 
     def test_is_identity_canon_shaped_is_not_identity(self):
         assert is_identity(KLine(0b110, [0b100, 0b010])) is False
 
     # ── is_canon (non-terminal, signature == signature_of(nodes)) ───────
-    def test_kl23_is_canon_genuine(self):
+    def test_is_canon_genuine(self):
         # sig 0b110 = OR(0b100, 0b010); neither node is the signature.
         assert is_canon(KLine(0b110, [0b100, 0b010]), signifier) is True
 
-    def test_kl24_is_canon_self_referential_is_not_canon(self):
+    def test_is_canon_self_referential_is_not_canon(self):
         assert is_canon(KLine(0xFF, [0xFF]), signifier) is False
 
-    def test_kl25_is_canon_empty_is_not_canon(self):
+    def test_is_canon_empty_is_not_canon(self):
         assert is_canon(KLine(0xFF, []), signifier) is False
 
-    def test_kl27_is_canon_compound_word_self_ref_is_not_canon(self):
+    def test_is_canon_compound_word_self_ref_is_not_canon(self):
         # A compound-word is a self-referential identity (a terminal), so it
         # is not a canon.
-        packed = 0b110
-        assert is_canon(KLine(packed, [packed]), signifier) is False
+        sig = 0b110
+        assert is_canon(KLine(sig, [sig]), signifier) is False
 
     def test_is_canon_mismatched_sig(self):
         assert is_canon(KLine(0b100, [0b110]), signifier) is False
 
     # ── is_misfit (non-terminal, signature != signature_of(nodes)) ──────
-    def test_kl28_is_misfit_genuine(self):
+    def test_is_misfit_genuine(self):
         assert is_misfit(KLine(0b110, [0b001, 0b010]), signifier) is True
 
-    def test_kl29_is_misfit_canon_is_false(self):
+    def test_is_misfit_canon_is_false(self):
         assert is_misfit(KLine(0b110, [0b100, 0b010]), signifier) is False
 
-    def test_kl30_is_misfit_empty_is_false(self):
+    def test_is_misfit_empty_is_false(self):
         assert is_misfit(KLine(0xFF, []), signifier) is False
 
-    def test_kl31_is_misfit_self_referential_is_false(self):
+    def test_is_misfit_self_referential_is_false(self):
         assert is_misfit(KLine(0xFF, [0xFF]), signifier) is False
 
-    def test_kl31a_is_misfit_single_node_connote_denote(self):
+    def test_is_misfit_single_node_connote_denote(self):
         # {A: [B]} — signature != signature_of([B]) → a connote/denote misfit.
         assert is_misfit(KLine(0b100, [0b010]), signifier) is True

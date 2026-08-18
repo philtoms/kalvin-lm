@@ -13,7 +13,7 @@ Two clusters live here:
      distance → byte), ``BandLayout`` (the four bands over the byte, with
      only ``S2_S3_BOUNDARY`` configurable), the band-representative
      sentinels (``SIG_S1..SIG_S4``), and ``band_significance`` (compile-time
-     structural relationship → band-representative byte, per @kvalue KP-1).
+     structural relationship → band-representative byte).
   2. **Compositional seams & aggregation** — the ``DecayFunction`` /
      ``ComposeFunction`` protocols with default implementations, and the
      ``Aggregator`` that bundles layout + the two seams and composes a
@@ -38,7 +38,7 @@ Module-level constants and types:
   BandLayout, distance_to_byte, Aggregator, DEFAULT_AGGREGATOR
 
 Producer significance:
-  band_significance — op → band-representative integer (KP-1)
+  band_significance — op → band-representative integer
   LEVEL_TO_SIG — map sig_level string to band-representative byte
 """
 
@@ -102,13 +102,13 @@ LEVEL_TO_SIG: dict[str, int] = {
     "S4": SIG_S4,
 }
 
-# Compile-time production op (@CONTEXT.md §Relational Tokens, §Target Significance)
-# → band-representative significance. Producers that assert a band rather than
-# compute a distance (the compiler) look up here. The
-# band is the Target Significance — the answer key a trainee must derive, not a
-# structural measurement. CONNOTES and DENOTES both map to SIG_S3; IDENTITY
-# (self-referential, word-bound or self-denote) maps to SIG_S1; UNKNOWN (empty,
-# orphan) maps to SIG_S4; unknown ops default to SIG_S4.
+# Compile-time production op → band-representative significance. Producers
+# that assert a band rather than compute a distance (the compiler) look up
+# here. The band is the Target Significance — the answer key a trainee must
+# derive, not a structural measurement. CONNOTES and DENOTES both map to
+# SIG_S3; IDENTITY (self-referential, word-bound or self-denote) maps to
+# SIG_S1; UNKNOWN (empty, orphan) maps to SIG_S4; unknown ops default to
+# SIG_S4.
 _OP_TO_SIG: dict[str, int] = {
     "COUNTERSIGNS": SIG_S1,
     "CANONIZES": SIG_S2,
@@ -122,12 +122,11 @@ _OP_TO_SIG: dict[str, int] = {
 def band_significance(op: str) -> int:
     """Compile-time production op → band-representative Target Significance.
 
-    Maps the closed set of production ops (@CONTEXT.md §Relational Tokens, plus
-    IDENTITY for self-referential emissions) to the maximal significance of each
-    band. The result is the **Target Significance** — the answer key a trainee
-    must learn to derive, not a structural measurement of any one kline
-    (@CONTEXT.md §Target Significance). Used by producers that assert a band
-    rather than compute a distance (the compiler).
+    Maps the closed set of production ops (plus IDENTITY for self-referential
+    emissions) to the maximal significance of each band. The result is the
+    **Target Significance** — the answer key a trainee must learn to derive,
+    not a structural measurement of any one kline. Used by producers that
+    assert a band rather than compute a distance (the compiler).
     Unknown ops default to ``SIG_S4``.
     """
     return _OP_TO_SIG.get(op, SIG_S4)

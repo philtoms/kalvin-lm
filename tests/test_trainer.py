@@ -1,7 +1,4 @@
 """Tests for the Trainer participant.
-
-Covers: HRNS-12, HRNS-13, HRNS-14, HRNS-16, HRNS-19, HRNS-20, HRNS-24,
-CRS-38..CRS-49.
 """
 
 from __future__ import annotations
@@ -54,10 +51,10 @@ def _make_event(
     proposal: KLine,
     significance: int = _S2_SIGNIFICANCE,
 ) -> RationaliseEvent:
-    """Create a RationaliseEvent with KValue query/proposal (KB-354 shape).
+    """Create a RationaliseEvent with KValue query/proposal ( shape).
 
     Both query and proposal are wrapped in KValues carrying ``significance``
-    (Kalvin's assessment for the proposal voice). For the two-voice KV-15
+    (Kalvin's assessment for the proposal voice). For the two-voice 
     case — where query and proposal carry *different* significances —
     construct the KValues directly.
     """
@@ -216,11 +213,11 @@ def _drain(trainer: Trainer) -> None:
     trainer.on_message(Message(role="adapter", action="drained", message=None))
 
 
-# ── HRNS-16: One session at a time ───────────────────────────────────
+# ── One session at a time ───────────────────────────────────
 
 
 class TestOneSessionAtATime:
-    """HRNS-16: Trainer accepts one session at a time; queues additional goals."""
+    """Trainer accepts one session at a time; queues additional goals."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_one_session_at_a_time(self, mock_compile: MagicMock) -> None:
@@ -257,12 +254,12 @@ class TestOneSessionAtATime:
         assert trainer._polling_for_goal is False
 
 
-# ── HRNS-19: Session pause ───────────────────────────────────────────
+# ── Session pause ───────────────────────────────────────────
 
 
 @requires_tokenizer_data
 class TestSessionPause:
-    """HRNS-19: Session pause stops submitting but stays active."""
+    """Session pause stops submitting but stays active."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_session_pause(self, mock_compile: MagicMock) -> None:
@@ -311,11 +308,11 @@ class TestSessionPause:
         assert len(submit_resume) == 1
 
 
-# ── HRNS-20: Session stop ────────────────────────────────────────────
+# ── Session stop ────────────────────────────────────────────
 
 
 class TestSessionStop:
-    """HRNS-20: Session stop ends session, persists state, goes dormant."""
+    """Session stop ends session, persists state, goes dormant."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_session_stop(self, mock_compile: MagicMock, tmp_path: Path) -> None:
@@ -352,12 +349,12 @@ class TestSessionStop:
         assert len(capture.messages) == 0
 
 
-# ── HRNS-24: Entry counting / lesson complete ─────────────────────────
+# ── Entry counting / lesson complete ─────────────────────────
 
 
 @requires_tokenizer_data
 class TestEntryCountingLessonComplete:
-    """HRNS-24: Trainer counts submitted entries; knows when lesson is complete."""
+    """Trainer counts submitted entries; knows when lesson is complete."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_entry_counting_lesson_complete(self, mock_compile: MagicMock) -> None:
@@ -681,15 +678,15 @@ class TestGuidanceTextAppended:
         assert "try using simpler constructs" in trainer._conversation_history
 
 
-# ── CRS-38..CRS-42: Session startup ──────────────────────────────────
+# ── Session startup ──────────────────────────────────
 
 
 class TestSessionStartup:
-    """CRS-38..CRS-42: Session startup resolution."""
+    """Session startup resolution."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_session_startup_from_file_param(self, mock_compile: MagicMock, tmp_path: Path) -> None:
-        """CRS-38: Session startup loads curriculum from runtime parameter."""
+        """Session startup loads curriculum from runtime parameter."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         curriculum_path = tmp_path / "test.md"
@@ -713,7 +710,7 @@ class TestSessionStartup:
     def test_session_startup_from_saved_state(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
-        """CRS-39: Session startup resumes from saved state with curriculum_file."""
+        """Session startup resumes from saved state with curriculum_file."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         # Write curriculum file
@@ -746,7 +743,7 @@ class TestSessionStartup:
 
     @patch("training.trainer.trainer.compile_source")
     def test_session_startup_polls_for_goal(self, mock_compile: MagicMock) -> None:
-        """CRS-40: Session startup polls for goal when no param and no saved state.
+        """Session startup polls for goal when no param and no saved state.
 
         When no curriculum file and no saved state exist, start_session()
         enters goal-polling mode instead of starting a session. The trainer
@@ -830,11 +827,11 @@ class TestSessionStartup:
 
 
 class TestGoalResolution:
-    """CRS-41..CRS-42: Goal resolution."""
+    """Goal resolution."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_goal_prefix_triggers_generation(self, mock_compile: MagicMock) -> None:
-        """CRS-41: Goal starting with 'goal:' triggers generation."""
+        """Goal starting with 'goal:' triggers generation."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         bus = MessageBus()
@@ -852,7 +849,7 @@ class TestGoalResolution:
 
     @patch("training.trainer.trainer.compile_source")
     def test_goal_file_path_triggers_load(self, mock_compile: MagicMock, tmp_path: Path) -> None:
-        """CRS-42: Goal that is a file path triggers direct loading."""
+        """Goal that is a file path triggers direct loading."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         curriculum_path = tmp_path / "test.md"
@@ -987,17 +984,17 @@ class TestPollingModeInputHandling:
         assert len(submit_msgs) >= 1
 
 
-# ── CRS-43..CRS-45: File polling and amendment ───────────────────────
+# ── File polling and amendment ───────────────────────
 
 
 class TestFilePolling:
-    """CRS-43..CRS-45: File polling and monotonic submitted set."""
+    """File polling and monotonic submitted set."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_trainer_rereads_file_before_lesson(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
-        """CRS-43: Trainer re-reads curriculum file before each lesson submission."""
+        """Trainer re-reads curriculum file before each lesson submission."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         curriculum_path = tmp_path / "test.md"
@@ -1019,7 +1016,7 @@ class TestFilePolling:
     def test_new_lessons_submitted_after_reread(
         self, mock_compile: MagicMock, tmp_path: Path
     ) -> None:
-        """CRS-44: New lessons after current label are submitted after re-read."""
+        """New lessons after current label are submitted after re-read."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         curriculum_path = tmp_path / "test.md"
@@ -1055,7 +1052,7 @@ class TestFilePolling:
 
     @patch("training.trainer.trainer.compile_source")
     def test_monotonic_set_prevents_duplicates(self, mock_compile: MagicMock) -> None:
-        """CRS-45: Monotonic submitted set prevents duplicate kline submissions."""
+        """Monotonic submitted set prevents duplicate kline submissions."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         bus = MessageBus()
@@ -1074,15 +1071,15 @@ class TestFilePolling:
         assert trainer.state.submitted == {key}
 
 
-# ── CRS-46..CRS-49: Progress events ──────────────────────────────────
+# ── Progress events ──────────────────────────────────
 
 
 class TestProgressEvents:
-    """CRS-46..CRS-49: Progress events."""
+    """Progress events."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_progress_event_session_start(self, mock_compile: MagicMock) -> None:
-        """CRS-46: Progress event emitted on session start."""
+        """Progress event emitted on session start."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         bus = MessageBus()
@@ -1100,7 +1097,7 @@ class TestProgressEvents:
     @patch("training.trainer.trainer.compile_source")
     @requires_tokenizer_data
     def test_progress_event_lesson_complete(self, mock_compile: MagicMock) -> None:
-        """CRS-47: Progress event emitted on lesson complete."""
+        """Progress event emitted on lesson complete."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         bus = MessageBus()
@@ -1127,7 +1124,7 @@ class TestProgressEvents:
     @patch("training.trainer.trainer.compile_source")
     @requires_tokenizer_data
     def test_progress_event_curriculum_complete(self, mock_compile: MagicMock) -> None:
-        """CRS-48: Progress event emitted on curriculum complete."""
+        """Progress event emitted on curriculum complete."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         bus = MessageBus()
@@ -1156,7 +1153,7 @@ class TestProgressEvents:
 
     @patch("training.trainer.trainer.compile_source")
     def test_progress_event_amendment(self, mock_compile: MagicMock, tmp_path: Path) -> None:
-        """CRS-49: Progress event emitted on amendment applied."""
+        """Progress event emitted on amendment applied."""
         mock_compile.return_value = [_make_entry(100, [10])]
 
         curriculum_path = tmp_path / "test.md"
@@ -1733,12 +1730,12 @@ _resolve_goal dispatches to _generate_and_start or _load_and_start."""
         assert goal_events[0]["data"]["goal"] == "teach Kalvin about SVO"
 
 
-# ── HRNS-33: Event relay and ratify request ──────────────────────────
+# ── Event relay and ratify request ──────────────────────────
 
 
 @requires_tokenizer_data
 class TestEventRelay:
-    """HRNS-33: Trainer relays events to supervisor, sends ratify_request for S2/S3."""
+    """Trainer relays events to supervisor, sends ratify_request for S2/S3."""
 
     @patch("training.trainer.trainer.compile_source")
     def test_relay_ground_event_to_supervisor(self, mock_compile: MagicMock) -> None:
@@ -1879,7 +1876,7 @@ class TestEventRelay:
         assert len(ratify_msgs) == 0
 
 
-# ── HRNS-31: Trainer progress/escalation to all supervisor subscribers ──
+# ── Trainer progress/escalation to all supervisor subscribers ──
 
 
 class TestTrainerProgressToAllSupervisors:
@@ -2038,9 +2035,9 @@ class TestComputeMisfit:
         }
 
     def test_misfit_uses_proposal_kline(self) -> None:
-        """Misfit is always computed on event.proposal.kline (candidate is gone, KE-4).
+        """Misfit is always computed on event.proposal.kline (candidate is gone, ).
 
-        ``event.candidate`` was removed in KB-354 (D5); ``_compute_misfit``
+        ``event.candidate`` was removed in  (D5); ``_compute_misfit``
         now operates solely on the proposal kline. Give the query and proposal
         DIFFERENT klines and confirm the misfit follows the proposal, not the
         query.
@@ -2059,11 +2056,11 @@ class TestComputeMisfit:
         assert result["underfit_gap"] == t(0xFE)
 
 
-# ── KV-15: consumers read Kalvin's assessment (proposal.significance) ──
+# ── consumers read Kalvin's assessment (proposal.significance) ──
 
 
 class TestKV15ConsumesProposalSignificance:
-    """KV-15: trainer consumers read ``event.proposal.significance`` (Kalvin's
+    """trainer consumers read ``event.proposal.significance`` (Kalvin's
     assessment), never ``event.query.significance`` (the sender's declared).
 
     These tests deliberately give the query and proposal KValues DIFFERENT
@@ -2116,14 +2113,14 @@ class TestKV15ConsumesProposalSignificance:
 
 
 class TestDecisionRequest:
-    """SD-1: the Trainer escalates every proposal it cannot auto-ratify as an
+    """the Trainer escalates every proposal it cannot auto-ratify as an
     enriched ``ratify_request``. Enrichment (``misfit``, ``curriculum_context``)
     is unconditional — every decider receives the same context."""
 
     @patch("training.trainer.trainer.compile_source")
     @requires_tokenizer_data
     def test_enriched_ratify_request(self, mock_compile: MagicMock, tmp_path: Path) -> None:
-        """SD-1: a non-auto-matching proposal emits an enriched ratify_request.
+        """a non-auto-matching proposal emits an enriched ratify_request.
 
         The payload carries the base ``proposal``/``query``/``significance``
         PLUS ``misfit`` and ``curriculum_context`` derived from a
@@ -2183,11 +2180,11 @@ class TestDecisionRequest:
         }
 
 
-# ── Lesson boundary (SD-8a/8b) ───────────────────────────────────────
+# ── Lesson boundary ───────────────────────────────────────
 
 
 class TestLessonBoundaryDrainWindow:
-    """SD-8a/8b: during the inter-lesson drain window, `drained` is never
+    """/8b: during the inter-lesson drain window, `drained` is never
     held and post-completion proposals do not arm the gate.
 
     Reproduces the held-`drained` deadlock: without the fix, a residual S2
@@ -2200,7 +2197,7 @@ class TestLessonBoundaryDrainWindow:
     def test_post_completion_proposal_dropped_during_drain_window(
         self, mock_compile: MagicMock
     ) -> None:
-        """SD-8b: a residual S2 proposal arriving while `_drain_pending` is
+        """a residual S2 proposal arriving while `_drain_pending` is
         True (after a lesson is satisfied) is dropped — no ratify_request,
         gate not armed."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -2246,7 +2243,7 @@ class TestLessonBoundaryDrainWindow:
     def test_drained_bypasses_hold_and_advances_lesson(
         self, mock_compile: MagicMock
     ) -> None:
-        """SD-8a: `drained` is never held. Even with a pending decision armed
+        """`drained` is never held. Even with a pending decision armed
         before the drain window, `drained` is processed immediately and the
         next lesson is submitted (here: L2's compile runs)."""
         mock_compile.return_value = [_make_entry(100, [10])]
@@ -2288,7 +2285,7 @@ class TestLessonBoundaryDrainWindow:
     def test_session_start_drain_does_not_drop_proposals(
         self, mock_compile: MagicMock
     ) -> None:
-        """SD-8b guard clause: at session start `_drain_pending` is True but
+        """ guard clause: at session start `_drain_pending` is True but
         no lesson is satisfied yet, so proposals arm the gate normally
         (they belong to the upcoming L1)."""
         mock_compile.return_value = [_make_entry(100, [10])]

@@ -1,10 +1,10 @@
 """Tests for BindingScope — word binding resolution scope stack.
 
-Covers acceptance criteria KS-23 through KS-31 plus edge cases:
+Covers acceptance criteria  plus edge cases:
 case-insensitive matching, counter exceeded, multiple word lists,
 empty word lists, and error conditions.
 
-Spec reference: §10 (Word Binding Resolution), §10.1 (Rules B1–B4), §10.3 (BindingScope API).
+Spec reference: (Word Binding Resolution), (Rules B1–B4), (BindingScope API).
 """
 
 import pytest
@@ -12,12 +12,12 @@ import pytest
 from ks.binding_scope import BindingScope
 
 # ---------------------------------------------------------------------------
-# KS-23: First-letter matching
+# First-letter matching
 # ---------------------------------------------------------------------------
 
 
 class TestFirstLetterMatching:
-    """KS-23: Words are matched by their first letter (case-insensitive)."""
+    """Words are matched by their first letter (case-insensitive)."""
 
     def test_mary(self):
         bs = BindingScope()
@@ -45,12 +45,12 @@ class TestFirstLetterMatching:
 
 
 # ---------------------------------------------------------------------------
-# KS-24: Occurrence counter disambiguation
+# Occurrence counter disambiguation
 # ---------------------------------------------------------------------------
 
 
 class TestOccurrenceCounter:
-    """KS-24: Ambiguous matches (multiple L-words) use occurrence counter."""
+    """Ambiguous matches (multiple L-words) use occurrence counter."""
 
     def test_first_l_returns_little(self):
         bs = BindingScope()
@@ -77,12 +77,12 @@ class TestOccurrenceCounter:
 
 
 # ---------------------------------------------------------------------------
-# KS-25: Unambiguous match does NOT increment counter (inline bypass property)
+# Unambiguous match does NOT increment counter (inline bypass property)
 # ---------------------------------------------------------------------------
 
 
 class TestInlineBypassProperty:
-    """KS-25: Unambiguous match bypasses counter — same word returned repeatedly."""
+    """Unambiguous match bypasses counter — same word returned repeatedly."""
 
     def test_single_match_returns_same_word_repeatedly(self):
         bs = BindingScope()
@@ -102,12 +102,12 @@ class TestInlineBypassProperty:
 
 
 # ---------------------------------------------------------------------------
-# KS-27: Scope inheritance (inner scope falls through to outer)
+# Scope inheritance (inner scope falls through to outer)
 # ---------------------------------------------------------------------------
 
 
 class TestScopeInheritance:
-    """KS-27: Inner scope without a binding inherits from outer scope."""
+    """Inner scope without a binding inherits from outer scope."""
 
     def test_inner_finds_outer_word(self):
         bs = BindingScope()
@@ -119,12 +119,12 @@ class TestScopeInheritance:
 
 
 # ---------------------------------------------------------------------------
-# KS-28: Scope shadowing
+# Scope shadowing
 # ---------------------------------------------------------------------------
 
 
 class TestScopeShadowing:
-    """KS-28: Inner scope binding shadows outer scope for same character."""
+    """Inner scope binding shadows outer scope for same character."""
 
     def test_inner_shadows_outer(self):
         bs = BindingScope()
@@ -146,12 +146,12 @@ class TestScopeShadowing:
 
 
 # ---------------------------------------------------------------------------
-# KS-29: Counter reset on new scope
+# Counter reset on new scope
 # ---------------------------------------------------------------------------
 
 
 class TestCounterReset:
-    """KS-29: Each new scope has independent counters."""
+    """Each new scope has independent counters."""
 
     def test_new_scope_independent_counter(self):
         bs = BindingScope()
@@ -182,12 +182,12 @@ class TestCounterReset:
 
 
 # ---------------------------------------------------------------------------
-# KS-30: Unbound returns None
+# Unbound returns None
 # ---------------------------------------------------------------------------
 
 
 class TestUnboundReturnsNone:
-    """KS-30: Resolving an unbound character returns None."""
+    """Resolving an unbound character returns None."""
 
     def test_no_match(self):
         bs = BindingScope()
@@ -206,12 +206,12 @@ class TestUnboundReturnsNone:
 
 
 # ---------------------------------------------------------------------------
-# KS-31: Inert annotation (no matching chars → no side effects)
+# Inert annotation (no matching chars → no side effects)
 # ---------------------------------------------------------------------------
 
 
 class TestInertAnnotation:
-    """KS-31: No matching characters causes no side effects on counters."""
+    """No matching characters causes no side effects on counters."""
 
     def test_no_match_no_counter_side_effect(self):
         bs = BindingScope()
@@ -269,15 +269,17 @@ class TestCaseInsensitive:
 
 
 class TestCounterExceeded:
-    """When counter exceeds available matches, returns None."""
+    """When counter exceeds available matches, falls to the resolved-binding
+    memory (the last resolved word for that char)."""
 
-    def test_third_resolve_returns_none(self):
+    def test_third_resolve_returns_resolved_binding(self):
         bs = BindingScope()
         bs.push_scope()
         bs.add_words(["Alice", "Alpha"])
         assert bs.resolve("A") == "Alice"
         assert bs.resolve("A") == "Alpha"
-        assert bs.resolve("A") is None
+        # Counter exceeded — resolved-binding tier supplies the last word
+        assert bs.resolve("A") == "Alpha"
 
     def test_counter_exceeded_falls_to_next_word_list(self):
         """If counter exceeded in one word list, continues to the next."""
@@ -286,14 +288,14 @@ class TestCounterExceeded:
         bs.add_words(["Alice", "Alpha"])
         assert bs.resolve("A") == "Alice"
         assert bs.resolve("A") == "Alpha"
-        # Counter at 2, exceeded for first list — but no second list yet
-        assert bs.resolve("A") is None
+        # Counter at 2, exceeded for the only list — resolved binding (last word)
+        assert bs.resolve("A") == "Alpha"
 
     def test_counter_exceeded_no_fallthrough_same_scope(self):
         """Counter is per-scope (shared across word lists).
 
         Once exhausted in newer list, older list in same scope also sees
-        the advanced counter and is skipped.
+        the advanced counter and is skipped — the resolved binding stands.
         """
         bs = BindingScope()
         bs.push_scope()
@@ -301,8 +303,8 @@ class TestCounterExceeded:
         bs.add_words(["Alice", "Alpha"])  # newer list (searched first)
         assert bs.resolve("A") == "Alice"
         assert bs.resolve("A") == "Alpha"
-        # Counter at 2, shared — OldAardvark also skipped (counter >= 1)
-        assert bs.resolve("A") is None
+        # Counter at 2, shared — OldAardvark also skipped; resolved binding
+        assert bs.resolve("A") == "Alpha"
 
     def test_counter_exceeded_falls_through_to_different_scope(self):
         """Counter exceeded in inner scope falls to outer scope."""
@@ -442,3 +444,61 @@ class TestEdgeCases:
         bs.pop_scope()
         # Back to outer scope
         assert bs.resolve("A") == "Alpha"
+
+
+# ---------------------------------------------------------------------------
+# Binding precedence tiers
+# ---------------------------------------------------------------------------
+
+
+class TestBindingTiers:
+    """Uppercase letters bind to the nearest annotation, else a resolved
+    binding. Inline annotations additionally bind the parent scope."""
+
+    def test_inline_override_binds_immediate_parent_only(self):
+        bs = BindingScope()
+        bs.push_scope()  # root
+        bs.push_scope()  # parent
+        bs.push_scope()  # inner
+        bs.bind_override("O", "Object")
+        bs.pop_scope()
+        # Bound in the immediate parent — not in root
+        assert bs.resolve("O") == "Object"
+        bs.pop_scope()
+        assert bs.resolve("O") is None
+
+    def test_inline_override_binds_parent_scope(self):
+        bs = BindingScope()
+        bs.push_scope()
+        bs.add_words(["Mary", "had"])
+        bs.push_scope()
+        bs.bind_override("O", "Object")
+        bs.pop_scope()
+        # Survives the subscript popping — bound in the immediate parent
+        assert bs.resolve("O") == "Object"
+
+    def test_inline_override_lowercase_stays_in_scope(self):
+        bs = BindingScope()
+        bs.push_scope()
+        bs.push_scope()
+        bs.bind_override("o", "object")
+        bs.pop_scope()
+        # Lowercase chars do not propagate to the parent scope
+        assert bs.resolve("o") is None
+
+    def test_resolved_binding_after_all_annotations(self):
+        bs = BindingScope()
+        bs.push_scope()
+        bs.add_words(["Object"])
+        assert bs.resolve("O") == "Object"
+        # No annotation binds O anywhere — resolved binding still applies
+        assert bs.resolved_bindings["o"] == "Object"
+        assert bs.resolve("O") == "Object"
+
+    def test_word_list_beats_resolved_binding(self):
+        bs = BindingScope()
+        bs.push_scope()
+        bs.add_words(["Ox"])
+        assert bs.resolve("O") == "Ox"
+        bs.push_scope()  # clears counters, no words
+        assert bs.resolve("O") == "Ox"  # word list first

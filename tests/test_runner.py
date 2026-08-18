@@ -199,11 +199,11 @@ def test_role_mismatch_is_immediate_divergence():
     assert res.unmatched[0].role == "K"
 
 
-# ── DDT-9: divergence policy ──────────────────────────────────────────────
+# ── divergence policy ──────────────────────────────────────────────
 
 
 def test_divergence_fail_raises_on_caller_thread():
-    """DDT-9: on_divergence='fail' raises Divergence on the caller's thread
+    """on_divergence='fail' raises Divergence on the caller's thread
     (captured from the bus dispatch thread and re-raised by run())."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))
     runner = run(
@@ -271,7 +271,7 @@ def test_over_budget_emission_is_exhaustion_divergence():
 
 def test_exhaustion_divergence_recorded_and_continues_under_accept():
     """Under ``accept``, an over-budget emission is recorded and the run
-    continues past it (DDT-4). The budget is consumed by the first matching
+    continues past it. The budget is consumed by the first matching
     copy; every further copy in the burst is an ``exhausted`` divergence,
     each recorded in ``unmatched`` — the run does not stop at the first."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2), ("K", 2, 2)], ("T", 9, 9))
@@ -291,7 +291,7 @@ def test_exhaustion_divergence_recorded_and_continues_under_accept():
 
 def test_unmatched_divergence_recorded_and_continues_under_accept():
     """Under ``accept``, an unmatched (off-table) emission is recorded and the
-    run continues past it (DDT-4). A second off-table emission in the same
+    run continues past it. A second off-table emission in the same
     burst is also recorded — ``on_divergence`` governs raise-vs-record, and
     under ``accept`` the run keeps going to the close."""
     decoded = _decoded(("T", 1, 1), [("K", 2, 2)], ("T", 9, 9))

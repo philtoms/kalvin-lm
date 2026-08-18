@@ -1,4 +1,4 @@
-"""Tests for the cogitation module — HRNS-13, HRNS-14 and unit coverage."""
+"""Tests for the cogitation module and unit coverage."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from training.supervisors.llm_supervisor import (
 
 
 def _make_event(significance: int = 2) -> RationaliseEvent:
-    """Create a minimal RationaliseEvent with KValue query/proposal (KB-354).
+    """Create a minimal RationaliseEvent with KValue query/proposal.
 
     Both query and proposal are wrapped in KValues carrying ``significance``
     (the proposal voice feeds ``build_prompt``'s band classification).
@@ -461,11 +461,11 @@ class TestCogitator:
         assert mock_client.last_tools[0]["function"]["name"] == "submit_scaffolding"
 
 
-# ── HRNS-13 and HRNS-14 tests ────────────────────────────────────────
+# ──  and  tests ────────────────────────────────────────
 
 
 class TestHRNS13ReactiveModeOnS2S3:
-    """HRNS-13: Trainer enters reactive mode on S2/S3 events.
+    """Trainer enters reactive mode on S2/S3 events.
 
     This test verifies the reactive mode code path works end-to-end:
     given S2/S3 events and misfit info, the Cogitator produces valid
@@ -508,7 +508,7 @@ class TestHRNS13ReactiveModeOnS2S3:
 
 
 class TestHRNS14EscalationOnBudgetExhaustion:
-    """HRNS-14: Trainer escalates to Slack on budget exhaustion.
+    """Trainer escalates to Slack on budget exhaustion.
 
     Tests that should_escalate returns True when budget is exhausted
     or when the cogitation result has low confidence.
@@ -554,14 +554,14 @@ class TestHRNS14EscalationOnBudgetExhaustion:
         assert Cogitator.should_escalate(result) is True
 
 
-# ── CRS-50..CRS-52: Structured context fields ────────────────────────
+# ── Structured context fields ────────────────────────
 
 
 class TestStructuredContextFields:
-    """CRS-50..CRS-52: CogitationRequest structured context fields."""
+    """CogitationRequest structured context fields."""
 
     def test_cogitation_request_new_fields(self) -> None:
-        """CRS-50: CogitationRequest accepts objective, approach, and lesson_prose."""
+        """CogitationRequest accepts objective, approach, and lesson_prose."""
         req = CogitationRequest(
             events=[_make_event()],
             misfits=[_make_misfit()],
@@ -577,7 +577,7 @@ class TestStructuredContextFields:
         assert req.lesson_prose == "This lesson introduces the subject."
 
     def test_build_prompt_prefers_new_fields(self) -> None:
-        """CRS-51: build_prompt prefers objective + approach + lesson_prose."""
+        """build_prompt prefers objective + approach + lesson_prose."""
         req = _make_request(
             objective="Teach SVO structure",
             approach="Step by step",
@@ -604,7 +604,7 @@ class TestStructuredContextFields:
         assert "legacy context that should not appear" not in structured_content
 
     def test_build_prompt_falls_back_to_context(self) -> None:
-        """CRS-52: build_prompt falls back to curriculum_context when new fields empty."""
+        """build_prompt falls back to curriculum_context when new fields empty."""
         req = _make_request(
             curriculum_context="Lesson 5: canonize",
             objective="",

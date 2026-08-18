@@ -29,7 +29,7 @@ class TestClassifyMisfit:
 
         signature_of([S]) == S, so neither residual direction is non-zero.
         classify_misfit does not distinguish identity from canon — see
-        is_identity (KL-21) / is_canon (KL-24).
+        is_identity / is_canon.
         """
         k = KLine(t(10), [t(10)])  # make_sig([t(10)]) = t(10)
         assert classify_misfit(k, signifier) == (False, False)
@@ -38,7 +38,7 @@ class TestClassifyMisfit:
         """Genuine canon {S: [A, B]} with S == A|B → (False, False).
 
         nodes_sig = signature_of([A, B]) == S, so neither residual is
-        non-zero. See is_canon (KL-23).
+        non-zero. See is_canon.
         """
         k = KLine(t(0b110), [t(0b100), t(0b010)])
         assert classify_misfit(k, signifier) == (False, False)
@@ -77,7 +77,7 @@ class TestClassifyMisfit:
         """Same type word, differing BPE ids → (False, False).
 
         Masking excludes BPE-token-id residuals: two values differing only
-        in the low 32 bits have a zero type-word residual. (SIG-23.)
+        in the low 32 bits have a zero type-word residual.
         """
         # type word 0b100 in both; BPE ids 5 and 9 differ.
         k = KLine(t(0b100) | 5, [t(0b100) | 9])
@@ -85,25 +85,25 @@ class TestClassifyMisfit:
 
 
 class TestClassifyMisfitConformance:
-    """classify_misfit raw-signature conformance (SIG-20..22).
+    """classify_misfit raw-signature conformance.
 
     These mirror the former signifier-level conformance cases, now expressed
     through the structural :func:`kalvin.kline.classify_misfit` function.
-    SIG-23 is covered by TestClassifyMisfit.test_bpe_id_difference_ignored.
+     is covered by TestClassifyMisfit.test_bpe_id_difference_ignored.
     """
 
-    def test_sig20_signature_over_claims(self):
-        """SIG-20: signature over-claims → (True, False)."""
+    def test_signature_over_claims(self):
+        """signature over-claims → (True, False)."""
         k = KLine(t(0b110), [t(0b010)])
         assert classify_misfit(k, signifier) == (True, False)
 
-    def test_sig21_nodes_over_deliver(self):
-        """SIG-21: nodes over-deliver → (False, True)."""
+    def test_nodes_over_deliver(self):
+        """nodes over-deliver → (False, True)."""
         k = KLine(t(0b010), [t(0b110)])
         assert classify_misfit(k, signifier) == (False, True)
 
-    def test_sig22_faithful_coverage(self):
-        """SIG-22: faithful coverage → (False, False)."""
+    def test_faithful_coverage(self):
+        """faithful coverage → (False, False)."""
         k = KLine(t(0b110), [t(0b110)])
         assert classify_misfit(k, signifier) == (False, False)
 

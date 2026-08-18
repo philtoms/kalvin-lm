@@ -5,6 +5,9 @@ A Kline is an identified, ordered sequence of zero or more nodes.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeAlias
 
@@ -20,6 +23,51 @@ KNodes: TypeAlias = int | None | list[int]
 
 # Type alias for Signatures (uint64)
 KSig: TypeAlias = int
+
+
+# === Decode resolver context ===
+#
+# A session-scoped resolver maps a node value to the KLine that heads it
+# (a model's ``resolve``, an encoder's index, etc.). When one is active,
+# the KLine constructor populates ``KDbg.decoded`` on freshly minted klines
+# via :func:`kline_decode` — so runtime-emitted klines become debuggable
+# without each emission site wiring it explicitly. Probe klines (membership
+# checks, codec deserialisation) run outside any resolver context and pay
+# only a contextvar peek, never the per-node resolve.
+
+KResolver: TypeAlias = Callable[[int], "KLine | None"]
+_resolver: contextvars.ContextVar[KResolver | None] = contextvars.ContextVar(
+    "kalvin.kline.resolver", default=None
+)
+
+
+@contextlib.contextmanager
+def using_resolver(resolver: KResolver) -> Iterator[None]:
+    """Install *resolver* as the active decode resolver for the current context.
+
+    KLines constructed inside the block populate ``KDbg.decoded`` from the
+    resolver; on exit the previous resolver (or none) is restored. Use as a
+    context manager around emission / compilation scopes.
+    """
+    token = _resolver.set(resolver)
+    try:
+        yield
+    finally:
+        _resolver.reset(token)
+
+
+@contextlib.contextmanager
+def _resolver_reset() -> Iterator[None]:
+    """Temporarily clear the active resolver.
+
+    Used inside :func:`kline_decode` so that klines the resolver itself
+    constructs (e.g. a compiler index lookup) do not re-enter ``kline_decode``.
+    """
+    token = _resolver.set(None)
+    try:
+        yield
+    finally:
+        _resolver.reset(token)
 
 
 @dataclass
@@ -43,6 +91,8 @@ class KDbg:
     label: str = ""
     decoded: str = ""
     type_info: str = ""
+    annotation: str = ""
+    scope: int = 0
 
     def __bool__(self) -> bool:
         """Truthy when any field is non-empty."""
@@ -51,6 +101,8 @@ class KDbg:
             or self.label
             or self.decoded
             or self.type_info
+            or self.annotation
+            or self.scope
         )
 
     def __repr__(self) -> str:
@@ -85,7 +137,21 @@ class KLine:
     ):
         self.signature = signature
         self.nodes = _normalize_nodes(nodes)
-        self.dbg = dbg
+        resolver = _resolver.get()
+        if resolver is None:
+            self.dbg = dbg
+            return
+        # A resolver is active: populate ``decoded`` on this kline. A passed
+        # ``dbg`` may be shared with another kline (emission sites forward
+        # ``kline.dbg``), so copy it before mutating to avoid aliasing.
+        if dbg is None:
+            self.dbg = KDbg()
+        else:
+            self.dbg = KDbg(
+                op=dbg.op, label=dbg.label, decoded=dbg.decoded,
+                type_info=dbg.type_info, annotation=dbg.annotation, scope=dbg.scope,
+            )
+        self.dbg.decoded = kline_decode(self, resolver)
 
     # Equality, hashing
 
@@ -127,13 +193,12 @@ def is_terminal(kline: KLine) -> bool:
 
     A terminal carries no further decomposition. Two shapes are terminal:
       - empty nodes: ``{S: []}`` (an Unknown), or
-      - self-referential: ``{S: [S]}`` (an Identity; this includes §11.3
+      - self-referential: ``{S: [S]}`` (an Identity; this includes
         compound-words, which are self-referential identities whose
         signature is the OR-reduction of their subword tokens).
 
     Terminal is the genus of :func:`is_unknown` and :func:`is_identity`;
-    the canon/misfit distinction applies only to non-terminals
-    (@CONTEXT.md §Terminal).
+    the canon/misfit distinction applies only to non-terminals.
     """
     if not kline.nodes:
         return True
@@ -144,7 +209,7 @@ def is_unknown(kline: KLine) -> bool:
     """Test whether a kline is an Unknown — the empty form ``{S: []}``.
 
     An Unknown claims S4: nothing held for this signature, the structural
-    form of an ask (@CONTEXT.md §Unknown).
+    form of an ask.
     """
     return not kline.nodes
 
@@ -155,13 +220,12 @@ def is_identity(kline: KLine) -> bool:
     An Identity is a terminal that translates to a known value in the
     outside world — directly decodable. The sole structural shape is the
     self-referential form ``{S: [S]}``: a value that decodes into itself.
-    A §11.3 compound-word is an identity by this same rule — its signature
-    is the OR-reduction of its subword tokens, so it is a self-ref with no
+    A compound-word is an identity by this same rule — its signature is
+    the OR-reduction of its subword tokens, so it is a self-ref with no
     marker.
 
     The empty form ``{S: []}`` is an :func:`is_unknown`, not an Identity.
-    Identity overrules any canon classification (see :func:`is_canon` and
-    @CONTEXT.md §Identity).
+    Identity overrules any canon classification (see :func:`is_canon`).
     """
     if not kline.nodes:
         return False
@@ -172,19 +236,34 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a canon.
 
     A kline is a canon when it is a non-terminal whose signature equals
-    ``signature_of(nodes)`` (@CONTEXT.md §Canon). A terminal is never a canon.
+    ``signature_of(nodes)``. A terminal is never a canon.
     """
     return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
+
+def is_relationship(kline: KLine) -> bool:
+    """Test whether a kline is a relationship.
+
+    A relationship is the connote/denote structural shape: a non-terminal
+    misfit with exactly one node (``{A: [B]}``, ``A != B``). The signature
+    associates with a single other value. Distinct from a multi-node misfit
+    (no-fit/underfit/overfit) and from terminals and canons.
+    """
+    return (
+        not is_terminal(kline)
+        and len(kline.nodes) == 1
+        and kline.signature != kline.nodes[0]
+    )
+
 
 def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
 
     A kline is a misfit when it is a non-terminal whose signature does not
-    equal ``signature_of(nodes)`` (@CONTEXT.md §Misfit). This includes the
-    single-node connote/denote shape ``{A: [B]}``; multi-node and
-    single-node misfits differ in the band they claim (S2 vs S3), not in
-    whether they are misfits. Callers that route only multi-node misfits
-    (the S2 expansion path) gate on node count themselves.
+    equal ``signature_of(nodes)``. This includes the single-node connote/denote
+    shape ``{A: [B]}``; multi-node and single-node misfits differ in the band
+    they claim (S2 vs S3), not in whether they are misfits. Callers that route
+    only multi-node misfits (the S2 expansion path) gate on node count
+    themselves.
     """
     return not is_terminal(kline) and not is_canon(kline, signifier)
 
@@ -212,7 +291,7 @@ def classify_misfit(
     overfit = signifier.residual(nodes_sig, kline.signature) != 0
     return underfit, overfit
 
-# Display helper
+# Display helpers
 
 _OP_SYMBOLS = {
     "COUNTERSIGNS": "==",
@@ -283,6 +362,57 @@ def _decode_token(tokenizer: object, token: int) -> str:
     except Exception:
         pass
     return f"<{token:#x}>"
+
+
+def _node_label(node: int, resolver: KResolver) -> str:
+    """Resolve a node value to a readable label via *resolver*, falling back to hex.
+
+    *resolver* maps a node value to the KLine that heads it (e.g. a model's
+    ``resolve``); the kline's ``dbg.label``/``dbg.annotation`` supply the name.
+    No tokenizer decoding — hex is the only fallback.
+    """
+    kl = resolver(node)
+    if kl is not None and kl.dbg:
+        if kl.dbg.label:
+            return kl.dbg.label
+        if kl.dbg.annotation:
+            return kl.dbg.annotation
+    return f"<{node:#x}>"
+
+
+def kline_decode(
+    kline: KLine,
+    resolver: KResolver,
+) -> str:
+    """Format a KLine as a readable ``sig:[node, ...]`` provenance string.
+
+    Uses ``dbg`` provenance (label/annotation) for the signature and resolves
+    each node through *resolver* to read its heading kline's ``dbg``. Falls
+    back to hex when no label is available — no tokenizer decoding. Used by
+    the compiler and the dialogue subsystem (via the constructor's resolver
+    context) to populate ``KDbg.decoded``.
+
+    Runs with the contextvar resolver cleared, so any ``KLine`` the resolver
+    itself constructs (e.g. a compiler index lookup) does not re-enter
+    ``kline_decode``.
+
+    Args:
+        kline: The KLine to decode.
+        resolver: Maps a node value to the KLine that heads it (a model's
+            ``resolve``, or an equivalent index), or ``None`` when unknown.
+
+    Returns:
+        ``"sig:[n0, n1, ...]"``; empty nodes → ``"sig:[]"``.
+    """
+    if kline.dbg and kline.dbg.label:
+        sig_name = kline.dbg.label
+    elif kline.dbg and kline.dbg.annotation:
+        sig_name = kline.dbg.annotation
+    else:
+        sig_name = f"<{kline.signature:#x}>"
+    with _resolver_reset():
+        nodes = ", ".join(_node_label(n, resolver) for n in kline.nodes)
+    return f"{sig_name}:[{nodes}]"
 
 
 def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:

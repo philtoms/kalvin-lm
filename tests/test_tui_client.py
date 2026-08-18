@@ -9,11 +9,11 @@ Test mapping:
   - RatifyBar: button state management
   - InputBar: Submitted message, clear method
   - TUIApp: countersign integration, event polling
-  - HRNS-25: test_renders_received_events — EventLog renders all incoming harness frames
-  - HRNS-25a: test_input_uses_command_parser_start — InputBar dispatches via shared command parser
-  - HRNS-26: test_sends_freeform_input_to_trainer — InputBar dispatches freeform input to trainer
-  - HRNS-27: test_sends_countersign_on_ratify — RatifyBar sends countersign to trainee (ctrl+r)
-  - HRNS-28: test_input_bar_clears_after_send — InputBar clears text field after submission
+  - : test_renders_received_events — EventLog renders all incoming harness frames
+  - : test_input_uses_command_parser_start — InputBar dispatches via shared command parser
+  - : test_sends_freeform_input_to_trainer — InputBar dispatches freeform input to trainer
+  - : test_sends_countersign_on_ratify — RatifyBar sends countersign to trainee (ctrl+r)
+  - : test_input_bar_clears_after_send — InputBar clears text field after submission
 """
 
 from __future__ import annotations
@@ -435,12 +435,12 @@ async def test_tuiapp_ctrl_s_sends_input():
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# HRNS-25..28 TUI Participant capability tests
+# 28 TUI Participant capability tests
 # ═══════════════════════════════════════════════════════════════════════
 
 
 async def test_renders_received_events():
-    """HRNS-25: EventLog renders all received harness events in order.
+    """EventLog renders all received harness events in order.
 
     The server sends multiple frames of different action types (event,
     notify, proposal). All frames must appear in EventLog.events with
@@ -484,7 +484,7 @@ async def test_renders_received_events():
 
 
 async def test_sends_freeform_input_to_trainer():
-    """HRNS-26: InputBar dispatches freeform human input to the Trainer.
+    """InputBar dispatches freeform human input to the Trainer.
 
     Simulates typing text and pressing Enter in the InputBar.
     Verifies the stub server receives
@@ -511,7 +511,7 @@ async def test_sends_freeform_input_to_trainer():
 
 
 async def test_sends_supervisor_decision_on_ratify():
-    """HRNS-27: RatifyBar routes a ratify decision to the trainer on ctrl+r.
+    """RatifyBar routes a ratify decision to the trainer on ctrl+r.
 
     Enables ratify with event data, then presses ctrl+r to trigger
     the ratify keyboard shortcut. Verifies the stub server receives
@@ -545,7 +545,7 @@ async def test_sends_supervisor_decision_on_ratify():
 
 
 async def test_input_bar_clears_after_send():
-    """HRNS-28: InputBar clears its text field after submission.
+    """InputBar clears its text field after submission.
 
     Types text into the InputBar, triggers submission, and verifies
     the InputBar's text value is empty after the send completes.
@@ -573,12 +573,12 @@ async def test_input_bar_clears_after_send():
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# HRNS-25a: Command parser integration tests
+# Command parser integration tests
 # ═══════════════════════════════════════════════════════════════════════
 
 
 async def test_input_uses_command_parser_start():
-    """HRNS-25a: typing "start" in InputBar sends to trainer via command parser.
+    """typing "start" in InputBar sends to trainer via command parser.
 
     The StartCommand from the shared parser routes to trainer with
     action "input" and the original text as message.
@@ -604,11 +604,11 @@ async def test_input_uses_command_parser_start():
 
 
 async def test_input_uses_command_parser_ratify():
-    """HRNS-25a: typing "ratify" in InputBar routes a decision to the trainer.
+    """typing "ratify" in InputBar routes a decision to the trainer.
 
     Requires a pending _latest_ratify_proposal (canonical KLine wire dict) on
     the TUIApp. The RatifyCommand from the shared parser routes a
-    supervisor_decision to the trainer (SD-9).
+    supervisor_decision to the trainer.
     """
     async with StubHarness() as stub:
         app = TUIApp(harness_url=stub.url)

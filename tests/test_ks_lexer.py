@@ -1,11 +1,11 @@
 """Comprehensive tests for the KScript v3 lexer.
 
 Covers all acceptance criteria:
-- KS-1: All token types recognized
-- KS-2: Multi-char operator priority
-- KS-3: ANNOTATION with nested parens
-- KS-4: INDENT/DEDENT tracking
-- KS-5: Edge cases
+- : All token types recognized
+- : Multi-char operator priority
+- : ANNOTATION with nested parens
+- : INDENT/DEDENT tracking
+- : Edge cases
 - Token position tracking
 - Operator chains
 """
@@ -38,11 +38,11 @@ def _tokens(source: str) -> list[Token]:
     return Lexer(source).tokenize()
 
 
-# ── KS-1: All token types recognized ───────────────────────────────
+# ── All token types recognized ───────────────────────────────
 
 
 class TestAllTokenTypes:
-    """KS-1: Source containing every token type produces correct sequence."""
+    """Source containing every token type produces correct sequence."""
 
     def test_all_types_present(self):
         source = "A == B\n  C(inline) => D > E = F\n(word)\n  G\nH"
@@ -78,11 +78,11 @@ class TestAllTokenTypes:
         ]
 
 
-# ── KS-2: Multi-char operator priority ─────────────────────────────
+# ── Multi-char operator priority ─────────────────────────────
 
 
 class TestOperatorPriority:
-    """KS-2: Multi-char operators (==, =>) matched before single-char (=, >)."""
+    """Multi-char operators (==, =>) matched before single-char (=, >)."""
 
     def test_countersign_not_two_denotes(self):
         """'A == B' → SIGNATURE, COUNTERSIGNS, SIGNATURE (not two DENOTES)."""
@@ -110,11 +110,11 @@ class TestOperatorPriority:
         assert types == [SG, CS, SG, CT, SG, US, SG]
 
 
-# ── KS-3: ANNOTATION with nested parens ────────────────────────────
+# ── ANNOTATION with nested parens ────────────────────────────
 
 
 class TestAnnotation:
-    """KS-3: ANNOTATION tokens with nested parens, inline, and multi-line."""
+    """ANNOTATION tokens with nested parens, inline, and multi-line."""
 
     def test_nested_parens_standalone(self):
         """'(Mary Had A (Little) Lamb)' → single ANNOTATION token."""
@@ -164,11 +164,11 @@ class TestAnnotation:
         assert tokens[0].value == "()"
 
 
-# ── KS-4: INDENT/DEDENT tracking ───────────────────────────────────
+# ── INDENT/DEDENT tracking ───────────────────────────────────
 
 
 class TestIndentDedent:
-    """KS-4: Python-style INDENT/DEDENT tokens based on leading whitespace."""
+    """Python-style INDENT/DEDENT tokens based on leading whitespace."""
 
     def test_simple_indent(self):
         """Simple indent produces INDENT + content + DEDENT."""
@@ -235,11 +235,11 @@ class TestIndentDedent:
         assert types == [SG, NL, IN, SG, NL, SG, NL, DD, SG]
 
 
-# ── KS-5: Edge cases ───────────────────────────────────────────────
+# ── Edge cases ───────────────────────────────────────────────
 
 
 class TestEdgeCases:
-    """KS-5: Edge cases for empty input, errors, and invalid identifiers."""
+    """Edge cases for empty input, errors, and invalid identifiers."""
 
     def test_empty_string(self):
         """Empty string → [EOF]."""

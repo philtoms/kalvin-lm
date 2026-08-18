@@ -83,7 +83,7 @@ class TestBandRepresentativeConstants:
 
 
 class TestBandSignificance:
-    """Verify band_significance() maps structural relationships to band constants (KP-1)."""
+    """Verify band_significance() maps structural relationships to band constants."""
 
     def test_countersigned_is_s1(self):
         """COUNTERSIGNS → SIG_S1."""
@@ -164,7 +164,7 @@ class TestEdgeHops:
         assert list(edge_hops(m, 99, signifier)) == []  # unresolvable
 
     def test_edge_hops_cycle_detection_er1(self):
-        """ER-1: Countersigned pair produces bounded hops, not MAX_HOP."""
+        """Countersigned pair produces bounded hops, not MAX_HOP."""
         m = make_model()
         # {A: [B]} ↔ {B: [A]} — mutual non-canonical resolution
         m.add_to_frame(KLine(5, [10]))  # sig=5, make_sig([10])=10
@@ -176,7 +176,7 @@ class TestEdgeHops:
         assert hops == [(1, 10), (2, 5)]
 
     def test_edge_hops_identity_kline_er2(self):
-        """ER-2: Identity kline {A: []} yields zero hops."""
+        """Identity kline {A: []} yields zero hops."""
         m = make_model()
         # Identity kline: sig > 0, nodes = []
         # signature_of([]) = 0, so it's not canonical (sig ≠ 0)
@@ -453,7 +453,7 @@ class TestExpand:
         assert 0 <= (sig & SIG_MASK) <= SIG8_MAX
 
     def test_expand_no_crash_on_unresolvable_match_sig_er6(self):
-        """ER-6: expand() does not crash when edge_hops yields an unresolvable sig."""
+        """expand() does not crash when edge_hops yields an unresolvable sig."""
         m = make_model()
         # Build a scenario where edge_hops produces match_sig=0 from identity kline
         # Identity kline {42: []} → make_sig([]) = 0, which doesn't resolve
@@ -467,7 +467,7 @@ class TestExpand:
         assert len(results) >= 1  # at least terminal yield
 
     def test_expand_countersign_cycle_no_crash_er7(self):
-        """ER-7: S2 scenario with countersigned klines completes without exception."""
+        """S2 scenario with countersigned klines completes without exception."""
         m = make_model()
         # Uppercase to mirror KLine protocol signatures; noqa to avoid clash with model `m`.
         M = 0x2000  # noqa: N806
@@ -552,10 +552,10 @@ class TestSigLevel:
         assert sig_level(KLine(42, [42]), signifier) == "S1"
 
     def test_compound_word_is_s1(self):
-        # A §11.3 compound-word is a self-referential identity: its signature
+        # A compound-word is a self-referential identity: its signature
         # is the OR-reduction of its subword tokens. A self-ref is S1.
-        packed = 0b110
-        kl = KLine(packed, [packed])
+        sig = 0b110
+        kl = KLine(sig, [sig])
         assert sig_level(kl, signifier) == "S1"
 
     def test_canon_is_s1(self):

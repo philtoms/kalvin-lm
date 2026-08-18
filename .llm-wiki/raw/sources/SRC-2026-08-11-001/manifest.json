@@ -1,0 +1,11 @@
+{
+  "id": "SRC-2026-08-11-001",
+  "captured": "2026-08-11",
+  "packet_version": "1.0",
+  "title": "CONTEXT.md",
+  "file_path": "/Users/phil/dev/ai/kalvin/CONTEXT.md",
+  "format": "markdown",
+  "extractor": "passthrough",
+  "extraction_status": "success",
+  "content_type": "text/markdown"
+}

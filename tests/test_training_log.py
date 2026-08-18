@@ -118,10 +118,10 @@ def _simple_curriculum() -> Curriculum:
 
 
 class TestTrainerLogging:
-    """TL-1 through TL-9: Trainer log output."""
+    """: Trainer log output."""
 
     def test_session_start_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-1: Session start logs lesson count and curriculum path."""
+        """Session start logs lesson count and curriculum path."""
         bus = MessageBus()
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="curricula/test.md")
@@ -138,7 +138,7 @@ class TestTrainerLogging:
 
     @requires_tokenizer_data
     def test_lesson_submit_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-2: Lesson submit logs label and progress."""
+        """Lesson submit logs label and progress."""
         bus = MessageBus()
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
@@ -152,7 +152,7 @@ class TestTrainerLogging:
 
     @requires_tokenizer_data
     def test_lesson_submit_debug_kscript(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-3: Lesson submit logs KScript source at DEBUG level."""
+        """Lesson submit logs KScript source at DEBUG level."""
         bus = MessageBus()
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
@@ -165,7 +165,7 @@ class TestTrainerLogging:
 
     @requires_tokenizer_data
     def test_compiled_entry_count_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-4: Compiled entry count logged after compilation."""
+        """Compiled entry count logged after compilation."""
         bus = MessageBus()
         curriculum = _simple_curriculum()
         trainer = _make_trainer(bus, curriculum, curriculum_file="test.md")
@@ -180,7 +180,7 @@ class TestTrainerLogging:
 
     @requires_tokenizer_data
     def test_s1_fast_path_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-5: S1 events log with decompiled query and 'fast path'."""
+        """S1 events log with decompiled query and 'fast path'."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         curriculum = _simple_curriculum()
@@ -199,7 +199,7 @@ class TestTrainerLogging:
 
     @requires_tokenizer_data
     def test_s2_significance_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-6: S2/S3 events log with normalised significance and proposal."""
+        """S2/S3 events log with normalised significance and proposal."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         curriculum = _simple_curriculum()
@@ -218,7 +218,7 @@ class TestTrainerLogging:
 
     @requires_tokenizer_data
     def test_decompile_fallback_repr(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-7: Decompilation failure falls back to repr()."""
+        """Decompilation failure falls back to repr()."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         curriculum = _simple_curriculum()
@@ -235,7 +235,7 @@ class TestTrainerLogging:
         assert any("GROUND" in r.message or "FRAME" in r.message for r in caplog.records)
 
     def test_lesson_complete_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-8: Lesson complete logs satisfaction counts."""
+        """Lesson complete logs satisfaction counts."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         curriculum = _simple_curriculum()
@@ -258,7 +258,7 @@ class TestTrainerLogging:
         assert any("complete" in r.message and "satisfied" in r.message for r in caplog.records)
 
     def test_curriculum_complete_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-9: Curriculum complete logged at INFO level."""
+        """Curriculum complete logged at INFO level."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         curriculum = _simple_curriculum()
@@ -299,7 +299,7 @@ class TestReactorLogging:
         return Reactor(bus, cs, role=TRAINER_ROLE)
 
     def test_auto_countersign_match_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-10: Auto-countersign match logged at INFO."""
+        """Auto-countersign match logged at INFO."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         reactor = self._make_reactor(bus)
@@ -318,7 +318,7 @@ class TestReactorLogging:
         )
 
     def test_auto_countersign_miss_debug_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-11: Auto-countersign miss logged at DEBUG."""
+        """Auto-countersign miss logged at DEBUG."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         reactor = self._make_reactor(bus)
@@ -343,7 +343,7 @@ class TestReactorLogging:
 
 
 class TestAdapterLogging:
-    """TL-16 through TL-18: Adapter log output."""
+    """: Adapter log output."""
 
     def _make_adapter(self, bus: MessageBus) -> RationaliserAdapter:
         adapter = RationaliserAdapter(bus, role=TRAINEE_ROLE)
@@ -356,7 +356,7 @@ class TestAdapterLogging:
 
     @requires_tokenizer_data
     def test_entry_submit_count_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-16: Entry submission logged with count at INFO."""
+        """Entry submission logged with count at INFO."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         adapter = self._make_adapter(bus)
@@ -376,7 +376,7 @@ class TestAdapterLogging:
         )
 
     def test_compilation_error_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-17: Compilation error logged at ERROR."""
+        """Compilation error logged at ERROR."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         adapter = self._make_adapter(bus)
@@ -397,7 +397,7 @@ class TestAdapterLogging:
         )
 
     def test_countersign_log(self, caplog: pytest.LogCaptureFixture) -> None:
-        """TL-18: Countersign logged with KLine at INFO."""
+        """Countersign logged with KLine at INFO."""
         bus = MessageBus()
         _cap = BusCapture(bus)
         adapter = self._make_adapter(bus)

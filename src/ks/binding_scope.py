@@ -1,10 +1,9 @@
 """Lightweight scope stack for word binding resolution.
 
-Implements the BindingScope data structure described in spec §10
-(Word Binding Resolution), specifically §10.1 Rule B3 (First-Letter
-Matching) and §10.3 (BindingScope API).
+Implements the BindingScope data structure for Word Binding Resolution:
+First-Letter Matching and the BindingScope API.
 
-Resolution algorithm (§10.1 Rule B3):
+Resolution algorithm:
   - Walk scopes innermost-first (reversed stack).
   - Within each scope, walk word lists most-recent-first (reversed).
   - For each word list, collect words where ``word[0].lower() == char.lower()``.
@@ -17,6 +16,16 @@ Resolution algorithm (§10.1 Rule B3):
 
 Rules B1 (once-bound immutability) and B4 (inline override) are
 enforced by the ASTEmitter, not by BindingScope.
+
+Binding precedence for a character:
+  1. Inline annotation overrides — innermost scope first. An inline
+     binding on an uppercase char additionally binds in its immediate
+     parent scope (the enclosing scope) — not beyond — so it outlives
+     its own scope but does not reach unrelated outer scopes.
+  2. Word lists (prefix annotations) — innermost scope first, most-recent
+     word list first, occurrence-counter disambiguation.
+  3. Resolved bindings — a file-level memory of char → word populated
+     by every successful resolution, consulted after all annotations.
 
 Counter reset on scope push: calling ``push_scope()`` clears the
 occurrence counters in all existing (parent) scopes, so that when
@@ -75,6 +84,12 @@ class BindingScope:
     def __init__(self) -> None:
         """Initialize an empty scope stack."""
         self._stack: list[_Scope] = []
+        self._resolved: dict[str, str] = {}
+
+    @property
+    def resolved_bindings(self) -> dict[str, str]:
+        """File-level char → word memory of every successful resolution."""
+        return self._resolved
 
     def push_scope(self) -> None:
         """Push a new scope onto the stack.
@@ -95,6 +110,21 @@ class BindingScope:
         """
         assert self._stack, "Cannot pop from empty scope stack"
         self._stack.pop()
+
+    def counters_snapshot(self) -> list[dict[str, int]]:
+        """Snapshot per-scope occurrence counters, innermost last."""
+        return [dict(s.counters) for s in self._stack]
+
+    def counters_restore(self, snapshot: list[dict[str, int]]) -> None:
+        """Restore occurrence counters from a :meth:`counters_snapshot`.
+
+        Used around decoding-aid resolutions (MTS char expansion) so they
+        don't consume the occurrence counters that belong to the identity
+        occurrences emitted as item klines.
+        """
+        assert len(snapshot) == len(self._stack)
+        for scope, counters in zip(self._stack, snapshot):
+            scope.counters = dict(counters)
 
     def add_words(self, words: list[str]) -> None:
         """Append a word list to the current (top) scope.
@@ -123,6 +153,11 @@ class BindingScope:
         """
         assert self._stack, "No current scope — stack is empty"
         self._stack[-1].overrides[char.lower()] = word
+        # An inline annotation additionally binds uppercase chars in its
+        # immediate parent scope — the enclosing scope, not beyond. It
+        # outlives its own scope without reaching unrelated outer scopes.
+        if char.isupper() and len(self._stack) >= 2:
+            self._stack[-2].overrides[char.lower()] = word
 
     def resolve(self, char: str) -> str | None:
         """Resolve a character to a word by walking the scope stack.
@@ -131,7 +166,7 @@ class BindingScope:
         iterates through word lists in reverse order (most-recent-first).
         For each word list, collects words whose first letter matches
         ``char`` (case-insensitive).  Uses the scope's occurrence counter
-        for disambiguation per §10.1 Rule B3.
+        for disambiguation.
 
         Args:
             char: Single character to resolve.
@@ -148,7 +183,11 @@ class BindingScope:
                 return scope.overrides[key]
             result = self._resolve_in_scope(scope, char)
             if result is not None:
+                self._resolved[key] = result
                 return result
+        word = self._resolved.get(key)
+        if word is not None:
+            return word
         return None
 
     def _resolve_in_scope(self, scope: _Scope, char: str) -> str | None:

@@ -1,0 +1,27 @@
+{"topic":"Kalvin — a rationalising system built from klines (structural significance, rational significance, S-levels, dialogue training)","mode":"personal","timestamp":"2026-08-11T14:14:27.486Z","kind":"bootstrap"}
+{"source_id":"SRC-2026-08-11-001","format":"markdown","timestamp":"2026-08-11T14:14:51.329Z","kind":"capture"}
+{"source_id":"SRC-2026-08-11-001","entities_created":6,"concepts_created":29,"contradictions":0,"background":true,"timestamp":"2026-08-11T14:15:47.483Z","kind":"ingest"}
+{"slug":"obs-2026-08-11-readme-md-updated-to-match-actual-source-tree","title":"README.md updated to match actual source tree","relevance":"high","timestamp":"2026-08-11T14:57:51.660Z","kind":"observe"}
+{"slug":"obs-2026-08-11-no-python-m-kscript-entrypoint-exists","title":"No `python -m kscript` entrypoint exists","relevance":"high","timestamp":"2026-08-11T14:57:51.661Z","kind":"observe"}
+{"source_id":"SRC-2026-08-11-002","format":"markdown","timestamp":"2026-08-11T15:00:41.324Z","kind":"capture"}
+{"source_id":"SRC-2026-08-11-003","format":"markdown","timestamp":"2026-08-11T15:00:41.367Z","kind":"capture"}
+{"source_id":"SRC-2026-08-11-002","entities_created":13,"concepts_created":10,"contradictions":0,"background":true,"timestamp":"2026-08-11T15:01:24.047Z","kind":"ingest"}
+{"source_id":"SRC-2026-08-11-003","entities_created":1,"concepts_created":14,"contradictions":0,"background":true,"timestamp":"2026-08-11T15:01:37.663Z","kind":"ingest"}
+{"slug":"wiki-duplicate-consolidation","title":"Consolidated wiki duplicate concept pages","category":"wiki-maintenance","timestamp":"2026-08-11T15:13:57.938Z","kind":"retro"}
+{"slug":"obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in","title":"All Kalvin wiki stub pages filled in","relevance":"high","timestamp":"2026-08-11T15:20:29.389Z","kind":"observe"}
+{"slug":"obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index","title":"STM introduced into EngineState as write-cascade index","relevance":"high","timestamp":"2026-08-11T16:18:58.509Z","kind":"observe"}
+{"slug":"stm-cascade-removals-orphan-check","title":"STM cascade removals must be orphan-checked","category":"backend","timestamp":"2026-08-11T16:18:58.511Z","kind":"retro"}
+{"slug":"obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected","title":"EngineState four-store model: grounded→ltm, STM disconnected","relevance":"high","timestamp":"2026-08-11T16:32:17.309Z","kind":"observe"}
+{"orphans":6,"missing_pages":0,"contradictions":0,"auto_fix":true,"legacy_pages_repaired":0,"timestamp":"2026-08-11T16:35:44.459Z","kind":"lint"}
+{"slug":"obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model","title":"Wiki corrected for EngineState four-store model","relevance":"medium","timestamp":"2026-08-11T16:36:43.774Z","kind":"observe"}
+{"slug":"obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d","title":"Universal nodes-grounded rule; fast-route canon bug fixed; a:[Det] unblocks","relevance":"high","timestamp":"2026-08-11T17:16:34.727Z","kind":"observe"}
+{"page_type":"concept","title":"Model","path":"concepts/model","timestamp":"2026-08-17T11:15:58.341Z","kind":"ensure_page"}
+{"page_type":"concept","title":"Memory","path":"concepts/memory","timestamp":"2026-08-17T11:16:07.720Z","kind":"ensure_page"}
+{"slug":"obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto","title":"Model/Memory definitions settled: tiers are relations, not storage","relevance":"high","timestamp":"2026-08-17T11:16:52.278Z","kind":"observe"}
+{"slug":"obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n","title":"Grounding broadened to all significance levels; glossary is normative","relevance":"critical","timestamp":"2026-08-17T11:52:25.091Z","kind":"observe"}
+{"slug":"obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed","title":"work_list renamed to stm; duplicate STM index removed","relevance":"high","timestamp":"2026-08-17T12:14:00.147Z","kind":"observe"}
+{"slug":"obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner","title":"Proposal-pops-STM + frame removal: dedup lost, residue cleaner","relevance":"high","timestamp":"2026-08-17T14:09:44.920Z","kind":"observe"}
+{"slug":"obs-2026-08-17-k-driven-harness-rewrite-mhall-completes-22-groundings","title":"K-driven harness rewrite: mhall completes, 22 groundings","relevance":"high","timestamp":"2026-08-17T14:54:41.699Z","kind":"observe"}
+{"slug":"obs-2026-08-17-fifo-cogitation-survive-on-no-proposal-unknown-not-groundabl","title":"FIFO cogitation + survive-on-no-proposal + unknown-not-groundable","relevance":"high","timestamp":"2026-08-17T16:05:48.060Z","kind":"observe"}
+{"slug":"obs-2026-08-17-word-binding-three-tier-precedence-settled","title":"Word Binding three-tier precedence settled","relevance":"high","timestamp":"2026-08-17T17:02:37.603Z","kind":"observe"}
+{"slug":"obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words","title":"Underfit gap-fill measures connotation distance in BPE words","relevance":"high","timestamp":"2026-08-18T13:10:15.461Z","kind":"observe"}

@@ -1,6 +1,6 @@
 """Tests for CurriculumDocument markdown parser and amendment.
 
-Covers CRS-1 through CRS-23 from the curriculum spec.
+Covers  from the curriculum spec.
 """
 
 from __future__ import annotations
@@ -91,11 +91,11 @@ VALID_TWO_LESSONS = textwrap.dedent("""\
 """)
 
 
-# ── CRS-1: from_file parses valid curriculum ──────────────────────────
+# ── from_file parses valid curriculum ──────────────────────────
 
 
 class TestFromFile:
-    """CRS-1: from_file parses a valid curriculum file."""
+    """from_file parses a valid curriculum file."""
 
     def test_from_file_parses_valid_document(self, tmp_path: Path) -> None:
         path = tmp_path / "test.md"
@@ -107,11 +107,11 @@ class TestFromFile:
         assert doc.source_path == path
 
 
-# ── CRS-2: from_string parses valid curriculum ────────────────────────
+# ── from_string parses valid curriculum ────────────────────────
 
 
 class TestFromString:
-    """CRS-2: from_string parses a valid curriculum from string."""
+    """from_string parses a valid curriculum from string."""
 
     def test_from_string_parses_valid_document(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
@@ -123,11 +123,11 @@ class TestFromString:
         assert len(doc.lessons) == 2
 
 
-# ── CRS-3..CRS-5: Missing sections ───────────────────────────────────
+# ── Missing sections ───────────────────────────────────
 
 
 class TestMissingSections:
-    """CRS-3..CRS-5: Parsing rejects documents with missing sections."""
+    """Parsing rejects documents with missing sections."""
 
     def test_rejects_missing_objective(self) -> None:
         text = textwrap.dedent("""\
@@ -177,11 +177,11 @@ class TestMissingSections:
             CurriculumDocument.from_string(text)
 
 
-# ── CRS-6: No lessons ────────────────────────────────────────────────
+# ── No lessons ────────────────────────────────────────────────
 
 
 class TestNoLessons:
-    """CRS-6: Parsing rejects a document with no lessons."""
+    """Parsing rejects a document with no lessons."""
 
     def test_rejects_no_lessons(self) -> None:
         text = textwrap.dedent("""\
@@ -199,11 +199,11 @@ class TestNoLessons:
             CurriculumDocument.from_string(text)
 
 
-# ── CRS-7: Duplicate labels ──────────────────────────────────────────
+# ── Duplicate labels ──────────────────────────────────────────
 
 
 class TestDuplicateLabels:
-    """CRS-7: Parsing rejects duplicate lesson labels."""
+    """Parsing rejects duplicate lesson labels."""
 
     def test_rejects_duplicate_labels(self) -> None:
         text = textwrap.dedent("""\
@@ -233,11 +233,11 @@ class TestDuplicateLabels:
             CurriculumDocument.from_string(text)
 
 
-# ── CRS-8: Invalid label format ──────────────────────────────────────
+# ── Invalid label format ──────────────────────────────────────
 
 
 class TestInvalidLabel:
-    """CRS-8: Parsing rejects invalid label formats."""
+    """Parsing rejects invalid label formats."""
 
     def test_rejects_invalid_label_format(self) -> None:
         text = textwrap.dedent("""\
@@ -282,11 +282,11 @@ class TestInvalidLabel:
             CurriculumDocument.from_string(text)
 
 
-# ── CRS-9: objective property ────────────────────────────────────────
+# ── objective property ────────────────────────────────────────
 
 
 class TestObjectiveProperty:
-    """CRS-9: document.objective returns the Objective section content."""
+    """document.objective returns the Objective section content."""
 
     def test_objective_property(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
@@ -294,22 +294,22 @@ class TestObjectiveProperty:
         assert "SVO" in doc.objective
 
 
-# ── CRS-10: approach property ─────────────────────────────────────────
+# ── approach property ─────────────────────────────────────────
 
 
 class TestApproachProperty:
-    """CRS-10: document.approach returns the Approach section content."""
+    """document.approach returns the Approach section content."""
 
     def test_approach_property(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
         assert "Introduce components" in doc.approach
 
 
-# ── CRS-11: lessons ordered ──────────────────────────────────────────
+# ── lessons ordered ──────────────────────────────────────────
 
 
 class TestLessonsOrdered:
-    """CRS-11: document.lessons returns ordered Lesson objects."""
+    """document.lessons returns ordered Lesson objects."""
 
     def test_lessons_ordered(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
@@ -317,11 +317,11 @@ class TestLessonsOrdered:
         assert labels == ["1", "2", "2a", "3"]
 
 
-# ── CRS-12: lesson label ─────────────────────────────────────────────
+# ── lesson label ─────────────────────────────────────────────
 
 
 class TestLessonLabel:
-    """CRS-12: Lesson.label returns the stable heading label."""
+    """Lesson.label returns the stable heading label."""
 
     def test_lesson_label(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
@@ -329,11 +329,11 @@ class TestLessonLabel:
         assert doc.lessons[2].label == "2a"
 
 
-# ── CRS-13: lesson prose ─────────────────────────────────────────────
+# ── lesson prose ─────────────────────────────────────────────
 
 
 class TestLessonProse:
-    """CRS-13: Lesson.prose returns non-code-block text."""
+    """Lesson.prose returns non-code-block text."""
 
     def test_lesson_prose(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
@@ -341,11 +341,11 @@ class TestLessonProse:
         assert "```" not in doc.lessons[0].prose
 
 
-# ── CRS-14: lesson kscript ──────────────────────────────────────────
+# ── lesson kscript ──────────────────────────────────────────
 
 
 class TestLessonKscript:
-    """CRS-14: Lesson.kscript returns contents of fenced code blocks."""
+    """Lesson.kscript returns contents of fenced code blocks."""
 
     def test_lesson_kscript(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
@@ -401,11 +401,11 @@ class TestLessonKscript:
         assert "Just prose" in doc.lessons[0].prose
 
 
-# ── CRS-15: find_lesson ─────────────────────────────────────────────
+# ── find_lesson ─────────────────────────────────────────────
 
 
 class TestFindLesson:
-    """CRS-15: find_lesson returns matching Lesson or None."""
+    """find_lesson returns matching Lesson or None."""
 
     def test_find_lesson(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
@@ -419,22 +419,22 @@ class TestFindLesson:
         assert doc.find_lesson("99") is None
 
 
-# ── CRS-16: all_labels ──────────────────────────────────────────────
+# ── all_labels ──────────────────────────────────────────────
 
 
 class TestAllLabels:
-    """CRS-16: all_labels returns labels in document order."""
+    """all_labels returns labels in document order."""
 
     def test_all_labels(self) -> None:
         doc = CurriculumDocument.from_string(VALID_CURRICULUM)
         assert doc.all_labels() == ["1", "2", "2a", "3"]
 
 
-# ── CRS-17..CRS-23: Amendment ───────────────────────────────────────
+# ── Amendment ───────────────────────────────────────
 
 
 class TestAmend:
-    """CRS-17..CRS-23: Amendment operations."""
+    """Amendment operations."""
 
     def _write_and_load(self, tmp_path: Path) -> CurriculumDocument:
         """Write VALID_TWO_LESSONS to a temp file and load it."""
@@ -443,7 +443,7 @@ class TestAmend:
         return CurriculumDocument.from_file(path)
 
     def test_amend_insert(self, tmp_path: Path) -> None:
-        """CRS-17: Insert a lesson after a specified label."""
+        """Insert a lesson after a specified label."""
         doc = self._write_and_load(tmp_path)
         new_lesson = Lesson(label="1a", prose="Bridge lesson.", kscript=["X = Y"])
         doc.amend("insert", after_label="1", lesson=new_lesson)
@@ -453,14 +453,14 @@ class TestAmend:
         assert doc2.all_labels() == ["1", "1a", "2"]
 
     def test_amend_append(self, tmp_path: Path) -> None:
-        """CRS-18: Append a lesson at the end."""
+        """Append a lesson at the end."""
         doc = self._write_and_load(tmp_path)
         new_lesson = Lesson(label="3", prose="Third lesson.", kscript=["E = F"])
         doc.amend("append", lesson=new_lesson)
         assert doc.all_labels() == ["1", "2", "3"]
 
     def test_amend_modify(self, tmp_path: Path) -> None:
-        """CRS-19: Replace a lesson at a given label."""
+        """Replace a lesson at a given label."""
         doc = self._write_and_load(tmp_path)
         modified = Lesson(label="1", prose="Updated lesson.", kscript=["Z = W"])
         doc.amend("modify", label="1", lesson=modified)
@@ -470,28 +470,28 @@ class TestAmend:
         assert doc.lessons[1].label == "2"
 
     def test_amend_raises_for_missing_target(self, tmp_path: Path) -> None:
-        """CRS-20: Amendment raises ValueError for nonexistent target label."""
+        """Amendment raises ValueError for nonexistent target label."""
         doc = self._write_and_load(tmp_path)
         new_lesson = Lesson(label="4", prose="New.", kscript=[])
         with pytest.raises(ValueError, match="not found"):
             doc.amend("insert", after_label="99", lesson=new_lesson)
 
     def test_amend_raises_for_duplicate_label(self, tmp_path: Path) -> None:
-        """CRS-21: Amendment raises ValueError for duplicate label."""
+        """Amendment raises ValueError for duplicate label."""
         doc = self._write_and_load(tmp_path)
         dup_lesson = Lesson(label="2", prose="Duplicate.", kscript=[])
         with pytest.raises(ValueError, match="Duplicate label"):
             doc.amend("append", lesson=dup_lesson)
 
     def test_amend_raises_when_no_source_path(self) -> None:
-        """CRS-22: Amendment raises ValueError when source_path is None."""
+        """Amendment raises ValueError when source_path is None."""
         doc = CurriculumDocument.from_string(VALID_TWO_LESSONS)
         new_lesson = Lesson(label="3", prose="Third.", kscript=[])
         with pytest.raises(ValueError, match="no source_path"):
             doc.amend("append", lesson=new_lesson)
 
     def test_amend_writes_to_file(self, tmp_path: Path) -> None:
-        """CRS-23: Amendment writes updated markdown to the source file."""
+        """Amendment writes updated markdown to the source file."""
         doc = self._write_and_load(tmp_path)
         new_lesson = Lesson(label="3", prose="Appended.", kscript=["X > Y"])
         doc.amend("append", lesson=new_lesson)

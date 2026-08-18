@@ -45,6 +45,10 @@ A kline **structure**: the signature does not equal `signature_of(nodes)`. Struc
 - connote/denote (`{A: [B]}`): signature attracts association. Claims **S3**
   _Avoid_: fabrication (informal), conjecture/hypothesis (a misfit is a structure, not a distinct emission kind)
 
+**Relationship**:
+A kline **structure**: the single-node misfit — a non-terminal whose signature associates with exactly one other value (`{A: [B]}`, `A != B`). The connote/denote shape, named in its own right because the engine treats it as a distinct routing class (a candidate for reciprocal grounding / countersignature) separate from multi-node misfits (no-fit/underfit/overfit, which propose rather than associate). A relationship is a kind of **Misfit**; it is not a synonym for "any non-identity" (a canon is also a non-identity, and a multi-node misfit is too).
+_Avoid_: link (too vague), association (overloaded with the connote action), any-non-identity (a canon and a multi-node misfit are also non-identities)
+
 ## Rationalisation
 
 How a participant tests a kline's structural claim against what Kalvin actually holds — the slow, model-traversing path that arrives at a participant's own significance for a kline. Distinct from Structure (the claim) and from KScript's Target Significance (the authored answer): rationalisation is a participant's private derivation, and the gap between it and the target is what training closes.
@@ -63,17 +67,27 @@ The measurement of whether a kline's structural claim holds against what Kalvin 
 The slow path of rationalisation — model traversal that tests a kline's structural **claim** against what Kalvin holds. Where **Structural Significance** is derived from the signature–nodes relationship alone, Cogitation expands the kline through the model: retracing paths, discovering connections, classifying each against the **Rational Significance** levels. It drains a backlog of unresolved (S2/S3) klines, emitting **proposals** for ratification; it is the work whose result is a Rationally Significant KLine - A kline that Kalvin understands.
 _Avoid_: thinking (informal), background thread (implementation), the cogitator (the implementation class)
 
-**Frame**:
-Recognised working context persisted across sessions. Monotonic.
-_Avoid_: session log (Frame is not a log), session
+**Model**:
+The whole of what Kalvin holds and how it holds it: the klines, their signature/node references, the memory tiers as relations of attention and commitment, and the signifier's compositional interpretation that makes the whole traversable. Cogitation traverses the model through the tiers — conscious of what it just thought (**STM**), of where its focus lies and is shifting (**Frame**), and of what it counts as grounded (**Frame** and **LTM**).
+_Avoid_: the learned function (Kalvin has no weights; understanding is traversal over held klines), using model and memory interchangeably (memory is the tiered structure inside the model)
+
+**Memory**:
+The tiered structure inside the **Model** — not a substrate beneath it. The tiers are modes of relation to held klines, not storage locations: **STM** is recent attention, **Frame** is current focus and its shift, **LTM** is held knowledge. A tier change (promotion, framing, eviction) is a change in how Kalvin relates to a kline, so tier changes belong to rationalisation, not storage bookkeeping. Untiered klines in a file are a serialisation; they become memory only when loaded into a model that can attend to them.
 
 **STM (Short-Term Memory)**:
-The lowest tier in the write cascade and Kalvin's event register — every write reaches it. Empty at session start.
-_Avoid_: STM caching (too vague), working memory (too vague), context window (implies a passive buffer)
+What Kalvin was just thinking about — the recency-of-attention relation to held klines. Written by attention: whatever cogitation touches hits STM. This is how traversal is temporally situated and how Kalvin can notice it is revisiting something. Empty at session start.
+_Avoid_: STM caching (too vague), working memory (too vague), context window (implies a passive buffer), an index (an implementation detail of the attention relation, not the concept)
+
+**Frame**:
+Kalvin's focus of attention and how it is shifting. The active kline in **Cogitation** is held in Frame, and the S1-grounded klines and proposals with their S4 disposition that focused attention produces are registered there. Monotonic and signature-keyed: a signature accumulates a set of klines, so S4 rejection is additive (`Mary:[identity, canon]` → S4 → `Mary:[identity, canon, unknown]`).
+_Avoid_: session log (Frame is not a log), session, a bucket of working context (Frame is a relation — where Kalvin's attention currently is — not a location)
 
 **LTM (Long-Term Memory)**:
-Persistent knowledge that survives across sessions. Structurally identical to Frame; the distinction is semantic. A kline residing in LTM is **grounded** (see Grounding).
+What Kalvin holds as grounded knowledge. Structurally identical to Frame; the distinction is the relation — LTM is what is counted on, Frame is what is in focus. A kline residing in LTM is **grounded** (see Grounding).
 _Avoid_: persistent store (too vague), knowledge base, LTM frame
+
+**Grounding**:
+The model's mechanism for realising significance. If a signature is grounded, then Kalvin knows that all of its nodes are grounded also. KLines grounded in a **Frame** are available for cogitation. KLines grounded in _LTM_ are frame promotions that Kalvin deems important enough to remember.
 
 **KValue**:
 The unit of exchange between participants — a **KLine** (objective structure) paired with a **significance** (the sender's assessment of it).
@@ -101,11 +115,11 @@ The closed set of written tokens that declare how a kline is produced in KScript
 
 **MTS (Multi-Token Signature)**:
 A KScript device for representing a multi-token signature on the LHS in a simpler syntax than would otherwise be required. A compound signature built from more than one Token ID by composition; the compiler expands a multi-character KScript identifier into its constituent character identities plus one MTS relationship. This expansion is a property of the _signature string_, distinct from any CANONIZES decomposition a script declares for that signature via a block. A CANONIZES scope's nodes are the declared block operands, never the signature's own MTS character expansion.
-_Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS expands a signature into characters), packed signature (the uint64 result, not the expansion)
+_Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS expands a signature into characters)
 
 **Word Binding**:
-The association of a single-character KScript signature with a word, resolved through annotations in the source. Bindings are scoped by relational-token boundaries; a character resolves to the most recent matching word in its scope. Two annotation kinds bind with different strength: a **top-level annotation** (on a scope signature) binds only if the character is currently unbound — fill-if-empty, never overriding an outer binding; an **inline annotation** (on an item) binds unconditionally, overriding any outer binding for that occurrence. Each identity occurrence is bound exactly once by the most specific annotation that applies to it, so one character never acquires two competing tokens.
-_Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature), rebind (a top-level annotation never overrides; an inline annotation always does — use the specific kind)
+The association of a single-character KScript signature with a word, resolved through annotations in the source. Uppercase letters bind to the nearest annotation or resolved binding, in three tiers: a **top-level annotation** (prefix, often on its own line) binds by scope — a prefix annotation at an inner scope binds before one at an outer scope; an **inline annotation** (on an item) is the nearest binding and overrides all others, and additionally binds uppercase letters in its immediate parent scope (the enclosing scope, not beyond) so it outlives scope exit without reaching unrelated outer scopes; finally, a **resolved binding** — the char→word memory of any earlier successful resolution — binds after all annotations, so a character unannotated in a later script still binds to its established word. Within a tier, a character resolves to the most recent matching word in its scope. Each identity occurrence is bound exactly once by the most specific annotation that applies to it, so one character never acquires two competing tokens.
+_Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature), rebind (an inline annotation always overrides — use the specific kind)
 
 ## Training and Runtime
 
@@ -153,10 +167,6 @@ _Avoid_: auto-ratify failure (the earlier path's trigger — the trainer now esc
 
 **Expectation**:
 A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
-
-**Grounding**:
-The model's mechanism for realising **S1** (recognised). A kline is **grounded** when the model counts it as S1 — either by its own structure (a canon self-grounds) or by residing in LTM via ratification (a structural fact the model owns). Grounding is how S1 is _produced_, not what S1 _means_; "recognised" is the significance-level concept.
-_Avoid_: self-grounded (legacy; conflates the mechanism with the level), grounded identity (grounding applies to any kline that attains S1, not just identities)
 
 **Auto-Tune**:
 The project's experimental loop for tuning Kalvin's rationalisation behaviour. An LLM coding agent runs repeated sessions against a curriculum, observes how the reactor/cogitator/rationaliser actually behave, edits the significance-model code (`expand()`, `significance.py`, the rationaliser), and re-runs to confirm.

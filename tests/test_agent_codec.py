@@ -341,18 +341,18 @@ class TestEmptyTiers:
         assert list(loaded_model2._ltm) == []
 
 
-# ── KV-7: Objective-Only Storage ──────────────────────────────────────
+# ── Objective-Only Storage ──────────────────────────────────────
 
 
 class TestObjectiveOnlyStorage:
-    """KV-7 — codec persists ``{signature, nodes}`` only; significance never serialised.
+    """codec persists ``{signature, nodes}`` only; significance never serialised.
 
     Storage is objective-only: the codec writes and
     reads ``{signature, nodes}`` and reconstructs bare ``KLine`` objects.
     Significance is a KValue concept — it lives on KValue and is re-derived on
     retrieval — so it must never leak onto a stored or reconstructed KLine.
     These tests lock the boundary so the upcoming KValue introduction
-    (KB-351+) cannot accidentally persist significance. They run green today,
+    (+) cannot accidentally persist significance. They run green today,
     proving the storage surface is already clean.
     """
 

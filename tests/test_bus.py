@@ -1,7 +1,4 @@
 """Tests for Message dataclass and MessageBus.
-
-Covers spec criteria HRNS-1, HRNS-2, HRNS-3, HRNS-11, HRNS-23
-and additional behavioural tests.
 """
 
 from __future__ import annotations
@@ -25,12 +22,12 @@ def _wait_for(event: threading.Event, timeout: float = 2.0) -> None:
 
 
 # ---------------------------------------------------------------------------
-# HRNS-1: Message bus routes by role to correct subscriber
+# Message bus routes by role to correct subscriber
 # ---------------------------------------------------------------------------
 
 
 class TestRouteByRole:
-    """HRNS-1: route messages to the handler subscribed for the role."""
+    """route messages to the handler subscribed for the role."""
 
     def test_route_by_role(self) -> None:
         bus = MessageBus()
@@ -66,12 +63,12 @@ class TestRouteByRole:
 
 
 # ---------------------------------------------------------------------------
-# HRNS-2: Thread-safe send from another thread
+# Thread-safe send from another thread
 # ---------------------------------------------------------------------------
 
 
 class TestThreadsafeSend:
-    """HRNS-2: message sent from a different thread arrives correctly."""
+    """message sent from a different thread arrives correctly."""
 
     def test_threadsafe_send(self) -> None:
         bus = MessageBus()
@@ -101,12 +98,12 @@ class TestThreadsafeSend:
 
 
 # ---------------------------------------------------------------------------
-# HRNS-3: Unknown role produces error response to sender
+# Unknown role produces error response to sender
 # ---------------------------------------------------------------------------
 
 
 class TestUnknownRoleError:
-    """HRNS-3: unknown role sends error back to sender."""
+    """unknown role sends error back to sender."""
 
     def test_unknown_role_error(self) -> None:
         bus = MessageBus()
@@ -139,12 +136,12 @@ class TestUnknownRoleError:
 
 
 # ---------------------------------------------------------------------------
-# HRNS-11: Wildcard diagnostic listener receives all messages
+# Wildcard diagnostic listener receives all messages
 # ---------------------------------------------------------------------------
 
 
 class TestWildcardDiagnosticListener:
-    """HRNS-11: wildcard subscribers receive every dispatched message."""
+    """wildcard subscribers receive every dispatched message."""
 
     def test_wildcard_receives_role_message(self) -> None:
         bus = MessageBus()
@@ -217,12 +214,12 @@ class TestWildcardDiagnosticListener:
 
 
 # ---------------------------------------------------------------------------
-# HRNS-23: Single dispatch thread
+# Single dispatch thread
 # ---------------------------------------------------------------------------
 
 
 class TestSingleDispatchThread:
-    """HRNS-23: all handlers execute on the same event-loop thread."""
+    """all handlers execute on the same event-loop thread."""
 
     def test_single_dispatch_thread(self) -> None:
         bus = MessageBus()
@@ -341,7 +338,7 @@ class TestMultipleHandlers:
         assert len(received_b) == 1
 
     def test_fan_out_dispatch(self) -> None:
-        """HRNS-29: two handlers subscribed to the same role both receive a message."""
+        """two handlers subscribed to the same role both receive a message."""
         bus = MessageBus()
         received_a: list[Message] = []
         received_b: list[Message] = []

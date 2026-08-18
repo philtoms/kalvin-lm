@@ -1,8 +1,8 @@
 """Tests for KScript v3 Compiler Orchestrator and Public API.
 
 Covers:
-  KS-35 — Complex nested example (§14.11) with complete entry validation
-  KS-36 — Word-bound example (§14.12) with binding resolution
+  Complex nested example with complete entry validation
+  Word-bound example with binding resolution
   compile_source — Convenience function
   KScript API — Public class
   Pipeline wiring — End-to-end pipeline
@@ -113,7 +113,7 @@ def _count_entries(
 
 
 # ---------------------------------------------------------------------------
-# §14.11 source
+#  source
 # ---------------------------------------------------------------------------
 
 SOURCE_14_11 = """\
@@ -127,12 +127,12 @@ MHALL == SVO =>
 
 
 # ---------------------------------------------------------------------------
-# KS-35: Complex nested example (§14.11)
+# Complex nested example
 # ---------------------------------------------------------------------------
 
 
 class TestKS35ComplexNested:
-    """KS-35 — Complex nested example from §14.11.
+    """Complex nested example from.
 
     Compiles the full MHALL == SVO => ... source with the tokenizer
     and validates the complete entry list.
@@ -143,7 +143,7 @@ class TestKS35ComplexNested:
         self.entries = compile_source(SOURCE_14_11, dev=True)
 
     def test_entry_count(self) -> None:
-        """Total entry count matches spec §14.11 (11 entries).
+        """Total entry count matches spec (11 entries).
 
         8 source entries + 3 MTS canons (MHALL, SVO, ALL). MTS emits only
         canons — no per-component entries.
@@ -225,8 +225,8 @@ class TestKS35ComplexNested:
 
         Source klines (COUNTERSIGNS/DENOTES/CONNOTES/UNKNOWN that come
         directly from the script, and single-char CANONIZES) appear before
-        every MTS expansion kline (§8 character-level components/canonizations
-        and §11.3 BPE-subword decompositions). The partition is stable, so
+        every MTS expansion kline ( character-level components/canonizations
+        and BPE-subword decompositions). The partition is stable, so
         relative order is preserved within each group.
         """
         ops = [e.kline.dbg.op for e in self.entries]
@@ -242,7 +242,7 @@ class TestKS35ComplexNested:
         )
 
         # No MTS-only op (CANONIZES here is always MTS — every CANONIZES in
-        # §14.11 comes from a multi-char expansion) appears before the last
+        #  comes from a multi-char expansion) appears before the last
         # source operator entry.
         source_ops = {"COUNTERSIGNS", "DENOTES", "CONNOTES"}
         last_source = max(i for i, o in enumerate(ops) if o in source_ops)
@@ -258,7 +258,7 @@ class TestKS35ComplexNested:
 
 
 # ---------------------------------------------------------------------------
-# KS-36: Word-bound example (§14.12)
+# Word-bound example
 # ---------------------------------------------------------------------------
 
 SOURCE_14_12 = """\
@@ -274,7 +274,7 @@ MHALL == SVO =>
 
 @requires_tokenizer_data
 class TestKS36WordBound:
-    """KS-36 — Word-bound example from §14.12.
+    """Word-bound example from.
 
     Tests that block annotation provides word bindings and inline
     annotations resolve correctly.  Requires Tokenizer data files.
@@ -293,8 +293,8 @@ class TestKS36WordBound:
         """
         tok = self._get_tokenizer()
         # dev=True so dbg.label carries the resolved symbolic signature
-        # string. A packed signature is opaque per §11.6 and cannot be
-        # decoded as a single BPE token, so the label is the reliable text.
+        # string. A compound signature cannot be decoded as a single BPE
+        # token, so the label is the reliable text.
         entries = compile_source(SOURCE_14_12, tokenizer=tok, dev=True)
 
         all_text: list[str] = []
@@ -307,7 +307,7 @@ class TestKS36WordBound:
                     if decoded:
                         all_text.append(decoded)
                 except Exception:
-                    pass  # packed node — opaque
+                    pass  # compound node — opaque
 
         for word in ("Mary", "Had", "A", "Little", "Lamb"):
             assert any(word == t for t in all_text), (
@@ -320,7 +320,7 @@ class TestKS36WordBound:
         The SVO canonize entry should have S patched to 'Subject'
         via Rule B4 override.  Under BPE, 'Subject' is a compound whose
         signature is the OR-reduction of its subword tokens, so it is opaque
-        under BPE decode (§11.5/§11.6). The resolved word is verified via
+        under BPE decode (/). The resolved word is verified via
         the dbg label of the Subject compound identity the binding produces,
         not by decoding the opaque compound node.
         """
@@ -352,15 +352,15 @@ class TestKS36WordBound:
 
 
 # ---------------------------------------------------------------------------
-# KS-41/42: Canonical resolution + encoding (§8.3, §11.4/§11.5)
+# Canonical resolution + encoding (,/)
 # ---------------------------------------------------------------------------
 
 
 @requires_tokenizer_data
 class TestCanonicalEncoding:
-    """KS-41 (canonical resolution) + KS-42 (canonical encoding).
+    """canonical resolution) +  (canonical encoding).
 
-    Asserted at the KLine level (post-TokenEncoder) on the §14.12
+    Asserted at the KLine level (post-TokenEncoder) on the
     Word-bound example. These are the regression net for the duplicate-
     CANONIZES and phantom-UNKNOWN bugs: an identifier has one identity,
     computed once and reused.
@@ -370,7 +370,7 @@ class TestCanonicalEncoding:
         return compile_source(SOURCE_14_12, tokenizer=tokenizer, dev=True)
 
     def test_one_canonized_per_compound(self, tokenizer):
-        """KS-42: exactly one CANONIZES kline per compound identifier."""
+        """exactly one CANONIZES kline per compound identifier."""
         entries = self._entries(tokenizer)
         from collections import Counter
 
@@ -380,18 +380,23 @@ class TestCanonicalEncoding:
                 f"{compound}: expected 1 CANONIZES, got {counts.get(compound, 0)}"
             )
 
-    def test_no_packed_identity(self, tokenizer):
-        """KS-42: no UNKNOWN kline carries a packed (compound) signature."""
+    def test_no_compound_identity(self, tokenizer):
+        """a CANONIZES-defined compound is not also emitted as a bare UNKNOWN.
+
+        A compound defined via CANONIZES is represented by its canon (and
+        its identity when used as a node); it does not also appear as an
+        empty-form Unknown headed by the same signature.
+        """
         entries = self._entries(tokenizer)
-        packed_sigs = {e.kline.signature for e in entries if e.kline.dbg.op == "CANONIZES"}
+        compound_sigs = {e.kline.signature for e in entries if e.kline.dbg.op == "CANONIZES"}
         bad = [
             e for e in entries
-            if e.kline.dbg.op == "UNKNOWN" and e.kline.signature in packed_sigs
+            if e.kline.dbg.op == "UNKNOWN" and e.kline.signature in compound_sigs
         ]
-        assert bad == [], f"UNKNOWN klines with packed sigs: {bad}"
+        assert bad == [], f"UNKNOWN klines with compound sigs: {bad}"
 
     def test_compound_resolution_consistent(self, tokenizer):
-        """KS-41: a compound resolves identically wherever it appears.
+        """a compound resolves identically wherever it appears.
 
         The CANONIZES definition's nodes are the canonical resolution;
         no other kline should carry a CANONIZES entry for the same
@@ -411,18 +416,18 @@ class TestCanonicalEncoding:
 
 
 # ---------------------------------------------------------------------------
-# KS-43: CANONIZES misfit signature (compound sig ≠ signature_of(block))
+# CANONIZES misfit signature (compound sig ≠ signature_of(block))
 # ---------------------------------------------------------------------------
 
 
 @requires_tokenizer_data
 class TestCanonizedMisfitSignature:
-    """KS-43 — A compound-headed CANONIZES scope whose block operands differ
+    """A compound-headed CANONIZES scope whose block operands differ
     from the compound's declared characters (a deliberate misfit).
 
     `WDMH => M H W` declares the compound WDMH (chars W,D,M,H) but canonizes
     only M,H,W as block operands. The compound's SIGNATURE must still be the
-    OR of ALL its characters (W,D,M,H) — per spec §11.4 the signature is a
+    OR of ALL its characters (W,D,M,H) — per spec the signature is a
     registry lookup computed once at the MTS CANONIZES definition, never a
     reduction of the block-canon entry's own nodes. The block canon is a
     separate kline that reuses the signature, so its nodes (M,H,W) compose
@@ -497,7 +502,7 @@ class TestCanonizedMisfitSignature:
 
 
 class TestBlockCanonReusesPriorMtsSignature:
-    """KS-44 (regression) — a compound id MTS-expanded from a preamble
+    """regression) — a compound id MTS-expanded from a preamble
     word-list, then declared as a block canon in a later script, must reuse
     the MTS signature.
 
@@ -536,7 +541,7 @@ class TestBlockCanonReusesPriorMtsSignature:
         """The WDMH `had` block canon shares MHALL's MTS `had` signature value.
 
         Two `had` klines result:
-        - the §11.3 compound-word identity (``had`` → its BPE subwords), a
+        - the compound-word identity (``had`` → its BPE subwords), a
           self-referential identity ``{had_sig: [had_sig]}`` whose signature
           is the OR-reduction of the subwords (no marker token);
         - the block-canon reference (``had => did have``), a deliberate
@@ -553,7 +558,7 @@ class TestBlockCanonReusesPriorMtsSignature:
 
         had_labeled = [e for e in entries if e.kline.dbg.label == "had"]
         assert had_labeled, "expected at least one had kline"
-        # The §11.3 compound-word identity kline is a self-ref.
+        # The compound-word identity kline is a self-ref.
         mts_identity = [e for e in had_labeled if is_identity(e.kline)]
         assert mts_identity, "expected the had compound-word identity"
         for e in mts_identity:
@@ -792,18 +797,18 @@ class TestBindingScopeAlwaysCreated:
 
 
 # ---------------------------------------------------------------------------
-# KV-4: Compiler attaches band-representative significance (KP-1)
+# Compiler attaches band-representative significance
 # ---------------------------------------------------------------------------
 
 
 class TestKV4CompilerSignificance:
-    """KV-4 — Compiler attaches band-representative significance.
+    """Compiler attaches band-representative significance.
 
     S1 for == (COUNTERSIGNS), S2 for => (CANONIZES),
     S3 for = (DENOTES) and > (CONNOTES), S4 for identity (UNKNOWN).
 
     The significance is stamped on the KValue at construction from the
-    production op (KP-1, D3), never derived from dbg.
+    production op, never derived from dbg.
     """
 
     # -- S1: COUNTERSIGNS (==) -------------------------------------------
@@ -897,3 +902,31 @@ class TestKV4CompilerSignificance:
         countersigned = [kv for kv in entries if kv.kline.dbg.op == "COUNTERSIGNS"]
         assert len(countersigned) >= 1
         assert all(kv.significance == SIG_S1 for kv in countersigned)
+
+
+class TestDuplicateCharOccurrences:
+    """Duplicate chars in a CANONIZES subscript resolve to distinct words,
+    once each — the canon's operand resolution is reused by the child klines
+    rather than re-resolved against the occurrence counter (which would make
+    both Ls resolve to lamb)."""
+
+    def _entries(self, tokenizer):
+        source = (
+            "(Mary had a little lamb)\n"
+            "MHALL == SVO =>\n"
+            "   O(bject) = ALL =>\n"
+            "     A > D(et)\n"
+            "     L > M(od)\n"
+            "     L > O\n"
+        )
+        return compile_source(source, tokenizer=tokenizer, dev=True)
+
+    def test_two_ls_resolve_to_little_and_lamb(self, tokenizer):
+        entries = self._entries(tokenizer)
+        connotes = [
+            e.kline.dbg.decoded
+            for e in entries
+            if e.kline.dbg.op == "CONNOTES" and e.kline.dbg.label in ("little", "lamb", "L")
+        ]
+        assert "little:[Mod]" in connotes
+        assert "lamb:[Object]" in connotes

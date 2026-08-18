@@ -1,7 +1,7 @@
 """WebSocket protocol for client participants in the multi-agent harness.
 
 Handles registration, bidirectional JSON frame routing, and silent-drop
-disconnect semantics (HRNS-4, HRNS-21).
+disconnect semantics.
 """
 
 from __future__ import annotations
@@ -35,15 +35,15 @@ def _domain_json_default(obj: Any) -> Any:
 
     - ``KValue`` → ``{"signature": int, "nodes": list[int], "significance": int}``.
       The canonical KValue wire shape, matching the adapter's inbound
-      ``_materialise_kvalue`` wire-dict input exactly (KB-355). Significance
+      ``_materialise_kvalue`` wire-dict input exactly. Significance
       rides on the KValue.
     - ``KLine`` → ``{"signature": int, "nodes": list[int]}``.
     - ``RationaliseEvent`` → ``{"kind", "query": <KValue wire>, "proposal":
-      <KValue wire>}``. Post-KB-354 ``query``/``proposal`` are ``KValue``
+      <KValue wire>}``. Post- ``query``/``proposal`` are ``KValue``
       objects, encoded recursively by the ``KValue`` branch above. There is no
       top-level ``significance`` key: significance rides on
       each KValue. The consumer (the enrich path) reads
-      ``proposal["significance"]`` per the §6 Consumer Map (KE-4).
+      ``proposal["significance"]``.
 
     Any other non-serialisable type raises ``TypeError`` (json's default
     behaviour) so future unknown payloads fail loudly rather than being coerced
@@ -102,7 +102,7 @@ class _ClientParticipant:
             # WARNING so silent drops of domain-object payloads are
             # visible rather than mislabelled as "client gone". Drop behaviour
             # is unchanged: no exception escapes on_message, the bus stays
-            # stable (HRNS-21).
+            # stable ().
             logger.warning(
                 "Serialisation failed for %s action=%r: %s",
                 self.role,
@@ -136,7 +136,7 @@ class WebSocketProtocol:
     emits ``query``/``proposal`` as KValue wire dicts with no top-level
     significance.
 
-    Disconnect semantics (HRNS-21): the bus subscription is *not* removed on
+    Disconnect semantics (): the bus subscription is *not* removed on
     disconnect.  Messages to a disconnected client are silently dropped until
     the client reconnects with the same role.  (Serialisation failures are a
     distinct, louder case — logged at WARNING, never re-raised.)

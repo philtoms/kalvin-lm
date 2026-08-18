@@ -1,0 +1,24 @@
+# sources
+
+## Concepts
+
+- [CONTEXT.md](SRC-2026-08-11-001.md)
+- [behaviour-notes.md](SRC-2026-08-11-002.md)
+- [kalvin-vision.md](SRC-2026-08-11-003.md)
+- [Observation: All Kalvin wiki stub pages filled in](obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in.md)
+- [Observation: EngineState four-store model: grounded→ltm, STM disconnected](obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected.md)
+- [Observation: No `python -m kscript` entrypoint exists](obs-2026-08-11-no-python-m-kscript-entrypoint-exists.md)
+- [Observation: README.md updated to match actual source tree](obs-2026-08-11-readme-md-updated-to-match-actual-source-tree.md)
+- [Observation: STM introduced into EngineState as write-cascade index](obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index.md)
+- [Observation: Universal nodes-grounded rule; fast-route canon bug fixed; a:\[Det\] unblocks](obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d.md)
+- [Observation: Wiki corrected for EngineState four-store model](obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model.md)
+- [Observation: FIFO cogitation + survive-on-no-proposal + unknown-not-groundable](obs-2026-08-17-fifo-cogitation-survive-on-no-proposal-unknown-not-groundabl.md)
+- [Observation: Grounding broadened to all significance levels; glossary is normative](obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n.md)
+- [Observation: K-driven harness rewrite: mhall completes, 22 groundings](obs-2026-08-17-k-driven-harness-rewrite-mhall-completes-22-groundings.md)
+- [Observation: Model/Memory definitions settled: tiers are relations, not storage](obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto.md)
+- [Observation: Proposal-pops-STM + frame removal: dedup lost, residue cleaner](obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner.md)
+- [Observation: Word Binding three-tier precedence settled](obs-2026-08-17-word-binding-three-tier-precedence-settled.md)
+- [Observation: work_list renamed to stm; duplicate STM index removed](obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed.md)
+- [Observation: Underfit gap-fill measures connotation distance in BPE words](obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words.md)
+- [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
+- [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

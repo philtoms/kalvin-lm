@@ -3,7 +3,7 @@
 The Compiler class is a pure orchestrator: it creates and connects the
 pipeline stages but contains no encoding logic of its own.
 
-Pipeline (spec §1.1)::
+Pipeline::
 
     Source → Lexer → Parser → ASTEmitter (+ BindingScope) → TokenEncoder
                                                         ↓
@@ -82,6 +82,7 @@ class Compiler:
 
         encoder = TokenEncoder(tokenizer=self.tokenizer, signifier=self._signifier, dev=self.dev)
         self.entries = encoder.encode_entries(symbolic)
+        self.node_labels: dict[int, str] = dict(encoder.node_labels)
         return self.entries
 
 

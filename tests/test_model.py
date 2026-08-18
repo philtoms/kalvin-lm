@@ -37,7 +37,7 @@ class TestAddStm:
     """Tests for add_to_stm() — STM-only write with always-refresh FIFO."""
 
     def test_add_to_stm_and_find(self):
-        """MOD-23: add_to_stm writes to STM, discoverable via find."""
+        """add_to_stm writes to STM, discoverable via find."""
         m = make_model()
         k = KLine(5, [1, 2])
         m.add_to_stm(k)
@@ -50,7 +50,7 @@ class TestAddStm:
         assert result is None
 
     def test_add_to_stm_always_refreshes_fifo(self):
-        """MOD-24: add_to_stm always refreshes FIFO position (remove-if-present then add)."""
+        """add_to_stm always refreshes FIFO position (remove-if-present then add)."""
         m = make_model(stm_bound=3)
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
@@ -67,7 +67,7 @@ class TestAddStm:
         assert m.stm_contains(k4) is True
 
     def test_add_to_stm_eviction(self):
-        """MOD-27: STM evicts oldest when bound exceeded."""
+        """STM evicts oldest when bound exceeded."""
         m = make_model(stm_bound=2)
         k1 = KLine(1, [1])
         k2 = KLine(2, [2])
@@ -92,7 +92,7 @@ class TestAddFrame:
     """Tests for add_to_frame() — writes Frame + STM with literal dedup."""
 
     def test_add_to_frame_and_find(self):
-        """MOD-25: add_to_frame writes to Frame, discoverable via find."""
+        """add_to_frame writes to Frame, discoverable via find."""
         m = make_model()
         k = KLine(5, [1, 2])
         m.add_to_frame(k)
@@ -105,7 +105,7 @@ class TestAddFrame:
         assert result is None
 
     def test_add_to_frame_writes_frame_and_stm(self):
-        """MOD-25: add_to_frame writes to both Frame and STM."""
+        """add_to_frame writes to both Frame and STM."""
         m = make_model()
         k = KLine(5, [1])
         m.add_to_frame(k)
@@ -113,7 +113,7 @@ class TestAddFrame:
         assert m.stm_contains(k) is True
 
     def test_add_to_frame_monotonic(self):
-        """MOD-32: Frame is monotonic for non-literals."""
+        """Frame is monotonic for non-literals."""
         m = make_model()
         k1 = KLine(5, [1])
         k2 = KLine(5, [2])
@@ -126,7 +126,7 @@ class TestAddLtm:
     """Tests for add_to_ltm() — writes LTM + Frame + STM with literal dedup."""
 
     def test_add_to_ltm_and_find(self):
-        """MOD-26: add_to_ltm writes to LTM, discoverable via find."""
+        """add_to_ltm writes to LTM, discoverable via find."""
         m = make_model()
         k = KLine(5, [1])
         m.add_to_ltm(k)
@@ -139,7 +139,7 @@ class TestAddLtm:
         assert result is None
 
     def test_add_to_ltm_writes_all_three_tiers(self):
-        """MOD-26: add_to_ltm writes to LTM, Frame, and STM."""
+        """add_to_ltm writes to LTM, Frame, and STM."""
         m = make_model()
         k = KLine(5, [1])
         m.add_to_ltm(k)
@@ -148,7 +148,7 @@ class TestAddLtm:
         assert m.find(5) is k
 
     def test_add_to_ltm_frame_retains(self):
-        """MOD-33: LTM is additive — Frame retains the kline."""
+        """LTM is additive — Frame retains the kline."""
         m = make_model()
         k = KLine(5, [1])
         m.add_to_ltm(k)
@@ -720,20 +720,20 @@ class TestTierChainFindByNodesFirst:
         assert chain.find_by_nodes_first(nodes_sig) is None
 
 
-# ── Unpack (MOD-60..66) ───────────────────────────────────────────────
+# ── Unpack ───────────────────────────────────────────────
 
 
 class TestUnpack:
-    """MOD-60..66: model.unpack flattens a kline to identity signatures."""
+    """66: model.unpack flattens a kline to identity signatures."""
 
-    def test_mod60_identity(self):
-        # MOD-60: identity (empty nodes) → [signature]
+    def test_identity(self):
+        # identity (empty nodes) → [signature]
         m = make_model()
         ident = KLine(0x100, [])
         assert m.unpack(ident) == [0x100]
 
-    def test_mod61_canon_ordered_children(self):
-        # MOD-61: canon → ordered identity child sequence
+    def test_canon_ordered_children(self):
+        # canon → ordered identity child sequence
         m = make_model()
         m.add_to_frame(KLine(0x10, []))
         m.add_to_frame(KLine(0x20, []))
@@ -741,8 +741,8 @@ class TestUnpack:
         m.add_to_frame(canon)
         assert m.unpack(canon) == [0x10, 0x20]
 
-    def test_mod62_nested_canon(self):
-        # MOD-62: canon-of-canons → flattened, order preserved
+    def test_nested_canon(self):
+        # canon-of-canons → flattened, order preserved
         m = make_model()
         m.add_to_frame(KLine(0x10, []))
         m.add_to_frame(KLine(0x20, []))
@@ -752,15 +752,15 @@ class TestUnpack:
         m.add_to_frame(outer)
         assert m.unpack(outer) == [0x10, 0x20, 0x40]
 
-    def test_mod63_connoted_raises(self):
-        # MOD-63: non-decomposable input (connoted) → ValueError
+    def test_connoted_raises(self):
+        # non-decomposable input (connoted) → ValueError
         m = make_model()
         connoted = KLine(0x100, [0x10])  # signature != signifier.signature_of(nodes)
         with pytest.raises(ValueError):
             m.unpack(connoted)
 
-    def test_mod64_unresolvable_child_raises(self):
-        # MOD-64: canon whose child node has no identity/canon → ValueError
+    def test_unresolvable_child_raises(self):
+        # canon whose child node has no identity/canon → ValueError
         m = make_model()
         canon = KLine(0x30, [0x10, 0x20])  # valid canon
         m.add_to_frame(canon)
@@ -768,8 +768,8 @@ class TestUnpack:
         with pytest.raises(ValueError):
             m.unpack(canon)
 
-    def test_mod65_identity_preferred_over_canon(self):
-        # MOD-65: node heads both an identity and a canon → identity wins
+    def test_identity_preferred_over_canon(self):
+        # node heads both an identity and a canon → identity wins
         m = make_model()
         m.add_to_frame(KLine(0x10, []))
         m.add_to_frame(KLine(0x20, []))
@@ -781,8 +781,8 @@ class TestUnpack:
         # resolves 0x30 → identity (not canon) → [0x30]; not [0x10, 0x20]
         assert m.unpack(parent) == [0x30, 0x40]
 
-    def test_mod66_canon_recency_most_recent(self):
-        # MOD-66: two canons share a signature → most-recently-added wins
+    def test_canon_recency_most_recent(self):
+        # two canons share a signature → most-recently-added wins
         m = make_model()
         m.add_to_frame(KLine(0x10, []))
         m.add_to_frame(KLine(0x20, []))
@@ -796,8 +796,8 @@ class TestUnpack:
         # resolves 0x30 → newer canon → [0x10, 0x20, 0x10]
         assert m.unpack(parent) == [0x10, 0x20, 0x10, 0x40]
 
-    def test_mod67_self_referential_canon_is_identity(self):
-        # MOD-67: a self-referential kline whose sole node is its own signature
+    def test_self_referential_canon_is_identity(self):
+        # a self-referential kline whose sole node is its own signature
         # ({node: [node]}) is structurally identity — emit the node directly
         # instead of recursing without bound. Covers both the direct case and
         # a parent referencing the self-referential identity kline.
@@ -816,8 +816,8 @@ class TestUnpack:
         # 0x100 resolves to the self-ref identity kline → emitted as 0x100 (no recursion)
         assert m2.unpack(parent) == [0x100, 0x200]
 
-    def test_mod67b_canon_with_sig_equal_node_still_recurses(self):
-        # MOD-67b: a canon that merely shares the parent's node value but has
+    def test_canon_with_sig_equal_node_still_recurses(self):
+        # a canon that merely shares the parent's node value but has
         # *different* nodes is a real decomposition — it must still recurse.
         # (Guards against an over-broad self-reference check.)
         m = make_model()

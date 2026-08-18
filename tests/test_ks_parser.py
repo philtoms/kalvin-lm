@@ -1,11 +1,11 @@
 """Tests for KScript v3 parser.
 
 Covers:
-  KS-6  — OperatorScope nodes with sig, op, items (nested scope model)
-  KS-7  — Block parsing: INDENT/DEDENT creates Block nodes
-  KS-8  — Annotations preserved as AST nodes
-  KS-9  — Inline annotation attachment (sig-side and node-side)
-  KS-10 — Empty source produces empty constructs
+  OperatorScope nodes with sig, op, items (nested scope model)
+  Block parsing: INDENT/DEDENT creates Block nodes
+  Annotations preserved as AST nodes
+  Inline annotation attachment (sig-side and node-side)
+  Empty source produces empty constructs
   Additional coverage: bare signature, CANONIZES, multi-item scopes,
   child blocks, annotations mixed with operators, parse errors.
 """
@@ -53,12 +53,12 @@ def parse_tokens(tok_list: list[Token]) -> KScriptFile:
 
 
 # ---------------------------------------------------------------------------
-# KS-10 — Empty source
+# Empty source
 # ---------------------------------------------------------------------------
 
 
 class TestKS10EmptySource:
-    """KS-10: Empty source produces empty script (no error)."""
+    """Empty source produces empty script (no error)."""
 
     def test_eof_only(self) -> None:
         """A single EOF token produces KScriptFile(constructs=[])."""
@@ -78,17 +78,17 @@ class TestKS10EmptySource:
 
 
 # ---------------------------------------------------------------------------
-# KS-6 — OperatorScope structure (chained scopes)
+# OperatorScope structure (chained scopes)
 # ---------------------------------------------------------------------------
 
 
 class TestKS6ChainedScopes:
-    """KS-6: AST structure reflects scope model with nested OperatorScope nodes."""
+    """AST structure reflects scope model with nested OperatorScope nodes."""
 
     def test_a_counter_b_connote_c_denote_d(self) -> None:
         """Parse 'A == B > C = D' — three nested OperatorScope nodes.
 
-        Structure (nested model per grammar §4 item ::= operator_scope):
+        Structure (nested model per grammar item ::= operator_scope):
             constructs[0]         → OperatorScope(sig=A, op=COUNTERSIGNS)
             constructs[0].items[0] → OperatorScope(sig=B, op=CONNOTES)
             constructs[0].items[0].items[0] →
@@ -164,12 +164,12 @@ class TestKS6ChainedScopes:
 
 
 # ---------------------------------------------------------------------------
-# KS-7 — Block parsing
+# Block parsing
 # ---------------------------------------------------------------------------
 
 
 class TestKS7BlockParsing:
-    """KS-7: INDENT/DEDENT creates Block nodes in child_block."""
+    """INDENT/DEDENT creates Block nodes in child_block."""
 
     def test_canonize_with_child_block(self) -> None:
         """Parse 'A =>\\n  B\\n  C' — child_block with Block node."""
@@ -276,12 +276,12 @@ class TestKS7BlockParsing:
 
 
 # ---------------------------------------------------------------------------
-# KS-8 — Annotations preserved
+# Annotations preserved
 # ---------------------------------------------------------------------------
 
 
 class TestKS8AnnotationsPreserved:
-    """KS-8: Annotations are preserved as AST nodes, not discarded."""
+    """Annotations are preserved as AST nodes, not discarded."""
 
     def test_standalone_annotation_before_scope(self) -> None:
         """(Mary Had A Little Lamb)\\nMHALL == SVO"""
@@ -352,12 +352,12 @@ class TestKS8AnnotationsPreserved:
 
 
 # ---------------------------------------------------------------------------
-# KS-9 — Inline annotation attachment
+# Inline annotation attachment
 # ---------------------------------------------------------------------------
 
 
 class TestKS9InlineAnnotation:
-    """KS-9: Inline annotations attach to sig-side and node-side."""
+    """Inline annotations attach to sig-side and node-side."""
 
     def test_sig_side_inline_annotation(self) -> None:
         """S(ubject) = M — ANNOTATION after SIGNATURE before operator."""

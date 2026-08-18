@@ -22,7 +22,7 @@ from training.auto_tune.session import SessionDir
 # these into a single verdict — ``run-summary.json`` — that tells the agent
 # whether the run achieved its goal and, if not, where to look. It is the
 # auto-tune arbiter: the signal the agent reads instead of being told to
-# "reason carefully" (see SKILL.md §Pi-in-the-Loop Model).
+# "reason carefully" (see SKILL.md).
 #
 # The summary is produced from file state only, so it can be run after any
 # run (live or deadlocked) without touching the harness process.
@@ -275,7 +275,7 @@ def _infer_outcome(
             "supervisor-stalled",
             f"{ratify_requests} ratify_request(s) emitted; the last decision event "
             "was unanswered. The supervisor role did not enact a decision — see "
-            "SKILL.md §Pi-in-the-Loop Model.",
+            "SKILL.md.",
         )
 
     # A live run (still connected, no terminal event, no pending decision)
@@ -376,7 +376,7 @@ def _classify_live_run(
             "The trainer's satisfaction accounting has deadlocked: driving it "
             "further will not produce events. Stop the run, read the harness "
             "log and the last lesson's compiled entries, and diagnose why "
-            "submitted work is not being rationalised. See SKILL.md §Stalled runs.",
+            "submitted work is not being rationalised. See SKILL.md.",
         )
     return "incomplete", "Run is still in progress — no verdict yet."
 

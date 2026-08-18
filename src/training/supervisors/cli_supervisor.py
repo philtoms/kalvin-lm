@@ -277,7 +277,7 @@ class CLISupervisor:
 
         The Trainer gates the run on each ratify_request and holds further
         events until it receives this decision (``supervisor_decision``
-        action — §Decision gate). The Trainer applies the countersign/submit
+        action — the decision gate). The Trainer applies the countersign/submit
         itself, so we address the TRAINER role (not the trainee) and clear
         the pending proposal afterward.
         """

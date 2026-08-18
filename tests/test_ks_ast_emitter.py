@@ -1,9 +1,9 @@
 """Tests for ASTEmitter — KScript v3 scope-model AST → SymbolicEntry.
 
-Test IDs map to the spec test matrix (§15) where applicable.
+Test IDs map to the spec test matrix where applicable.
 Helper constructs AST nodes directly (no lexer dependency).
 
-Every test verifies the 'nodes always a list' invariant (KS-34).
+Every test verifies the 'nodes always a list' invariant.
 """
 
 from __future__ import annotations
@@ -113,7 +113,7 @@ def assert_no_entry(
 
 
 # ======================================================================
-# Test: nodes always a list (KS-34)
+# Test: nodes always a list
 # ======================================================================
 
 
@@ -142,7 +142,7 @@ class TestKS34NodesAlwaysList:
 
 
 # ======================================================================
-# Test: KS-11 COUNTERSIGNS per-item
+# Test:  COUNTERSIGNS per-item
 # ======================================================================
 
 
@@ -177,7 +177,7 @@ class TestKS11Countersign:
 
 
 # ======================================================================
-# Test: KS-12 DENOTES per-item reversed
+# Test:  DENOTES per-item reversed
 # ======================================================================
 
 
@@ -208,7 +208,7 @@ class TestKS12Denote:
 
 
 # ======================================================================
-# Test: KS-13 CONNOTES per-item
+# Test:  CONNOTES per-item
 # ======================================================================
 
 
@@ -239,7 +239,7 @@ class TestKS13Connote:
 
 
 # ======================================================================
-# Test: KS-14 CANONIZES aggregates
+# Test:  CANONIZES aggregates
 # ======================================================================
 
 
@@ -278,7 +278,7 @@ class TestKS14Canonize:
 
 
 # ======================================================================
-# Test: KS-15 Operator chain
+# Test:  Operator chain
 # ======================================================================
 
 
@@ -343,7 +343,7 @@ class TestKS15OperatorChain:
 
 
 # ======================================================================
-# Test: KS-16 Indent extends scope
+# Test:  Indent extends scope
 # ======================================================================
 
 
@@ -371,12 +371,12 @@ class TestKS16IndentExtends:
 
 
 # ======================================================================
-# Test: KS-16 §14.8 CANONIZES with Subscript Block
+# Test:  CANONIZES with Subscript Block
 # ======================================================================
 
 
 class TestKS16SubscriptBlock14x8:
-    """§14.8 — A =>\\n  B\\n  C = D → 5 entries.
+    """ — A =>\\n  B\\n  C = D → 5 entries.
 
     CANONIZES subscript blocks emit UNKNOWN for all identifiers
     that don't already have an operator entry as their signature.
@@ -399,7 +399,7 @@ class TestKS16SubscriptBlock14x8:
         )
 
     def test_entry_count(self):
-        """Exactly 5 entries per spec §14.8."""
+        """Exactly 5 entries per spec."""
         assert len(self.entries) == 5
 
     def test_canonize_entry(self):
@@ -422,12 +422,12 @@ class TestKS16SubscriptBlock14x8:
 
 
 # ======================================================================
-# Test: KS-14 §14.9 Chained CANONIZES
+# Test:  Chained CANONIZES
 # ======================================================================
 
 
 class TestKS14ChainedCanonize14x9:
-    """§14.9 — A => B => C → 3 entries.
+    """ — A => B => C → 3 entries.
 
     Chained CANONIZES where B is both a CANONIZES scope sig and a node.
     B does NOT get an UNKNOWN entry because CANONIZES(B, [C]) already
@@ -447,7 +447,7 @@ class TestKS14ChainedCanonize14x9:
         )
 
     def test_entry_count(self):
-        """Exactly 3 entries per spec §14.9."""
+        """Exactly 3 entries per spec."""
         assert len(self.entries) == 3
 
     def test_canonize_entries(self):
@@ -465,7 +465,7 @@ class TestKS14ChainedCanonize14x9:
 
 
 # ======================================================================
-# Test: KS-17 DEDENT returns to parent scope
+# Test:  DEDENT returns to parent scope
 # ======================================================================
 
 
@@ -488,7 +488,7 @@ class TestKS17Dedent:
 
 
 # ======================================================================
-# Test: KS-18 Non-CANONIZES with indent
+# Test:  Non-CANONIZES with indent
 # ======================================================================
 
 
@@ -520,7 +520,7 @@ class TestKS18NonCanonizeIndent:
         assert_has_entry(entries, "D", ["A"], "COUNTERSIGNS")
 
     def test_entry_count(self):
-        """Exact entry counts — per spec §14.10, no UNKNOWN from child_block bare scopes.
+        """Exact entry counts — per spec, no UNKNOWN from child_block bare scopes.
 
         A == B\\n  C\\n  D → 6 entries (all COUNTERSIGNS, 0 UNKNOWN).
         """
@@ -578,7 +578,7 @@ class TestKS18NonCanonizeIndent:
 
 
 # ======================================================================
-# Test: KS-19 MTS expansion
+# Test:  MTS expansion
 # ======================================================================
 
 
@@ -603,7 +603,7 @@ class TestKS19MTS:
         assert entries[0].op == "CANONIZES"
 
     def test_mts_entries_tagged_is_mts(self):
-        """§8 MTS-produced canon entries carry is_mts=True; source entries do not.
+        """ MTS-produced canon entries carry is_mts=True; source entries do not.
 
         Only the MTS CANONIZES entry produced by ``_emit_mts`` is tagged.
         Operator-produced entries (COUNTERSIGNS/DENOTES/CONNOTES) and
@@ -642,7 +642,7 @@ class TestKS19MTS:
 
 
 # ======================================================================
-# Test: KS-20 No MTS for single-char
+# Test:  No MTS for single-char
 # ======================================================================
 
 
@@ -659,7 +659,7 @@ class TestKS20NoMTS:
 
 
 # ======================================================================
-# Test: KS-20b No MTS for lowercase/mixed words
+# Test:  No MTS for lowercase/mixed words
 # ======================================================================
 
 
@@ -669,7 +669,7 @@ class TestKS20bNoMTSForWords:
 
     Regression: commit 490d98f relaxed the SIGNATURE rule to admit lowercase
     words (had, did, all). Previously only uppercase identifiers reached the
-    compiler, so §8 MTS decomposed every multi-char identifier. Without an
+    compiler, so MTS decomposed every multi-char identifier. Without an
     uppercase guard, `all` would decompose to [a, l, l]. The fix: MTS
     character-expansion applies only to all-uppercase compounds.
     """
@@ -703,7 +703,7 @@ class TestKS20bNoMTSForWords:
 
 
 # ======================================================================
-# Test: KS-21 MTS on node side
+# Test:  MTS on node side
 # ======================================================================
 
 
@@ -724,7 +724,7 @@ class TestKS21MTSNode:
 
 
 # ======================================================================
-# Test: KS-22 Node count invariant
+# Test:  Node count invariant
 # ======================================================================
 
 
@@ -752,7 +752,7 @@ class TestKS22NodeCount:
 
 
 # ======================================================================
-# Test: KS-26 Rule B4 override
+# Test:  Rule B4 override
 # ======================================================================
 
 
@@ -856,7 +856,7 @@ class TestKS26RuleB4:
 
 
 # ======================================================================
-# Test: KS-33 Self-identity
+# Test:  Self-identity
 # ======================================================================
 
 
@@ -964,10 +964,10 @@ class TestMTSDedup:
 
 
 class TestMTSComponentDedup:
-    """MTS canon deduplication (§8.3) — canon only, no component entries."""
+    """MTS canon deduplication — canon only, no component entries."""
 
     def test_intra_expansion_node_count(self):
-        """MHALL has two L's — the canon preserves both as nodes (§8.2)."""
+        """MHALL has two L's — the canon preserves both as nodes."""
         entries = emit(_file(_bare("MHALL")))
         canon = _find_entries(entries, sig="MHALL", op="CANONIZES")
         assert len(canon) == 1

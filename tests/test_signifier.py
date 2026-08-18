@@ -44,8 +44,8 @@ class TestMakeSignature:
         """BPE-style tokens: full OR."""
         assert signifier.signature_of([42, 100]) == 42 | 100
 
-    def test_or_reduction_of_packed_nodes(self):
-        """OR-reduction of two packed node values produces their union (SIG-14)."""
+    def test_or_reduction_of_compound_nodes(self):
+        """OR-reduction of two compound node values produces their union."""
         assert signifier.signature_of([0b10, 0b100]) == 0b110
 
 
@@ -86,16 +86,16 @@ class TestResidual:
     """residual: masked type-word set-difference."""
 
     def test_type_word_bits_in_a_not_in_b(self):
-        """SIG-17: residual(t(0b110), t(0b010)) == t(0b100)."""
+        """residual(t(0b110), t(0b010)) == t(0b100)."""
         assert signifier.residual(t(0b110), t(0b010)) == t(0b100)
 
     def test_empty_residual_for_equal_inputs(self):
-        """SIG-18: residual(a, a) == 0 for any a."""
+        """residual(a, a) == 0 for any a."""
         assert signifier.residual(t(0b110), t(0b110)) == 0
         assert signifier.residual(0, 0) == 0
 
     def test_bpe_id_bits_masked_off(self):
-        """SIG-19: BPE-id residuals are masked off."""
+        """BPE-id residuals are masked off."""
         # type 0b110 vs type 0b010, BPE ids 5 and 7 differ
         assert signifier.residual(t(0b110) | 5, t(0b010) | 7) == t(0b100)
 
@@ -107,7 +107,7 @@ class TestResidual:
 class TestClassifyMisfitRemoved:
     """classify_misfit moved to kalvin.kline (structural concern).
 
-    The SIG-20..23 conformance cases now live in tests/test_misfit.py as
+    The ..23 conformance cases now live in tests/test_misfit.py as
     TestClassifyMisfitConformance; NLPSignifier no longer defines the method.
     """
 

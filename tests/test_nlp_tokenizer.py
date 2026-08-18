@@ -171,8 +171,8 @@ class TestNLPEncodingPipeline:
     signature_of correctly handles NLP-BPE nodes and space tokens.
 
     Key insight: multi-word phrases produce space BPE tokens (ID 32) with
-    nlp_type32=0, making them low-32-bit-only packed nodes rather than
-    NLP-BPE nodes.  Single words are pure NLP-BPE nodes.
+    nlp_type32=0, making them low-32-bit-only nodes (no type word) rather
+    than full NLP-BPE nodes.  Single words are pure NLP-BPE nodes.
     """
 
     def test_pipeline_encode_decode_roundtrip(self, nlp: NLPTokenizer) -> None:

@@ -1,6 +1,6 @@
 """KScript v3 parser — transforms a token stream into a scope-model AST.
 
-Grammar (spec §4)::
+Grammar::
 
     script          ::= construct*
     construct       ::= block | annotation | operator_scope
@@ -12,14 +12,14 @@ Grammar (spec §4)::
     sig             ::= SIGNATURE
     operator        ::= COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES
 
-Scope rules enforced (spec §3):
+Scope rules enforced:
 
     S2  Preceding identifier is the signature.
     S3  Succeeding identifiers are nodes (items).
     S4  INDENT creates child scope → stored in OperatorScope.child_block.
     S5  DEDENT closes child scope.
 
-Inline annotations (spec §5.1):
+Inline annotations:
 
     Sig-side   S(ubject) = M   →  OperatorScope.inline_annotation
     Node-side  A = D(et)       →  Signature.inline_annotation (per-item)
@@ -83,6 +83,7 @@ class Parser:
     def __init__(self, tokens: list[Token]) -> None:
         self.tokens = tokens
         self.pos: int = 0
+        self._newlines_skipped: int = 0
 
     # Public API
 
@@ -215,7 +216,10 @@ class Parser:
                     # items on the parent's original line.
                     nested = self._parse_operator_scope()
                     items.append(nested)
-                    if nested.child_block is not None:
+                    if nested.child_block is not None or self._newlines_skipped:
+                        # The nested scope crossed a newline (child block or
+                        # newline-consumed probing for one): the parent's
+                        # same-line items end here.
                         break
                 else:
                     # Bare Signature item
@@ -275,9 +279,12 @@ class Parser:
         return self.pos >= len(self.tokens) or self.tokens[self.pos].type == TokenType.EOF
 
     def _skip_newlines(self) -> None:
-        """Advance past any NEWLINE tokens."""
-        while self.pos < len(self.tokens) and self.tokens[self.pos].type == TokenType.NEWLINE:
+        """Advance past any NEWLINE tokens; record how many were consumed."""
+        skip = 0
+        while not self._at_end() and self._peek().type == TokenType.NEWLINE:
             self.pos += 1
+            skip += 1
+        self._newlines_skipped = skip
 
     def _expect(self, token_type: TokenType) -> Token:
         """Consume the next token, raising ParseError if it doesn't match."""
