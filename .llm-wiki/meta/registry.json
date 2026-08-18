@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-17T14:54:41.721Z",
+  "last_updated": "2026-08-17T17:02:37.624Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -638,6 +638,23 @@
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
+    "sources/obs-2026-08-17-fifo-cogitation-survive-on-no-proposal-unknown-not-groundabl": {
+      "type": "source",
+      "title": "Observation: FIFO cogitation + survive-on-no-proposal + unknown-not-groundable",
+      "tags": [
+        "dialogue",
+        "engine",
+        "cogitation",
+        "stm"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-17-fifo-cogitation-survive-on-no-proposal-unknown-not-groundabl",
+      "relevance": "high",
+      "observed_at": "2026-08-17T16:05:48.057Z",
+      "source_context": "Engine tuning after FIFO cogitation change",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
+    },
     "sources/obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n": {
       "type": "source",
       "title": "Observation: Grounding broadened to all significance levels; glossary is normative",
@@ -708,6 +725,21 @@
       "relevance": "high",
       "observed_at": "2026-08-17T14:09:44.918Z",
       "source_context": "Lean harness tuning session on src/dialogue/engine.py",
+      "created": "2026-08-17",
+      "updated": "2026-08-17"
+    },
+    "sources/obs-2026-08-17-word-binding-three-tier-precedence-settled": {
+      "type": "source",
+      "title": "Observation: Word Binding three-tier precedence settled",
+      "tags": [
+        "kscript",
+        "word-binding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-17-word-binding-three-tier-precedence-settled",
+      "relevance": "high",
+      "observed_at": "2026-08-17T17:02:37.602Z",
+      "source_context": "Refining KScript binding scope rules",
       "created": "2026-08-17",
       "updated": "2026-08-17"
     },

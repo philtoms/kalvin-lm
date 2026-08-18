@@ -61,6 +61,12 @@ class MisfitStrategy(Protocol):
     ) -> list[KValue]:
         ...
 
+    def propose_gap(
+        self,
+        entry: KLine,
+    ) -> list[KValue]:
+        ...
+
 
 class Engine:
     """Derives one turn from ``incoming``.
@@ -151,7 +157,7 @@ class Engine:
     # ── Cogitation ───────────────────────────────────────────────────
 
     def cogitate(self) -> list[KValue]:
-        """One LIFO pass over STM: ask, countersign, propose, or ground.
+        """One oldest-first pass over STM: ask, countersign, propose, or ground.
 
         Per entry, in priority order: an identity becomes an S4 ask; a
         countersignable entry takes the S3 path and eventually grounds; a misfit
@@ -160,14 +166,13 @@ class Engine:
         """
         proposals: list[KValue] = []
 
-        idx = len(self._state.stm) - 1
-        while idx >= 0:
+        idx = 0
+        while idx < len(self._state.stm):
             # Re-check the index each iteration: the _promote cascade (via the
             # S2 strategy's ground callback, or the countersign/groundable
             # arms) can remove arbitrary STM entries, shrinking the list
             # below the index this loop intends to visit.
             if idx >= len(self._state.stm):
-                idx -= 1
                 continue
             kline = self._state.stm[idx]
 
@@ -175,21 +180,29 @@ class Engine:
                 self._state.remove_stm_at(idx)
                 proposals.append(KValue(KLine(kline.signature, []), SIG_S4))
 
-            elif self._state.is_countersignable(kline):
-                pairings = self._countersignature_proposals(kline)
-                if pairings:
-                    proposals.extend(pairings)
-                else:
-                    # All pairings resolved: the countersignature is complete.
-                    self._state.remove_stm_at(idx)
-                    self._ground(kline)
+            else:
+                if self._state.is_countersignable(kline):
+                    pairings = self._countersignature_proposals(kline)
+                    if pairings:
+                        proposals.extend(pairings)
+                    else:
+                        # All pairings resolved: the countersignature is complete.
+                        self._state.remove_stm_at(idx)
+                        self._ground(kline)
 
-            elif is_misfit(kline, self._state.signifier):
-                batch = self._misfit.propose(kline, self._ground)
-                self._state.remove_stm_at(idx)
-                proposals.extend(batch)
+                if is_misfit(kline, self._state.signifier):
+                    batch = self._misfit.propose_gap(kline)
+                    if batch:
+                        self._state.remove_stm_at(idx)
+                        proposals.extend(batch)
+                        continue
+                    batch = self._misfit.propose(kline, self._ground)
+                    if batch:
+                        self._state.remove_stm_at(idx)
+                        proposals.extend(batch)
+                        continue
 
-            idx -= 1
+            idx += 1
 
         return proposals
 

@@ -2,6 +2,8 @@
 
 ## 2026-08-17
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-17-word-binding-three-tier-precedence-settled","title":"Word Binding three-tier precedence settled"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-17-fifo-cogitation-survive-on-no-proposal-unknown-not-groundabl","title":"FIFO cogitation + survive-on-no-proposal + unknown-not-groundable"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-k-driven-harness-rewrite-mhall-completes-22-groundings","title":"K-driven harness rewrite: mhall completes, 22 groundings"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner","title":"Proposal-pops-STM + frame removal: dedup lost, residue cleaner"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed","title":"work_list renamed to stm; duplicate STM index removed"}

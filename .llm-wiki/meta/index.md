@@ -87,10 +87,12 @@
 - [[sources/obs-2026-08-11-stm-introduced-into-enginestate-as-write-cascade-index]] — Observation: STM introduced into EngineState as write-cascade index *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-universal-nodes-grounded-rule-fast-route-canon-bug-fixed-a-d]] — Observation: Universal nodes-grounded rule; fast-route canon bug fixed; a:[Det] unblocks *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-wiki-corrected-for-enginestate-four-store-model]] — Observation: Wiki corrected for EngineState four-store model *(created: 2026-08-11)*
+- [[sources/obs-2026-08-17-fifo-cogitation-survive-on-no-proposal-unknown-not-groundabl]] — Observation: FIFO cogitation + survive-on-no-proposal + unknown-not-groundable *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n]] — Observation: Grounding broadened to all significance levels; glossary is normative *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-k-driven-harness-rewrite-mhall-completes-22-groundings]] — Observation: K-driven harness rewrite: mhall completes, 22 groundings *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto]] — Observation: Model/Memory definitions settled: tiers are relations, not storage *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-proposal-pops-stm-frame-removal-dedup-lost-residue-cleaner]] — Observation: Proposal-pops-STM + frame removal: dedup lost, residue cleaner *(created: 2026-08-17)*
+- [[sources/obs-2026-08-17-word-binding-three-tier-precedence-settled]] — Observation: Word Binding three-tier precedence settled *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed]] — Observation: work_list renamed to stm; duplicate STM index removed *(created: 2026-08-17)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -99,4 +101,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-17T14:54:41.721Z* | *Total pages: 87*
+*Last updated: 2026-08-17T17:02:37.624Z* | *Total pages: 89*

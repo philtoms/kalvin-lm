@@ -74,3 +74,9 @@
 ## [2026-08-17T14:54:41.699Z] observe
 - slug: "obs-2026-08-17-k-driven-harness-rewrite-mhall-completes-22-groundings", title: "K-driven harness rewrite: mhall completes, 22 groundings", relevance: "high"
 
+## [2026-08-17T16:05:48.060Z] observe
+- slug: "obs-2026-08-17-fifo-cogitation-survive-on-no-proposal-unknown-not-groundabl", title: "FIFO cogitation + survive-on-no-proposal + unknown-not-groundable", relevance: "high"
+
+## [2026-08-17T17:02:37.603Z] observe
+- slug: "obs-2026-08-17-word-binding-three-tier-precedence-settled", title: "Word Binding three-tier precedence settled", relevance: "high"
+

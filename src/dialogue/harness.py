@@ -48,9 +48,9 @@ _BAND_ORDER = ("S1", "S2", "S3", "S4")
 
 @dataclass
 class Turn:
-    """One engine call within a step: the feed and its response."""
+    """One engine call within a step: the feeds and its response."""
 
-    feed: KValue
+    feeds: list[KValue]
     grounds: list[KValue] = field(default_factory=list)
     asks: list[KValue] = field(default_factory=list)
 
@@ -110,6 +110,10 @@ class Harness:
         entries = compile_source(
             source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True
         )
+        tokens = {
+            sig: word
+            for sig, word in self._single_token_labels(source).items()
+        }
         heads: dict[int, list[KValue]] = {}
         exact: dict[tuple[int, tuple[int, ...]], KValue] = {}
         words: set[int] = set()
@@ -121,6 +125,7 @@ class Harness:
             exact.setdefault(
                 (kline.signature, tuple(kline.nodes)), entry
             )
+            words.update(tokens)
             if (
                 kline.nodes != [kline.signature]
                 and kline.signature == self.signifier.signature_of(kline.nodes)
@@ -137,19 +142,37 @@ class Harness:
         for i, opener in enumerate(openers):
             step = StepResult(i, opener)
             results.append(step)
-            queue: list[KValue] = [opener]
+            queue: list[list[KValue]] = [[opener]]
             while queue:
-                feed = queue.pop(0)
-                batch, observations = self._engine.rationalise([feed])
-                step.turns.append(Turn(feed, observations, batch))
+                feeds = queue.pop(0)
+                batch, observations = self._engine.rationalise(feeds)
+                step.turns.append(Turn(feeds, observations, batch))
                 for ask in batch:
                     reply = self._answer(ask, heads, exact, words, answered)
                     if reply is None:
                         step.stopped_on = ask
                         return results
                     step.answers.extend(reply)
-                    queue.extend(reply)
+                    queue.append(reply)
         return results
+
+    def _single_token_labels(self, source: str) -> dict[int, str]:
+        """``{signature: word}`` for every single-token word in the source.
+
+        A word that encodes to one typed token is its own signature, so its
+        identity ``X:[X]`` is derivable from the tokenizer alone (e.g. an
+        abbreviation RHS like ``M(od)`` that never heads a script entry).
+        """
+        from ks.compiler import Compiler
+        from ks.lexer import Lexer
+        from ks.parser import Parser
+        compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True)
+        compiler.compile(Parser(Lexer(source).tokenize()).parse())
+        return {
+            sig: word
+            for sig, word in compiler.node_labels.items()
+            if self._tokenizer.encode(word) == [sig]
+        }
 
     def _answer(
         self,
@@ -275,7 +298,8 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
     lines = [f"── Step {step.index + 1}  in  {_band(step.entry)}  "
              f"{_render_kline(step.entry, labels, verbose)} ──"]
     for t, turn in enumerate(step.turns, 1):
-        lines.append(f"  T{t:02d}  feed    {_render_kline(turn.feed, labels, verbose)}")
+        feeds = " + ".join(_render_kline(v, labels, verbose) for v in turn.feeds)
+        lines.append(f"  T{t:02d}  feed    {feeds}")
         for v in turn.grounds:
             lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
         for v in turn.asks:

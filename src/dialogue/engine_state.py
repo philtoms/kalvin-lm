@@ -129,10 +129,14 @@ class EngineState:
         Universal rule: a signature grounds only once every one of its nodes
         is in LTM. An identity is the exception — it is self-referential
         (``{S:[S]}``), so its single node is itself and it grounds
-        unconditionally when promoted.
+        unconditionally when promoted. An unknown (``{S: []}``) never grounds.
         """
+        if is_unknown(kline):
+            return False
         if is_identity(kline):
             return True
+        if len(kline.nodes) > 1 and not is_canon(kline, self._signifier):
+            return False
         return all(node in self.ltm for node in kline.nodes)
 
     def ltm_nodes(self, signature: int) -> list[int] | None:

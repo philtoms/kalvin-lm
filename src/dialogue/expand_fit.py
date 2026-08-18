@@ -30,11 +30,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-from kalvin.kline import KLine, classify_misfit, is_canon, is_terminal
+from kalvin.kline import (
+    KLine,
+    classify_misfit,
+    is_canon,
+    is_identity,
+    is_terminal,
+)
 from kalvin.kvalue import KValue
 from kalvin.significance import (
     DEFAULT_AGGREGATOR,
-    Aggregator,
     SIG_MASK,
 )
 
@@ -65,6 +70,39 @@ class ExpandFit:
     @property
     def state(self) -> EngineState:
         return self._state
+
+    def propose_gap(
+        self,
+        candidate: KLine,
+    ) -> list[KValue]:
+        """Expand a misfit candidate by underfit, overfit or otherwise bad-fit expansion strategies"""
+        if len(candidate.nodes) < 2:
+            return []
+        signifier = self._state.signifier
+        underfit, overfit = classify_misfit(candidate, signifier)
+        if not underfit and not overfit:
+            return []
+
+        candidate_sig = candidate.signature
+        nodes_sig = signifier.signature_of(candidate.nodes)
+        underfit_gap = signifier.residual(candidate_sig, nodes_sig)
+        overfit_mask = signifier.residual(nodes_sig, candidate_sig)
+
+        if underfit_gap and overfit_mask:
+            proposals = self._expand_badfit(candidate, underfit_gap, overfit_mask)
+        elif underfit_gap:
+            proposals = self._expand_underfit(candidate, underfit_gap)
+        else:
+            proposals = self._expand_overfit(candidate, overfit_mask)
+        graded = [self._grade(candidate, p) for p in proposals]
+        graded.sort(key=lambda kv: kv.significance & SIG_MASK, reverse=True)
+        return graded
+
+    def _grade(self, entry: KLine, proposal: KLine) -> KValue:
+        """Grade ``proposal`` against ``entry`` via the aggregator's terminal byte."""
+        byte = list(self._expand(entry, proposal))[-1].significance
+        return KValue(proposal, DEFAULT_AGGREGATOR.compose_terminal([byte & SIG_MASK]))
+
 
     def propose(
         self,
@@ -275,6 +313,64 @@ class ExpandFit:
 
         significance = aggregator.compose_terminal(slot_values)
         yield KValue(candidate, significance)
+
+    def _expand_underfit(
+        self, entry: KLine, gap: int
+    ) -> list[KLine]:
+        """Fill the gap with the co-denotations of a gap-covering kline's nodes.
+
+        A grounded kline whose signature covers the gap is a connotation bridge
+        (``what:[Object]`` bridging a W gap). The grounded klines sharing its
+        nodes (``lamb:[Object]``, ``ALL:[Object]``) denote what the gap stands
+        for; their signatures fill the gap.
+        """
+        signifier = self._state.signifier
+        proposals: list[KLine] = []
+        for bridge in self._state.where(
+            lambda k: signifier.signifies(k.signature, gap)
+        ):
+            bridge_nodes = set(bridge.nodes)
+            for denotation in self._state.where(
+                lambda k: k is not bridge
+                and not is_identity(k)
+                and set(k.nodes) & bridge_nodes
+            ):
+                expanded = list(entry.nodes) + [denotation.signature]
+                if signifier.signifies(
+                    signifier.signature_of(expanded), entry.signature
+                ):
+                    proposals.append(KLine(entry.signature, expanded, entry.dbg))
+        return proposals
+
+    def _expand_overfit(
+        self, entry: KLine, excess: int
+    ) -> list[KLine]:
+        """Drop the nodes whose bits contribute to the excess."""
+        signifier = self._state.signifier
+        remaining = [n for n in entry.nodes if not signifier.signifies(n, excess)]
+        if remaining == list(entry.nodes):
+            return []
+        kline = KLine(entry.signature, remaining, entry.dbg)
+        if is_terminal(kline):
+            return []
+        return [kline]
+
+    def _expand_badfit(
+        self, entry: KLine, gap: int, excess: int
+    ) -> list[KLine]:
+        """Swap the excess nodes for gap-covering contributors' nodes."""
+        signifier = self._state.signifier
+        remaining = [n for n in entry.nodes if not signifier.signifies(n, excess)]
+        proposals: list[KLine] = []
+        for contributor in self._state.where(
+            lambda k: signifier.signifies(k.signature, gap)
+        ):
+            kline = KLine(
+                entry.signature, remaining + list(contributor.nodes), entry.dbg
+            )
+            if not is_terminal(kline):
+                proposals.append(kline)
+        return proposals
 
     def _underfit(
         self, kline: KLine, gap: int

@@ -17,9 +17,12 @@ Rules when it resolves.
 ### Engine — grounding & cogitation
 
 - **Universal grounding rule:** a signature grounds only once every one of its nodes is in LTM. An identity is the exception — self-referential (`{S:[S]}`), it grounds unconditionally when promoted.
-- `_is_groundable` is that rule: identity → True; anything else → all nodes in LTM.
+- `_is_groundable` is that rule: identity → True; anything else → all nodes in LTM — except a multi-node non-canon (an S2 misfit), which is never cascade-groundable and must take the S2 path.
+- `pop_identity` drops **any** STM entry under a signature, not just unknown asks — a surviving misfit is silently deleted when another kline under the same signature grounds.
 - The `_promote` cascade grounds groundable entries to fixed point at S1; it does not emit S2 proposals.
-- `cogitate` runs one full LIFO pass over STM (no short-circuit): per entry it asks (S4), countersigns (S3), proposes (S2), or grounds (S1). The loop re-checks each index because the `_promote` cascade can remove arbitrary STM entries mid-pass.
+- `cogitate` runs one full **oldest-first** pass over STM (no short-circuit; FIFO, not LIFO — the entry waiting longest cogitates first): per entry it asks (S4), countersigns (S3), proposes (S2), or grounds (S1). The loop re-checks each index because the `_promote` cascade can remove arbitrary STM entries mid-pass.
+- The misfit (S2) arm has two probes: `propose_gap` (multi-node gate — a single-node misfit is the countersign arm's shape) expands the entry's own fit directly; `propose` falls back to node-overlap candidates. A no-proposal misfit stays in STM for a later turn.
+- An unknown (`{S: []}`) is never groundable — not even by the `_ground` cascade (an empty node list once slipped through `all([]) == True`).
 - The engine speaks in semantic predicates (`is_identity`, `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
 
 ### Engine — state
@@ -44,7 +47,7 @@ Rules when it resolves.
 
 ## Active state of K
 
-⚠️ **No relationship ever reaches the S3 countersign arm.** Every relationship entry (`a:[Det]`, `DH:[had]`, `MHALL:[SVO]`) is consumed by the misfit arm in the same turn — popped regardless of whether `propose` returned anything — so `is_countersignable` never sees a live entry. The WDMH↔MHALL synthesis question is unreachable until a no-proposal misfit survives in STM. Candidate: pop only when the strategy produced a batch.
+⚠️ **Gap-fill sorts, not filters.** On mhall's WDMH underfit, the W gap bridges via `what:[Object]` to the co-denotations of `Object` (identities excluded — an identity adds no new bits); every fill is emitted, graded by `_expand`'s terminal byte recomposed through `compose_terminal`, best-first. The engine asks each in turn and the harness stops on the first unanswerable ask. Open: multi-proposal ratification semantics, and whether `pop_identity` deleting a surviving misfit on same-signature grounding needs a fix (mhall no longer exercises it).
 
 ## Process — discipline
 

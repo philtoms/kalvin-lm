@@ -721,7 +721,9 @@ class ASTEmitter:
             if isinstance(item, Signature):
                 anns.append(item.inline_annotation)
             elif isinstance(item, OperatorScope):
-                anns.append(None)  # nested scope — no per-item inline here
+                # A nested scope's node is its head; the head's sig-side
+                # inline annotation (W > Q(uery)) binds that node to the word.
+                anns.append(item.inline_annotation)
         if scope.child_block is not None:
             for construct in scope.child_block.constructs:
                 self._collect_block_item_inline_annotations(construct, anns)
