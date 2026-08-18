@@ -143,6 +143,7 @@ class Engine:
             return False
 
         self._ground(kline)
+        self._state.pop_identity(kline.signature)
         return True
 
     def _slow_route(self, query: KValue) -> None:
@@ -181,9 +182,9 @@ class Engine:
                 proposals.append(KValue(KLine(kline.signature, []), SIG_S4))
 
             else:
-                # if self._state._is_groundable(kline):
-                #     self._state.remove_stm_at(idx)
-                #     self._ground(kline)
+                if self._state.is_grounded(kline):
+                    self._state.remove_stm_at(idx)
+                    continue
 
                 if self._state.is_countersignable(kline):
                     pairings = self._countersignature_proposals(kline)
@@ -191,7 +192,7 @@ class Engine:
                         proposals.extend(pairings)
                     else:
                         # All pairings resolved: the countersignature is complete.
-                        # self._state.remove_stm_at(idx)
+                        self._state.remove_stm_at(idx)
                         self._ground(kline)
 
                 if is_misfit(kline, self._state.signifier):
@@ -221,17 +222,18 @@ class Engine:
 
         """
         self._state.ground(kline)
-        changed = True
-        while changed:
-            changed = False
-            for i, entry in enumerate(self._state.stm):
+        changed = 1
+        last_changed = 0
+        while changed != last_changed:
+            last_changed = changed
+            changed = 0
+            for entry in self._state.stm:
                 if self._state._is_groundable(entry):
-                    self._state.remove_stm_at(i)
                     self._state.ground(entry)
                     self.observations.append(KValue(entry, SIG_S1))
-                    changed = True
+                    changed += 1
                     break
-
+        
 
     # ── S3 path: countersignature ────────────────────────────────────
 

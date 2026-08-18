@@ -135,8 +135,6 @@ class EngineState:
             return False
         if is_identity(kline):
             return True
-        if len(kline.nodes) > 1 and not is_canon(kline, self._signifier):
-            return False
         return all(node in self.ltm for node in kline.nodes)
 
     def ltm_nodes(self, signature: int) -> list[int] | None:
