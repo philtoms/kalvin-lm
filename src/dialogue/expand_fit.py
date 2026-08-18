@@ -345,7 +345,9 @@ class ExpandFit:
         fills: dict[int, int] = {}  # fill signature -> hops
 
         covering = state.where(
-            lambda k: signifier.residual(gap, k.signature) == 0
+            lambda k: not is_identity(k)
+            and signifier.residual(gap, k.signature) == 0
+            and signifier.signature_of(entry.nodes + [k.signature]) == entry.signature
         )
         for bridge in covering:
             upstream = any(
