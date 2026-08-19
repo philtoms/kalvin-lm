@@ -370,9 +370,9 @@ def present(results: list[StepResult], state: EngineState, source: str,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run a curriculum through the lean engine and present the trace.",
+        description="Run a curriculum (markdown) or KScript source through the lean engine and present the trace.",
     )
-    parser.add_argument("source", help="Path to a curriculum markdown file")
+    parser.add_argument("source", help="Path to a curriculum markdown file or a .ks KScript file")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Show hex signatures alongside scripted labels.",
@@ -386,6 +386,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     source_path = Path(args.source)
+    if source_path.suffix == ".ks":
+        try:
+            source = source_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
+            return 2
+        tok = NLPTokenizer()
+        harness = make_engine(tok, _STRATEGIES[args.strategy])
+        results = harness.run(source)
+        present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
+        return 0
+
     try:
         document = CurriculumDocument.from_file(source_path)
     except (CurriculumParseError, OSError) as exc:
