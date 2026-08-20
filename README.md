@@ -163,8 +163,7 @@ src/
 │   ├── rationalise.py    #   Rationaliser + RationaliserState
 │   ├── synthesize.py     #   Synthesizer (real-actor side of the triad)
 │   ├── decoder.py        #   Turn decoding (DecodedTurn)
-│   ├── expand_fit.py     #   Expand-fit misfit strategy
-│   └── similar_fit.py    #   Similar-fit (graft heuristic) misfit strategy
+│   └── expand_fit.py     #   Expand-fit misfit strategy
 └── training/             # Multi-agent training runtime
     ├── harness/          #   Harness server
     │   ├── __main__.py   #     CLI entry point

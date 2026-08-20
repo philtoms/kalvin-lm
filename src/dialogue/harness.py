@@ -17,15 +17,13 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import Counter
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
-from dialogue.engine import Engine, MisfitStrategy
+from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
 from dialogue.expand_fit import ExpandFit
-from dialogue.similar_fit import SimilarFit
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -36,15 +34,6 @@ from training.trainer.curriculum_document import (
     CurriculumDocument,
     CurriculumParseError,
 )
-
-# Named cogitation strategies for the misfit (S2) arm of ``cogitate``.
-# "similar_fit" — the STM graft heuristic (the original scheme).
-# "expand"      — grade grounded candidates via ``ExpandFit._expand`` and
-#                 propose under the entry's signature at the computed band.
-_STRATEGIES: dict[str, Callable[[EngineState], MisfitStrategy]] = {
-    "similar_fit": SimilarFit,
-    "expand": ExpandFit,
-}
 
 _BAND_ORDER = ("S1", "S2", "S3", "S4")
 
@@ -237,28 +226,26 @@ class Harness:
 # ── Construction (single source of truth) ────────────────────────────────
 #
 # The factories wire signifier → state → strategy → engine → harness so the
-# signifier lives in one place (the EngineState). ``misfit_cls`` is a strategy
-# class (ExpandFit / SimilarFit) constructed against the fresh or loaded state.
+# signifier lives in one place (the EngineState). The misfit (S2) strategy is
+# fixed to ExpandFit.
 
 def make_engine(
     tokenizer: NLPTokenizer,
-    misfit_cls: Callable[[EngineState], MisfitStrategy],
 ) -> Harness:
     """Build a harness over a fresh state: new signifier → state → engine."""
     state = EngineState(NLPSignifier())
-    misfit = misfit_cls(state)
+    misfit = ExpandFit(state)
     return Harness(tokenizer, Engine(state, misfit))
 
 
 def load_engine(
     path: str | Path,
     tokenizer: NLPTokenizer,
-    misfit_cls: Callable[[EngineState], MisfitStrategy],
 ) -> Harness:
     """Build a harness over a loaded prior state (reusing its signifier)."""
     signifier = NLPSignifier()
     state = EngineState.load(signifier, path)
-    misfit = misfit_cls(state)
+    misfit = ExpandFit(state)
     return Harness(tokenizer, Engine(state, misfit))
 
 
@@ -404,12 +391,6 @@ def main(argv: list[str] | None = None) -> int:
         "-v", "--verbose", action="store_true",
         help="Show hex signatures alongside scripted labels.",
     )
-    parser.add_argument(
-        "-s", "--strategy", choices=("similar_fit", "expand"), default="expand",
-        help="Cogitation strategy for the misfit (S2) arm. "
-             "'expand' (default) grades grounded candidates via "
-             "kalvin.expand.expand; 'similar_fit' is the graft heuristic.",
-    )
     args = parser.parse_args(argv)
 
     source_path = Path(args.source)
@@ -420,7 +401,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
             return 2
         tok = NLPTokenizer()
-        harness = make_engine(tok, _STRATEGIES[args.strategy])
+        harness = make_engine(tok)
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
         return 0
@@ -432,7 +413,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     tok = NLPTokenizer()
-    harness = make_engine(tok, _STRATEGIES[args.strategy])
+    harness = make_engine(tok)
     cumulative = ""
     for lesson in document.lessons:
         source = "\n".join(lesson.kscript)

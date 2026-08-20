@@ -75,25 +75,6 @@ class EngineState:
         bucket = self.ltm.get(signature)
         return bucket[-1] if bucket else None
 
-    def similar_fit_candidates(
-        self, entry: KLine
-    ) -> list[KLine]:
-        """Grounded klines sharing at least one but not all node values with ``entry``,
-        excluding the entry's own canon (its resolution, not a recombination ingredient)."""
-        signifier = self._signifier
-        entry_nodes = set(entry.nodes)
-        candidates: list[KLine] = []
-        for bucket in self.ltm.values():
-            for kline in bucket:
-                if kline is entry or not kline.nodes or entry.nodes == kline.nodes:
-                    continue
-                if kline.signature == entry.signature and is_canon(kline, signifier):
-                    continue
-                kline_nodes = set(kline.nodes)
-                if entry_nodes & kline_nodes and len(kline_nodes.difference(entry_nodes)):
-                    candidates.append(kline)
-        return candidates
-
     def is_grounded(self, kline: KLine) -> bool:
         """Is an isomorphic kline (same signature and nodes) in LTM?"""
         return any(

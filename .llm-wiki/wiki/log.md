@@ -2,6 +2,7 @@
 
 ## 2026-08-20
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit","title":"Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l","title":"Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb]"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4","title":"Committed crossover-fill propose + S4 refusal loop baseline (f48112d)"}
 

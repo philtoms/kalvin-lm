@@ -233,6 +233,7 @@ class ExpandFit:
                 continue
             out.append(KValue(kline, aggregator.compose_terminal(slots)))
         return out
+
     def _fill_distance(self, entry: KLine, sig: int, hops: int) -> int:
         """Effective distance of a fill: flat 1 when the fill is a constituent
         of the entry's own canon — a value the entry's signature already

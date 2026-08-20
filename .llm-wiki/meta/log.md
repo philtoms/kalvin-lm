@@ -95,3 +95,6 @@
 ## [2026-08-20T15:05:03.670Z] observe
 - slug: "obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l", title: "Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb]", relevance: "critical"
 
+## [2026-08-20T15:17:35.140Z] observe
+- slug: "obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit", title: "Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy", relevance: "high"
+
