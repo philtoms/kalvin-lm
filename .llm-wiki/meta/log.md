@@ -83,3 +83,18 @@
 ## [2026-08-18T13:10:15.461Z] observe
 - slug: "obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words", title: "Underfit gap-fill measures connotation distance in BPE words", relevance: "high"
 
+## [2026-08-19T13:24:59.270Z] observe
+- slug: "obs-2026-08-19-identity-asks-were-suppressed-by-cogitate-skip-pop-identity-", title: "Identity asks were suppressed by cogitate skip + pop_identity over-pop", relevance: "high"
+
+## [2026-08-19T14:10:50.885Z] observe
+- slug: "obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte", title: "Recursive cogitate verified; mhall stops on misaligned countersign pairings", relevance: "high"
+
+## [2026-08-20T09:50:55.160Z] observe
+- slug: "obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4", title: "Committed crossover-fill propose + S4 refusal loop baseline (f48112d)", relevance: "critical"
+
+## [2026-08-20T15:05:03.670Z] observe
+- slug: "obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l", title: "Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb]", relevance: "critical"
+
+## [2026-08-20T15:17:35.140Z] observe
+- slug: "obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit", title: "Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy", relevance: "high"
+

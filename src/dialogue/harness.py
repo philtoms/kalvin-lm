@@ -17,19 +17,17 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import Counter
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
-from dialogue.engine import Engine, MisfitStrategy
+from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
 from dialogue.expand_fit import ExpandFit
-from dialogue.similar_fit import SimilarFit
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
-from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
+from kalvin.significance import BandLayout, SIG_S1, SIG_S3, SIG_S4
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.trainer.curriculum_document import (
@@ -37,17 +35,10 @@ from training.trainer.curriculum_document import (
     CurriculumParseError,
 )
 
-# Named cogitation strategies for the misfit (S2) arm of ``cogitate``.
-# "similar_fit" — the STM graft heuristic (the original scheme).
-# "expand"      — grade grounded candidates via ``ExpandFit._expand`` and
-#                 propose under the entry's signature at the computed band.
-_STRATEGIES: dict[str, Callable[[EngineState], MisfitStrategy]] = {
-    "similar_fit": SimilarFit,
-    "expand": ExpandFit,
-}
-
-_SIG_TO_BAND = {SIG_S1: "S1", SIG_S2: "S2", SIG_S3: "S3", SIG_S4: "S4"}
 _BAND_ORDER = ("S1", "S2", "S3", "S4")
+
+# Classifies an ask's significance byte into its band on the S1–S4 spectrum.
+_LAYOUT = BandLayout()
 
 
 @dataclass
@@ -150,14 +141,19 @@ class Harness:
             while queue:
                 feeds = queue.pop(0)
                 batch, observations = self._engine.rationalise(feeds)
-                step.turns.append(Turn(feeds, observations, batch))
-                for ask in batch:
+                deduped = _dedup(batch)
+                step.turns.append(Turn(feeds, observations, deduped))
+                replies: list[KValue] = []
+                for ask in deduped:
                     reply = self._answer(ask, heads, exact, words, answered)
                     if reply is None:
-                        step.stopped_on = ask
-                        return results
-                    step.answers.extend(reply)
-                    queue.append(reply)
+                        # Off-script: return the ask to K as an S4 rejection.
+                        replies.append(KValue(ask.kline, SIG_S4))
+                        continue
+                    replies.extend(reply)
+                if replies:
+                    step.answers.extend(replies)
+                    queue.append(replies)
         return results
 
     def _single_token_labels(self, source: str) -> dict[int, str]:
@@ -209,6 +205,10 @@ class Harness:
             )
             if not script_klines and not is_word:
                 return None
+            # Only terminals (single-token words) get a generated identity;
+            # a non-terminal's word form must come from the script.
+            if not is_word:
+                return [*script_klines]
             identity = KValue(
                 KLine(kline.signature, [kline.signature]), SIG_S1
             )
@@ -226,32 +226,43 @@ class Harness:
 # ── Construction (single source of truth) ────────────────────────────────
 #
 # The factories wire signifier → state → strategy → engine → harness so the
-# signifier lives in one place (the EngineState). ``misfit_cls`` is a strategy
-# class (ExpandFit / SimilarFit) constructed against the fresh or loaded state.
+# signifier lives in one place (the EngineState). The misfit (S2) strategy is
+# fixed to ExpandFit.
 
 def make_engine(
     tokenizer: NLPTokenizer,
-    misfit_cls: Callable[[EngineState], MisfitStrategy],
 ) -> Harness:
     """Build a harness over a fresh state: new signifier → state → engine."""
     state = EngineState(NLPSignifier())
-    misfit = misfit_cls(state)
+    misfit = ExpandFit(state)
     return Harness(tokenizer, Engine(state, misfit))
 
 
 def load_engine(
     path: str | Path,
     tokenizer: NLPTokenizer,
-    misfit_cls: Callable[[EngineState], MisfitStrategy],
 ) -> Harness:
     """Build a harness over a loaded prior state (reusing its signifier)."""
     signifier = NLPSignifier()
     state = EngineState.load(signifier, path)
-    misfit = misfit_cls(state)
+    misfit = ExpandFit(state)
     return Harness(tokenizer, Engine(state, misfit))
 
 
 # ── Presentation ──────────────────────────────────────────────────────────
+
+
+def _dedup(batch: list[KValue]) -> list[KValue]:
+    """First occurrence of each (signature, nodes, band) in emission order."""
+    seen: set[tuple[int, tuple[int, ...], int]] = set()
+    out: list[KValue] = []
+    for v in batch:
+        key = (v.kline.signature, tuple(v.kline.nodes), v.significance)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(v)
+    return out
 
 
 def _label(signature: int, labels: dict[int, str], verbose: bool) -> str:
@@ -272,7 +283,7 @@ def _render_kline(value: KValue, labels: dict[int, str], verbose: bool) -> str:
 
 
 def _band(value: KValue) -> str:
-    return _SIG_TO_BAND.get(value.significance, f"0x{value.significance:x}")
+    return _LAYOUT.classify(value.significance)
 
 
 def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier) -> dict[int, str]:
@@ -302,12 +313,15 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
     lines = [f"── Step {step.index + 1}  in  {_band(step.entry)}  "
              f"{_render_kline(step.entry, labels, verbose)} ──"]
     for t, turn in enumerate(step.turns, 1):
-        feeds = " + ".join(_render_kline(v, labels, verbose) for v in turn.feeds)
+        feeds = " + ".join(
+            f"{_render_kline(v, labels, verbose)} {_band(v)}" for v in turn.feeds
+        )
         lines.append(f"  T{t:02d}  feed    {feeds}")
         for v in turn.grounds:
             lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
         for v in turn.asks:
-            lines.append(f"        asks    {_render_kline(v, labels, verbose)}")
+            kind = "asks" if not v.kline.nodes else "proposes"
+            lines.append(f"        {kind:<8} {_render_kline(v, labels, verbose)}")
     if step.stopped_on is not None:
         lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
     return "\n".join(lines)
@@ -370,22 +384,28 @@ def present(results: list[StepResult], state: EngineState, source: str,
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run a curriculum through the lean engine and present the trace.",
+        description="Run a curriculum (markdown) or KScript source through the lean engine and present the trace.",
     )
-    parser.add_argument("source", help="Path to a curriculum markdown file")
+    parser.add_argument("source", help="Path to a curriculum markdown file or a .ks KScript file")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Show hex signatures alongside scripted labels.",
     )
-    parser.add_argument(
-        "-s", "--strategy", choices=("similar_fit", "expand"), default="expand",
-        help="Cogitation strategy for the misfit (S2) arm. "
-             "'expand' (default) grades grounded candidates via "
-             "kalvin.expand.expand; 'similar_fit' is the graft heuristic.",
-    )
     args = parser.parse_args(argv)
 
     source_path = Path(args.source)
+    if source_path.suffix == ".ks":
+        try:
+            source = source_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
+            return 2
+        tok = NLPTokenizer()
+        harness = make_engine(tok)
+        results = harness.run(source)
+        present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
+        return 0
+
     try:
         document = CurriculumDocument.from_file(source_path)
     except (CurriculumParseError, OSError) as exc:
@@ -393,7 +413,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     tok = NLPTokenizer()
-    harness = make_engine(tok, _STRATEGIES[args.strategy])
+    harness = make_engine(tok)
     cumulative = ""
     for lesson in document.lessons:
         source = "\n".join(lesson.kscript)

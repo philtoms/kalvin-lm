@@ -13,7 +13,7 @@ that assemble them (signifier, state, strategy, engine) live in
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from dialogue.engine_state import EngineState
@@ -48,20 +48,13 @@ _LAYOUT = BandLayout()
 class MisfitStrategy(Protocol):
     """Propose for one pending misfit ``entry`` against the ratified store.
 
-    Returns S2 proposals for the actor to emit, and may ground an entry
-    directly via ``ground`` when a candidate fully accounts for it (the
-    expand strategy's S1 case). The strategy shares the engine's
-    :class:`EngineState` (set at construction).
+    Uses both the entry's signature and its nodes to establish edge-hop
+    candidates, graded by s3-connotation crossover. Returns S2 proposals for
+    the actor to emit (S1 when the proposal is already grounded). The
+    strategy shares the engine's :class:`EngineState` (set at construction).
     """
 
     def propose(
-        self,
-        entry: KLine,
-        ground: Callable[[KLine], None],
-    ) -> list[KValue]:
-        ...
-
-    def propose_gap(
         self,
         entry: KLine,
     ) -> list[KValue]:
@@ -115,9 +108,9 @@ class Engine:
 
         Dispatch is on the query's **structural** significance:
 
-        - **S1/S4 (fast route)** — an S1 (identity or canon) match grounds the 
-          kline (and cascades); an S4 (the empty ask ``{X:[]}``) pops the matching
-          identity ask.
+        - **S1/S4 (fast route)** — an S1 (identity or canon) match grounds the
+          kline (and cascades); an S4 rejection (empty ask or refused proposal)
+          drops the matching kline from attention.
         - **S2/S3 (slow route)** — append to STM, then unpack an S2
           misfit's unrecognised nodes and signature as identity asks.
         """
@@ -126,24 +119,39 @@ class Engine:
         query_sig = _LAYOUT.classify(query.significance)
 
         if query_sig == "S4":
-            self._state.pop_identity(kline.signature)
+            self._state.refuse(query.kline)
+            self._state.remove_stm(query.kline)
             return 
 
         if structural_sig == query_sig and structural_sig == "S1":
-            if self._fast_route(query, query_sig):
+            if self._fast_route(query):
                 return
             
         self._slow_route(query)
 
-    def _fast_route(self, query: KValue, query_sig: str) -> bool:
-        # Identity grounds unconditionally.
-        # Canon grounds only when its nodes are grounded. 
-        kline = query.kline
-        if is_canon(kline, self._state.signifier) and not self._state._is_groundable(kline):
-            return False
+    def _ground(self, kline: KLine) -> None:
+        """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
 
-        self._ground(kline)
-        self._state.pop_identity(kline.signature)
+        A grounding may make other STM entries groundable (an identity
+        whose signature just landed, a canon whose nodes are now all seen, a
+        relationship whose reciprocal just grounded). Cascade until fixed point.
+        """
+        if self._state.ground(kline):
+            self.observations.append(KValue(kline, SIG_S1))
+        sweep = True
+        while sweep:
+            sweep = False
+            for entry in self._state.stm:
+                if self._state._is_groundable(entry) and self._state._is_denoted(entry):
+                    if self._state.ground(entry):
+                        self.observations.append(KValue(entry, SIG_S1))
+                        sweep = True
+                        break
+
+    def _fast_route(self, query: KValue) -> bool:
+        if not self._state._is_groundable(query.kline):
+            return False
+        self._ground(query.kline)
         return True
 
     def _slow_route(self, query: KValue) -> None:
@@ -165,9 +173,10 @@ class Engine:
         takes the S2 path. a structurally-S1 entry is promoted (grounded).
         Entries that match no path persist for a later turn.
         """
-        proposals: list[KValue] = []
+        batch: list[KValue] = []
 
         idx = 0
+        count = len(self._state.stm)
         while idx < len(self._state.stm):
             # Re-check the index each iteration: the _promote cascade (via the
             # S2 strategy's ground callback, or the countersign/groundable
@@ -179,61 +188,38 @@ class Engine:
 
             if is_unknown(kline):
                 self._state.remove_stm_at(idx)
-                proposals.append(KValue(KLine(kline.signature, []), SIG_S4))
-
+                batch.append(KValue(KLine(kline.signature, []), SIG_S4))
+                continue
             else:
+                if self._state._is_groundable(kline) and self._state._is_denoted(kline):
+                    self._ground(kline)
+
+                # if self._state.is_countersignable(kline):
+                #     pairings = self._countersignature_proposals(kline)
+                #     if pairings:
+                #         proposals.extend(pairings)
+                #     else:
+                #         # All pairings resolved: the countersignature is complete.
+                #         self._state.remove_stm_at(idx)
+                #         self._ground(kline)
+
+                if is_misfit(kline, self._state.signifier):
+                    proposals = self._misfit.propose(kline)
+                    if proposals:
+                        self._state.remove_stm_at(idx)
+                        batch.extend(proposals)
+
                 if self._state.is_grounded(kline):
                     self._state.remove_stm_at(idx)
                     continue
 
-                if self._state.is_countersignable(kline):
-                    pairings = self._countersignature_proposals(kline)
-                    if pairings:
-                        proposals.extend(pairings)
-                    else:
-                        # All pairings resolved: the countersignature is complete.
-                        self._state.remove_stm_at(idx)
-                        self._ground(kline)
-
-                if is_misfit(kline, self._state.signifier):
-                    batch = self._misfit.propose_gap(kline)
-                    if batch:
-                        self._state.remove_stm_at(idx)
-                        proposals.extend(batch)
-                        continue
-                    batch = self._misfit.propose(kline, self._ground)
-                    if batch:
-                        self._state.remove_stm_at(idx)
-                        proposals.extend(batch)
-                        continue
-
             idx += 1
 
-        return proposals
+        if count != len(self._state.stm):
+            batch.extend(self.cogitate())
 
-    # ── Grounding ────────────────────────────────────────────────────
+        return batch
 
-    def _ground(self, kline: KLine) -> None:
-        """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
-
-        A grounding may make other STM entries groundable (an identity
-        whose signature just landed, a canon whose nodes are now all seen, a
-        relationship whose reciprocal just grounded). Cascade until fixed point.
-
-        """
-        self._state.ground(kline)
-        changed = 1
-        last_changed = 0
-        while changed != last_changed:
-            last_changed = changed
-            changed = 0
-            for entry in self._state.stm:
-                if self._state._is_groundable(entry):
-                    self._state.ground(entry)
-                    self.observations.append(KValue(entry, SIG_S1))
-                    changed += 1
-                    break
-        
 
     # ── S3 path: countersignature ────────────────────────────────────
 

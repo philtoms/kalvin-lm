@@ -58,12 +58,13 @@ Every run ends with two lists. Read both before reading code.
 ```bash
 PYTHONPATH=src .venv/bin/python -m dialogue.harness curricula/wdmh-underfit.md  # the canonical curriculum
 PYTHONPATH=src .venv/bin/python -m dialogue.harness curricula/wdmh-underfit.md -v # + hex signatures alongside labels
-PYTHONPATH=src .venv/bin/python -m dialogue.harness <your.md>                     # any curriculum
+PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks       # or any raw .ks script
 ```
 
-The harness parses the curriculum markdown (Objective/Approach/Goal/Lessons),
-runs each lesson's kscript through a shared engine (state persists across
-lessons), and presents the trace.
+The harness dispatches on suffix: `.ks` runs the raw script; markdown is
+parsed as a curriculum (Objective/Approach/Goal/Lessons),
+each lesson's kscript runs through a shared engine (state persists across
+lessons), and the trace is presented.
 ```
 
 The harness compiles each lesson's kscript, feeds each compiled entry to the engine

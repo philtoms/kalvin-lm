@@ -95,6 +95,11 @@
 - [[sources/obs-2026-08-17-word-binding-three-tier-precedence-settled]] — Observation: Word Binding three-tier precedence settled *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed]] — Observation: work_list renamed to stm; duplicate STM index removed *(created: 2026-08-17)*
 - [[sources/obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words]] — Observation: Underfit gap-fill measures connotation distance in BPE words *(created: 2026-08-18)*
+- [[sources/obs-2026-08-19-identity-asks-were-suppressed-by-cogitate-skip-pop-identity-]] — Observation: Identity asks were suppressed by cogitate skip + pop_identity over-pop *(created: 2026-08-19)*
+- [[sources/obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte]] — Observation: Recursive cogitate verified; mhall stops on misaligned countersign pairings *(created: 2026-08-19)*
+- [[sources/obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4]] — Observation: Committed crossover-fill propose + S4 refusal loop baseline (f48112d) *(created: 2026-08-20)*
+- [[sources/obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l]] — Observation: Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb] *(created: 2026-08-20)*
+- [[sources/obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit]] — Observation: Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy *(created: 2026-08-20)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -102,4 +107,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-18T13:10:15.488Z* | *Total pages: 90*
+*Last updated: 2026-08-20T15:17:35.177Z* | *Total pages: 95*

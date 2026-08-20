@@ -60,6 +60,7 @@ class EngineState:
     stm: list[KLine] = field(default_factory=list)
     ltm: dict[int, list[KLine]] = field(default_factory=dict)
     frame: dict[int, list[KLine]] = field(default_factory=dict)
+    refused: set[tuple[int, tuple[int, ...]]] = field(default_factory=set)
     _dbg_step: int = 0
 
     @property
@@ -74,24 +75,8 @@ class EngineState:
         bucket = self.ltm.get(signature)
         return bucket[-1] if bucket else None
 
-    def similar_fit_candidates(
-        self, entry: KLine
-    ) -> list[KLine]:
-        """Grounded klines sharing at least one but not all node values with ``entry``,
-        excluding the entry's own canon (its resolution, not a recombination ingredient)."""
-        signifier = self._signifier
-        entry_nodes = set(entry.nodes)
-        candidates: list[KLine] = []
-        for bucket in self.ltm.values():
-            for kline in bucket:
-                if kline is entry or not kline.nodes or entry.nodes == kline.nodes:
-                    continue
-                if kline.signature == entry.signature and is_canon(kline, signifier):
-                    continue
-                kline_nodes = set(kline.nodes)
-                if entry_nodes & kline_nodes and len(kline_nodes.difference(entry_nodes)):
-                    candidates.append(kline)
-        return candidates
+    def find_bucket(self, signature: int) -> list[KLine]:
+        return self.ltm.get(signature) or []
 
     def is_grounded(self, kline: KLine) -> bool:
         """Is an isomorphic kline (same signature and nodes) in LTM?"""
@@ -120,7 +105,6 @@ class EngineState:
             return False
 
         bucket.append(kline)
-        self.pop_identity(kline.signature, stm_idx)
         return True
 
     def _is_groundable(self, kline: KLine) -> bool:
@@ -136,6 +120,14 @@ class EngineState:
         if is_identity(kline):
             return True
         return all(node in self.ltm for node in kline.nodes)
+
+    def _is_denoted(self, kline: KLine) -> bool:
+        """Does the store already denote ``kline``'s signature?
+
+        A cascade may only promote an entry that is self-denoting (a canon)
+        or whose signature already has some grounded kline under it.
+        """
+        return kline.signature in self.ltm or is_canon(kline, self._signifier)
 
     def ltm_nodes(self, signature: int) -> list[int] | None:
         """The nodes of any grounded kline under ``signature`` with non-empty nodes."""
@@ -166,17 +158,20 @@ class EngineState:
         if idx < len(self.stm):
             return self.stm.pop(idx)
         return None
-    
-    def pop_identity(self, signature: int, idx = -1) -> KLine | None:
-        """Drop the first pending Unknown ask for ``signature`` (T answered it)."""
-        if idx < 0:
-            for i, entry in enumerate(self.stm):
-                if entry.signature == signature:
-                    idx = i
-            
-        if idx >= 0:
-            self.remove_stm_at(idx)
-        return
+
+    def remove_stm(self, kline: KLine) -> None:
+        """Drop every STM entry matching ``kline`` by signature and nodes."""
+        self.stm = [
+            e for e in self.stm
+            if not (e.signature == kline.signature and e.nodes == kline.nodes)
+        ]
+
+    def refuse(self, kline: KLine) -> None:
+        """Record ``kline`` as rejected at S4 — not to be re-proposed."""
+        self.refused.add((kline.signature, tuple(kline.nodes)))
+
+    def is_refused(self, kline: KLine) -> bool:
+        return (kline.signature, tuple(kline.nodes)) in self.refused
 
     def is_seen(self, signature: int) -> bool:
         """Has K seen ``signature`` — grounded or pending as an Unknown ask in STM?"""

@@ -11,32 +11,46 @@ Rules when it resolves.
 
 - `route()` dispatches when **structural** significance (`sig_level`) **agrees with** the query's stamped significance (classified via `BandLayout`): both must be S1/S4 for the fast route, else slow route.
 - The fast route grounds a seen-signature **identity** unconditionally (self-referential `{S:[S]}`); a seen-signature **canon** grounds only once `_is_groundable` holds (all its nodes are in LTM), else it slow-routes to await them.
-- An incoming S4 (`{X:[]}`) is a reply to K's own framed ask — feeding one never discovers a signature.
+- An incoming S4 is a **rejection**: `route` records it in the state's `refused` set (matched by exact `(signature, nodes)`) and removes the matching STM entry. `propose` filters refused shapes — K does not re-propose a refused kline.
 - A signature is only discovered when the slow route unpacks it from an S2/S3 incoming; unreferenced signatures stay invisible.
 
 ### Engine — grounding & cogitation
 
 - **Universal grounding rule:** a signature grounds only once every one of its nodes is in LTM. An identity is the exception — self-referential (`{S:[S]}`), it grounds unconditionally when promoted.
-- `_is_groundable` is that rule: identity → True; anything else → all nodes in LTM — except a multi-node non-canon (an S2 misfit), which is never cascade-groundable and must take the S2 path.
-- `pop_identity` drops **any** STM entry under a signature, not just unknown asks — a surviving misfit is silently deleted when another kline under the same signature grounds.
-- The `_promote` cascade grounds groundable entries to fixed point at S1; it does not emit S2 proposals.
-- `cogitate` runs one full **oldest-first** pass over STM (no short-circuit; FIFO, not LIFO — the entry waiting longest cogitates first): per entry it asks (S4), countersigns (S3), proposes (S2), or grounds (S1). The loop re-checks each index because the `_promote` cascade can remove arbitrary STM entries mid-pass.
-- The misfit (S2) arm has two probes: `propose_gap` (multi-node gate — a single-node misfit is the countersign arm's shape) expands the entry's own fit directly; `propose` falls back to node-overlap candidates. A no-proposal misfit stays in STM for a later turn.
+- `_is_groundable` is that rule: identity → True; anything else → all nodes in LTM.
+- **Denotation gate:** a cascade promotion additionally requires `_is_denoted` — the signature already has some grounded kline under it in LTM, **or** the entry is itself a canon (self-denoting: signature == signature_of(nodes)). Without the canon exemption the canons deadlock (a canon is the only denotation of its signature). Relationships are never self-denoting — their truth comes from ratification, which is why `DH:[had]` waits in STM.
+- Grounding happens wherever eligibility is discovered: fast route on feed, cogitate's groundable arm over STM — both via `Engine._ground` (direct grant → observation → fixed-point sweep over groundable+denoted entries).
+- `cogitate` runs one full **oldest-first** pass over STM: per entry it asks (S4), grounds (groundable+denoted), proposes (S2), or removes-if-grounded. A pass that removed anything recurses (extended into the same batch). The unknown arm removes-then-asks with `continue` (no index skip).
+- The misfit (S2) arm is one `propose(entry)` — `propose_gap` was merged in. A no-proposal misfit stays in STM for a later turn.
 - An unknown (`{S: []}`) is never groundable — not even by the `_ground` cascade (an empty node list once slipped through `all([]) == True`).
 - The engine speaks in semantic predicates (`is_identity`, `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
 
 ### Engine — state
 
 - `observations` resets to a fresh list at the top of every `rationalise()` call (per-turn scoping).
-- EngineState holds three stores realising the kalvin memory relations: `stm` (Short-Term Memory — what cogitation is attending to: incoming entries and the ungrounded sigs/nodes unpacked from them; formerly `work_list`, renamed once recognised as already the attention store), `ltm` (ratified klines), and `frame` (outgoing proposals and identity requests). The separate `kalvin.stm.STM` index field was removed — the lean engine had two STM-shaped stores.
-- The scoped reads (`is_in_ltm`, `is_seen`, `signature_seen`) each check one store; none is a union across stores.
+- EngineState stores: `stm` (attention), `ltm` (ratified klines), `frame` (emission memory), `refused` (S4-rejected shapes, keyed `(signature, nodes)` — lifetime scope open).
+- `pop_identity` is gone; STM cleanup lives in `cogitate` and the S4 route's `remove_stm`.
+- `find()` returns the **last** grounded kline under a signature — bucket order (grounding sequence) leaks into every consumer; consumers needing a canon use `canon_nodes` or scan the bucket.
+
+### Misfit proposals (ExpandFit)
+
+- **Connotations from both sides:** `_crossover_connotations` gathers edge-hop chains from the entry's nodes **and** from the underfit gap's covering bridges. `_edge_hops` traverses canon klines (stops at identity/dead end/cycle).
+- **Crossing candidates** are grounded canon klines whose signature or nodes reach a connotation; **fills** are the candidate values that reach a connotation, at `connotation_hops + crossing_hops`.
+- Fills are proposed **under the entry's signature** (added to the nodes / swapped for the excess), gated: not gap-covering (the query word itself), not a self-fill (reconstructs the entry), not already in the base nodes, `signifies(signature_of(expanded), entry.signature)`, not terminal.
+- **Concrete-first grading:** `_fill_distance` — a fill that is a node of the entry's own canon takes flat distance 1; connotational fills take `hops + 1`. ("Grounded terminal" discriminators fail: grammar types have identities too.)
+- **Reentry:** after grading, `propose` recurses on each proposal's kline (depth 2) — each proposal's nodes widen the connotation set, reaching fills one hop further out.
+- **Drop rule:** fill-derived proposals drop when the gap could not be filled (`residual(entry.signature, signature_of(nodes)) != 0` — uncovered bits = unassigned work).
+- **Pivot alignment:** `_pivot_proposals` — a pivot is a grounded canon sharing a node with the entry's canon. Per canon node: shared → S2 slot (1.0); edge-hop path into the pivot's nodes → S3 (decay(hops), node **replaced** by its pivot counterpart); no path → gap. Canon nodes forming a grounded sub-canon resolve as a **group** through the sub-canon signature's path (did+have → DH → had). Gap slots take the pivot's leftover nodes (S4 fill): one gap takes the whole leftover residual as a grouped fill; N gaps take one each; gaps outnumbering leftovers drop the proposal; **leftovers with no open gap are excluded** (surplus graft was the `ALL:[a,little,lamb,Mary,had]` bug). Slot accounting — not bit residual — decides pivot survival.
+- Pivot slot semantics: shared node is **S2 (canonical)**, not S1; path is S3; gap fill is S4.
 
 ### Harness
 
-- Curriculum-driven: the CLI takes a curriculum markdown file (not a raw `.ks`); each lesson's kscript runs through a shared engine, state persisting across lessons; the label map accumulates the cumulative source.
-- K-driven dialogue: each sub-script (annotation group) is opened with its first entry; from there the engine drives. Each engine emission is an ask; the harness answers from the script or the run stops.
-- Ratifying answers: an identity ask `X:[]` → identity `X:[X]` + the script klines headed `X`; a proposal ask `A:[B]` → the matching script kline + its countersignature `B:[A]`. All other emissions are scaffolding.
-- A node of a compound self-ref entry (`DH:[did,have]`) is a script-known word; its identity ask answers with `X:[X]` alone.
+- Curriculum-driven: the CLI takes a curriculum markdown file or a raw `.ks`; each lesson's kscript runs through a shared engine, state persisting across lessons; the label map accumulates the cumulative source.
+- K-driven dialogue: each sub-script (annotation group) is opened with its first entry; from there the engine drives. **Run to completion:** an ask the script cannot answer is returned to K at S4 (rejection) and the dialogue continues — the run no longer stops.
+- **Terminal-only identities:** `_answer` generates an identity `X:[X]` only for single-token words; a non-terminal's word form must come from the script.
+- **Batched replies:** all of a turn's answers feed back as one `rationalise` call; empty replies are dropped from the queue.
+- Ask dedup per turn on `(signature, nodes, band)`; the `answered` set dedups across the whole run.
+- Trace: `proposes` vs `asks` (nodes present or not); feed items carry their band; band counts classify by significance byte through the spectrum (`BandLayout`), never by shape.
 - Never judges — feeding and answering only.
 
 ### Compilation — annotation & scope
@@ -48,7 +62,7 @@ Rules when it resolves.
 
 ## Active state of K
 
-⚠️ **Underfit gap-fill bridges via s3 connotations.** Seed (covering): a grounded non-identity kline whose signature covers the gap **and** reconstructs the entry (`signature_of(entry.nodes + [k.signature]) == entry.signature`), not connoted by another covering kline (chain head) — on mhall uniquely `what:[Query]`. `_edge_hops` from its nodes builds `s3_connotations` (sig → min hops); every grounded signature whose own `_edge_hops` chain crosses a connotation fills at `connotation_hops + crossing_hops`, graded `decay(total)`. mhall: lamb/pig fill at 2 hops (0xfb), ALL's mid-chain edge `ALL:[Query]` costs an extra crossing (0xf9). Gap-covering fills are suppressed. An identity must not bridge: it satisfies the reconstruction test and the upstream rule then hands the chain to it, while `find()` resolves through the relationship anyway — inverting the ladder (mid-chain candidates win). Open: lamb vs pig tie at equal hops (divergence-based ranking unexplored); multi-proposal ratification semantics; `pop_identity` deleting a surviving misfit on same-signature grounding.
+⚠️ **Pivot alignment artifacts + S5T2 churn.** mhall now proposes `WDMH:[had, Mary, a, little, lamb]` (the full alignment: did+have grouped-resolve through DH→had at S3, Mary shared at S2, the `what` gap filled by the grouped residual `[a,little,lamb]` at S4). Open: (a) wdmh still emits the greedy `[Mary,had,a,little]` variant because `find(DH)` returns the last bucket entry (`DH:[did,have]`, a cycle) rather than `DH:[had]` — bucket-order fragility; (b) the pivot arm proposes an entry's own canon when zero gaps exist (`ALL:[a,little,lamb]` self-canon echo — proposes nothing unknown; suppression candidate); (c) S5T2 grounds ALL then asks+proposes the same kline — duplicate STM copies of `ALL:[Query]` (opener + reply feed) each spawn asks, and the misfit arm runs on entries resolved earlier in the same pass; (d) refused-set lifetime (does a later grounding clear refusals whose basis changed?); (e) reentry's exponential widening and refusal circumvention via new shapes (`ALL:[lamb,lamb]` after `ALL:[lamb]` refused).
 
 ## Process — discipline
 
