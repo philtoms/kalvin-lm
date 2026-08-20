@@ -89,3 +89,9 @@
 ## [2026-08-19T14:10:50.885Z] observe
 - slug: "obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte", title: "Recursive cogitate verified; mhall stops on misaligned countersign pairings", relevance: "high"
 
+## [2026-08-20T09:50:55.160Z] observe
+- slug: "obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4", title: "Committed crossover-fill propose + S4 refusal loop baseline (f48112d)", relevance: "critical"
+
+## [2026-08-20T15:05:03.670Z] observe
+- slug: "obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l", title: "Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb]", relevance: "critical"
+

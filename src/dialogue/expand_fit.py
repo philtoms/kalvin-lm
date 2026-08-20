@@ -20,6 +20,7 @@ from kalvin.kline import (
     classify_misfit,
     is_canon,
     is_identity,
+    is_misfit,
     is_terminal,
 )
 from kalvin.kvalue import KValue
@@ -63,6 +64,7 @@ class ExpandFit:
     def propose(
         self,
         entry: KLine,
+        _depth: int = 2,
     ) -> list[KValue]:
         signifier = self._state.signifier
         underfit, overfit = classify_misfit(entry, signifier)
@@ -92,12 +94,18 @@ class ExpandFit:
 
         aggregator = DEFAULT_AGGREGATOR
         base = [1.0] * len(base_nodes)
+        canon = self._state.canon_nodes(entry.signature)
         graded: list[KValue] = []
         for sig, hops in fills.items():
             if gap and signifier.residual(gap, sig) == 0:
                 # A gap-covering fill is the query word itself, not an answer.
                 continue
+            if sig in base_nodes:
+                continue
             expanded = base_nodes + [sig]
+            if sorted(expanded) == sorted(entry.nodes):
+                # A self-fill reconstructs the entry: nothing new is said.
+                continue
             if not signifier.signifies(
                 signifier.signature_of(expanded), entry.signature
             ):
@@ -105,13 +113,134 @@ class ExpandFit:
             kline = KLine(entry.signature, expanded, entry.dbg)
             if is_terminal(kline):
                 continue
-            byte = aggregator.compose_terminal(base + [aggregator.decay(hops)])
+            byte = aggregator.compose_terminal(
+                base + [aggregator.decay(self._fill_distance(entry, sig, hops))]
+            )
             graded.append(KValue(kline, byte))
+        pivot_out = self._pivot_proposals(entry)
+        graded.extend(pivot_out)
         graded.sort(key=lambda kv: kv.significance & SIG_MASK, reverse=True)
-        return [
+        graded = [
             kv for kv in graded
             if not self._state.is_refused(kv.kline)
         ]
+        if _depth > 0:
+            # Reentry: each proposal's own nodes widen the connotation set;
+            # propose from them to reach fills one hop further out.
+            for kv in list(graded):
+                best = kv.kline
+                if is_misfit(best, signifier) and not self._state.is_grounded(best):
+                    graded.extend(self.propose(best, _depth=_depth - 1))
+        # Fill-derived proposals drop when their gap could not be filled
+        # (uncovered bits = unassigned work). Pivot proposals are slot-accounted
+        # by construction and survive.
+        pivot_set = {(kv.kline.signature, tuple(kv.kline.nodes)) for kv in pivot_out}
+        return [
+            kv for kv in graded
+            if (kv.kline.signature, tuple(kv.kline.nodes)) in pivot_set
+            or signifier.residual(
+                entry.signature, signifier.signature_of(kv.kline.nodes)
+            ) == 0
+        ]
+
+    def _pivot_proposals(self, entry: KLine) -> list[KValue]:
+        """Align the entry's canon against each pivot canon that shares a node
+        with it, and graft the pivot's word form onto the entry.
+
+        Per entry-canon node: a shared node is S1 (1.0); a node with an
+        edge-hop path into the pivot's nodes is S3 (decay(hops)); anything
+        else is an honest S4 gap (0.0). The proposal keeps the entry's nodes
+        and adds every pivot node not already present — the gap stays open,
+        but the pivot's surplus is worth proposing.
+        """
+        signifier = self._state.signifier
+        state = self._state
+        canon = state.canon_nodes(entry.signature)
+        if not canon or len(canon) < 2:
+            return []
+        aggregator = DEFAULT_AGGREGATOR
+        canon_set = set(canon)
+        out: list[KValue] = []
+        for pivot in state.where(
+            lambda k: is_canon(k, signifier) and k.signature != entry.signature
+        ):
+            pnodes = list(pivot.nodes)
+            pnode_set = set(pnodes)
+            if not (canon_set & pnode_set):
+                continue  # no S1 anchor: not a pivot
+            slots: list[float] = []
+            resolved: list[int] = []
+            gaps: list[int] = []
+            # Grouped resolution first: canon nodes forming a grounded
+            # sub-canon resolve as a unit through its signature's path.
+            grouped: set[int] = set()
+            for sub in state.where(lambda k: is_canon(k, signifier)):
+                sub_set = set(sub.nodes)
+                if sub_set and sub_set < canon_set and sub.signature != pivot.signature:
+                    hit = next(
+                        ((h, s) for h, s in self._edge_hops(sub.signature) if s in pnode_set),
+                        None,
+                    )
+                    if hit is not None:
+                        slots.extend([aggregator.decay(hit[0])] * len(sub.nodes))
+                        resolved.extend([hit[1]] * len(sub.nodes))
+                        resolved = list(dict.fromkeys(resolved))
+                        slots = slots[: len(resolved)]
+                        grouped |= sub_set
+            for n in canon:
+                if n in grouped:
+                    continue
+                if n in pnode_set:
+                    slots.append(1.0)
+                    resolved.append(n)
+                    continue
+                hit = next(
+                    ((h, s) for h, s in self._edge_hops(n) if s in pnode_set), None
+                )
+                if hit is not None:
+                    slots.append(aggregator.decay(hit[0]))
+                    # The pivot node does this node's work: replace it.
+                    resolved.append(hit[1])
+                else:
+                    gaps.append(n)
+            # Fill the gap slots with the pivot's unassigned nodes (S4 fill:
+            # work is assigned, if only by adjacency); a gap left with no node
+            # at all is unfilled work — drop the proposal. A leftover with no
+            # open gap has no work to do. A lone gap takes the whole leftover
+            # residual as a grouped fill.
+            leftovers = [n for n in pnodes if n not in resolved]
+            if not gaps:
+                pass
+            elif len(gaps) == 1:
+                resolved.extend(leftovers)
+            elif len(gaps) <= len(leftovers):
+                resolved.extend(leftovers[: len(gaps)])
+            else:
+                continue
+            slots.extend([0.0] * len(gaps))
+            nodes: list[int] = []
+            for n in resolved:
+                if n not in nodes:
+                    nodes.append(n)
+            if sorted(nodes) == sorted(entry.nodes):
+                continue
+            kline = KLine(entry.signature, nodes, entry.dbg)
+            if is_terminal(kline):
+                continue
+            if not signifier.signifies(
+                signifier.signature_of(nodes), entry.signature
+            ):
+                continue
+            out.append(KValue(kline, aggregator.compose_terminal(slots)))
+        return out
+    def _fill_distance(self, entry: KLine, sig: int, hops: int) -> int:
+        """Effective distance of a fill: flat 1 when the fill is a constituent
+        of the entry's own canon — a value the entry's signature already
+        commits to — otherwise its crossover hops plus one."""
+        canon = self._state.canon_nodes(entry.signature)
+        if canon is not None and sig in canon:
+            return 1
+        return hops + 1
 
     def _crossover_connotations(self, entry: KLine) -> dict[int, int]:
         """``sig -> min hops`` over edge-hop chains from the entry's nodes and

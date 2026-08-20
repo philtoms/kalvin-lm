@@ -191,14 +191,8 @@ class Engine:
                 batch.append(KValue(KLine(kline.signature, []), SIG_S4))
                 continue
             else:
-                if self._state.is_grounded(kline):
-                    self._state.remove_stm_at(idx)
-                    continue
-
                 if self._state._is_groundable(kline) and self._state._is_denoted(kline):
-                    self._state.remove_stm_at(idx)
                     self._ground(kline)
-                    continue
 
                 # if self._state.is_countersignable(kline):
                 #     pairings = self._countersignature_proposals(kline)
@@ -214,6 +208,10 @@ class Engine:
                     if proposals:
                         self._state.remove_stm_at(idx)
                         batch.extend(proposals)
+
+                if self._state.is_grounded(kline):
+                    self._state.remove_stm_at(idx)
+                    continue
 
             idx += 1
 

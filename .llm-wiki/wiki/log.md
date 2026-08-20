@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-08-20
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l","title":"Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb]"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4","title":"Committed crossover-fill propose + S4 refusal loop baseline (f48112d)"}
+
 ## 2026-08-19
 
 - **observe**: {"relevance":"high","slug":"obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte","title":"Recursive cogitate verified; mhall stops on misaligned countersign pairings"}

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-19T14:10:50.916Z",
+  "last_updated": "2026-08-20T15:05:03.688Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -813,6 +813,40 @@
       "source_context": "Verifying the pop_identity removal + recursive cogitate refactor",
       "created": "2026-08-19",
       "updated": "2026-08-19"
+    },
+    "sources/obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4": {
+      "type": "source",
+      "title": "Observation: Committed crossover-fill propose + S4 refusal loop baseline (f48112d)",
+      "tags": [
+        "dialogue",
+        "engine",
+        "commit",
+        "baseline"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4",
+      "relevance": "critical",
+      "observed_at": "2026-08-20T09:50:55.158Z",
+      "source_context": "Committing the dialogue engine session work",
+      "created": "2026-08-20",
+      "updated": "2026-08-20"
+    },
+    "sources/obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l": {
+      "type": "source",
+      "title": "Observation: Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb]",
+      "tags": [
+        "dialogue",
+        "engine",
+        "pivot-alignment",
+        "proposals"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l",
+      "relevance": "critical",
+      "observed_at": "2026-08-20T15:05:03.668Z",
+      "source_context": "Updating behaviour notes + wiki before commit",
+      "created": "2026-08-20",
+      "updated": "2026-08-20"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",
