@@ -27,7 +27,7 @@ from dialogue.expand_fit import ExpandFit
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
-from kalvin.significance import BandLayout, SIG_S1, SIG_S3, SIG_S4
+from kalvin.significance import BandLayout, SIG_MASK, SIG_S1, SIG_S3, SIG_S4
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.trainer.curriculum_document import (
@@ -286,6 +286,10 @@ def _band(value: KValue) -> str:
     return _LAYOUT.classify(value.significance)
 
 
+def _sig_display(value: KValue) -> str:
+    return f"{_band(value)} {value.significance & SIG_MASK}"
+
+
 def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier) -> dict[int, str]:
     """Recompile once to recover ``{signature: scripted label}`` for display.
 
@@ -320,8 +324,12 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
         for v in turn.grounds:
             lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
         for v in turn.asks:
-            kind = "asks" if not v.kline.nodes else "proposes"
-            lines.append(f"        {kind:<8} {_render_kline(v, labels, verbose)}")
+            if v.kline.nodes:
+                lines.append(
+                    f"        {'proposes':<8} {_render_kline(v, labels, verbose)} {_sig_display(v)}"
+                )
+            else:
+                lines.append(f"        {'asks':<8} {_render_kline(v, labels, verbose)}")
     if step.stopped_on is not None:
         lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
     return "\n".join(lines)

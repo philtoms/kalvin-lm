@@ -26,6 +26,7 @@ from kalvin.kline import (
 from kalvin.kvalue import KValue
 from kalvin.significance import (
     DEFAULT_AGGREGATOR,
+    SIG8_MAX,
     SIG_MASK,
 )
 
@@ -92,11 +93,8 @@ class ExpandFit:
             ]
             fills = {}
 
-        aggregator = DEFAULT_AGGREGATOR
-        base = [1.0] * len(base_nodes)
-        canon = self._state.canon_nodes(entry.signature)
         graded: list[KValue] = []
-        for sig, hops in fills.items():
+        for sig in fills:
             if gap and signifier.residual(gap, sig) == 0:
                 # A gap-covering fill is the query word itself, not an answer.
                 continue
@@ -113,10 +111,7 @@ class ExpandFit:
             kline = KLine(entry.signature, expanded, entry.dbg)
             if is_terminal(kline):
                 continue
-            byte = aggregator.compose_terminal(
-                base + [aggregator.decay(self._fill_distance(entry, sig, hops))]
-            )
-            graded.append(KValue(kline, byte))
+            graded.append(KValue(kline, self._grade(entry, kline)))
         pivot_out = self._pivot_proposals(entry)
         graded.extend(pivot_out)
         graded.sort(key=lambda kv: kv.significance & SIG_MASK, reverse=True)
@@ -143,22 +138,57 @@ class ExpandFit:
             ) == 0
         ]
 
+    def _grade(self, entry: KLine, kline: KLine) -> int:
+        """Post-hoc significance of a proposal for ``entry``: K's understanding
+        of the proposal, per proposal node.
+
+        1. The proposal itself is grounded (its exact shape is ratified) — S1.
+        2. A node of the entry's canon — S2 (hop 1).
+        3. A node crossover-reachable from a canon node in either direction —
+           S3 at the crossover hops.
+        4. Otherwise — S4: work assigned but unaccounted (0.0).
+        """
+        if self._state.is_grounded(kline):
+            return SIG8_MAX
+        canon = self._state.canon_nodes(entry.signature) or []
+        aggregator = DEFAULT_AGGREGATOR
+        slots: list[float] = []
+        for n in kline.nodes:
+            if n in canon:
+                slots.append(1.0)
+                continue
+            hops = self._crossover_hops(n, canon)
+            slots.append(aggregator.decay(hops) if hops is not None else 0.0)
+        return aggregator.compose_terminal(slots)
+
+    def _crossover_hops(self, node: int, canon: list[int]) -> int | None:
+        """Minimum hops between ``node`` and a canon node, in either
+        direction of the edge-hop chain; None when unreachable (S4)."""
+        canon_set = set(canon)
+        best: int | None = None
+        for hops, sig in self._edge_hops(node):
+            if sig in canon_set:
+                best = hops if best is None else min(best, hops)
+        for c in canon:
+            for hops, sig in self._edge_hops(c):
+                if sig == node:
+                    best = hops if best is None else min(best, hops)
+        return best
+
     def _pivot_proposals(self, entry: KLine) -> list[KValue]:
         """Align the entry's canon against each pivot canon that shares a node
         with it, and graft the pivot's word form onto the entry.
 
-        Per entry-canon node: a shared node is S2 (1.0); a node with an
-        edge-hop path into the pivot's nodes is S3 (decay(hops)); anything
-        else is an honest S4 gap (0.0). The proposal keeps the entry's nodes
-        and adds every pivot node not already present — the gap stays open,
-        but the pivot's surplus is worth proposing.
+        Per entry-canon node: a shared node resolves to itself; a node with
+        an edge-hop path into the pivot's nodes resolves to its pivot
+        counterpart; anything else is a gap slot to be filled from the
+        pivot's surplus. Significance is graded post-hoc by ``_grade``.
         """
         signifier = self._state.signifier
         state = self._state
         canon = state.canon_nodes(entry.signature)
         if not canon or len(canon) < 2:
             return []
-        aggregator = DEFAULT_AGGREGATOR
         canon_set = set(canon)
         out: list[KValue] = []
         for pivot in state.where(
@@ -168,7 +198,6 @@ class ExpandFit:
             pnode_set = set(pnodes)
             if not (canon_set & pnode_set):
                 continue  # no S1 anchor: not a pivot
-            slots: list[float] = []
             resolved: list[int] = []
             gaps: list[int] = []
             # Grouped resolution first: canon nodes forming a grounded
@@ -182,23 +211,18 @@ class ExpandFit:
                         None,
                     )
                     if hit is not None:
-                        slots.extend([aggregator.decay(hit[0])] * len(sub.nodes))
                         resolved.extend([hit[1]] * len(sub.nodes))
-                        resolved = list(dict.fromkeys(resolved))
-                        slots = slots[: len(resolved)]
                         grouped |= sub_set
             for n in canon:
                 if n in grouped:
                     continue
                 if n in pnode_set:
-                    slots.append(1.0)
                     resolved.append(n)
                     continue
                 hit = next(
                     ((h, s) for h, s in self._edge_hops(n) if s in pnode_set), None
                 )
                 if hit is not None:
-                    slots.append(aggregator.decay(hit[0]))
                     # The pivot node does this node's work: replace it.
                     resolved.append(hit[1])
                 else:
@@ -217,7 +241,6 @@ class ExpandFit:
                 resolved.extend(leftovers[: len(gaps)])
             else:
                 continue
-            slots.extend([0.0] * len(gaps))
             nodes: list[int] = []
             for n in resolved:
                 if n not in nodes:
@@ -231,17 +254,8 @@ class ExpandFit:
                 signifier.signature_of(nodes), entry.signature
             ):
                 continue
-            out.append(KValue(kline, aggregator.compose_terminal(slots)))
+            out.append(KValue(kline, self._grade(entry, kline)))
         return out
-
-    def _fill_distance(self, entry: KLine, sig: int, hops: int) -> int:
-        """Effective distance of a fill: flat 1 when the fill is a constituent
-        of the entry's own canon — a value the entry's signature already
-        commits to — otherwise its crossover hops plus one."""
-        canon = self._state.canon_nodes(entry.signature)
-        if canon is not None and sig in canon:
-            return 1
-        return hops + 1
 
     def _crossover_connotations(self, entry: KLine) -> dict[int, int]:
         """``sig -> min hops`` over edge-hop chains from the entry's nodes and
