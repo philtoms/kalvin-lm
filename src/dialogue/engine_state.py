@@ -75,6 +75,9 @@ class EngineState:
         bucket = self.ltm.get(signature)
         return bucket[-1] if bucket else None
 
+    def find_bucket(self, signature: int) -> list[KLine]:
+        return self.ltm.get(signature) or []
+
     def is_grounded(self, kline: KLine) -> bool:
         """Is an isomorphic kline (same signature and nodes) in LTM?"""
         return any(

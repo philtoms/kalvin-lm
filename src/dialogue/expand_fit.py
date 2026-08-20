@@ -147,7 +147,7 @@ class ExpandFit:
         """Align the entry's canon against each pivot canon that shares a node
         with it, and graft the pivot's word form onto the entry.
 
-        Per entry-canon node: a shared node is S1 (1.0); a node with an
+        Per entry-canon node: a shared node is S2 (1.0); a node with an
         edge-hop path into the pivot's nodes is S3 (decay(hops)); anything
         else is an honest S4 gap (0.0). The proposal keeps the entry's nodes
         and adds every pivot node not already present — the gap stays open,
@@ -323,9 +323,9 @@ class ExpandFit:
             if sig in visited:
                 break  # cycle detected
             visited.add(sig)
-            kline = state.find(sig)
-            if kline is None or is_terminal(kline) or is_identity(kline):
-                break
-            hop_count += 1
-            sig = signifier.signature_of(kline.nodes)
-            yield hop_count, sig
+            for kline in state.find_bucket(sig):
+                if kline is None or is_terminal(kline) or is_identity(kline):
+                    break
+                hop_count += 1
+                sig = signifier.signature_of(kline.nodes)
+                yield hop_count, sig
