@@ -1,28 +1,13 @@
-"""The expand S2 strategy — emit the single most significant proposal.
+"""The expand S2 strategy — emit true proposals for a pending misfit.
 
-For a pending misfit ``entry``, every grounded candidate sharing a node value
-with it is graded by :meth:`ExpandFit._expand` (a self-contained port of
-``kalvin.expand.expand`` over the engine's :class:`EngineState`). Each yield
-carries a real significance byte (a graded distance, not a band). The strategy
-keeps the one yield with the highest byte — the most significant — reshapes
-it, and emits that single proposal, stamped with the yield's actual byte.
-
-Significance — not banding — is the selection criterion. S1 (0xFF) and S4
-(0x00) are not gated: they are positions in the cascade. An S1-graded yield is
-simply the highest byte and wins; an S4-graded yield is the lowest and loses.
-No proposal is invented: every node in the reshape comes from a grounded
-contributor.
-
-The reshape recognises three shapes, all preserving the candidate's own
-signature:
-
-- **underfit** — the signature promises more than the nodes deliver → add a
-  contributor's nodes.
-- **overfit** — the nodes deliver more than the signature captures → trim the
-  excess nodes.
-- **dual** — both → swap the excess nodes for a contributor's nodes.
-
-No invention: every node added comes from a grounded contributor.
+Edge-hop connotations are gathered from the entry's nodes and its underfit
+gap's covering bridges. Grounded canon klines whose own chains cross one of
+those connotations are the crossing candidates; their nodes and signatures
+that reach a connotation (at ``connotation_hops + crossing_hops``) are the
+fills. A fill is proposed under the entry's own signature — added to the
+nodes (underfit), swapped for the excess nodes (badfit) — graded by the
+fill's crossover distance. No proposal is invented: every node comes from
+the entry or a grounded contributor.
 """
 
 from __future__ import annotations
@@ -44,7 +29,7 @@ from kalvin.significance import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from collections.abc import Callable, Iterator
+    from collections.abc import Iterator
 
     from kalvin.abstract import KSignifier
 
@@ -75,112 +60,130 @@ class ExpandFit:
     def state(self) -> EngineState:
         return self._state
 
-    def propose_gap(
-        self,
-        candidate: KLine,
-    ) -> list[KValue]:
-        """Expand a misfit candidate by underfit, overfit or otherwise bad-fit expansion strategies"""
-        if len(candidate.nodes) < 2:
-            return []
-        signifier = self._state.signifier
-        underfit, overfit = classify_misfit(candidate, signifier)
-        if not underfit and not overfit:
-            return []
-
-        candidate_sig = candidate.signature
-        nodes_sig = signifier.signature_of(candidate.nodes)
-        underfit_gap = signifier.residual(candidate_sig, nodes_sig)
-        overfit_mask = signifier.residual(nodes_sig, candidate_sig)
-
-        if underfit_gap and overfit_mask:
-            graded = [
-                self._grade(candidate, p)
-                for p in self._expand_badfit(candidate, underfit_gap, overfit_mask)
-            ]
-        elif underfit_gap:
-            graded = self._expand_underfit(candidate, underfit_gap)
-        else:
-            graded = [
-                self._grade(candidate, p)
-                for p in self._expand_overfit(candidate, overfit_mask)
-            ]
-        graded.sort(key=lambda kv: kv.significance & SIG_MASK, reverse=True)
-        return graded
-
-    def _grade(self, entry: KLine, proposal: KLine) -> KValue:
-        """Grade ``proposal`` against ``entry`` via the aggregator's terminal byte."""
-        byte = list(self._expand(entry, proposal))[-1].significance
-        return KValue(proposal, DEFAULT_AGGREGATOR.compose_terminal([byte & SIG_MASK]))
-
-
     def propose(
         self,
         entry: KLine,
-        ground: Callable[[KLine], None],
     ) -> list[KValue]:
-        state = self._state
-        graded: list[KValue] = []
-        for candidate in state.similar_fit_candidates(entry):
-            graded.extend(self._expand(entry, candidate))
-        if not graded:
-            return []
-        best = max(graded, key=lambda kv: kv.significance & SIG_MASK)
-        proposals = self._reshape(best.kline)
-        if not proposals:
-            return []
-        chosen = self._most_significant(entry, proposals)
-        return [KValue(chosen.kline, chosen.significance & SIG_MASK)]
-
-    def _reshape(
-        self, candidate: KLine
-    ) -> list[KLine]:
-        """Reshape a misfit ``candidate`` into self-consistent proposal klines.
-
-        Returns one kline per reshape (no companions). Yields nothing for a
-        candidate whose signature faithfully covers its nodes (terminals and
-        canons included).
-        """
         signifier = self._state.signifier
-        underfit, overfit = classify_misfit(candidate, signifier)
+        underfit, overfit = classify_misfit(entry, signifier)
         if not underfit and not overfit:
             return []
+        nodes_sig = signifier.signature_of(entry.nodes)
+        gap = signifier.residual(entry.signature, nodes_sig)
+        excess = signifier.residual(nodes_sig, entry.signature)
 
-        candidate_sig = candidate.signature
-        nodes_sig = signifier.signature_of(candidate.nodes)
-        underfit_gap = signifier.residual(candidate_sig, nodes_sig)
-        overfit_mask = signifier.residual(nodes_sig, candidate_sig)
+        conns = self._crossover_connotations(entry)
+        if not conns:
+            return []
 
-        if underfit_gap and overfit_mask:
-            proposals = self._badfit(candidate, underfit_gap, overfit_mask)
-        elif underfit_gap:
-            proposals = self._underfit(candidate, underfit_gap)
+        if underfit and overfit:
+            base_nodes = [
+                n for n in entry.nodes if not signifier.signifies(n, excess)
+            ]
+            fills = self._crossing_fills(entry, conns)
+        elif underfit:
+            base_nodes = list(entry.nodes)
+            fills = self._crossing_fills(entry, conns)
         else:
-            proposals = self._overfit(candidate, overfit_mask)
+            base_nodes = [
+                n for n in entry.nodes if not signifier.signifies(n, excess)
+            ]
+            fills = {}
 
-        return [p for p in proposals if not is_terminal(p)]
-
-    def _most_significant(
-        self, entry: KLine, proposals: list[KLine]
-    ) -> KValue:
-        """The reshape that grades highest when re-expanded against ``entry``.
-
-        ``_expand``'s final yield is the grade for the pair itself; that is the
-        byte compared.
-        """
-        graded = [
-            list(self._expand(entry, p))[-1] for p in proposals
+        aggregator = DEFAULT_AGGREGATOR
+        base = [1.0] * len(base_nodes)
+        graded: list[KValue] = []
+        for sig, hops in fills.items():
+            if gap and signifier.residual(gap, sig) == 0:
+                # A gap-covering fill is the query word itself, not an answer.
+                continue
+            expanded = base_nodes + [sig]
+            if not signifier.signifies(
+                signifier.signature_of(expanded), entry.signature
+            ):
+                continue
+            kline = KLine(entry.signature, expanded, entry.dbg)
+            if is_terminal(kline):
+                continue
+            byte = aggregator.compose_terminal(base + [aggregator.decay(hops)])
+            graded.append(KValue(kline, byte))
+        graded.sort(key=lambda kv: kv.significance & SIG_MASK, reverse=True)
+        return [
+            kv for kv in graded
+            if not self._state.is_refused(kv.kline)
         ]
-        return max(graded, key=lambda kv: kv.significance & SIG_MASK)
 
-    # ── graph expansion (mirrors kalvin.expand over an EngineState) ──
+    def _crossover_connotations(self, entry: KLine) -> dict[int, int]:
+        """``sig -> min hops`` over edge-hop chains from the entry's nodes and
+        from its underfit gap's covering bridges."""
+        signifier = self._state.signifier
+        conns: dict[int, int] = {}
+        for node in entry.nodes:
+            for hops, sig in self._edge_hops(node):
+                if sig not in conns or hops < conns[sig]:
+                    conns[sig] = hops
+        underfit, _ = classify_misfit(entry, signifier)
+        if underfit:
+            nodes_sig = signifier.signature_of(entry.nodes)
+            gap = signifier.residual(entry.signature, nodes_sig)
+            for bridge in self._state.where(
+                lambda k: not is_identity(k)
+                and signifier.residual(gap, k.signature) == 0
+                and signifier.signature_of(entry.nodes + [k.signature]) == entry.signature
+            ):
+                for node in bridge.nodes:
+                    for hops, sig in self._edge_hops(node):
+                        if sig not in conns or hops < conns[sig]:
+                            conns[sig] = hops
+        return conns
+
+    def _crossing_candidates(
+        self, entry: KLine, conns: dict[int, int]
+    ) -> list[KLine]:
+        """Grounded canon klines whose edge-hop chains cross a connotation."""
+        signifier = self._state.signifier
+        out: list[KLine] = []
+        for candidate in self._state.where(
+            lambda k: not is_identity(k) and is_canon(k, signifier)
+        ):
+            if candidate.signature == entry.signature:
+                continue
+            hop_sigs = [s for _, s in self._edge_hops(candidate.signature)]
+            hop_sigs += [s for node in candidate.nodes for _, s in self._edge_hops(node)]
+            if any(s in conns for s in hop_sigs) or any(
+                n in conns for n in candidate.nodes
+            ):
+                out.append(candidate)
+        return out
+
+    def _crossing_fills(
+        self, entry: KLine, conns: dict[int, int]
+    ) -> dict[int, int]:
+        """``fill sig -> total hops`` for candidate values crossing a connotation.
+
+        A candidate's signature or node is a fill when it reaches a connotation
+        through its own edge-hop chain; the distance is the connotation's hops
+        plus the crossing hops.
+        """
+        fills: dict[int, int] = {}
+        for candidate in self._crossing_candidates(entry, conns):
+            for sig in (candidate.signature, *candidate.nodes):
+                if sig in conns and (sig not in fills or conns[sig] < fills[sig]):
+                    fills[sig] = conns[sig]
+                for hops, reached in self._edge_hops(sig):
+                    if reached in conns:
+                        total = conns[reached] + hops
+                        if sig not in fills or total < fills[sig]:
+                            fills[sig] = total
+        return fills
 
     def _edge_hops(
         self, sig: int
     ) -> Iterator[tuple[int, int]]:
-        """Yield ``(hop_count, next_sig)`` for each non-canonical resolution step.
+        """Yield ``(hop_count, next_sig)`` for each resolution step.
 
         Follows: resolve sig → kline → signifier.signature_of(kline.nodes) → repeat.
-        Stops at a dead end, an identity kline, a canonical kline, or a cycle.
+        Stops at a dead end, an identity kline, or a cycle.
         """
         state = self._state
         signifier = self._state.signifier
@@ -191,265 +194,8 @@ class ExpandFit:
                 break  # cycle detected
             visited.add(sig)
             kline = state.find(sig)
-            if kline is None or is_terminal(kline) or is_canon(kline, signifier):
+            if kline is None or is_terminal(kline) or is_identity(kline):
                 break
             hop_count += 1
             sig = signifier.signature_of(kline.nodes)
             yield hop_count, sig
-
-    def _expand(
-        self,
-        query: KLine,
-        candidate: KLine,
-        *,
-        aggregator: Aggregator | None = None,
-        _visited: set[tuple[int, int]] | None = None,
-    ) -> Iterator[KValue]:
-        """Expand a query-candidate pair, yielding connotations and terminal byte.
-
-        Compose-on-return aggregation: topology is captured on descent (per-node
-        accountedness retained as a float), and composition is applied on the
-        return phase.
-
-        Per-node accountedness:
-          matched & grounded       -> 1.0
-          matched but ungrounded   -> decay(1)   (one hop of doubt)
-          resolvable in h hops      -> decay(h)
-          unresolvable              -> 0.0
-
-        Yield asymmetry: exact opposing matches and S3 connotation bridges
-        recurse; signifies matches emit a side-candidate and do not recurse.
-        The final yield is always the terminal KValue for the original pair.
-        """
-        if aggregator is None:
-            aggregator = DEFAULT_AGGREGATOR
-        if _visited is None:
-            _visited = set()
-
-        key = (query.signature, candidate.signature)
-        if key in _visited:
-            return  # cycle detected
-        _visited.add(key)
-
-        state = self._state
-        signifier = self._state.signifier
-        q_set = set(query.nodes)
-        c_set = set(candidate.nodes)
-        mismatched_q = q_set - c_set
-        mismatched_c = c_set - q_set
-        matched = q_set & c_set
-
-        s3_connotations: dict[int, int] = {}  # sig -> min hops from any query node
-
-        slot_values: list[float] = []
-        decay = aggregator.decay
-
-        for n in mismatched_q:
-            accounted = 0.0  # unresolvable default (case F)
-            q_kline = state.find(n)
-            if q_kline is not None:
-                for hops, match_sig in self._edge_hops(n):
-                    if match_sig in mismatched_c:
-                        # case C: exact opposing match (S2 direct) -> recurse.
-                        accounted = decay(hops)
-                        c_kline = state.find(match_sig)
-                        if c_kline is not None:
-                            yield from self._expand(
-                                q_kline, c_kline,
-                                aggregator=aggregator, _visited=_visited,
-                            )
-                        break
-                    elif signifier.signifies(n, match_sig):
-                        # case D: signifies (S2 loose) -> side-candidate, no recurse.
-                        accounted = decay(hops)
-                        c_kline = state.find(match_sig)
-                        if c_kline is not None:
-                            sig_byte = aggregator.compose_terminal([decay(hops)])
-                            yield KValue(c_kline, sig_byte)
-                        break
-                    elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
-                        s3_connotations[match_sig] = hops
-            slot_values.append(accounted)
-
-        for n in mismatched_c:
-            accounted = 0.0
-            q_kline = state.find(n)
-            if q_kline is not None:
-                for hops, match_sig in self._edge_hops(n):
-                    if match_sig in mismatched_q:
-                        # case C: exact opposing match (S2 direct) -> recurse.
-                        accounted = decay(hops)
-                        c_kline = state.find(match_sig)
-                        if c_kline is not None:
-                            yield from self._expand(
-                                q_kline, c_kline,
-                                aggregator=aggregator, _visited=_visited,
-                            )
-                        break
-                    elif signifier.signifies(n, match_sig):
-                        # case D: signifies (S2 loose) -> side-candidate, no recurse.
-                        accounted = decay(hops)
-                        c_kline = state.find(match_sig)
-                        if c_kline is not None:
-                            sig_byte = aggregator.compose_terminal([decay(hops)])
-                            yield KValue(c_kline, sig_byte)
-                        break
-                    elif match_sig in s3_connotations:
-                        # case E: S3 connotation bridge -> recurse (no side-candidate).
-                        s3_hop = s3_connotations[match_sig] + hops
-                        accounted = decay(s3_hop)
-                        c_kline = state.find(match_sig)
-                        if c_kline is not None:
-                            yield from self._expand(
-                                q_kline, c_kline,
-                                aggregator=aggregator, _visited=_visited,
-                            )
-                        break
-            slot_values.append(accounted)
-
-        # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1).
-        for n in matched:
-            kl = state.find(n)
-            if kl is not None and state.is_grounded(kl):
-                slot_values.append(1.0)
-            else:
-                # Ungrounded match OR not in the store: one hop of doubt.
-                slot_values.append(decay(1))
-
-        if not slot_values:
-            # Both klines node-less: vacuously fully accounted.
-            slot_values = [1.0]
-
-        significance = aggregator.compose_terminal(slot_values)
-        yield KValue(candidate, significance)
-
-    def _expand_underfit(
-        self, entry: KLine, gap: int
-    ) -> list[KValue]:
-        """Fill the gap with co-denotations reached through the connotation chain.
-
-        Seeds are the grounded klines whose signatures cover the gap's
-        type-word bits (``what:[Query]`` covering a W gap) and whose head is
-        not itself connoted by another gap-covering kline — the chain starts
-        at the word nothing upstream denotes. Mirrors ``_expand``'s s3 bridge:
-        ``_edge_hops`` from the seed's nodes builds ``s3_connotations``
-        (sig → min hops); every grounded signature whose own ``_edge_hops``
-        chain crosses one of those connotations is a candidate fill, at
-        ``connotation_hops + crossing_hops``. The fill's accountedness is
-        ``decay(hops)`` — the further the crossed chain, the less the
-        significance.
-        """
-        signifier = self._state.signifier
-        aggregator = DEFAULT_AGGREGATOR
-        state = self._state
-        fills: dict[int, int] = {}  # fill signature -> hops
-
-        covering = state.where(
-            lambda k: not is_identity(k)
-            and signifier.residual(gap, k.signature) == 0
-            and signifier.signature_of(entry.nodes + [k.signature]) == entry.signature
-        )
-        for bridge in covering:
-            upstream = any(
-                other is not bridge and bridge.signature in other.nodes
-                for other in covering
-            )
-            if upstream:
-                continue
-            s3_connotations: dict[int, int] = {}
-            for node in bridge.nodes:
-                for hops, sig in self._edge_hops(node):
-                    if sig not in s3_connotations or hops < s3_connotations[sig]:
-                        s3_connotations[sig] = hops
-            if not s3_connotations:
-                continue
-            for candidate in state.where(lambda k: not is_identity(k)):
-                for hops, sig in self._edge_hops(candidate.signature):
-                    if sig in s3_connotations:
-                        total = s3_connotations[sig] + hops
-                        if (
-                            candidate.signature not in fills
-                            or total < fills[candidate.signature]
-                        ):
-                            fills[candidate.signature] = total
-                        break
-
-        graded: list[KValue] = []
-        base = [1.0] * len(entry.nodes)
-        for sig, hops in fills.items():
-            if signifier.residual(gap, sig) == 0:
-                # A gap-covering fill is the query word itself (or a synonym on
-                # the chain), not an answer to it.
-                continue
-            expanded = list(entry.nodes) + [sig]
-            if not signifier.signifies(
-                signifier.signature_of(expanded), entry.signature
-            ):
-                continue
-            kline = KLine(entry.signature, expanded, entry.dbg)
-            if is_terminal(kline):
-                continue
-            byte = aggregator.compose_terminal(base + [aggregator.decay(hops)])
-            graded.append(KValue(kline, byte))
-        return graded
-
-    def _expand_overfit(
-        self, entry: KLine, excess: int
-    ) -> list[KLine]:
-        """Drop the nodes whose bits contribute to the excess."""
-        signifier = self._state.signifier
-        remaining = [n for n in entry.nodes if not signifier.signifies(n, excess)]
-        if remaining == list(entry.nodes):
-            return []
-        kline = KLine(entry.signature, remaining, entry.dbg)
-        if is_terminal(kline):
-            return []
-        return [kline]
-
-    def _expand_badfit(
-        self, entry: KLine, gap: int, excess: int
-    ) -> list[KLine]:
-        """Swap the excess nodes for gap-covering contributors' nodes."""
-        signifier = self._state.signifier
-        remaining = [n for n in entry.nodes if not signifier.signifies(n, excess)]
-        proposals: list[KLine] = []
-        for contributor in self._state.where(
-            lambda k: signifier.signifies(k.signature, gap)
-        ):
-            kline = KLine(
-                entry.signature, remaining + list(contributor.nodes), entry.dbg
-            )
-            if not is_terminal(kline):
-                proposals.append(kline)
-        return proposals
-
-    def _underfit(
-        self, kline: KLine, gap: int
-    ) -> list[KLine]:
-        """Add a contributor's nodes when they cover the gap."""
-        signifier = self._state.signifier
-        out: list[KLine] = []
-        for contributor in self._state.where(lambda k: signifier.signifies(k.signature, gap)):
-            expanded_nodes = list(kline.nodes) + list(contributor.nodes)
-            if signifier.signifies(signifier.signature_of(expanded_nodes), kline.signature):
-                out.append(KLine(kline.signature, expanded_nodes, kline.dbg))
-        return out
-
-    def _overfit(self, kline: KLine, excess: int) -> list[KLine]:
-        """Drop the nodes whose bits contribute to the excess."""
-        signifier = self._state.signifier
-        remaining = [n for n in kline.nodes if not signifier.signifies(n, excess)]
-        if remaining == list(kline.nodes):
-            return []
-        return [KLine(kline.signature, remaining, kline.dbg)]
-
-    def _badfit(
-        self, kline: KLine, gap: int, excess: int
-    ) -> list[KLine]:
-        """Swap the excess nodes for a gap-filling contributor's nodes."""
-        signifier = self._state.signifier
-        remaining = [n for n in kline.nodes if not signifier.signifies(n, excess)]
-        out: list[KLine] = []
-        for contributor in self._state.where(lambda k: signifier.signifies(k.signature, gap)):
-            out.append(KLine(kline.signature, remaining + list(contributor.nodes), kline.dbg))
-        return out

@@ -18,8 +18,6 @@ from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S2
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from collections.abc import Callable
-
     from kalvin.abstract import KSignifier
 
 __all__ = ["SimilarFit"]
@@ -45,7 +43,6 @@ class SimilarFit:
     def propose(
         self,
         entry: KLine,
-        ground: Callable[[KLine], None],
     ) -> list[KValue]:
         state = self.state
         target = _expand_nodes(state, list(entry.nodes))

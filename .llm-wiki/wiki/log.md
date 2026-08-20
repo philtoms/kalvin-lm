@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-08-19
+
+- **observe**: {"relevance":"high","slug":"obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte","title":"Recursive cogitate verified; mhall stops on misaligned countersign pairings"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-19-identity-asks-were-suppressed-by-cogitate-skip-pop-identity-","title":"Identity asks were suppressed by cogitate skip + pop_identity over-pop"}
+
 ## 2026-08-18
 
 - **observe**: {"relevance":"high","slug":"obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words","title":"Underfit gap-fill measures connotation distance in BPE words"}

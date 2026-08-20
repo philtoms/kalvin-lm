@@ -20,5 +20,7 @@
 - [Observation: Word Binding three-tier precedence settled](obs-2026-08-17-word-binding-three-tier-precedence-settled.md)
 - [Observation: work_list renamed to stm; duplicate STM index removed](obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed.md)
 - [Observation: Underfit gap-fill measures connotation distance in BPE words](obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words.md)
+- [Observation: Identity asks were suppressed by cogitate skip + pop_identity over-pop](obs-2026-08-19-identity-asks-were-suppressed-by-cogitate-skip-pop-identity-.md)
+- [Observation: Recursive cogitate verified; mhall stops on misaligned countersign pairings](obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

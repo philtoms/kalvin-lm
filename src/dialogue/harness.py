@@ -29,7 +29,7 @@ from dialogue.similar_fit import SimilarFit
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
-from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
+from kalvin.significance import BandLayout, SIG_S1, SIG_S3, SIG_S4
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.trainer.curriculum_document import (
@@ -46,8 +46,10 @@ _STRATEGIES: dict[str, Callable[[EngineState], MisfitStrategy]] = {
     "expand": ExpandFit,
 }
 
-_SIG_TO_BAND = {SIG_S1: "S1", SIG_S2: "S2", SIG_S3: "S3", SIG_S4: "S4"}
 _BAND_ORDER = ("S1", "S2", "S3", "S4")
+
+# Classifies an ask's significance byte into its band on the S1–S4 spectrum.
+_LAYOUT = BandLayout()
 
 
 @dataclass
@@ -150,14 +152,19 @@ class Harness:
             while queue:
                 feeds = queue.pop(0)
                 batch, observations = self._engine.rationalise(feeds)
-                step.turns.append(Turn(feeds, observations, batch))
-                for ask in batch:
+                deduped = _dedup(batch)
+                step.turns.append(Turn(feeds, observations, deduped))
+                replies: list[KValue] = []
+                for ask in deduped:
                     reply = self._answer(ask, heads, exact, words, answered)
                     if reply is None:
-                        step.stopped_on = ask
-                        return results
-                    step.answers.extend(reply)
-                    queue.append(reply)
+                        # Off-script: return the ask to K as an S4 rejection.
+                        replies.append(KValue(ask.kline, SIG_S4))
+                        continue
+                    replies.extend(reply)
+                if replies:
+                    step.answers.extend(replies)
+                    queue.append(replies)
         return results
 
     def _single_token_labels(self, source: str) -> dict[int, str]:
@@ -209,6 +216,10 @@ class Harness:
             )
             if not script_klines and not is_word:
                 return None
+            # Only terminals (single-token words) get a generated identity;
+            # a non-terminal's word form must come from the script.
+            if not is_word:
+                return [*script_klines]
             identity = KValue(
                 KLine(kline.signature, [kline.signature]), SIG_S1
             )
@@ -254,6 +265,19 @@ def load_engine(
 # ── Presentation ──────────────────────────────────────────────────────────
 
 
+def _dedup(batch: list[KValue]) -> list[KValue]:
+    """First occurrence of each (signature, nodes, band) in emission order."""
+    seen: set[tuple[int, tuple[int, ...], int]] = set()
+    out: list[KValue] = []
+    for v in batch:
+        key = (v.kline.signature, tuple(v.kline.nodes), v.significance)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(v)
+    return out
+
+
 def _label(signature: int, labels: dict[int, str], verbose: bool) -> str:
     name = labels.get(signature)
     if verbose:
@@ -272,7 +296,7 @@ def _render_kline(value: KValue, labels: dict[int, str], verbose: bool) -> str:
 
 
 def _band(value: KValue) -> str:
-    return _SIG_TO_BAND.get(value.significance, f"0x{value.significance:x}")
+    return _LAYOUT.classify(value.significance)
 
 
 def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier) -> dict[int, str]:
@@ -302,12 +326,15 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
     lines = [f"── Step {step.index + 1}  in  {_band(step.entry)}  "
              f"{_render_kline(step.entry, labels, verbose)} ──"]
     for t, turn in enumerate(step.turns, 1):
-        feeds = " + ".join(_render_kline(v, labels, verbose) for v in turn.feeds)
+        feeds = " + ".join(
+            f"{_render_kline(v, labels, verbose)} {_band(v)}" for v in turn.feeds
+        )
         lines.append(f"  T{t:02d}  feed    {feeds}")
         for v in turn.grounds:
             lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
         for v in turn.asks:
-            lines.append(f"        asks    {_render_kline(v, labels, verbose)}")
+            kind = "asks" if not v.kline.nodes else "proposes"
+            lines.append(f"        {kind:<8} {_render_kline(v, labels, verbose)}")
     if step.stopped_on is not None:
         lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
     return "\n".join(lines)

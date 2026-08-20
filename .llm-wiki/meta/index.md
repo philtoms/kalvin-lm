@@ -95,6 +95,8 @@
 - [[sources/obs-2026-08-17-word-binding-three-tier-precedence-settled]] — Observation: Word Binding three-tier precedence settled *(created: 2026-08-17)*
 - [[sources/obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed]] — Observation: work_list renamed to stm; duplicate STM index removed *(created: 2026-08-17)*
 - [[sources/obs-2026-08-18-underfit-gap-fill-measures-connotation-distance-in-bpe-words]] — Observation: Underfit gap-fill measures connotation distance in BPE words *(created: 2026-08-18)*
+- [[sources/obs-2026-08-19-identity-asks-were-suppressed-by-cogitate-skip-pop-identity-]] — Observation: Identity asks were suppressed by cogitate skip + pop_identity over-pop *(created: 2026-08-19)*
+- [[sources/obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte]] — Observation: Recursive cogitate verified; mhall stops on misaligned countersign pairings *(created: 2026-08-19)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -102,4 +104,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-18T13:10:15.488Z* | *Total pages: 90*
+*Last updated: 2026-08-19T14:10:50.916Z* | *Total pages: 92*

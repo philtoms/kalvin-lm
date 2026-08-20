@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-18T13:10:15.488Z",
+  "last_updated": "2026-08-19T14:10:50.916Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -778,6 +778,41 @@
       "source_context": "Lean harness S2 proposals: asymmetric connotation distance",
       "created": "2026-08-18",
       "updated": "2026-08-18"
+    },
+    "sources/obs-2026-08-19-identity-asks-were-suppressed-by-cogitate-skip-pop-identity-": {
+      "type": "source",
+      "title": "Observation: Identity asks were suppressed by cogitate skip + pop_identity over-pop",
+      "tags": [
+        "dialogue",
+        "engine",
+        "identity-asks",
+        "bugfix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-19-identity-asks-were-suppressed-by-cogitate-skip-pop-identity-",
+      "relevance": "high",
+      "observed_at": "2026-08-19T13:24:59.267Z",
+      "source_context": "Investigating why K never asks pig:[] / MHALL:[] identity asks in the lean harness",
+      "created": "2026-08-19",
+      "updated": "2026-08-19"
+    },
+    "sources/obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte": {
+      "type": "source",
+      "title": "Observation: Recursive cogitate verified; mhall stops on misaligned countersign pairings",
+      "tags": [
+        "dialogue",
+        "engine",
+        "cogitate",
+        "countersignature",
+        "pairing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-19-recursive-cogitate-verified-mhall-stops-on-misaligned-counte",
+      "relevance": "high",
+      "observed_at": "2026-08-19T14:10:50.882Z",
+      "source_context": "Verifying the pop_identity removal + recursive cogitate refactor",
+      "created": "2026-08-19",
+      "updated": "2026-08-19"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",
