@@ -2,6 +2,7 @@
 
 ## 2026-08-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho","title":"Refusal resolves the ask; empty asks never escalate; trace shows supervisor"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers","title":"User S2 ask path, binding leak fix, question-first openers"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar","title":"Proposal node order aligned to grounded exemplar"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos","title":"Speaking fast path + supervisor escalation + only-misfits-proposed"}

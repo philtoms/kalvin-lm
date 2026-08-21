@@ -103,6 +103,7 @@
 - [[sources/obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-]] — Observation: Greedy pivot proposal was premature-alignment artifact; lone-gap fills only *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified]] — Observation: Lazy propose generator + misfit stays in STM until ratified *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar]] — Observation: Proposal node order aligned to grounded exemplar *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho]] — Observation: Refusal resolves the ask; empty asks never escalate; trace shows supervisor *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos]] — Observation: Speaking fast path + supervisor escalation + only-misfits-proposed *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers]] — Observation: User S2 ask path, binding leak fix, question-first openers *(created: 2026-08-21)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
@@ -112,4 +113,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-21T12:07:27.147Z* | *Total pages: 100*
+*Last updated: 2026-08-21T12:51:37.708Z* | *Total pages: 101*

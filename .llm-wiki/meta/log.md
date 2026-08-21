@@ -113,3 +113,6 @@
 ## [2026-08-21T12:07:27.120Z] observe
 - slug: "obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers", title: "User S2 ask path, binding leak fix, question-first openers", relevance: "high"
 
+## [2026-08-21T12:51:37.682Z] observe
+- slug: "obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho", title: "Refusal resolves the ask; empty asks never escalate; trace shows supervisor", relevance: "high"
+

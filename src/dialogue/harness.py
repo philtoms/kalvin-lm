@@ -243,6 +243,11 @@ class Harness:
                         continue
                     reply = self._answer(ask, heads, exact, words, answered)
                     if reply is None:
+                        if not ask.kline.nodes:
+                            # An empty ask is signature discovery, not a
+                            # proposal — nothing for a supervisor to decide.
+                            replies.append(KValue(ask.kline, SIG_S4))
+                            continue
                         # Off-script: escalate — the supervisor decides.
                         response = self._escalate(ask)
                         turn.escalations.append((ask_i, response))
@@ -296,6 +301,14 @@ class Harness:
             script_klines = [
                 e for e in heads.get(kline.signature, [])
                 if e.kline.nodes != [kline.signature]
+                # K already holds it: grounded, or attending to it in STM
+                # (re-feeding the asked question re-arms a refused ask).
+                and not self.state.is_grounded(e.kline)
+                and not any(
+                    entry.signature == e.kline.signature
+                    and entry.nodes == e.kline.nodes
+                    for entry in self.state.stm
+                )
             ]
             is_word = kline.signature in words or any(
                 e.kline.nodes == [kline.signature]

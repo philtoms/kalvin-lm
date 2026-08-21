@@ -130,6 +130,12 @@ class Engine:
         if query_sig == "S4":
             self._state.refuse(query.kline)
             self._state.remove_stm(query.kline)
+            if query.kline.nodes:
+                # A refused proposal resolves the ask under its signature:
+                # the supervisor answered "no" — the question is spent. A
+                # groundable kline then grounds as the heard word form,
+                # instead of the misfit arm re-proposing novel shapes.
+                self._state.asked.discard(query.kline.signature)
             return []
 
         # A stamped-S1 query is a ratification: ground on receipt, before

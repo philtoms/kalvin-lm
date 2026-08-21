@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-21T12:07:27.147Z",
+  "last_updated": "2026-08-21T12:51:37.708Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -914,6 +914,24 @@
       "relevance": "high",
       "observed_at": "2026-08-21T09:03:29.136Z",
       "source_context": "Proposal phrasing alignment to grounded exemplars",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho": {
+      "type": "source",
+      "title": "Observation: Refusal resolves the ask; empty asks never escalate; trace shows supervisor",
+      "tags": [
+        "dialogue",
+        "supervisor",
+        "refusal",
+        "escalation",
+        "trace"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho",
+      "relevance": "high",
+      "observed_at": "2026-08-21T12:51:37.681Z",
+      "source_context": "Supervisor trace + refused-ask lifecycle",
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },
