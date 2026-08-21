@@ -27,5 +27,6 @@
 - [Observation: Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy](obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit.md)
 - [Observation: Greedy pivot proposal was premature-alignment artifact; lone-gap fills only](obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-.md)
 - [Observation: Lazy propose generator + misfit stays in STM until ratified](obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified.md)
+- [Observation: Speaking fast path + supervisor escalation + only-misfits-proposed](obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

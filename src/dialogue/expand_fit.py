@@ -179,7 +179,9 @@ class ExpandFit:
             ):
                 continue
             kline = KLine(entry.signature, expanded, entry.dbg)
-            if is_terminal(kline):
+            if is_terminal(kline) or is_identity(kline) or is_canon(kline, signifier):
+                # Only misfits are proposed: identities are asks or facts,
+                # canons are the script/compiler's own ground truth.
                 continue
             if signifier.residual(
                 entry.signature, signifier.signature_of(expanded)
@@ -321,7 +323,9 @@ class ExpandFit:
             if sorted(nodes) == sorted(entry.nodes):
                 continue
             kline = KLine(entry.signature, nodes, entry.dbg)
-            if is_terminal(kline):
+            if is_terminal(kline) or is_identity(kline) or is_canon(kline, signifier):
+                # Only misfits are proposed: identities are asks or facts,
+                # canons are the script/compiler's own ground truth.
                 continue
             if not signifier.signifies(
                 signifier.signature_of(nodes), entry.signature

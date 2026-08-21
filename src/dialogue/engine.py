@@ -96,21 +96,26 @@ class Engine:
 
         resolver = self._state.find
         with using_resolver(resolver):
+            batch: list[KValue] = []
             for query in incoming:
-                self.route(query)
-            return self.cogitate(), self.observations
+                batch.extend(self.route(query))
+            batch.extend(self.cogitate())
+            return batch, self.observations
 
 
     # ── Routing ──────────────────────────────────────────────────────
 
-    def route(self, query: KValue) -> None:
-        """Apply one incoming query as bookkeeping; emit nothing.
+    def route(self, query: KValue) -> list[KValue]:
+        """Apply one incoming query; return any immediate emissions.
 
         Dispatch is on the query's **structural** significance:
 
         - **S1/S4 (fast route)** — an S1 (identity or canon) match grounds the
-          kline (and cascades); an S4 rejection (empty ask or refused proposal)
-          drops the matching kline from attention.
+          kline (and cascades) and **answers from LTM**: every grounded kline
+          under the query's signature, other than the query itself, is said —
+          after the hard work of cogitation, a question K already holds the
+          answer to is answered directly. An S4 rejection (empty ask or
+          refused proposal) drops the matching kline from attention.
         - **S2/S3 (slow route)** — append to STM, then unpack an S2
           misfit's unrecognised nodes and signature as identity asks.
         """
@@ -121,13 +126,44 @@ class Engine:
         if query_sig == "S4":
             self._state.refuse(query.kline)
             self._state.remove_stm(query.kline)
-            return 
+            return []
 
-        if structural_sig == query_sig and structural_sig == "S1":
+        # A stamped-S1 query is a ratification: ground on receipt, before
+        # any answering — the ratified kline is the answer just granted.
+        if query_sig == "S1" or (
+            structural_sig == query_sig and structural_sig == "S1"
+        ):
             if self._fast_route(query):
-                return
-            
+                return []
+
+        # Fast path: a question (unknown or misfit) whose signature already
+        # holds grounded knowledge — say it, whatever the query's band. After
+        # the hard work of cogitation, a question K holds the answer to is
+        # answered directly from LTM. Statements (identities, countersigns,
+        # ratifications) do not trigger answering.
+        if is_unknown(kline) or is_misfit(kline, self._state.signifier):
+            answers = self._answers_from_ltm(query)
+            if answers:
+                return answers
+
+
         self._slow_route(query)
+        return []
+
+    def _answers_from_ltm(self, query: KValue) -> list[KValue]:
+        """Grounded knowledge under the query's signature, said aloud.
+
+        Identities and canons are excluded — identities are asks or facts,
+        canons are ground truth; neither is an answer K earned.
+        """
+        signifier = self._state.signifier
+        return [
+            KValue(k, SIG_S1)
+            for k in self._state.ltm.get(query.kline.signature, [])
+            if k.nodes != query.kline.nodes
+            and not is_identity(k)
+            and not is_canon(k, signifier)
+        ]
 
     def _ground(self, kline: KLine) -> None:
         """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.

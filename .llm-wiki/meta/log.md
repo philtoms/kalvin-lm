@@ -104,3 +104,6 @@
 ## [2026-08-21T07:51:57.691Z] observe
 - slug: "obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-", title: "Greedy pivot proposal was premature-alignment artifact; lone-gap fills only", relevance: "high"
 
+## [2026-08-21T08:56:08.095Z] observe
+- slug: "obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos", title: "Speaking fast path + supervisor escalation + only-misfits-proposed", relevance: "critical"
+

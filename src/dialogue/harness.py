@@ -19,7 +19,7 @@ import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Callable, cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
@@ -76,9 +76,14 @@ class Harness:
         self,
         tokenizer: NLPTokenizer,
         engine: Engine,
+        escalate: Callable[[KValue], KValue] | None = None,
     ) -> None:
         self._tokenizer = tokenizer
         self._engine = engine
+        # The escalation point: an ask the script cannot answer goes to the
+        # supervisor, who decides its significance (ratify at S1 to ground it;
+        # decline at S4 to refuse). Default: decline.
+        self._escalate = escalate or (lambda ask: KValue(ask.kline, SIG_S4))
 
     @property
     def engine(self) -> Engine:
@@ -109,32 +114,92 @@ class Harness:
             sig: word
             for sig, word in self._single_token_labels(source).items()
         }
+        # Authored sub-scripts: scope-0 entries preserve authored order — a
+        # group is a maximal run sharing an annotation ('' joins the current
+        # run; a repeated annotation is a distinct authored group). Scope-1/2
+        # entries (MTS/identities) are allocated to the first group with a
+        # matching, not-yet-served occurrence of their annotation; '' joins
+        # the preceding entry's group.
+        groups: list[tuple[str, list[KValue]]] = []
+        by_key: dict[str, list[KValue]] = {}
+        current: list[KValue] | None = None
+        for entry in entries:
+            annotation = entry.kline.dbg.annotation if entry.kline.dbg else ""
+            scope = entry.kline.dbg.scope if entry.kline.dbg else 0
+            if scope == 0:
+                if current is None or (annotation and annotation != groups[-1][0].rsplit("#", 1)[0]):
+                    occurrence = sum(
+                        1 for k, _ in groups if k.rsplit("#", 1)[0] == annotation
+                    )
+                    key = f"{annotation}#{occurrence}"
+                    groups.append((key, []))
+                    current = groups[-1][1]
+                    by_key.setdefault(key, current)
+                current.append(entry)
+            else:
+                # MTS entries dedup globally: one set per compound. The whole
+                # set belongs to the first occurrence of its annotation.
+                if annotation:
+                    key = next(
+                        (
+                            f"{annotation}#{i}"
+                            for i in range(
+                                sum(
+                                    1 for k, _ in groups
+                                    if k.rsplit("#", 1)[0] == annotation
+                                )
+                            )
+                            if f"{annotation}#{i}" in by_key
+                        ),
+                        None,
+                    )
+                    target = by_key.get(key) if key else None
+                else:
+                    target = None
+                if target is None:
+                    # No matching group yet (or ''): the nearest preceding
+                    # scope-1/2 entry's group, else the first group.
+                    target = next(
+                        (
+                            g for k, g in reversed(list(by_key.items()))
+                            if any(e.kline.dbg.scope != 0 for e in g)
+                        ),
+                        groups[0][1] if groups else None,
+                    )
+                if target is not None:
+                    target.append(entry)
+        # The answering pools grow as groups open — the harness never answers
+        # from a sub-script the dialogue has not reached (no look-ahead).
         heads: dict[int, list[KValue]] = {}
         exact: dict[tuple[int, tuple[int, ...]], KValue] = {}
-        words: set[int] = set()
-        openers: list[KValue] = []
-        opened: set[str] = set()
-        for entry in entries:
-            kline = entry.kline
-            heads.setdefault(kline.signature, []).append(entry)
-            exact.setdefault(
-                (kline.signature, tuple(kline.nodes)), entry
-            )
-            words.update(tokens)
-            if (
-                kline.nodes != [kline.signature]
-                and kline.signature == self.signifier.signature_of(kline.nodes)
-            ):
-                # A compound self-ref (e.g. DH unpacking to did, have): its
-                # nodes are script-known words.
-                words.update(kline.nodes)
-            annotation = kline.dbg.annotation if kline.dbg else ""
-            if annotation and annotation not in opened:
-                opened.add(annotation)
-                openers.append(entry)
-        answered: set[tuple[int, tuple[int, ...]]] = set()
+        words: set[int] = set(tokens)
+        # An opening group is a step; its entries join the answering pools
+        # when it opens (cumulative — past and current groups only).
+        steps: list[tuple[str, list[KValue], KValue]] = []
+        for key, group in groups:
+            opener = next((e for e in group if e.kline.dbg.scope == 0), group[0])
+            annotation = opener.kline.dbg.annotation if opener.kline.dbg else ""
+            if not annotation:
+                continue
+            steps.append((key, group, opener))
         results: list[StepResult] = []
-        for i, opener in enumerate(openers):
+        for i, (key, group, opener) in enumerate(steps):
+            # Fresh answers per authored group: a repeated group is a second
+            # ask, not a replay of the first one's dedup ledger.
+            answered: set[tuple[int, tuple[int, ...]]] = set()
+            for entry in group:
+                kline = entry.kline
+                heads.setdefault(kline.signature, []).append(entry)
+                exact.setdefault(
+                    (kline.signature, tuple(kline.nodes)), entry
+                )
+                if (
+                    kline.nodes != [kline.signature]
+                    and kline.signature == self.signifier.signature_of(kline.nodes)
+                ):
+                    # A compound self-ref (e.g. DH unpacking to did, have):
+                    # its nodes are script-known words.
+                    words.update(kline.nodes)
             step = StepResult(i, opener)
             results.append(step)
             queue: list[list[KValue]] = [[opener]]
@@ -145,10 +210,14 @@ class Harness:
                 step.turns.append(Turn(feeds, observations, deduped))
                 replies: list[KValue] = []
                 for ask in deduped:
+                    if self.state.is_grounded(ask.kline):
+                        # K stating knowledge it already holds — not a
+                        # question. No reply, no escalation.
+                        continue
                     reply = self._answer(ask, heads, exact, words, answered)
                     if reply is None:
-                        # Off-script: return the ask to K as an S4 rejection.
-                        replies.append(KValue(ask.kline, SIG_S4))
+                        # Off-script: escalate — the supervisor decides.
+                        replies.append(self._escalate(ask))
                         continue
                     replies.extend(reply)
                 if replies:
@@ -215,6 +284,13 @@ class Harness:
             return [identity, *script_klines]
         hit = exact.get(key)
         if hit is None:
+            # An identity proposal X:[X] for a terminal word is the
+            # tokenizer's own fact — answer it without the supervisor.
+            if (
+                kline.nodes == [kline.signature]
+                and kline.signature in words
+            ):
+                return [KValue(kline, SIG_S1)]
             return None
         countersigns = [
             KValue(KLine(node, [kline.signature]), SIG_S3)
@@ -390,6 +466,37 @@ def present(results: list[StepResult], state: EngineState, source: str,
 # ── CLI ───────────────────────────────────────────────────────────────────
 
 
+def _interactive_supervisor(
+    labels: dict[int, str], verbose: bool
+) -> Callable[[KValue], KValue]:
+    """Prompt on each off-script ask: the supervisor decides significance.
+
+    1 ratifies at S1 (K grounds the kline in LTM — the fast path next
+    time); 2/3 grade and decline; 4 (or empty) declines outright.
+    """
+    sig_map = {"1": SIG_S1, "2": 0x80, "3": 0x40, "4": 0}
+
+    def supervise(ask: KValue) -> KValue:
+        print(f"\n  ⚠ escalated ask: {_render_kline(ask, labels, verbose)}")
+        while True:
+            try:
+                choice = input(
+                    "  ratify? [1=S1 ratify  2=S2  3=S3  4/enter=decline S4] > "
+                ).strip()
+            except EOFError:
+                choice = ""  # no supervisor input left: decline
+                break
+            if choice in sig_map or choice == "":
+                break
+            print("  enter 1, 2, 3, 4, or empty")
+        sig = sig_map.get(choice, 0)
+        verdict = "ratified" if sig == SIG_S1 else "declined"
+        print(f"  supervisor: {verdict} ({_band(KValue(ask.kline, sig))})")
+        return KValue(ask.kline, sig)
+
+    return supervise
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run a curriculum (markdown) or KScript source through the lean engine and present the trace.",
@@ -398,6 +505,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Show hex signatures alongside scripted labels.",
+    )
+    parser.add_argument(
+        "-s", "--supervise", action="store_true",
+        help="Interactive supervisor: off-script asks escalate for a "
+             "significance decision (ratify at S1 to ground in LTM).",
     )
     args = parser.parse_args(argv)
 
@@ -410,6 +522,10 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         tok = NLPTokenizer()
         harness = make_engine(tok)
+        if args.supervise:
+            harness._escalate = _interactive_supervisor(
+                _sig_to_label(source, tok, harness.signifier), args.verbose
+            )
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
         return 0
