@@ -156,6 +156,15 @@ class Harness:
                     target = by_key.get(key) if key else None
                 else:
                     target = None
+                if target is None and annotation and not any(
+                    k.rsplit("#", 1)[0] == annotation for k, _ in groups
+                ):
+                    # A bare annotated sig (empty sub-script body): the only
+                    # entry it produced is this one — it opens its own group.
+                    key = f"{annotation}#0"
+                    groups.append((key, []))
+                    target = groups[-1][1]
+                    by_key[key] = target
                 if target is None:
                     # No matching group yet (or ''): the nearest preceding
                     # scope-1/2 entry's group, else the first group.
