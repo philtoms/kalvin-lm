@@ -262,7 +262,7 @@ class ExpandFit:
             if n in canon:
                 slots.append(1.0)
                 continue
-            nchain = self._chain(n)
+            nchain = self._chain(n, containment=True)
             hops = min(
                 (
                     h + e_h
@@ -275,12 +275,53 @@ class ExpandFit:
             slots.append(aggregator.decay(hops) if hops is not None else 0.0)
         return aggregator.compose_terminal(slots)
 
-    def _chain(self, sig: int) -> dict[int, int]:
-        """``sig -> hops`` over the edge-hop chain from ``sig`` (self at 0)."""
+    def _chain(
+        self, sig: int, containment: bool = False
+    ) -> dict[int, int]:
+        """``sig -> hops`` over the edge-hop chain from ``sig`` (self at 0).
+
+        Beyond the bucket edges, a canon's word has a containment edge into
+        it (hop 1): a word connotes the group the script defines it in. This
+        is what links a gap fill to the canon node it answers — e.g. WDMH's
+        ``what`` connotes Object = Query = ALL, whose canon carries
+        ``a, little, lamb``: the fills reach ``what``'s chain through it.
+
+        Containment is one-directional credit: a proposal node may reach
+        through a canon it belongs to, but the canon-side entities must
+        connotate by their own edges only — otherwise any two words sharing
+        a canon credit each other (co-occurrence, not connotation).
+        """
+        state = self._state
+        signifier = self._state.signifier
         chain: dict[int, int] = {sig: 0}
+        frontier: list[int] = []
+        if containment:
+            for kline in state.where(
+                lambda k: sig in k.nodes and is_canon(k, signifier)
+            ):
+                reached = signifier.signature_of(kline.nodes)
+                if reached != sig and reached not in chain:
+                    chain[reached] = 1
+                    frontier.append(reached)
         for hops, reached in self._edge_hops(sig):
             if reached not in chain or hops < chain[reached]:
                 chain[reached] = hops
+        # Propagate through containment-seeded entries (the BFS above only
+        # runs from ``sig`` itself).
+        hop = 1
+        seen = set(frontier) | {sig}
+        while frontier:
+            hop += 1
+            nxt = []
+            for cur in frontier:
+                for h2, reached in self._edge_hops(cur):
+                    total = hop + h2 - 1
+                    if reached not in chain or total < chain[reached]:
+                        chain[reached] = total
+                    if reached not in seen:
+                        seen.add(reached)
+                        nxt.append(reached)
+            frontier = nxt
         return chain
 
     def _pivot_proposals(self, entry: KLine) -> list[KValue]:
@@ -306,7 +347,7 @@ class ExpandFit:
             pnode_set = set(pnodes)
             if not (canon_set & pnode_set):
                 continue  # no S1 anchor: not a pivot
-            resolved: list[int] = []
+            resolved: list[int | None] = []
             gaps: list[int] = []
             # Grouped resolution first: canon nodes forming a grounded
             # sub-canon resolve as a unit through its signature's path.
@@ -335,19 +376,31 @@ class ExpandFit:
                     resolved.append(hit[1])
                 else:
                     gaps.append(n)
+                    resolved.append(None)
             # Fill the gap slots with the pivot's unassigned nodes (S4 fill:
-            # work is assigned, if only by adjacency). Only a lone gap takes a
-            # fill: it takes the whole leftover residual as a grouped fill.
-            # Two or more open gaps cannot be assigned without guessing which
-            # leftover answers which gap — no proposal (the pivot remains a
-            # reentry vehicle via _fills_through).
+            # work is assigned, if only by adjacency). A lone gap takes the
+            # whole leftover residual as a grouped fill (appended); multiple
+            # gaps take positional fills — each gap the leftover at its
+            # relative position in canon/pivot order, which is alignment,
+            # not guessing.
             leftovers = [n for n in pnodes if n not in resolved]
-            if not gaps:
-                pass
-            elif len(gaps) == 1:
-                resolved.extend(leftovers)
-            else:
+            if len(gaps) > 1 and len(leftovers) != len(gaps):
+                # Positional fills need a peer: gap count must match
+                # leftover count, or the pivot is not shaped like this ask.
                 continue
+            if gaps:
+                if len(gaps) == 1:
+                    # The lone gap takes the whole leftover residual as a
+                    # grouped fill (appended).
+                    resolved = [r for r in resolved if r is not None]
+                    resolved.extend(leftovers)
+                else:
+                    # Gaps are canon-ordered, leftovers pivot-ordered: pair
+                    # them positionally.
+                    it = iter(leftovers)
+                    resolved = [
+                        r if r is not None else next(it) for r in resolved
+                    ]
             nodes: list[int] = []
             for n in resolved:
                 if n not in nodes:

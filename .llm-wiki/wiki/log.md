@@ -2,6 +2,9 @@
 
 ## 2026-08-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-negative-proposal-grade-scales-with-coverage-over-all-slots","title":"Negative proposal grade scales with coverage over all slots"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-directional-containment-edge-credits-connotated-gap-fills-in","title":"Directional containment edge credits connotated gap fills in grading"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-positional-gap-fills-in-pivot-graft-unblock-multi-gap-propos","title":"Positional gap fills in pivot graft unblock multi-gap proposals"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-","title":"ExpandFit docstrings rewritten: three-arm module doc, session narrative removed"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-08-21-engine-docstrings-rewritten-to-match-three-axis-dispatch","title":"Engine docstrings rewritten to match three-axis dispatch"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-boundary-relative-proposal-grading-weakest-claim-signs-conte","title":"Boundary-relative proposal grading: weakest claim signs, context magnitudes"}
