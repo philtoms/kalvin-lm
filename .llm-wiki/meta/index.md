@@ -100,10 +100,15 @@
 - [[sources/obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4]] — Observation: Committed crossover-fill propose + S4 refusal loop baseline (f48112d) *(created: 2026-08-20)*
 - [[sources/obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l]] — Observation: Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb] *(created: 2026-08-20)*
 - [[sources/obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit]] — Observation: Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy *(created: 2026-08-20)*
+- [[sources/obs-2026-08-21-boundary-relative-proposal-grading-weakest-claim-signs-conte]] — Observation: Boundary-relative proposal grading: weakest claim signs, context magnitudes *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-engine-docstrings-rewritten-to-match-three-axis-dispatch]] — Observation: Engine docstrings rewritten to match three-axis dispatch *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-]] — Observation: ExpandFit docstrings rewritten: three-arm module doc, session narrative removed *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-]] — Observation: Greedy pivot proposal was premature-alignment artifact; lone-gap fills only *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified]] — Observation: Lazy propose generator + misfit stays in STM until ratified *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar]] — Observation: Proposal node order aligned to grounded exemplar *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho]] — Observation: Refusal resolves the ask; empty asks never escalate; trace shows supervisor *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos]] — Observation: Speaking fast path + supervisor escalation + only-misfits-proposed *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers]] — Observation: User S2 ask path, binding leak fix, question-first openers *(created: 2026-08-21)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -111,4 +116,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-21T09:03:29.175Z* | *Total pages: 99*
+*Last updated: 2026-08-21T13:54:38.391Z* | *Total pages: 104*

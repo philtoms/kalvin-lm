@@ -5,18 +5,18 @@ A :class:`Engine` derives one turn from ``(state, incoming)`` and returns
 this turn. The engine is stateless about its own emissions; dedup lives in the
 actor.
 
-The engine is pure mechanism: it holds a :class:`EngineState` and a
-:class:`MisfitStrategy`, both fully constructed by the caller. The factories
-that assemble them (signifier, state, strategy, engine) live in
-:mod:`dialogue.harness`.
+The engine is pure mechanism: it holds an :class:`EngineState`, constructing
+the S2 strategy (:class:`ExpandFit`) over it itself. The factories that
+assemble signifier, state, and engine live in :mod:`dialogue.harness`.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Iterator, Protocol, runtime_checkable
+from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
+from dialogue.expand_fit import ExpandFit
 from kalvin.kline import (
     KLine,
     is_canon,
@@ -31,51 +31,34 @@ from kalvin.significance import (
     SIG_S1,
     SIG_S3,
     SIG_S4,
+    SIG8_MAX,
+    SIG_MASK,
     BandLayout,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
-__all__ = ["Engine", "EngineState", "MisfitStrategy"]
+__all__ = ["Engine", "EngineState"]
 
 # Default band layout, used to classify a query's stamped significance byte
 # into a structural level for routing.
 _LAYOUT = BandLayout()
 
 
-@runtime_checkable
-class MisfitStrategy(Protocol):
-    """Propose for one pending misfit ``entry`` against the ratified store.
-
-    A lazy generator yielding S2 proposals (S1 when the proposal is already
-    grounded), discovered breadth-first and halting at a proposal budget —
-    nearer proposals first, so significance order is discovery order. The
-    strategy shares the engine's :class:`EngineState` (set at construction).
-    """
-
-    def propose(
-        self,
-        entry: KLine,
-    ) -> Iterator[KValue]:
-        ...
-
-
 class Engine:
+    #: Shape-route containment answering (exploratory, off by default).
+    SHAPE_ANSWERS = False
     """Derives one turn from ``incoming``.
 
-    Holds the :class:`EngineState` it mutates in place and the
-    :class:`MisfitStrategy` it consults for the S2 arm — both supplied fully
-    constructed. The signifier is read off the state.
+    Holds the :class:`EngineState` it mutates in place and constructs the
+    :class:`ExpandFit` S2 strategy over it. The signifier is read off the
+    state.
     """
 
-    def __init__(
-        self,
-        state: EngineState,
-        misfit: MisfitStrategy,
-    ) -> None:
+    def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
-        self._misfit: MisfitStrategy = misfit
+        self._misfit = ExpandFit(state)
 
     @property
     def state(self) -> EngineState:
@@ -98,100 +81,92 @@ class Engine:
         with using_resolver(resolver):
             batch: list[KValue] = []
             for query in incoming:
-                batch.extend(self.route(query))
+                batch.extend(self.route(query) or [])
             batch.extend(self.cogitate())
             return batch, self.observations
 
 
     # ── Routing ──────────────────────────────────────────────────────
 
-    def route(self, query: KValue) -> list[KValue]:
+    def route(self, query: KValue) -> list[KValue] | None:
         """Apply one incoming query; return any immediate emissions.
 
-        Dispatch is on the query's **structural** significance:
+        Three dispatch axes, consulted in order:
 
-        - **S1/S4 (fast route)** — an S1 (identity or canon) match grounds the
-          kline (and cascades) and **answers from LTM**: every grounded kline
-          under the query's signature, other than the query itself, is said —
-          after the hard work of cogitation, a question K already holds the
-          answer to is answered directly. An S4 rejection (empty ask or
-          refused proposal) drops the matching kline from attention.
-        - **S2/S3 (slow route)** — append to STM, then unpack an S2
-          misfit's unrecognised nodes and signature as identity asks.
+        1. **Stamped significance** (the sender's band on the KValue):
+           an S4 stamp refuses the kline (drops it from attention and
+           spends any open ask under its signature); an S1 stamp is a
+           ratification — the kline grounds on receipt and the turn emits
+           nothing further for it.
+        2. **Question vs statement** (structural significance): an unknown
+           or misfit whose signature already holds grounded knowledge is
+           answered from LTM directly (the fast route).
+        3. Otherwise the query takes the slow route: appended to STM, its
+           unrecognised nodes and signature added as identity asks.
         """
         kline = query.kline
         structural_sig = sig_level(kline, self._state.signifier)
         query_sig = _LAYOUT.classify(query.significance)
 
         if query_sig == "S4":
-            self._state.refuse(query.kline)
-            self._state.remove_stm(query.kline)
-            return []
+            self._state.refuse(kline)
+            self._state.remove_stm(kline)
+            if kline.nodes:
+                # Refusing a proposal spends the ask under its signature:
+                # the signature is now seen, not asked.
+                self._state.asked.discard(kline.signature)
+            return None
 
         # A stamped-S1 query is a ratification: ground on receipt, before
         # any answering — the ratified kline is the answer just granted.
         if query_sig == "S1" or (
             structural_sig == query_sig and structural_sig == "S1"
         ):
-            if self._fast_route(query):
-                return []
+            if self._state._is_groundable(kline):
+                self._ground(kline)
+                return None
 
-        # Fast path: a question (unknown or misfit) whose signature already
-        # holds grounded knowledge — say it, whatever the query's band. After
-        # the hard work of cogitation, a question K holds the answer to is
-        # answered directly from LTM. Statements (identities, countersigns,
-        # ratifications) do not trigger answering.
-        if is_unknown(kline) or is_misfit(kline, self._state.signifier):
+        return self._fast_route(query) or self._slow_route(query)
+
+    def _fast_route(self, query: KValue) -> list[KValue] | None:
+        """Answer a question directly from LTM.
+
+        A question (unknown or misfit, by structure) whose signature holds
+        grounded klines gets them said at S1 — the stamped band is not
+        consulted. Statements (identities, canons, ratifications) never
+        take this route.
+
+        The gated shape route (``SHAPE_ANSWERS``, off by default) instead
+        answers questions whose signature holds nothing yet: grounded
+        klines containing the query's resolved nodes, graded by coverage.
+        It can preempt cogitation's sharper proposals — hence the gate.
+        """
+        kline = query.kline
+        is_question = is_unknown(kline) or is_misfit(kline, self._state.signifier)
+        if is_question:
             answers = self._answers_from_ltm(query)
             if answers:
                 return answers
 
-
-        self._slow_route(query)
-        return []
-
-    def _answers_from_ltm(self, query: KValue) -> list[KValue]:
-        """Grounded knowledge under the query's signature, said aloud.
-
-        Identities and canons are excluded — identities are asks or facts,
-        canons are ground truth; neither is an answer K earned.
-        """
-        signifier = self._state.signifier
-        return [
-            KValue(k, SIG_S1)
-            for k in self._state.ltm.get(query.kline.signature, [])
-            if k.nodes != query.kline.nodes
-            and not is_identity(k)
-            and not is_canon(k, signifier)
-        ]
-
-    def _ground(self, kline: KLine) -> None:
-        """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
-
-        A grounding may make other STM entries groundable (an identity
-        whose signature just landed, a canon whose nodes are now all seen, a
-        relationship whose reciprocal just grounded). Cascade until fixed point.
-        """
-        if self._state.ground(kline):
-            self.observations.append(KValue(kline, SIG_S1))
-        sweep = True
-        while sweep:
-            sweep = False
-            for entry in self._state.stm:
-                if self._state._is_groundable(entry) and self._state._is_denoted(entry):
-                    if self._state.ground(entry):
-                        self.observations.append(KValue(entry, SIG_S1))
-                        sweep = True
-                        break
-
-    def _fast_route(self, query: KValue) -> bool:
-        if not self._state._is_groundable(query.kline):
-            return False
-        self._ground(query.kline)
-        return True
+        if self.SHAPE_ANSWERS and (
+            is_question
+            or (
+                is_canon(kline, self._state.signifier)
+                and not self._state.ltm.get(kline.signature)
+            )
+        ):
+            return self._answers_by_containment(query)
+        return None
 
     def _slow_route(self, query: KValue) -> None:
+        """Attend to the query: append it and its unknown parts to STM.
+
+        An S2-stamped feed is an ask — the stamp reads as a question about
+        this signature, not a fact to ground.
+        """
         kline = query.kline
+        if _LAYOUT.classify(query.significance) == "S2":
+            self._state.asked.add(kline.signature)
         self._state.add_stm(kline)
         for node in kline.nodes:
             if not self._state.is_seen(node):
@@ -202,12 +177,14 @@ class Engine:
     # ── Cogitation ───────────────────────────────────────────────────
 
     def cogitate(self) -> list[KValue]:
-        """One oldest-first pass over STM: ask, countersign, propose, or ground.
+        """One oldest-first pass over STM: ask, propose, or ground.
 
-        Per entry, in priority order: an identity becomes an S4 ask; a
-        countersignable entry takes the S3 path and eventually grounds; a misfit
-        takes the S2 path. a structurally-S1 entry is promoted (grounded).
-        Entries that match no path persist for a later turn.
+        Per entry, in priority order: an unknown becomes an S4 ask; an
+        unasked, denoted, groundable entry grounds; a misfit or asked
+        entry draws proposals from the strategy; a grounded entry leaves
+        attention. Entries that match no path persist for a later turn.
+        The pass repeats until stable — grounding can unblock further
+        entries.
         """
         batch: list[KValue] = []
 
@@ -227,24 +204,19 @@ class Engine:
                 batch.append(KValue(KLine(kline.signature, []), SIG_S4))
                 continue
             else:
-                if self._state._is_groundable(kline) and self._state._is_denoted(kline):
+                asked = kline.signature in self._state.asked
+                if (
+                    not asked
+                    and self._state._is_groundable(kline)
+                    and self._state._is_denoted(kline)
+                ):
                     self._ground(kline)
 
-                # if self._state.is_countersignable(kline):
-                #     pairings = self._countersignature_proposals(kline)
-                #     if pairings:
-                #         proposals.extend(pairings)
-                #     else:
-                #         # All pairings resolved: the countersignature is complete.
-                #         self._state.remove_stm_at(idx)
-                #         self._ground(kline)
-
-                if is_misfit(kline, self._state.signifier):
+                if is_misfit(kline, self._state.signifier) or asked:
                     proposals = list(self._misfit.propose(kline))
                     if proposals:
-                        # Framing does not consume the misfit: it stays in
-                        # STM until its proposal is ratified (grounded) or
-                        # every shape is refused.
+                        # A misfit stays in STM until its proposal is
+                        # ratified (grounded) or every shape is refused.
                         batch.extend(proposals)
 
                 if self._state.is_grounded(kline):
@@ -258,73 +230,90 @@ class Engine:
 
         return batch
 
+    def _answers_from_ltm(self, query: KValue) -> list[KValue]:
+        """Grounded knowledge under the query's signature, said aloud.
 
-    # ── S3 path: countersignature ────────────────────────────────────
-
-    def _countersignature_proposals(self, entry: KLine) -> list[KValue]:
-        """Every unresolved operand pairing for ``entry`` as CONNOTES at S3.
-
-        Pair the two canons' operands left-to-right at group size 1; when one
-        side reaches a single node, synthesise the other's residual into one
-        operand. Returns ``[]`` once every pairing is grounded — the signal
-        that the countersignature is complete and the entry should ground itself.
-        """
-        right = entry.nodes
-        assert len(right) == 1, "S3 pairings expect a single-node relationship entry"
-        left_nodes = self._state.canon_nodes(entry.signature)
-        right_nodes = self._state.canon_nodes(right[0])
-        if left_nodes is None or right_nodes is None:
-            raise NotImplementedError("S3 pairings: an operand canon is missing")
-
-        batch: list[KValue] = []
-        for lhs_sig, rhs_node, residual in self._operand_pairings(left_nodes, right_nodes):
-            if self._pairing_resolved(lhs_sig, rhs_node, residual):
-                continue
-            head_sig = self._state.signifier.signature_of(residual) if residual else lhs_sig
-            batch.append(KValue(KLine(head_sig, [rhs_node]), SIG_S3))
-        return batch
-
-    def _operand_pairings(
-        self, left_nodes: list[int], right_nodes: list[int]
-    ) -> list[tuple[int, int, list[int]]]:
-        """Pair two canons' operands into ``(lhs_sig, rhs_node, residual)`` tuples.
-
-        Pair left-to-right while both sides have more than one node remaining;
-        when one side reaches a single node, group the other's entire residual
-        into one synthesised operand (returned as ``residual``).
+        Identities and canons are excluded — identities are asks or facts,
+        canons are ground truth; neither is an answer K earned.
         """
         signifier = self._state.signifier
-        plan: list[tuple[int, int, list[int]]] = []
-        i = j = 0
-        while i < len(left_nodes) and j < len(right_nodes):
-            left_rem = len(left_nodes) - i
-            right_rem = len(right_nodes) - j
-            if left_rem == 1 and right_rem == 1:
-                plan.append((left_nodes[i], right_nodes[j], []))
-                i += 1
-                j += 1
-            elif left_rem == 1:
-                residual = list(right_nodes[j:])
-                plan.append((left_nodes[i], signifier.signature_of(residual), residual))
-                break
-            elif right_rem == 1:
-                residual = list(left_nodes[i:])
-                plan.append((signifier.signature_of(residual), right_nodes[j], residual))
-                break
-            else:
-                plan.append((left_nodes[i], right_nodes[j], []))
-                i += 1
-                j += 1
-        return plan
+        return [
+            KValue(k, SIG_S1)
+            for k in self._state.ltm.get(query.kline.signature, [])
+            if k.nodes != query.kline.nodes
+            and not is_identity(k)
+            and not is_canon(k, signifier)
+        ]
 
-    def _pairing_resolved(self, lhs_sig: int, rhs_node: int, residual: list[int]) -> bool:
-        """Is this pairing's CONNOTES proposal ``{head_sig:[rhs_node]}`` grounded?
+    def _resolved_nodes(self, nodes: list[int]) -> list[int]:
+        """Resolve node groups through grounded canon resolutions.
 
-        For a grouped residual, ``head_sig`` is synthesised from the residual;
-        for a 1:1 pair it is ``lhs_sig``.
+        A grounded canon (e.g. DH:[did,have]) whose signature also holds a
+        grounded resolution (DH:[had]) names its group: the group's nodes
+        collapse to the resolution node — slot accounting, no semantics.
         """
-        head_sig = self._state.signifier.signature_of(residual) if residual else lhs_sig
-        return any(
-            list(kline.nodes) == [rhs_node]
-            for kline in self._state.ltm.get(head_sig, [])
-        )
+        resolved = list(nodes)
+        for bucket in self._state.ltm.values():
+            # canon resolutions: same signature, one node, not the canon itself
+            for canon in bucket:
+                group = set(canon.nodes)
+                if len(group) < 2 or not group <= set(resolved):
+                    continue
+                for other in bucket:
+                    if other is canon:
+                        continue
+                    if len(other.nodes) == 1 and other.nodes[0] not in group:
+                        node = other.nodes[0]
+                        resolved = [n for n in resolved if n not in group] + [node]
+                        break
+                else:
+                    continue
+                break
+        return resolved
+
+    def _answers_by_containment(self, query: KValue) -> list[KValue]:
+        """Grounded klines containing the query's resolved nodes, said aloud.
+
+        Full containment is a ratify-grade answer; the grade scales with
+        coverage (contained / containing). Identities are not answers; a
+        canon here is the sentence itself — exactly what K should say.
+        """
+        signifier = self._state.signifier
+        resolved = self._resolved_nodes(list(query.kline.nodes))
+        if not resolved:
+            return []
+        resolved_set = set(resolved)
+        answers: list[KValue] = []
+        for bucket in self._state.ltm.values():
+            for k in bucket:
+                if is_identity(k):
+                    continue
+                if resolved_set <= set(k.nodes):
+                    coverage = len(resolved_set) / len(k.nodes)
+                    if coverage <= 0.5:
+                        # A weak overlap is not an answer — let the query
+                        # take the slow route instead.
+                        continue
+                    answers.append(
+                        KValue(k, int(SIG8_MAX * coverage) & SIG_MASK or SIG_S1)
+                    )
+        return answers
+
+    def _ground(self, kline: KLine) -> None:
+        """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
+
+        A grounding may make other STM entries groundable (an identity
+        whose signature just landed, a canon whose nodes are now all seen, a
+        relationship whose reciprocal just grounded). Cascade until fixed point.
+        """
+        if self._state.ground(kline):
+            self.observations.append(KValue(kline, SIG_S1))
+        sweep = True
+        while sweep:
+            sweep = False
+            for entry in self._state.stm:
+                if self._state._is_groundable(entry) and self._state._is_denoted(entry):
+                    if self._state.ground(entry):
+                        self.observations.append(KValue(entry, SIG_S1))
+                        sweep = True
+                        break

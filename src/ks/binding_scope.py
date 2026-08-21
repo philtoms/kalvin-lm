@@ -58,6 +58,9 @@ class _Scope:
     word_lists: list[list[str]] = field(default_factory=list)
     counters: dict[str, int] = field(default_factory=dict)
     overrides: dict[str, str] = field(default_factory=dict)
+    #: Bindings that outlived their own scope, registered by child scopes.
+    #: Weaker than this scope's own word lists: consulted only after them.
+    weak_overrides: dict[str, str] = field(default_factory=dict)
 
 
 class BindingScope:
@@ -156,8 +159,11 @@ class BindingScope:
         # An inline annotation additionally binds uppercase chars in its
         # immediate parent scope — the enclosing scope, not beyond. It
         # outlives its own scope without reaching unrelated outer scopes.
+        # It registers there as a *weak* binding: word lists added to that
+        # parent later (e.g. a following subscript's own annotation) outrank
+        # it, so an outlived binding never masquerades as the parent's own.
         if char.isupper() and len(self._stack) >= 2:
-            self._stack[-2].overrides[char.lower()] = word
+            self._stack[-2].weak_overrides[char.lower()] = word
 
     def resolve(self, char: str) -> str | None:
         """Resolve a character to a word by walking the scope stack.
@@ -185,6 +191,10 @@ class BindingScope:
             if result is not None:
                 self._resolved[key] = result
                 return result
+            # A binding that outlived its own scope (weak, registered in its
+            # parent) applies only if the parent's own word lists have nothing.
+            if key in scope.weak_overrides:
+                return scope.weak_overrides[key]
         word = self._resolved.get(key)
         if word is not None:
             return word

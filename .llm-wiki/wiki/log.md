@@ -2,6 +2,11 @@
 
 ## 2026-08-21
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-","title":"ExpandFit docstrings rewritten: three-arm module doc, session narrative removed"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-08-21-engine-docstrings-rewritten-to-match-three-axis-dispatch","title":"Engine docstrings rewritten to match three-axis dispatch"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-boundary-relative-proposal-grading-weakest-claim-signs-conte","title":"Boundary-relative proposal grading: weakest claim signs, context magnitudes"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho","title":"Refusal resolves the ask; empty asks never escalate; trace shows supervisor"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers","title":"User S2 ask path, binding leak fix, question-first openers"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar","title":"Proposal node order aligned to grounded exemplar"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos","title":"Speaking fast path + supervisor escalation + only-misfits-proposed"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-","title":"Greedy pivot proposal was premature-alignment artifact; lone-gap fills only"}

@@ -365,6 +365,45 @@ class Aggregator:
 DEFAULT_AGGREGATOR = Aggregator()
 
 
+@dataclass(frozen=True)
+class ProposalAggregator(Aggregator):
+    """Proposal grading: the S2|S3 boundary is the zero point of judgement.
+
+    A proposal is a conjunction of claims. Its weakest claim decides the
+    sign; the rest is context — how well K understands what it is saying.
+
+    - Every slot at least partially accounted: positive. The byte rises
+      from the boundary with the weakest claim's accountedness.
+    - Any slot unaccounted (a wild guess — no connotational path): negative.
+      The byte falls from the boundary with the *context* accountedness:
+      a guess inside a fully understood ask is a confident long-worded
+      "no"; a guess with no understood context is noise (floor).
+
+    0xFF stays reserved for the exact case (all slots at 1.0 — the
+    grounded shortcut in the grader handles ratified shapes first).
+    """
+
+    def compose_terminal(self, slot_values: list[float]) -> int:
+        if not slot_values:
+            return SIG8_MIN
+        boundary = self.layout.s2_s3_boundary
+        weakest = min(slot_values)
+        if weakest > 0.0:
+            frac = min(1.0, weakest)
+            if frac >= 1.0:
+                return SIG8_MAX
+            return boundary + round(frac * (SIG8_MAX - 1 - boundary))
+        accounted = [v for v in slot_values if v > 0.0]
+        if not accounted:
+            return SIG8_MIN
+        context = min(1.0, sum(accounted) / len(accounted))
+        return round(context * (boundary - 1))
+
+
+#: Proposal grading aggregator (see :class:`ProposalAggregator`).
+PROPOSAL_AGGREGATOR = ProposalAggregator()
+
+
 # Structural Grounding
 
 

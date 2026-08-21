@@ -61,6 +61,9 @@ class EngineState:
     ltm: dict[int, list[KLine]] = field(default_factory=dict)
     frame: dict[int, list[KLine]] = field(default_factory=dict)
     refused: set[tuple[int, tuple[int, ...]]] = field(default_factory=set)
+    #: Signatures fed at S2 as an ask — the user's implied semantics. A
+    #: kline whose signature is asked is a question, not a fact to ground.
+    asked: set[int] = field(default_factory=set)
     _dbg_step: int = 0
 
     @property
