@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-21T08:56:08.115Z",
+  "last_updated": "2026-08-21T09:03:29.175Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -896,6 +896,24 @@
       "relevance": "critical",
       "observed_at": "2026-08-21T07:43:41.849Z",
       "source_context": "Lazy generator propose redesign + misfit lifecycle fix",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar": {
+      "type": "source",
+      "title": "Observation: Proposal node order aligned to grounded exemplar",
+      "tags": [
+        "dialogue",
+        "expand-fit",
+        "phrasing",
+        "alignment",
+        "ltm"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar",
+      "relevance": "high",
+      "observed_at": "2026-08-21T09:03:29.136Z",
+      "source_context": "Proposal phrasing alignment to grounded exemplars",
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },

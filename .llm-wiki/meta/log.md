@@ -107,3 +107,6 @@
 ## [2026-08-21T08:56:08.095Z] observe
 - slug: "obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos", title: "Speaking fast path + supervisor escalation + only-misfits-proposed", relevance: "critical"
 
+## [2026-08-21T09:03:29.140Z] observe
+- slug: "obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar", title: "Proposal node order aligned to grounded exemplar", relevance: "high"
+

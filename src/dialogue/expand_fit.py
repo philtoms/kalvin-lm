@@ -183,6 +183,7 @@ class ExpandFit:
                 # Only misfits are proposed: identities are asks or facts,
                 # canons are the script/compiler's own ground truth.
                 continue
+            kline = self._align_to_grounded(kline)
             if signifier.residual(
                 entry.signature, signifier.signature_of(expanded)
             ) != 0:
@@ -195,6 +196,23 @@ class ExpandFit:
             if self._state.is_refused(kv.kline):
                 continue
             yield kv
+
+    def _align_to_grounded(self, kline: KLine) -> KLine:
+        """Adopt a grounded kline's node order for the proposed nodes.
+
+        The proposed multiset is the misfit's answer, but its order is an
+        artifact of slot accounting. If the nodes' generated signature is
+        already grounded, the grounded kline's order is the phrasing K
+        knows — use it. This bypasses linguistic post-processing.
+        """
+        gen = self._state.signifier.signature_of(kline.nodes)
+        for grounded in self._state.ltm.get(gen, []):
+            if is_identity(grounded):
+                continue
+            if grounded.nodes != kline.nodes:
+                return KLine(kline.signature, list(grounded.nodes), kline.dbg)
+            break
+        return kline
 
     def _grade(self, entry: KLine, kline: KLine) -> int:
         """Post-hoc significance of a proposal for ``entry``: K's understanding
@@ -327,6 +345,7 @@ class ExpandFit:
                 # Only misfits are proposed: identities are asks or facts,
                 # canons are the script/compiler's own ground truth.
                 continue
+            kline = self._align_to_grounded(kline)
             if not signifier.signifies(
                 signifier.signature_of(nodes), entry.signature
             ):
