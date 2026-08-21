@@ -48,6 +48,9 @@ class Turn:
     feeds: list[KValue]
     grounds: list[KValue] = field(default_factory=list)
     asks: list[KValue] = field(default_factory=list)
+    #: The supervisor's responses to this turn's escalated proposals,
+    #: paired with the proposal index in ``asks`` they answer.
+    escalations: list[tuple[int, KValue]] = field(default_factory=list)
 
 
 @dataclass
@@ -230,9 +233,10 @@ class Harness:
                 feeds = queue.pop(0)
                 batch, observations = self._engine.rationalise(feeds)
                 deduped = _dedup(batch)
-                step.turns.append(Turn(feeds, observations, deduped))
                 replies: list[KValue] = []
-                for ask in deduped:
+                turn = Turn(feeds, observations, deduped)
+                step.turns.append(turn)
+                for ask_i, ask in enumerate(deduped):
                     if self.state.is_grounded(ask.kline):
                         # K stating knowledge it already holds — not a
                         # question. No reply, no escalation.
@@ -240,7 +244,9 @@ class Harness:
                     reply = self._answer(ask, heads, exact, words, answered)
                     if reply is None:
                         # Off-script: escalate — the supervisor decides.
-                        replies.append(self._escalate(ask))
+                        response = self._escalate(ask)
+                        turn.escalations.append((ask_i, response))
+                        replies.append(response)
                         continue
                     replies.extend(reply)
                 if replies:
@@ -422,13 +428,18 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
         lines.append(f"  T{t:02d}  feed    {feeds}")
         for v in turn.grounds:
             lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
-        for v in turn.asks:
+        escalations = {i: r for i, r in turn.escalations}
+        for i, v in enumerate(turn.asks):
             if v.kline.nodes:
                 lines.append(
                     f"        {'proposes':<8} {_render_kline(v, labels, verbose)} {_sig_display(v)}"
                 )
             else:
                 lines.append(f"        {'asks':<8} {_render_kline(v, labels, verbose)}")
+            if i in escalations:
+                r = escalations[i]
+                verdict = "ratified" if _band(r) == "S1" else "declined"
+                lines.append(f"        {'supervisor':<8} {verdict} ({_band(r)})")
     if step.stopped_on is not None:
         lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
     return "\n".join(lines)
