@@ -31,6 +31,8 @@ from kalvin.significance import (
     SIG_S1,
     SIG_S3,
     SIG_S4,
+    SIG8_MAX,
+    SIG_MASK,
     BandLayout,
 )
 
@@ -62,6 +64,8 @@ class MisfitStrategy(Protocol):
 
 
 class Engine:
+    #: Shape-route containment answering (exploratory, off by default).
+    SHAPE_ANSWERS = False
     """Derives one turn from ``incoming``.
 
     Holds the :class:`EngineState` it mutates in place and the
@@ -141,8 +145,26 @@ class Engine:
         # the hard work of cogitation, a question K holds the answer to is
         # answered directly from LTM. Statements (identities, countersigns,
         # ratifications) do not trigger answering.
-        if is_unknown(kline) or is_misfit(kline, self._state.signifier):
+        is_question = is_unknown(kline) or is_misfit(kline, self._state.signifier)
+        if is_question:
             answers = self._answers_from_ltm(query)
+            if answers:
+                return answers
+
+        # Shape route (GATED OFF — exploratory): a question whose signature
+        # holds nothing yet — an unknown, or a self-signed query K has never
+        # grounded (raw words that just self-signed into a new signature).
+        # Resolved nodes resolve through grounded canons; a grounded kline
+        # containing them is the answer, graded by coverage. Answers can
+        # preempt cogitation's sharper proposals — hence the gate.
+        if self.SHAPE_ANSWERS and (
+            is_question
+            or (
+                is_canon(kline, self._state.signifier)
+                and not self._state.ltm.get(kline.signature)
+            )
+        ):
+            answers = self._answers_by_containment(query)
             if answers:
                 return answers
 
@@ -164,6 +186,60 @@ class Engine:
             and not is_identity(k)
             and not is_canon(k, signifier)
         ]
+
+    def _resolved_nodes(self, nodes: list[int]) -> list[int]:
+        """Resolve node groups through grounded canon resolutions.
+
+        A grounded canon (e.g. DH:[did,have]) whose signature also holds a
+        grounded resolution (DH:[had]) names its group: the group's nodes
+        collapse to the resolution node — slot accounting, no semantics.
+        """
+        resolved = list(nodes)
+        for bucket in self._state.ltm.values():
+            # canon resolutions: same signature, one node, not the canon itself
+            for canon in bucket:
+                group = set(canon.nodes)
+                if len(group) < 2 or not group <= set(resolved):
+                    continue
+                for other in bucket:
+                    if other is canon:
+                        continue
+                    if len(other.nodes) == 1 and other.nodes[0] not in group:
+                        node = other.nodes[0]
+                        resolved = [n for n in resolved if n not in group] + [node]
+                        break
+                else:
+                    continue
+                break
+        return resolved
+
+    def _answers_by_containment(self, query: KValue) -> list[KValue]:
+        """Grounded klines containing the query's resolved nodes, said aloud.
+
+        Full containment is a ratify-grade answer; the grade scales with
+        coverage (contained / containing). Identities are not answers; a
+        canon here is the sentence itself — exactly what K should say.
+        """
+        signifier = self._state.signifier
+        resolved = self._resolved_nodes(list(query.kline.nodes))
+        if not resolved:
+            return []
+        resolved_set = set(resolved)
+        answers: list[KValue] = []
+        for bucket in self._state.ltm.values():
+            for k in bucket:
+                if is_identity(k):
+                    continue
+                if resolved_set <= set(k.nodes):
+                    coverage = len(resolved_set) / len(k.nodes)
+                    if coverage <= 0.5:
+                        # A weak overlap is not an answer — let the query
+                        # take the slow route instead.
+                        continue
+                    answers.append(
+                        KValue(k, int(SIG8_MAX * coverage) & SIG_MASK or SIG_S1)
+                    )
+        return answers
 
     def _ground(self, kline: KLine) -> None:
         """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
