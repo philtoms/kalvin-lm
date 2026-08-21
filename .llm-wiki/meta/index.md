@@ -101,6 +101,8 @@
 - [[sources/obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l]] — Observation: Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb] *(created: 2026-08-20)*
 - [[sources/obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit]] — Observation: Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy *(created: 2026-08-20)*
 - [[sources/obs-2026-08-21-boundary-relative-proposal-grading-weakest-claim-signs-conte]] — Observation: Boundary-relative proposal grading: weakest claim signs, context magnitudes *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-engine-docstrings-rewritten-to-match-three-axis-dispatch]] — Observation: Engine docstrings rewritten to match three-axis dispatch *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-]] — Observation: ExpandFit docstrings rewritten: three-arm module doc, session narrative removed *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-]] — Observation: Greedy pivot proposal was premature-alignment artifact; lone-gap fills only *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified]] — Observation: Lazy propose generator + misfit stays in STM until ratified *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar]] — Observation: Proposal node order aligned to grounded exemplar *(created: 2026-08-21)*
@@ -114,4 +116,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-21T13:41:32.912Z* | *Total pages: 102*
+*Last updated: 2026-08-21T13:54:38.391Z* | *Total pages: 104*

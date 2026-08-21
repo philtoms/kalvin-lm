@@ -119,3 +119,9 @@
 ## [2026-08-21T13:41:32.876Z] observe
 - slug: "obs-2026-08-21-boundary-relative-proposal-grading-weakest-claim-signs-conte", title: "Boundary-relative proposal grading: weakest claim signs, context magnitudes", relevance: "high"
 
+## [2026-08-21T13:48:07.530Z] observe
+- slug: "obs-2026-08-21-engine-docstrings-rewritten-to-match-three-axis-dispatch", title: "Engine docstrings rewritten to match three-axis dispatch", relevance: "medium"
+
+## [2026-08-21T13:54:38.362Z] observe
+- slug: "obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-", title: "ExpandFit docstrings rewritten: three-arm module doc, session narrative removed", relevance: "medium"
+

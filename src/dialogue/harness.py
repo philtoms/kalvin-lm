@@ -23,7 +23,6 @@ from typing import Callable, cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
-from dialogue.expand_fit import ExpandFit
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
@@ -343,17 +342,16 @@ class Harness:
 
 # ── Construction (single source of truth) ────────────────────────────────
 #
-# The factories wire signifier → state → strategy → engine → harness so the
-# signifier lives in one place (the EngineState). The misfit (S2) strategy is
-# fixed to ExpandFit.
+# The factories wire signifier → state → engine → harness so the signifier
+# lives in one place (the EngineState). The engine constructs its own S2
+# strategy (ExpandFit) over the state.
 
 def make_engine(
     tokenizer: NLPTokenizer,
 ) -> Harness:
     """Build a harness over a fresh state: new signifier → state → engine."""
     state = EngineState(NLPSignifier())
-    misfit = ExpandFit(state)
-    return Harness(tokenizer, Engine(state, misfit))
+    return Harness(tokenizer, Engine(state))
 
 
 def load_engine(
@@ -363,8 +361,7 @@ def load_engine(
     """Build a harness over a loaded prior state (reusing its signifier)."""
     signifier = NLPSignifier()
     state = EngineState.load(signifier, path)
-    misfit = ExpandFit(state)
-    return Harness(tokenizer, Engine(state, misfit))
+    return Harness(tokenizer, Engine(state))
 
 
 # ── Presentation ──────────────────────────────────────────────────────────

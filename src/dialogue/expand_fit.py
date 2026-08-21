@@ -1,13 +1,20 @@
-"""The expand S2 strategy — emit true proposals for a pending misfit.
+"""The S2 strategy: propose true fills for a pending misfit.
 
-Edge-hop connotations are gathered from the entry's nodes and its underfit
-gap's covering bridges. Grounded canon klines whose own chains cross one of
-those connotations are the crossing candidates; their nodes and signatures
-that reach a connotation (at ``connotation_hops + crossing_hops``) are the
-fills. A fill is proposed under the entry's own signature — added to the
-nodes (underfit), swapped for the excess nodes (badfit) — graded by the
-fill's crossover distance. No proposal is invented: every node comes from
-the entry or a grounded contributor.
+Nothing is invented — every node in a proposal comes from the entry or
+from grounded klines. Three proposal arms, in emission order:
+
+- **Pivots**: a grounded canon sharing a node with the entry's canon is a
+  pivot; the entry's canon is aligned onto it and the pivot's word form is
+  grafted on.
+- **Fills** (underfit only): connotations are gathered from the entry's
+  nodes and its underfit gap's covering bridges; grounded canons whose
+  chains cross a connotation contribute the fills, graded by crossover
+  distance. An overfit's excess nodes are swapped out.
+- **Reentry**: a proposal that is itself an ungrounded misfit is proposed
+  from again, one hop further out.
+
+All arms are breadth-first, so discovery order is significance order, and
+halt at a per-call proposal budget.
 """
 
 from __future__ import annotations
@@ -62,8 +69,8 @@ class ExpandFit:
     def state(self) -> EngineState:
         return self._state
 
-    #: Per-call proposal budget: cogitation frames at most this many
-    #: proposals per misfit (reentry shares the budget).
+    #: Per-call proposal budget: at most this many proposals per misfit;
+    #: reentry proposals share the budget.
     BUDGET = 3
 
     def propose(
@@ -84,11 +91,10 @@ class ExpandFit:
         signifier = self._state.signifier
         underfit, overfit = classify_misfit(entry, signifier)
         if not underfit and not overfit:
-            # A gapless canon is not a misfit — unless the user asked. An
-            # asked signature crosses over grounded knowledge: the overlap
-            # is the pivot through which residual groups resolve (DMHAL ×
-            # MHALL -> MAL pivot, DH -> had, the uncovered slots become
-            # asks). Pivot alignment handles it; nothing else can.
+            # A gapless canon is not a misfit. The one exception: an asked
+            # signature whose canon overlaps grounded knowledge — pivot
+            # alignment aligns the overlap and turns the uncovered slots
+            # into asks. Only that arm can handle it.
             if entry.signature not in self._state.asked or not is_canon(
                 entry, signifier
             ):
@@ -230,7 +236,7 @@ class ExpandFit:
         2. A node of the entry's canon — S2 (hop 1).
         3. A node crossover-reachable from a canon node in either direction —
            S3 at the crossover hops.
-        4. Otherwise — S4: work assigned but unaccounted (0.0).
+        4. Otherwise — S4: work assigned but unaccounted (no credit).
         """
         if self._state.is_grounded(kline):
             return SIG8_MAX

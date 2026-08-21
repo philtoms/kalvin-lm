@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-21T13:41:32.912Z",
+  "last_updated": "2026-08-21T13:54:38.391Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -879,6 +879,38 @@
       "relevance": "high",
       "observed_at": "2026-08-21T13:41:32.874Z",
       "source_context": "Significance variation for crossover gap-filling proposals",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-21-engine-docstrings-rewritten-to-match-three-axis-dispatch": {
+      "type": "source",
+      "title": "Observation: Engine docstrings rewritten to match three-axis dispatch",
+      "tags": [
+        "dialogue",
+        "engine",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-engine-docstrings-rewritten-to-match-three-axis-dispatch",
+      "relevance": "medium",
+      "observed_at": "2026-08-21T13:48:07.528Z",
+      "source_context": "Documentation drift pass over dialogue engine",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-": {
+      "type": "source",
+      "title": "Observation: ExpandFit docstrings rewritten: three-arm module doc, session narrative removed",
+      "tags": [
+        "dialogue",
+        "docs",
+        "expand-fit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-",
+      "relevance": "medium",
+      "observed_at": "2026-08-21T13:54:38.360Z",
+      "source_context": "Docstring drift pass over expand_fit strategy",
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },
