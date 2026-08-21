@@ -102,14 +102,14 @@ class Engine:
         with using_resolver(resolver):
             batch: list[KValue] = []
             for query in incoming:
-                batch.extend(self.route(query))
+                batch.extend(self.route(query) or [])
             batch.extend(self.cogitate())
             return batch, self.observations
 
 
     # ── Routing ──────────────────────────────────────────────────────
 
-    def route(self, query: KValue) -> list[KValue]:
+    def route(self, query: KValue) -> list[KValue] | None:
         """Apply one incoming query; return any immediate emissions.
 
         Dispatch is on the query's **structural** significance:
@@ -128,24 +128,29 @@ class Engine:
         query_sig = _LAYOUT.classify(query.significance)
 
         if query_sig == "S4":
-            self._state.refuse(query.kline)
-            self._state.remove_stm(query.kline)
-            if query.kline.nodes:
+            self._state.refuse(kline)
+            self._state.remove_stm(kline)
+            if kline.nodes:
                 # A refused proposal resolves the ask under its signature:
                 # the supervisor answered "no" — the question is spent. A
                 # groundable kline then grounds as the heard word form,
                 # instead of the misfit arm re-proposing novel shapes.
-                self._state.asked.discard(query.kline.signature)
-            return []
+                self._state.asked.discard(kline.signature)
+            return None
 
         # A stamped-S1 query is a ratification: ground on receipt, before
         # any answering — the ratified kline is the answer just granted.
         if query_sig == "S1" or (
             structural_sig == query_sig and structural_sig == "S1"
         ):
-            if self._fast_route(query):
-                return []
+            if self._state._is_groundable(kline):
+                self._ground(kline)
+                return None
 
+        return self._fast_route(query) or self._slow_route(query)
+
+    def _fast_route(self, query: KValue) -> list[KValue]| None:
+        kline = query.kline
         # Fast path: a question (unknown or misfit) whose signature already
         # holds grounded knowledge — say it, whatever the query's band. After
         # the hard work of cogitation, a question K holds the answer to is
@@ -174,9 +179,83 @@ class Engine:
             if answers:
                 return answers
 
+    def _slow_route(self, query: KValue) -> None:
+        kline = query.kline
+        if _LAYOUT.classify(query.significance) == "S2":
+            # User significance: an S2 feed is an ask. The stamp is implied
+            # semantics — cogitation reads it as a question about this
+            # signature, not a fact to ground.
+            self._state.asked.add(kline.signature)
+        self._state.add_stm(kline)
+        for node in kline.nodes:
+            if not self._state.is_seen(node):
+                self._state.add_stm(KLine(node, [], kline.dbg))
+        if not self._state.is_seen(kline.signature):
+            self._state.add_stm(KLine(kline.signature, [], kline.dbg))
 
-        self._slow_route(query)
-        return []
+    # ── Cogitation ───────────────────────────────────────────────────
+
+    def cogitate(self) -> list[KValue]:
+        """One oldest-first pass over STM: ask, countersign, propose, or ground.
+
+        Per entry, in priority order: an identity becomes an S4 ask; a
+        countersignable entry takes the S3 path and eventually grounds; a misfit
+        takes the S2 path. a structurally-S1 entry is promoted (grounded).
+        Entries that match no path persist for a later turn.
+        """
+        batch: list[KValue] = []
+
+        idx = 0
+        count = len(self._state.stm)
+        while idx < len(self._state.stm):
+            # Re-check the index each iteration: the _promote cascade (via the
+            # S2 strategy's ground callback, or the countersign/groundable
+            # arms) can remove arbitrary STM entries, shrinking the list
+            # below the index this loop intends to visit.
+            if idx >= len(self._state.stm):
+                continue
+            kline = self._state.stm[idx]
+
+            if is_unknown(kline):
+                self._state.remove_stm_at(idx)
+                batch.append(KValue(KLine(kline.signature, []), SIG_S4))
+                continue
+            else:
+                asked = kline.signature in self._state.asked
+                if (
+                    not asked
+                    and self._state._is_groundable(kline)
+                    and self._state._is_denoted(kline)
+                ):
+                    self._ground(kline)
+
+                # if self._state.is_countersignable(kline):
+                #     pairings = self._countersignature_proposals(kline)
+                #     if pairings:
+                #         proposals.extend(pairings)
+                #     else:
+                #         # All pairings resolved: the countersignature is complete.
+                #         self._state.remove_stm_at(idx)
+                #         self._ground(kline)
+
+                if is_misfit(kline, self._state.signifier) or asked:
+                    proposals = list(self._misfit.propose(kline))
+                    if proposals:
+                        # Framing does not consume the misfit: it stays in
+                        # STM until its proposal is ratified (grounded) or
+                        # every shape is refused.
+                        batch.extend(proposals)
+
+                if self._state.is_grounded(kline):
+                    self._state.remove_stm_at(idx)
+                    continue
+
+            idx += 1
+
+        if count != len(self._state.stm):
+            batch.extend(self.cogitate())
+
+        return batch
 
     def _answers_from_ltm(self, query: KValue) -> list[KValue]:
         """Grounded knowledge under the query's signature, said aloud.
@@ -265,91 +344,6 @@ class Engine:
                         self.observations.append(KValue(entry, SIG_S1))
                         sweep = True
                         break
-
-    def _fast_route(self, query: KValue) -> bool:
-        if not self._state._is_groundable(query.kline):
-            return False
-        self._ground(query.kline)
-        return True
-
-    def _slow_route(self, query: KValue) -> None:
-        kline = query.kline
-        if _LAYOUT.classify(query.significance) == "S2":
-            # User significance: an S2 feed is an ask. The stamp is implied
-            # semantics — cogitation reads it as a question about this
-            # signature, not a fact to ground.
-            self._state.asked.add(kline.signature)
-        self._state.add_stm(kline)
-        for node in kline.nodes:
-            if not self._state.is_seen(node):
-                self._state.add_stm(KLine(node, [], kline.dbg))
-        if not self._state.is_seen(kline.signature):
-            self._state.add_stm(KLine(kline.signature, [], kline.dbg))
-
-    # ── Cogitation ───────────────────────────────────────────────────
-
-    def cogitate(self) -> list[KValue]:
-        """One oldest-first pass over STM: ask, countersign, propose, or ground.
-
-        Per entry, in priority order: an identity becomes an S4 ask; a
-        countersignable entry takes the S3 path and eventually grounds; a misfit
-        takes the S2 path. a structurally-S1 entry is promoted (grounded).
-        Entries that match no path persist for a later turn.
-        """
-        batch: list[KValue] = []
-
-        idx = 0
-        count = len(self._state.stm)
-        while idx < len(self._state.stm):
-            # Re-check the index each iteration: the _promote cascade (via the
-            # S2 strategy's ground callback, or the countersign/groundable
-            # arms) can remove arbitrary STM entries, shrinking the list
-            # below the index this loop intends to visit.
-            if idx >= len(self._state.stm):
-                continue
-            kline = self._state.stm[idx]
-
-            if is_unknown(kline):
-                self._state.remove_stm_at(idx)
-                batch.append(KValue(KLine(kline.signature, []), SIG_S4))
-                continue
-            else:
-                asked = kline.signature in self._state.asked
-                if (
-                    not asked
-                    and self._state._is_groundable(kline)
-                    and self._state._is_denoted(kline)
-                ):
-                    self._ground(kline)
-
-                # if self._state.is_countersignable(kline):
-                #     pairings = self._countersignature_proposals(kline)
-                #     if pairings:
-                #         proposals.extend(pairings)
-                #     else:
-                #         # All pairings resolved: the countersignature is complete.
-                #         self._state.remove_stm_at(idx)
-                #         self._ground(kline)
-
-                if is_misfit(kline, self._state.signifier) or asked:
-                    proposals = list(self._misfit.propose(kline))
-                    if proposals:
-                        # Framing does not consume the misfit: it stays in
-                        # STM until its proposal is ratified (grounded) or
-                        # every shape is refused.
-                        batch.extend(proposals)
-
-                if self._state.is_grounded(kline):
-                    self._state.remove_stm_at(idx)
-                    continue
-
-            idx += 1
-
-        if count != len(self._state.stm):
-            batch.extend(self.cogitate())
-
-        return batch
-
 
     # ── S3 path: countersignature ────────────────────────────────────
 
