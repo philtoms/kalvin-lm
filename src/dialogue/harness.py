@@ -186,7 +186,21 @@ class Harness:
         # when it opens (cumulative — past and current groups only).
         steps: list[tuple[str, list[KValue], KValue]] = []
         for key, group in groups:
-            opener = next((e for e in group if e.kline.dbg.scope == 0), group[0])
+            # The opener is the group's question: a scope-0 authored entry,
+            # else the canon itself (a bare annotated sig's MTS canon) —
+            # never an identity. An identity is an answer, not a question;
+            # opening with it grounds the group's words before the question
+            # is ever asked.
+            opener = next(
+                (e for e in group if e.kline.dbg and e.kline.dbg.scope == 0),
+                next(
+                    (
+                        e for e in group
+                        if e.kline.dbg and e.kline.dbg.op == "CANONIZES"
+                    ),
+                    group[0],
+                ),
+            )
             annotation = opener.kline.dbg.annotation if opener.kline.dbg else ""
             if not annotation:
                 continue
@@ -478,39 +492,45 @@ def present(results: list[StepResult], state: EngineState, source: str,
 def _queue_supervisor(
     queue: list[str], labels: dict[int, str], verbose: bool
 ) -> Callable[[KValue], KValue]:
-    """Answer escalations from a fixed response queue, then decline.
+    """Answer escalations from a fixed response queue; return to the
+    supervisor when it runs out.
 
     Lets a supervisor concentrate on successive proposals as the script
-    evolves: grade the expected escalations up front, run unattended.
+    evolves: grade the expected escalations up front, run unattended. The
+    first escalation beyond the queue is prompted for — control returns to
+    the supervisor, whose queued grades remain spent.
     """
-    sig_map = {"1": SIG_S1, "2": 0x80, "3": 0x40, "4": 0}
-    it = iter(queue)
-
-    def supervise(ask: KValue) -> KValue:
-        print(f"\n  ⚠ escalated ask: {_render_kline(ask, labels, verbose)}")
-        choice = next(it, "").strip()  # exhausted: decline
-        if choice not in sig_map:
-            choice = ""
-        sig = sig_map.get(choice, 0)
-        verdict = "ratified" if sig == SIG_S1 else "declined"
-        print(f"  supervisor ({choice or '4'}): {verdict} ({_band(KValue(ask.kline, sig))})")
-        return KValue(ask.kline, sig)
-
-    return supervise
+    return _interactive_supervisor(labels, verbose, queue)
 
 
 def _interactive_supervisor(
-    labels: dict[int, str], verbose: bool
+    labels: dict[int, str], verbose: bool, queue: list[str] | None = None
 ) -> Callable[[KValue], KValue]:
     """Prompt on each off-script ask: the supervisor decides significance.
+
+    With ``queue``, its grades are spent first, unattended; the first
+    escalation beyond it returns control to the prompt.
 
     1 ratifies at S1 (K grounds the kline in LTM — the fast path next
     time); 2/3 grade and decline; 4 (or empty) declines outright.
     """
     sig_map = {"1": SIG_S1, "2": 0x80, "3": 0x40, "4": 0}
+    it = iter(queue or [])
 
     def supervise(ask: KValue) -> KValue:
         print(f"\n  ⚠ escalated ask: {_render_kline(ask, labels, verbose)}")
+        choice = next(it, None)
+        if choice is not None:
+            choice = choice.strip()
+            if choice not in sig_map:
+                choice = ""
+            sig = sig_map.get(choice, 0)
+            verdict = "ratified" if sig == SIG_S1 else "declined"
+            print(
+                f"  supervisor ({choice or '4'}): {verdict} "
+                f"({_band(KValue(ask.kline, sig))})"
+            )
+            return KValue(ask.kline, sig)
         while True:
             try:
                 choice = input(

@@ -110,3 +110,6 @@
 ## [2026-08-21T09:03:29.140Z] observe
 - slug: "obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar", title: "Proposal node order aligned to grounded exemplar", relevance: "high"
 
+## [2026-08-21T12:07:27.120Z] observe
+- slug: "obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers", title: "User S2 ask path, binding leak fix, question-first openers", relevance: "high"
+

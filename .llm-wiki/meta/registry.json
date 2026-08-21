@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-21T09:03:29.175Z",
+  "last_updated": "2026-08-21T12:07:27.147Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -932,6 +932,24 @@
       "relevance": "critical",
       "observed_at": "2026-08-21T08:56:08.093Z",
       "source_context": "Fast path answers from LTM; supervisor ratification loop",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers": {
+      "type": "source",
+      "title": "Observation: User S2 ask path, binding leak fix, question-first openers",
+      "tags": [
+        "dialogue",
+        "user-significance",
+        "crossover",
+        "binding-scope",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers",
+      "relevance": "high",
+      "observed_at": "2026-08-21T12:07:27.118Z",
+      "source_context": "User significance path + crossover-as-misfit-generator exploration",
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },

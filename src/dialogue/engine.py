@@ -268,6 +268,11 @@ class Engine:
 
     def _slow_route(self, query: KValue) -> None:
         kline = query.kline
+        if _LAYOUT.classify(query.significance) == "S2":
+            # User significance: an S2 feed is an ask. The stamp is implied
+            # semantics — cogitation reads it as a question about this
+            # signature, not a fact to ground.
+            self._state.asked.add(kline.signature)
         self._state.add_stm(kline)
         for node in kline.nodes:
             if not self._state.is_seen(node):
@@ -303,7 +308,12 @@ class Engine:
                 batch.append(KValue(KLine(kline.signature, []), SIG_S4))
                 continue
             else:
-                if self._state._is_groundable(kline) and self._state._is_denoted(kline):
+                asked = kline.signature in self._state.asked
+                if (
+                    not asked
+                    and self._state._is_groundable(kline)
+                    and self._state._is_denoted(kline)
+                ):
                     self._ground(kline)
 
                 # if self._state.is_countersignable(kline):
@@ -315,7 +325,7 @@ class Engine:
                 #         self._state.remove_stm_at(idx)
                 #         self._ground(kline)
 
-                if is_misfit(kline, self._state.signifier):
+                if is_misfit(kline, self._state.signifier) or asked:
                     proposals = list(self._misfit.propose(kline))
                     if proposals:
                         # Framing does not consume the misfit: it stays in

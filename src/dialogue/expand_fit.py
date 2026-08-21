@@ -84,7 +84,15 @@ class ExpandFit:
         signifier = self._state.signifier
         underfit, overfit = classify_misfit(entry, signifier)
         if not underfit and not overfit:
-            return
+            # A gapless canon is not a misfit — unless the user asked. An
+            # asked signature crosses over grounded knowledge: the overlap
+            # is the pivot through which residual groups resolve (DMHAL ×
+            # MHALL -> MAL pivot, DH -> had, the uncovered slots become
+            # asks). Pivot alignment handles it; nothing else can.
+            if entry.signature not in self._state.asked or not is_canon(
+                entry, signifier
+            ):
+                return
         nodes_sig = signifier.signature_of(entry.nodes)
         gap = signifier.residual(entry.signature, nodes_sig)
         excess = signifier.residual(nodes_sig, entry.signature)

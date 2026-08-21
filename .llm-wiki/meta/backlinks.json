@@ -745,6 +745,7 @@
   "sources/obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified": [],
   "sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar": [],
   "sources/obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos": [],
+  "sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/wiki-duplicate-consolidation": []
 }

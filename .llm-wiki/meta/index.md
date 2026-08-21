@@ -104,6 +104,7 @@
 - [[sources/obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified]] — Observation: Lazy propose generator + misfit stays in STM until ratified *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar]] — Observation: Proposal node order aligned to grounded exemplar *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos]] — Observation: Speaking fast path + supervisor escalation + only-misfits-proposed *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers]] — Observation: User S2 ask path, binding leak fix, question-first openers *(created: 2026-08-21)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -111,4 +112,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-21T09:03:29.175Z* | *Total pages: 99*
+*Last updated: 2026-08-21T12:07:27.147Z* | *Total pages: 100*
