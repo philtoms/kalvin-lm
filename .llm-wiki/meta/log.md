@@ -116,3 +116,6 @@
 ## [2026-08-21T12:51:37.682Z] observe
 - slug: "obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho", title: "Refusal resolves the ask; empty asks never escalate; trace shows supervisor", relevance: "high"
 
+## [2026-08-21T13:41:32.876Z] observe
+- slug: "obs-2026-08-21-boundary-relative-proposal-grading-weakest-claim-signs-conte", title: "Boundary-relative proposal grading: weakest claim signs, context magnitudes", relevance: "high"
+

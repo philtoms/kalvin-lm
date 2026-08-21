@@ -25,7 +25,7 @@ from kalvin.kline import (
 )
 from kalvin.kvalue import KValue
 from kalvin.significance import (
-    DEFAULT_AGGREGATOR,
+    PROPOSAL_AGGREGATOR,
     SIG8_MAX,
     SIG_MASK,
 )
@@ -235,7 +235,7 @@ class ExpandFit:
         if self._state.is_grounded(kline):
             return SIG8_MAX
         canon = self._state.canon_nodes(entry.signature) or []
-        aggregator = DEFAULT_AGGREGATOR
+        aggregator = PROPOSAL_AGGREGATOR
         # Canon-side entities: each canon node, plus grounded sub-canon
         # groups (canon nodes resolving as a unit through their signature).
         canon_set = set(canon)

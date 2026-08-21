@@ -25,6 +25,7 @@
 - [Observation: Committed crossover-fill propose + S4 refusal loop baseline (f48112d)](obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4.md)
 - [Observation: Pivot alignment with slot accounting lands WDMH:\[had,Mary,a,little,lamb\]](obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l.md)
 - [Observation: Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy](obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit.md)
+- [Observation: Boundary-relative proposal grading: weakest claim signs, context magnitudes](obs-2026-08-21-boundary-relative-proposal-grading-weakest-claim-signs-conte.md)
 - [Observation: Greedy pivot proposal was premature-alignment artifact; lone-gap fills only](obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-.md)
 - [Observation: Lazy propose generator + misfit stays in STM until ratified](obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified.md)
 - [Observation: Proposal node order aligned to grounded exemplar](obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar.md)
