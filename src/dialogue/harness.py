@@ -475,6 +475,30 @@ def present(results: list[StepResult], state: EngineState, source: str,
 # ── CLI ───────────────────────────────────────────────────────────────────
 
 
+def _queue_supervisor(
+    queue: list[str], labels: dict[int, str], verbose: bool
+) -> Callable[[KValue], KValue]:
+    """Answer escalations from a fixed response queue, then decline.
+
+    Lets a supervisor concentrate on successive proposals as the script
+    evolves: grade the expected escalations up front, run unattended.
+    """
+    sig_map = {"1": SIG_S1, "2": 0x80, "3": 0x40, "4": 0}
+    it = iter(queue)
+
+    def supervise(ask: KValue) -> KValue:
+        print(f"\n  ⚠ escalated ask: {_render_kline(ask, labels, verbose)}")
+        choice = next(it, "").strip()  # exhausted: decline
+        if choice not in sig_map:
+            choice = ""
+        sig = sig_map.get(choice, 0)
+        verdict = "ratified" if sig == SIG_S1 else "declined"
+        print(f"  supervisor ({choice or '4'}): {verdict} ({_band(KValue(ask.kline, sig))})")
+        return KValue(ask.kline, sig)
+
+    return supervise
+
+
 def _interactive_supervisor(
     labels: dict[int, str], verbose: bool
 ) -> Callable[[KValue], KValue]:
@@ -516,9 +540,13 @@ def main(argv: list[str] | None = None) -> int:
         help="Show hex signatures alongside scripted labels.",
     )
     parser.add_argument(
-        "-s", "--supervise", action="store_true",
-        help="Interactive supervisor: off-script asks escalate for a "
-             "significance decision (ratify at S1 to ground in LTM).",
+        "-s", "--supervise", nargs="?", const="interactive", default=None,
+        metavar="BANDS",
+        help="Supervisor for off-script asks: a comma list of bands "
+             "(e.g. '1,4,1') answers escalations from a response queue, "
+             "declining once exhausted; bare '-s' prompts interactively. "
+             "1 ratifies at S1 (grounds in LTM), 2/3 grade and decline, "
+             "4 declines.",
     )
     args = parser.parse_args(argv)
 
@@ -532,8 +560,11 @@ def main(argv: list[str] | None = None) -> int:
         tok = NLPTokenizer()
         harness = make_engine(tok)
         if args.supervise:
-            harness._escalate = _interactive_supervisor(
-                _sig_to_label(source, tok, harness.signifier), args.verbose
+            labels = _sig_to_label(source, tok, harness.signifier)
+            harness._escalate = (
+                _interactive_supervisor(labels, args.verbose)
+                if args.supervise == "interactive"
+                else _queue_supervisor(args.supervise.split(","), labels, args.verbose)
             )
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
