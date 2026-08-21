@@ -302,17 +302,16 @@ class ExpandFit:
                 else:
                     gaps.append(n)
             # Fill the gap slots with the pivot's unassigned nodes (S4 fill:
-            # work is assigned, if only by adjacency); a gap left with no node
-            # at all is unfilled work — drop the proposal. A leftover with no
-            # open gap has no work to do. A lone gap takes the whole leftover
-            # residual as a grouped fill.
+            # work is assigned, if only by adjacency). Only a lone gap takes a
+            # fill: it takes the whole leftover residual as a grouped fill.
+            # Two or more open gaps cannot be assigned without guessing which
+            # leftover answers which gap — no proposal (the pivot remains a
+            # reentry vehicle via _fills_through).
             leftovers = [n for n in pnodes if n not in resolved]
             if not gaps:
                 pass
             elif len(gaps) == 1:
                 resolved.extend(leftovers)
-            elif len(gaps) <= len(leftovers):
-                resolved.extend(leftovers[: len(gaps)])
             else:
                 continue
             nodes: list[int] = []

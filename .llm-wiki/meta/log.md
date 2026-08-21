@@ -101,3 +101,6 @@
 ## [2026-08-21T07:43:41.851Z] observe
 - slug: "obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified", title: "Lazy propose generator + misfit stays in STM until ratified", relevance: "critical"
 
+## [2026-08-21T07:51:57.691Z] observe
+- slug: "obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-", title: "Greedy pivot proposal was premature-alignment artifact; lone-gap fills only", relevance: "high"
+
