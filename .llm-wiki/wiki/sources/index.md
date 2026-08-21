@@ -25,5 +25,6 @@
 - [Observation: Committed crossover-fill propose + S4 refusal loop baseline (f48112d)](obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4.md)
 - [Observation: Pivot alignment with slot accounting lands WDMH:\[had,Mary,a,little,lamb\]](obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l.md)
 - [Observation: Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy](obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit.md)
+- [Observation: Lazy propose generator + misfit stays in STM until ratified](obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

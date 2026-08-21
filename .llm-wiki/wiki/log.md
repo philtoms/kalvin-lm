@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-08-21
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified","title":"Lazy propose generator + misfit stays in STM until ratified"}
+
 ## 2026-08-20
 
 - **observe**: {"relevance":"high","slug":"obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit","title":"Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy"}

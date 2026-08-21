@@ -98,3 +98,6 @@
 ## [2026-08-20T15:17:35.140Z] observe
 - slug: "obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit", title: "Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy", relevance: "high"
 
+## [2026-08-21T07:43:41.851Z] observe
+- slug: "obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified", title: "Lazy propose generator + misfit stays in STM until ratified", relevance: "critical"
+

@@ -14,7 +14,7 @@ that assemble them (signifier, state, strategy, engine) live in
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Iterator, Protocol, runtime_checkable
 
 from dialogue.engine_state import EngineState
 from kalvin.kline import (
@@ -48,16 +48,16 @@ _LAYOUT = BandLayout()
 class MisfitStrategy(Protocol):
     """Propose for one pending misfit ``entry`` against the ratified store.
 
-    Uses both the entry's signature and its nodes to establish edge-hop
-    candidates, graded by s3-connotation crossover. Returns S2 proposals for
-    the actor to emit (S1 when the proposal is already grounded). The
+    A lazy generator yielding S2 proposals (S1 when the proposal is already
+    grounded), discovered breadth-first and halting at a proposal budget —
+    nearer proposals first, so significance order is discovery order. The
     strategy shares the engine's :class:`EngineState` (set at construction).
     """
 
     def propose(
         self,
         entry: KLine,
-    ) -> list[KValue]:
+    ) -> Iterator[KValue]:
         ...
 
 
@@ -204,9 +204,11 @@ class Engine:
                 #         self._ground(kline)
 
                 if is_misfit(kline, self._state.signifier):
-                    proposals = self._misfit.propose(kline)
+                    proposals = list(self._misfit.propose(kline))
                     if proposals:
-                        self._state.remove_stm_at(idx)
+                        # Framing does not consume the misfit: it stays in
+                        # STM until its proposal is ratified (grounded) or
+                        # every shape is refused.
                         batch.extend(proposals)
 
                 if self._state.is_grounded(kline):

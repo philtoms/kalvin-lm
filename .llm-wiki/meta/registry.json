@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-20T15:17:35.177Z",
+  "last_updated": "2026-08-21T07:43:41.875Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -863,6 +863,24 @@
       "source_context": "Removing pluggable S2 fit strategies",
       "created": "2026-08-20",
       "updated": "2026-08-20"
+    },
+    "sources/obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified": {
+      "type": "source",
+      "title": "Observation: Lazy propose generator + misfit stays in STM until ratified",
+      "tags": [
+        "dialogue",
+        "engine",
+        "proposals",
+        "laziness",
+        "bfs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified",
+      "relevance": "critical",
+      "observed_at": "2026-08-21T07:43:41.849Z",
+      "source_context": "Lazy generator propose redesign + misfit lifecycle fix",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",
