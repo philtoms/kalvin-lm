@@ -122,7 +122,7 @@ class ASTEmitter:
         self._dev = dev
 
         # MTS dedup tracking.
-        self._mts_canonize_seen: dict[tuple[str, tuple[str, ...]], int] = {}
+        self._mts_canonize_seen: dict[tuple[str, tuple[str, ...]], tuple[int, bool]] = {}
         # Cached resolved components per identifier so the
         # BindingScope occurrence counter never re-advances for one.
         self._resolution_cache: dict[str, list[str]] = {}
@@ -429,8 +429,9 @@ class ASTEmitter:
             self._resolution_cache[sig] = list(chars)
 
         key = (sig, tuple(chars))
-        if key in self._mts_canonize_seen:
-            return self._mts_canonize_seen[key]  # already emitted
+        hit = self._mts_canonize_seen.get(key)
+        if hit is not None:
+            return hit[0]  # already emitted
 
         self._emit_entry(sig, list(chars), "CANONIZES", is_mts=True)
         return len(self.entries) - 1
@@ -438,25 +439,31 @@ class ASTEmitter:
     # Entry emission with CANONIZES dedup
 
     def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False) -> None:
-        """Emit a SymbolicEntry with CANONIZES deduplication.
+        """Emit a SymbolicEntry.
 
-        - CANONIZES entries: dedup on (sig, tuple(nodes)).  Duplicates
-          are silently skipped.
-        - All other ops: always emit (no dedup at this level).
+        CANONIZES dedup applies only to MTS expansion (one decoding aid per
+        compound): authored CANONIZES entries always emit — a repeated
+        authored canon is a temporally distinct encounter (a second ask),
+        identical in content. Bucket order is the temporal axis; K does not
+        utilise it yet.
 
         ``is_mts`` marks entries produced by MTS expansion (component
         identity + MTS canonization) so the TokenEncoder can push them
         after compiled source in the final output.  Operator-produced
         entries, subscript identities, and single-char CANONIZES scopes
         carry the default (source).
-
-        Note: CANONIZES dedup is handled here; other ops always emit.
         """
         if op == "CANONIZES":
+            # Temporal distinctness: authored authored repeats both emit (a
+            # second ask). Skip only when either side is MTS — an authored
+            # subscript canon and its MTS twin are one compile artifact.
             key = (sig, tuple(nodes))
-            if key in self._mts_canonize_seen:
+            hit = self._mts_canonize_seen.get(key)
+            if hit is not None and (is_mts or hit[1]):
+                if is_mts:
+                    return
                 return
-            self._mts_canonize_seen[key] = len(self.entries)
+            self._mts_canonize_seen[key] = (len(self.entries), is_mts)
 
         self.entries.append(SymbolicEntry(
             sig=sig, nodes=nodes, op=op, is_mts=is_mts,
@@ -818,7 +825,7 @@ class ASTEmitter:
                 old_key = (entry.sig, tuple(entry.nodes))
                 self._mts_canonize_seen.pop(old_key, None)
                 self._mts_canonize_seen[(entry.sig, tuple(new_nodes))] = (
-                    self._parent_kline_canonize_idx
+                    self._parent_kline_canonize_idx, True
                 )
 
     # Helpers

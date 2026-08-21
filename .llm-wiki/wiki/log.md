@@ -1,5 +1,12 @@
 # Wiki Update Log
 
+## 2026-08-21
+
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar","title":"Proposal node order aligned to grounded exemplar"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos","title":"Speaking fast path + supervisor escalation + only-misfits-proposed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-","title":"Greedy pivot proposal was premature-alignment artifact; lone-gap fills only"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified","title":"Lazy propose generator + misfit stays in STM until ratified"}
+
 ## 2026-08-20
 
 - **observe**: {"relevance":"high","slug":"obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit","title":"Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy"}

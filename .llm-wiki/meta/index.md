@@ -100,6 +100,10 @@
 - [[sources/obs-2026-08-20-committed-crossover-fill-propose-s4-refusal-loop-baseline-f4]] — Observation: Committed crossover-fill propose + S4 refusal loop baseline (f48112d) *(created: 2026-08-20)*
 - [[sources/obs-2026-08-20-pivot-alignment-with-slot-accounting-lands-wdmh-had-mary-a-l]] — Observation: Pivot alignment with slot accounting lands WDMH:[had,Mary,a,little,lamb] *(created: 2026-08-20)*
 - [[sources/obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit]] — Observation: Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy *(created: 2026-08-20)*
+- [[sources/obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-]] — Observation: Greedy pivot proposal was premature-alignment artifact; lone-gap fills only *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified]] — Observation: Lazy propose generator + misfit stays in STM until ratified *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar]] — Observation: Proposal node order aligned to grounded exemplar *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos]] — Observation: Speaking fast path + supervisor escalation + only-misfits-proposed *(created: 2026-08-21)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -107,4 +111,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-20T15:17:35.177Z* | *Total pages: 95*
+*Last updated: 2026-08-21T09:03:29.175Z* | *Total pages: 99*

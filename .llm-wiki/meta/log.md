@@ -98,3 +98,15 @@
 ## [2026-08-20T15:17:35.140Z] observe
 - slug: "obs-2026-08-20-similar-fit-strategy-removed-expandfit-is-the-only-s2-misfit", title: "Similar-fit strategy removed; ExpandFit is the only S2 misfit strategy", relevance: "high"
 
+## [2026-08-21T07:43:41.851Z] observe
+- slug: "obs-2026-08-21-lazy-propose-generator-misfit-stays-in-stm-until-ratified", title: "Lazy propose generator + misfit stays in STM until ratified", relevance: "critical"
+
+## [2026-08-21T07:51:57.691Z] observe
+- slug: "obs-2026-08-21-greedy-pivot-proposal-was-premature-alignment-artifact-lone-", title: "Greedy pivot proposal was premature-alignment artifact; lone-gap fills only", relevance: "high"
+
+## [2026-08-21T08:56:08.095Z] observe
+- slug: "obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos", title: "Speaking fast path + supervisor escalation + only-misfits-proposed", relevance: "critical"
+
+## [2026-08-21T09:03:29.140Z] observe
+- slug: "obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar", title: "Proposal node order aligned to grounded exemplar", relevance: "high"
+
