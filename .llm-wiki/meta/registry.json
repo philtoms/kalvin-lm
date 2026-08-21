@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-21T13:54:38.391Z",
+  "last_updated": "2026-08-21T14:28:38.285Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -882,6 +882,23 @@
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },
+    "sources/obs-2026-08-21-directional-containment-edge-credits-connotated-gap-fills-in": {
+      "type": "source",
+      "title": "Observation: Directional containment edge credits connotated gap fills in grading",
+      "tags": [
+        "dialogue",
+        "grading",
+        "connotation",
+        "containment"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-directional-containment-edge-credits-connotated-gap-fills-in",
+      "relevance": "high",
+      "observed_at": "2026-08-21T14:21:12.903Z",
+      "source_context": "S7T03 WDMH proposal graded S3 instead of S2",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
     "sources/obs-2026-08-21-engine-docstrings-rewritten-to-match-three-axis-dispatch": {
       "type": "source",
       "title": "Observation: Engine docstrings rewritten to match three-axis dispatch",
@@ -946,6 +963,40 @@
       "relevance": "critical",
       "observed_at": "2026-08-21T07:43:41.849Z",
       "source_context": "Lazy generator propose redesign + misfit lifecycle fix",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-21-negative-proposal-grade-scales-with-coverage-over-all-slots": {
+      "type": "source",
+      "title": "Observation: Negative proposal grade scales with coverage over all slots",
+      "tags": [
+        "dialogue",
+        "significance",
+        "coverage",
+        "negatives"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-negative-proposal-grade-scales-with-coverage-over-all-slots",
+      "relevance": "high",
+      "observed_at": "2026-08-21T14:28:38.256Z",
+      "source_context": "Different proposals same significance 127 in DFPAS step",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-21-positional-gap-fills-in-pivot-graft-unblock-multi-gap-propos": {
+      "type": "source",
+      "title": "Observation: Positional gap fills in pivot graft unblock multi-gap proposals",
+      "tags": [
+        "dialogue",
+        "pivot-alignment",
+        "positional-fills",
+        "crossover"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-positional-gap-fills-in-pivot-graft-unblock-multi-gap-propos",
+      "relevance": "high",
+      "observed_at": "2026-08-21T14:06:10.150Z",
+      "source_context": "DFPAS proposal missing in mhall trace",
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },

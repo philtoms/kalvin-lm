@@ -125,3 +125,12 @@
 ## [2026-08-21T13:54:38.362Z] observe
 - slug: "obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-", title: "ExpandFit docstrings rewritten: three-arm module doc, session narrative removed", relevance: "medium"
 
+## [2026-08-21T14:06:10.153Z] observe
+- slug: "obs-2026-08-21-positional-gap-fills-in-pivot-graft-unblock-multi-gap-propos", title: "Positional gap fills in pivot graft unblock multi-gap proposals", relevance: "high"
+
+## [2026-08-21T14:21:12.906Z] observe
+- slug: "obs-2026-08-21-directional-containment-edge-credits-connotated-gap-fills-in", title: "Directional containment edge credits connotated gap fills in grading", relevance: "high"
+
+## [2026-08-21T14:28:38.258Z] observe
+- slug: "obs-2026-08-21-negative-proposal-grade-scales-with-coverage-over-all-slots", title: "Negative proposal grade scales with coverage over all slots", relevance: "high"
+
