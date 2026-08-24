@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-21T15:26:12.474Z",
+  "last_updated": "2026-08-24T11:01:34.980Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1089,6 +1089,23 @@
       "source_context": "User significance path + crossover-as-misfit-generator exploration",
       "created": "2026-08-21",
       "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-24-structural-supervisor-wired-at-escalation-seam": {
+      "type": "source",
+      "title": "Observation: Structural supervisor wired at escalation seam",
+      "tags": [
+        "dialogue",
+        "supervisor",
+        "structural-significance",
+        "compiler"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-24-structural-supervisor-wired-at-escalation-seam",
+      "relevance": "high",
+      "observed_at": "2026-08-24T11:01:34.936Z",
+      "source_context": "Compiler-emitted semantic evidence + structural supervisor for the lean harness",
+      "created": "2026-08-24",
+      "updated": "2026-08-24"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

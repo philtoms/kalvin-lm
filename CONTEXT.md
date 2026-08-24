@@ -165,6 +165,12 @@ The action of countersigning a selected proposal. Usually performed by the Train
 The rationalising trainer deferring a proposal to the supervisor when its cogitation yields no reply. The boundary between what the Trainer resolves by rationalising and what the supervisor resolves.
 _Avoid_: auto-ratify failure (the earlier path's trigger — the trainer now escalates on cogitation-empty, not on a failed deterministic countersign)
 
+**Structural Supervisor**:
+An escalation callable that grades off-script proposals from **Semantic Evidence** — the derived cross-kline structure of a script — using the same structural predicates the engine applies to itself. Its band policy is structure's own claim: S1 only when the script's proof completes (exact canon, or content recognised as a script kline with every intended ratification held); S2 otherwise carries a graded byte and a missing-ratification list — how far K is from S1, in ratification units. A supervisor, not a harness feature: the harness never judges.
+
+**Semantic Evidence**:
+The undeclared backbone of a KScript: the canon index (which signatures canonise to what), countersign pairs, and denotation/connotation edges that the entries hold collectively but no single kline declares. Emitted by compilation as derived structure (distinct from each entry's own **Structural Significance**), it carries the script's _intended_ significance — what the klines prove when every declaration is held.
+
 **Expectation**:
 A scripted kline that enters the slow path (S2/S3) during rationalisation and requires a matching proposal to be satisfied.
 

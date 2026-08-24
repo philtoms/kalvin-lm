@@ -137,3 +137,6 @@
 ## [2026-08-21T15:26:12.448Z] observe
 - slug: "obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl", title: "Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns", relevance: "high"
 
+## [2026-08-24T11:01:34.940Z] observe
+- slug: "obs-2026-08-24-structural-supervisor-wired-at-escalation-seam", title: "Structural supervisor wired at escalation seam", relevance: "high"
+

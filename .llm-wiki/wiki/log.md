@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-08-24
+
+- **observe**: {"relevance":"high","slug":"obs-2026-08-24-structural-supervisor-wired-at-escalation-seam","title":"Structural supervisor wired at escalation seam"}
+
 ## 2026-08-21
 
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl","title":"Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns"}

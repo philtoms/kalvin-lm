@@ -218,6 +218,9 @@ class Harness:
                 exact.setdefault(
                     (kline.signature, tuple(kline.nodes)), entry
                 )
+                observe = getattr(self._escalate, "observe", None)
+                if observe is not None:
+                    observe(entry)
                 if (
                     kline.nodes != [kline.signature]
                     and kline.signature == self.signifier.signature_of(kline.nodes)
@@ -448,7 +451,11 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
                 lines.append(f"        {'asks':<8} {_render_kline(v, labels, verbose)}")
             if i in escalations:
                 r = escalations[i]
-                verdict = "ratified" if _band(r) == "S1" else "declined"
+                verdict = (
+                    "ratified" if _band(r) == "S1" else
+                    "graded" if _band(r) in ("S2", "S3") else
+                    "declined"
+                )
                 lines.append(f"        {'supervisor':<8} {verdict} ({_band(r)})")
     if step.stopped_on is not None:
         lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
@@ -589,6 +596,18 @@ def main(argv: list[str] | None = None) -> int:
              "1 ratifies at S1 (grounds in LTM), 2/3 grade and decline, "
              "4 declines.",
     )
+    parser.add_argument(
+        "-e", "--structural", action="store_true",
+        help="Grade off-script asks with the structural supervisor: compiler "
+             "evidence (canons, countersigns, denotations) decides the band, "
+             "S1 only when the script's proof completes.",
+    )
+    parser.add_argument(
+        "-t", "--training", action="store_true",
+        help="User-significance teaching: supervisor S2/S3 stamps on K's own "
+             "proposals are filed as patterns/pivots and replayed for "
+             "matching asks.",
+    )
     args = parser.parse_args(argv)
 
     source_path = Path(args.source)
@@ -600,6 +619,18 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         tok = NLPTokenizer()
         harness = make_engine(tok)
+        if args.training:
+            from dialogue.engine import Engine
+            Engine.TRAINING = True
+        if args.structural:
+            from dialogue.structural import SemanticEvidence, StructuralSupervisor
+
+            labels = _sig_to_label(source, tok, harness.signifier)
+            render = lambda v: _render_kline(v, labels, args.verbose)  # noqa: E731
+            supervisor = StructuralSupervisor(
+                SemanticEvidence(harness.signifier), harness.state, render
+            )
+            harness._escalate = supervisor
         if args.supervise:
             labels = _sig_to_label(source, tok, harness.signifier)
             harness._escalate = (

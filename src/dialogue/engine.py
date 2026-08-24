@@ -49,6 +49,9 @@ _LAYOUT = BandLayout()
 class Engine:
     #: Shape-route containment answering (exploratory, off by default).
     SHAPE_ANSWERS = False
+    #: User-significance teaching (S2/S3 supervisor stamps as training
+    #: material; exploratory, off by default).
+    TRAINING = False
     """Derives one turn from ``incoming``.
 
     Holds the :class:`EngineState` it mutates in place and constructs the
@@ -108,7 +111,9 @@ class Engine:
         structural_sig = sig_level(kline, self._state.signifier)
         query_sig = _LAYOUT.classify(query.significance)
 
-        if query_sig in ("S2", "S3") and kline.signature in self._state.asked:
+        if self.TRAINING and query_sig in ("S2", "S3") and (
+            kline.signature in self._state.asked
+        ):
             # A graded response to K's own proposal under this signature:
             # teaching material. S2 patterns the answer shape; S3 pivots it.
             # The ask context is the canon K was attending to when asked.
@@ -238,7 +243,7 @@ class Engine:
                     self._ground(kline)
 
                 if is_misfit(kline, self._state.signifier) or asked:
-                    taught = self._taught_pattern(kline)
+                    taught = self._taught_pattern(kline) if self.TRAINING else None
                     if taught is not None:
                         # Learned behaviour: a supervisor-taught answer for
                         # this ask shape preempts structural proposals. Like
