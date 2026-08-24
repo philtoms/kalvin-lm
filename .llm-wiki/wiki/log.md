@@ -2,6 +2,7 @@
 
 ## 2026-08-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl","title":"Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-negative-proposal-grade-scales-with-coverage-over-all-slots","title":"Negative proposal grade scales with coverage over all slots"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-directional-containment-edge-credits-connotated-gap-fills-in","title":"Directional containment edge credits connotated gap fills in grading"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-positional-gap-fills-in-pivot-graft-unblock-multi-gap-propos","title":"Positional gap fills in pivot graft unblock multi-gap proposals"}

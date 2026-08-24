@@ -108,6 +108,16 @@ class Engine:
         structural_sig = sig_level(kline, self._state.signifier)
         query_sig = _LAYOUT.classify(query.significance)
 
+        if query_sig in ("S2", "S3") and kline.signature in self._state.asked:
+            # A graded response to K's own proposal under this signature:
+            # teaching material. S2 patterns the answer shape; S3 pivots it.
+            # The ask context is the canon K was attending to when asked.
+            self._state.teaching.record(
+                query_sig,
+                kline,
+                self._ask_context(kline.signature),
+            )
+
         if query_sig == "S4":
             self._state.refuse(kline)
             self._state.remove_stm(kline)
@@ -127,6 +137,21 @@ class Engine:
                 return None
 
         return self._fast_route(query) or self._slow_route(query)
+
+    def _taught_pattern(self, kline: KLine) -> KValue | None:
+        """A taught answer for the ask ``kline`` poses, not already refused."""
+        taught = self._state.teaching.pattern_for(kline, self._state.signifier)
+        if taught is None or self._state.is_refused(taught.kline):
+            return None
+        return taught
+
+    def _ask_context(self, signature: int) -> KLine | None:
+        """The canon ``signature`` asked about, if one is in attention."""
+        signifier = self._state.signifier
+        for entry in self._state.stm:
+            if entry.signature == signature and is_canon(entry, signifier):
+                return entry
+        return None
 
     def _fast_route(self, query: KValue) -> list[KValue] | None:
         """Answer a question directly from LTM.
@@ -213,11 +238,17 @@ class Engine:
                     self._ground(kline)
 
                 if is_misfit(kline, self._state.signifier) or asked:
-                    proposals = list(self._misfit.propose(kline))
-                    if proposals:
-                        # A misfit stays in STM until its proposal is
-                        # ratified (grounded) or every shape is refused.
-                        batch.extend(proposals)
+                    taught = self._taught_pattern(kline)
+                    if taught is not None:
+                        # Learned behaviour: a supervisor-taught answer for
+                        # this ask shape preempts structural proposals. Like
+                        # a structural proposal, it is emitted and the misfit
+                        # stays in STM until ratified or refused.
+                        batch.append(taught)
+                    else:
+                        proposals = list(self._misfit.propose(kline))
+                        if proposals:
+                            batch.extend(proposals)
 
                 if self._state.is_grounded(kline):
                     self._state.remove_stm_at(idx)

@@ -134,3 +134,6 @@
 ## [2026-08-21T14:28:38.258Z] observe
 - slug: "obs-2026-08-21-negative-proposal-grade-scales-with-coverage-over-all-slots", title: "Negative proposal grade scales with coverage over all slots", relevance: "high"
 
+## [2026-08-21T15:26:12.448Z] observe
+- slug: "obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl", title: "Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns", relevance: "high"
+

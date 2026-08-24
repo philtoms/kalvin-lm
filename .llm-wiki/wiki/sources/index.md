@@ -36,6 +36,7 @@
 - [Observation: Proposal node order aligned to grounded exemplar](obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar.md)
 - [Observation: Refusal resolves the ask; empty asks never escalate; trace shows supervisor](obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho.md)
 - [Observation: Speaking fast path + supervisor escalation + only-misfits-proposed](obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos.md)
+- [Observation: Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns](obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl.md)
 - [Observation: User S2 ask path, binding leak fix, question-first openers](obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

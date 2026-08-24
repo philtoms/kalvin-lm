@@ -111,6 +111,7 @@
 - [[sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar]] — Observation: Proposal node order aligned to grounded exemplar *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho]] — Observation: Refusal resolves the ask; empty asks never escalate; trace shows supervisor *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos]] — Observation: Speaking fast path + supervisor escalation + only-misfits-proposed *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl]] — Observation: Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers]] — Observation: User S2 ask path, binding leak fix, question-first openers *(created: 2026-08-21)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -119,4 +120,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-21T14:28:38.285Z* | *Total pages: 107*
+*Last updated: 2026-08-21T15:26:12.474Z* | *Total pages: 108*

@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from dialogue.training import Teaching
 from kalvin.kline import (
     KLine,
     is_canon,
@@ -64,6 +65,9 @@ class EngineState:
     #: Signatures fed at S2 as an ask — the user's implied semantics. A
     #: kline whose signature is asked is a question, not a fact to ground.
     asked: set[int] = field(default_factory=set)
+    #: supervisor-graded proposals filed as teaching material (S2 patterns,
+    #: S3 pivots).
+    teaching: Teaching = field(default_factory=Teaching)
     _dbg_step: int = 0
 
     @property

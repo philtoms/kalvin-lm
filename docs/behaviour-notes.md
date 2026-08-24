@@ -60,9 +60,19 @@ Rules when it resolves.
 - Compiler output order ≠ authored order: all source entries first, then all MTS. Symbolic-entry indices do not align with compiled-KValue indices.
 - A single-token node word that never heads an entry is labelled via `TokenEncoder.node_labels`; the harness decoder is unsafe for compound-signature-as-node values.
 
+### Training — user significance as teaching material (`dialogue/training.py`)
+
+- A supervisor's graded response to K's own proposal is teaching material, distinct from script significance: **S1** grounds (fast path), **S4** refuses (S4 route), **S2** files the shape as a *pattern* (the kind of answer to give), **S3** files it as a *pivot* (a base, not an answer).
+- Recording seam: `route()` checks `query_sig in (S2, S3) and kline.signature in state.asked` — the stamp answers a signature K asked. The exemplar records the proposal **and the ask canon then in STM** (`_ask_context`) as its context.
+- Consumption seam: cogitation's misfit arm consults `teaching.pattern_for(kline)` before structural `propose` — an ask whose canon shares the exemplar's ask (same signature, or canon with node overlap) gets the taught kline verbatim at `SIG_TAUGHT` (0xC0) instead of structural proposals. Like a structural proposal, it is emitted and the misfit stays in STM until ratified/refused.
+- `Teaching` lives on `EngineState.teaching`; dedup by kline identity; most recent exemplar wins.
+- Goal (branch `training`): teach simple semantics — `what`/`did` keywords trigger response shapes — learned from graded responses, never hard coded. Pattern sketch: T WDMH S2 → K proposes WDMH:MHALL → T stamps it S2 → K grounds the difference as a pattern (including `what`).
+
 ## Active state of K
 
 ⚠️ **Pivot alignment artifacts + S5T2 churn.** mhall now proposes `WDMH:[had, Mary, a, little, lamb]` (the full alignment: did+have grouped-resolve through DH→had at S3, Mary shared at S2, the `what` gap filled by the grouped residual `[a,little,lamb]` at S4). Open: (a) wdmh still emits the greedy `[Mary,had,a,little]` variant because `find(DH)` returns the last bucket entry (`DH:[did,have]`, a cycle) rather than `DH:[had]` — bucket-order fragility; (b) the pivot arm proposes an entry's own canon when zero gaps exist (`ALL:[a,little,lamb]` self-canon echo — proposes nothing unknown; suppression candidate); (c) S5T2 grounds ALL then asks+proposes the same kline — duplicate STM copies of `ALL:[Query]` (opener + reply feed) each spawn asks, and the misfit arm runs on entries resolved earlier in the same pass; (d) refused-set lifetime (does a later grounding clear refusals whose basis changed?); (e) reentry's exponential widening and refusal circumvention via new shapes (`ALL:[lamb,lamb]` after `ALL:[lamb]` refused).
+
+⚠️ **Training arm first wiring.** `pattern_for` matches any canon with node overlap to the exemplar's ask — deliberately loose; the DMHAS ask drew the DMHAL-taught pattern immediately. Open: (a) matching by keyword (`what`/`did`) rather than node overlap — the actual semantic trigger; (b) pivots consumed only as data, `pivot_for` unused; (c) the difference-grounding step of the sketch (pattern as *transformation* from ask to answer, not verbatim shape) — currently the taught kline is replayed verbatim; (d) `SIG_TAUGHT = 0xC0` renders in S2 — a taught-but-untatified answer should perhaps sit below the boundary; (e) exemplar persistence (`to_dict`/`from_dict`) not yet wired.
 
 ## Process — discipline
 
