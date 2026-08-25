@@ -12,13 +12,13 @@ verdict. This is the vocabulary for reading it.
   out   S4  SVO:[]
 ```
 
-- **`── Step N ──`** — one compiled curriculum entry fed to the engine.
+- **`── Step N ──`** — one compiled script entry fed to the engine.
 - **`in  <band>  <kline>`** — the entry fed this step. `<band>` is the
-  compiled **target** significance (what the curriculum asserts the entry
+  compiled **target** significance (what the script asserts the entry
   should become). `<kline>` is `signature:[nodes]` in scripted labels
   (hex when no label is known).
 - **`offer  <kline>`** — the harness fed this S1 identity `X:[X]` to answer
-  an S4 ask `{X:[]}` the engine emitted this step (the curriculum defines
+  an S4 ask `{X:[]}` the engine emitted this step (the script defines
   it; the harness answers unsupervised, per-step dedup). No judgement.
 - **`out  <band>  <kline>`** — one engine emission this step. `<band>` here
   is the engine's _actual_ output band (S1 ground-and-cascade, S2 propose,
@@ -71,7 +71,7 @@ partition (see behaviour-notes §Compilation).
   (identities, canons, relationships), in scripted labels.
 - **`work_list (pending at end of run)`** — what K was still working on when
   turns ran out. **This is the diagnostic.** Distinguish:
-  - _Genuine residue_ — signatures the curriculum never makes groundable
+  - _Genuine residue_ — signatures the script never makes groundable
     (an unbound `L`; a connotes target like `a:[Det]` where `a` is never an
     identity). Not a bug.
   - _Stalled klines_ — something that should have grounded but the engine
@@ -88,10 +88,10 @@ partition (see behaviour-notes §Compilation).
   ground  Subject:[Subject]
 ```
 
-Reading: the curriculum feeds `Mary:[Subject]` (target S3, a relationship).
+Reading: the script feeds `Mary:[Subject]` (target S3, a relationship).
 The engine routes it (S3 → slow), unpacks the unseen node `Subject` as an
 S4 ask. The harness sees the `{Subject:[]}` ask, finds `Subject:[Subject]`
-in the compiled curriculum, and offers it (`offer` line). The engine grounds
+in the compiled script, and offers it (`offer` line). The engine grounds
 it (`ground Subject:[Subject]`). No `out` — the engine had no _proposal_
 this step, but its grounded model grew.
 

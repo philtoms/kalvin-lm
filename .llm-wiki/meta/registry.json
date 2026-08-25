@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-24T11:01:34.980Z",
+  "last_updated": "2026-08-24T17:08:42.458Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1089,6 +1089,39 @@
       "source_context": "User significance path + crossover-as-misfit-generator exploration",
       "created": "2026-08-21",
       "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs": {
+      "type": "source",
+      "title": "Observation: Curriculum term deflated to script in training docs",
+      "tags": [
+        "kscript",
+        "terminology",
+        "context-md",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs",
+      "relevance": "high",
+      "observed_at": "2026-08-24T17:08:42.424Z",
+      "source_context": "Deflating curriculum terminology after the encounter-model grill",
+      "created": "2026-08-24",
+      "updated": "2026-08-24"
+    },
+    "sources/obs-2026-08-24-kscript-semantic-model-settled-via-grill": {
+      "type": "source",
+      "title": "Observation: KScript semantic model settled via grill",
+      "tags": [
+        "kscript",
+        "curriculum",
+        "lean-harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-24-kscript-semantic-model-settled-via-grill",
+      "relevance": "high",
+      "observed_at": "2026-08-24T16:14:36.052Z",
+      "source_context": "Writing the lean-harness script-reading reference; user grilled the semantic model",
+      "created": "2026-08-24",
+      "updated": "2026-08-24"
     },
     "sources/obs-2026-08-24-structural-supervisor-wired-at-escalation-seam": {
       "type": "source",

@@ -140,3 +140,9 @@
 ## [2026-08-24T11:01:34.940Z] observe
 - slug: "obs-2026-08-24-structural-supervisor-wired-at-escalation-seam", title: "Structural supervisor wired at escalation seam", relevance: "high"
 
+## [2026-08-24T16:14:36.056Z] observe
+- slug: "obs-2026-08-24-kscript-semantic-model-settled-via-grill", title: "KScript semantic model settled via grill", relevance: "high"
+
+## [2026-08-24T17:08:42.426Z] observe
+- slug: "obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs", title: "Curriculum term deflated to script in training docs", relevance: "high"
+

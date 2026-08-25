@@ -8,8 +8,8 @@ the trace, makes decisions, edits the engine and/or the source, and re-runs.
 
 Usage::
 
-    PYTHONPATH=src python -m dialogue.harness path/to/curriculum.ks
-    PYTHONPATH=src python -m dialogue.harness path/to/curriculum.ks -v
+    PYTHONPATH=src python -m dialogue.harness path/to/script.ks
+    PYTHONPATH=src python -m dialogue.harness path/to/script.ks -v
 """
 
 from __future__ import annotations
@@ -580,9 +580,9 @@ def _interactive_supervisor(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run a curriculum (markdown) or KScript source through the lean engine and present the trace.",
+        description="Run a script (markdown plan) or KScript source through the lean engine and present the trace.",
     )
-    parser.add_argument("source", help="Path to a curriculum markdown file or a .ks KScript file")
+    parser.add_argument("source", help="Path to a markdown plan file or a .ks KScript file")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Show hex signatures alongside scripted labels.",
@@ -645,7 +645,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         document = CurriculumDocument.from_file(source_path)
     except (CurriculumParseError, OSError) as exc:
-        print(f"harness: could not read curriculum {args.source!r}: {exc}", file=sys.stderr)
+        print(f"harness: could not read source {args.source!r}: {exc}", file=sys.stderr)
         return 2
 
     tok = NLPTokenizer()

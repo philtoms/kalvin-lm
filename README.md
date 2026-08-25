@@ -32,7 +32,7 @@ No participant knows it's in a training loop. Each simply receives and responds.
 ### How Training Works
 
 1. The **human** provides a goal and initial KScript via Slack.
-2. The **Trainer** breaks the goal into a curriculum and submits lessons to Kalvin.
+2. The **Trainer** breaks the goal into scripts and submits them to Kalvin, lesson by lesson.
 3. **Kalvin** rationalises each lesson, emitting events with significance.
 4. If lessons land at S1, the Trainer advances. If S2/S3, the Trainer enters reactive mode:
    - Cogitates (via LLM agent) on what scaffolding to write.
@@ -91,15 +91,15 @@ uv run pytest
 
 ### Lean Dialogue Harness
 
-The lean harness compiles a KScript curriculum, feeds each entry to the
+The lean harness compiles a KScript script, feeds each entry to the
 rationalising engine one at a time, and presents the resulting trace. It is
 synchronous and non-judging — the trainer (a pi agent, outside the loop)
 reads the trace and decides what to edit.
 
 ```bash
-PYTHONPATH=src python -m dialogue.harness path/to/curriculum.ks
-PYTHONPATH=src python -m dialogue.harness path/to/curriculum.ks -v   # show hex signatures
-PYTHONPATH=src python -m dialogue.harness path/to/curriculum.ks -s expand  # cogitation strategy
+PYTHONPATH=src python -m dialogue.harness path/to/script.ks
+PYTHONPATH=src python -m dialogue.harness path/to/script.ks -v   # show hex signatures
+PYTHONPATH=src python -m dialogue.harness path/to/script.ks -s expand  # cogitation strategy
 ```
 
 KScript itself is a library (`ks.compiler.compile_source`); there is no
@@ -176,7 +176,7 @@ src/
     │   ├── protocols.py  #     Typed participant protocols
     │   └── constants.py  #     Shared constants
     ├── trainer/          #   Trainer participant
-    │   ├── trainer.py             #   Curriculum execution + decision gating
+    │   ├── trainer.py             #   Script execution + decision gating
     │   ├── reactor.py             #   Mechanical S2/S3 handling (auto-countersign, dedup)
     │   ├── curriculum.py          #   Curriculum state + persistence
     │   ├── curriculum_document.py #   Markdown curriculum parser + amendments
