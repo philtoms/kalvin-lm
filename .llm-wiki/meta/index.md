@@ -116,6 +116,8 @@
 - [[sources/obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs]] — Observation: Curriculum term deflated to script in training docs *(created: 2026-08-24)*
 - [[sources/obs-2026-08-24-kscript-semantic-model-settled-via-grill]] — Observation: KScript semantic model settled via grill *(created: 2026-08-24)*
 - [[sources/obs-2026-08-24-structural-supervisor-wired-at-escalation-seam]] — Observation: Structural supervisor wired at escalation seam *(created: 2026-08-24)*
+- [[sources/obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled]] — Observation: All compiler-minted KNodes labelled; mhall run fully labelled *(created: 2026-08-26)*
+- [[sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen]] — Observation: KNode became a labelled int subclass; labels wired at TokenEncoder *(created: 2026-08-26)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -123,4 +125,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-24T17:08:42.458Z* | *Total pages: 111*
+*Last updated: 2026-08-26T13:43:06.924Z* | *Total pages: 113*

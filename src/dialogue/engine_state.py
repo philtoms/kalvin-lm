@@ -10,7 +10,7 @@ relations:
 - **ltm** — grounded klines (Long-Term Memory): what Kalvin counts on.
 - **frame** — the outgoing kline proposals and identity requests K has emitted.
 
-State is plain ints (signature + node lists); ``dbg`` is debug-only and dropped
+State is plain nodes (signature + node lists); ``dbg`` is debug-only and dropped
 on save. A saved state is a grounded prior injected into an actor at
 construction.
 
@@ -26,9 +26,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dialogue.training import Teaching
+from dialogue.teaching import Teaching
 from kalvin.kline import (
     KLine,
+    KNode,
     is_canon,
     is_identity,
     is_relationship,
@@ -59,12 +60,12 @@ class EngineState:
 
     _signifier: KSignifier
     stm: list[KLine] = field(default_factory=list)
-    ltm: dict[int, list[KLine]] = field(default_factory=dict)
-    frame: dict[int, list[KLine]] = field(default_factory=dict)
-    refused: set[tuple[int, tuple[int, ...]]] = field(default_factory=set)
+    ltm: dict[KNode, list[KLine]] = field(default_factory=dict)
+    frame: dict[KNode, list[KLine]] = field(default_factory=dict)
+    refused: set[tuple[KNode, tuple[KNode, ...]]] = field(default_factory=set)
     #: Signatures fed at S2 as an ask — the user's implied semantics. A
     #: kline whose signature is asked is a question, not a fact to ground.
-    asked: set[int] = field(default_factory=set)
+    asked: set[KNode] = field(default_factory=set)
     #: supervisor-graded proposals filed as teaching material (S2 patterns,
     #: S3 pivots).
     teaching: Teaching = field(default_factory=Teaching)
@@ -77,12 +78,12 @@ class EngineState:
 
     # -- LTM (grounded) memory -------------------------------------------------
 
-    def find(self, signature: int) -> KLine | None:
+    def find(self, signature: KNode) -> KLine | None:
         """The last grounded kline under ``signature``, or ``None``."""
         bucket = self.ltm.get(signature)
         return bucket[-1] if bucket else None
 
-    def find_bucket(self, signature: int) -> list[KLine]:
+    def find_bucket(self, signature: KNode) -> list[KLine]:
         return self.ltm.get(signature) or []
 
     def is_grounded(self, kline: KLine) -> bool:
@@ -136,14 +137,14 @@ class EngineState:
         """
         return kline.signature in self.ltm or is_canon(kline, self._signifier)
 
-    def ltm_nodes(self, signature: int) -> list[int] | None:
+    def ltm_nodes(self, signature: KNode) -> list[KNode] | None:
         """The nodes of any grounded kline under ``signature`` with non-empty nodes."""
         for kline in self.ltm.get(signature, []):
             if kline.nodes:
                 return list(kline.nodes)
         return None
 
-    def canon_nodes(self, signature: int) -> list[int] | None:
+    def canon_nodes(self, signature: KNode) -> list[KNode] | None:
         """The nodes of ``signature``'s canon, in LTM or STM."""
         signifier = self._signifier
         for kline in self.ltm.get(signature, []):
@@ -180,7 +181,7 @@ class EngineState:
     def is_refused(self, kline: KLine) -> bool:
         return (kline.signature, tuple(kline.nodes)) in self.refused
 
-    def is_seen(self, signature: int) -> bool:
+    def is_seen(self, signature: KNode) -> bool:
         """Has K seen ``signature`` — grounded or pending as an Unknown ask in STM?"""
         if signature in self.ltm:
             return True
@@ -234,22 +235,24 @@ class EngineState:
 
     # -- persistence -------------------------------------------------
     #
-    # State is plain ints (signature + node lists); ``dbg`` is debug-only and
+    # State is plain nodes (signature + node lists); ``dbg`` is debug-only and
     # dropped on save. A saved state is a grounded prior injected into an actor
     # at construction.
 
     def to_dict(self) -> dict:
         """A JSON-serialisable snapshot of the model (no ``dbg``)."""
-        def _kl(k: KLine) -> list[int]:
-            return [k.signature, list(k.nodes)]
+        def _n(n: KNode) -> list:
+            return [int(n), getattr(n, "label", "")]
+        def _kl(k: KLine) -> list:
+            return [_n(k.signature), [_n(n) for n in k.nodes]]
         return {
             "stm": [_kl(k) for k in self.stm],
             "ltm": {
-                str(sig): [_kl(k) for k in bucket]
+                str(int(sig)): [_kl(k) for k in bucket]
                 for sig, bucket in self.ltm.items()
             },
             "frame": {
-                str(sig): [_kl(k) for k in bucket]
+                str(int(sig)): [_kl(k) for k in bucket]
                 for sig, bucket in self.frame.items()
             },
         }
@@ -257,9 +260,13 @@ class EngineState:
     @classmethod
     def from_dict(cls, signifier: KSignifier, data: dict) -> EngineState:
         """Rebuild a state from :meth:`to_dict` output."""
-        def _kl(pair: list[int]) -> KLine:
-            sig, nodes = pair[0], pair[1]
-            return KLine(sig, list(nodes))
+        def _n(p) -> KNode:
+            if isinstance(p, list):
+                return KNode(p[0], p[1]) if len(p) > 1 and p[1] else KNode(p[0])
+            return KNode(p)
+        def _kl(pair) -> KLine:
+            sig, nodes = _n(pair[0]), pair[1]
+            return KLine(sig, [_n(n) for n in nodes])
         return cls(
             signifier,
             stm=[_kl(p) for p in data.get("stm", [])],

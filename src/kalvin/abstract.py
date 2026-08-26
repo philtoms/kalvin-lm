@@ -76,7 +76,7 @@ class KSignifier(ABC):
     """
 
     @abstractmethod
-    def signature_of(self, nodes: Sequence[int]) -> int:
+    def signature_of(self, nodes: Sequence[KNode]) -> KNode:
         """Produce the signature value for a node sequence.
 
         The returned value occupies a kline's head position; the system
@@ -85,7 +85,7 @@ class KSignifier(ABC):
         ...
 
     @abstractmethod
-    def signifies(self, a: int, b: int) -> bool:
+    def signifies(self, a: KNode, b: KNode) -> bool:
         """Report whether two signature values are worth evaluating as a pair.
 
         A candidate-admission pre-filter used ahead of the significance
@@ -95,7 +95,7 @@ class KSignifier(ABC):
         ...
 
     @abstractmethod
-    def residual(self, a: int, b: int) -> int:
+    def residual(self, a: KNode, b: KNode) -> KNode:
         """Return the residual of signature *a* over signature *b*.
 
         A derived value representing what *a* carries that *b* does not. Used
@@ -104,4 +104,9 @@ class KSignifier(ABC):
         tested for non-emptiness by the structural predicates in
         :mod:`kalvin.kline` and never inspected directly.
         """
+        ...
+
+    @abstractmethod
+    def bit_in(self, node: KNode, signature: KNode) -> bool:
+        """Does ``node``'s bit pattern sit inside ``signature``?"""
         ...

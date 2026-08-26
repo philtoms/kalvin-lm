@@ -42,7 +42,7 @@ import contextlib
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.significance import SIG_S1, band_significance
-from kalvin.kline import KDbg, KLine, using_resolver
+from kalvin.kline import KDbg, KLine, KNode, using_resolver
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 
@@ -175,15 +175,17 @@ class TokenEncoder:
                 self._compound_identity_emitted.add(compound)
                 sig_uint64 = compound
             elif len(sig_tokens) == 1:
-                sig_uint64 = sig_tokens[0]
+                sig_uint64 = KNode(sig_tokens[0], entry.sig)
             else:
                 sig_uint64 = self._signifier.signature_of(sig_tokens)
+                if entry.sig:
+                    self._compound_labels.setdefault(sig_uint64, entry.sig)
 
         # 2. Encode nodes (compound nodes reuse the registry value).
         node_values: list[int] = []
         for node_str in entry.nodes or []:
             if node_str in self._compound_sigs:
-                node_values.append(self._compound_sigs[node_str])
+                node_values.append(KNode(self._compound_sigs[node_str], node_str))
             else:
                 node_val, node_extras = self._encode_node(
                     node_str, annotation=entry.annotation, scope=entry.scope,
@@ -245,7 +247,7 @@ class TokenEncoder:
 
         if len(tokens) == 1:
             self.node_labels.setdefault(tokens[0], word)
-            return (tokens[0], [])
+            return (KNode(tokens[0], word), [])
 
         # Multi-token word → compound-word decomposition.
         return self._emit_mts_for_tokens(
@@ -324,7 +326,7 @@ class TokenEncoder:
                 dbg=id_dbg,
             )
             extras.append(KValue(id_kline, SIG_S1))
-        return (compound, extras)
+        return (KNode(compound, dbg_label) if dbg_label else compound, extras)
 
     # Debug construction
 

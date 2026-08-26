@@ -41,5 +41,7 @@
 - [Observation: Curriculum term deflated to script in training docs](obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs.md)
 - [Observation: KScript semantic model settled via grill](obs-2026-08-24-kscript-semantic-model-settled-via-grill.md)
 - [Observation: Structural supervisor wired at escalation seam](obs-2026-08-24-structural-supervisor-wired-at-escalation-seam.md)
+- [Observation: All compiler-minted KNodes labelled; mhall run fully labelled](obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled.md)
+- [Observation: KNode became a labelled int subclass; labels wired at TokenEncoder](obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

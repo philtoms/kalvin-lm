@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-08-26
+
+- **observe**: {"relevance":"high","slug":"obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled","title":"All compiler-minted KNodes labelled; mhall run fully labelled"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen","title":"KNode became a labelled int subclass; labels wired at TokenEncoder"}
+
 ## 2026-08-24
 
 - **observe**: {"relevance":"high","slug":"obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs","title":"Curriculum term deflated to script in training docs"}

@@ -146,3 +146,9 @@
 ## [2026-08-24T17:08:42.426Z] observe
 - slug: "obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs", title: "Curriculum term deflated to script in training docs", relevance: "high"
 
+## [2026-08-26T13:19:04.165Z] observe
+- slug: "obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen", title: "KNode became a labelled int subclass; labels wired at TokenEncoder", relevance: "high"
+
+## [2026-08-26T13:43:06.875Z] observe
+- slug: "obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled", title: "All compiler-minted KNodes labelled; mhall run fully labelled", relevance: "high"
+

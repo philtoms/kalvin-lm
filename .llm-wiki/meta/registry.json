@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-24T17:08:42.458Z",
+  "last_updated": "2026-08-26T13:43:06.924Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1139,6 +1139,41 @@
       "source_context": "Compiler-emitted semantic evidence + structural supervisor for the lean harness",
       "created": "2026-08-24",
       "updated": "2026-08-24"
+    },
+    "sources/obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled": {
+      "type": "source",
+      "title": "Observation: All compiler-minted KNodes labelled; mhall run fully labelled",
+      "tags": [
+        "knode",
+        "labels",
+        "token-encoder",
+        "compiler"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled",
+      "relevance": "high",
+      "observed_at": "2026-08-26T13:43:06.872Z",
+      "source_context": "Labelling all KNodes including MTS/compound nodes in token_encoder",
+      "created": "2026-08-26",
+      "updated": "2026-08-26"
+    },
+    "sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen": {
+      "type": "source",
+      "title": "Observation: KNode became a labelled int subclass; labels wired at TokenEncoder",
+      "tags": [
+        "knode",
+        "kline",
+        "labels",
+        "token-encoder",
+        "refactoring"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen",
+      "relevance": "high",
+      "observed_at": "2026-08-26T13:19:04.160Z",
+      "source_context": "KNode label struct refactor and wiring labels through the ks compiler",
+      "created": "2026-08-26",
+      "updated": "2026-08-26"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from kalvin.kline import KLine, is_canon
+from kalvin.kline import KLine, KNode, is_canon
 from kalvin.kvalue import KValue
 
 __all__ = ["Teaching", "Exemplar"]

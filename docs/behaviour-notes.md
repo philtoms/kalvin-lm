@@ -68,7 +68,7 @@ Rules when it resolves.
 - Compiler output order ≠ authored order: all source entries first, then all MTS. Symbolic-entry indices do not align with compiled-KValue indices.
 - A single-token node word that never heads an entry is labelled via `TokenEncoder.node_labels`; the harness decoder is unsafe for compound-signature-as-node values.
 
-### Training — user significance as teaching material (`dialogue/training.py`)
+### Training — user significance as teaching material (`dialogue/teaching.py`)
 
 - A supervisor's graded response to K's own proposal is teaching material, distinct from script significance: **S1** grounds (fast path), **S4** refuses (S4 route), **S2** files the shape as a *pattern* (the kind of answer to give), **S3** files it as a *pivot* (a base, not an answer).
 - Recording seam: `route()` checks `query_sig in (S2, S3) and kline.signature in state.asked` — the stamp answers a signature K asked. The exemplar records the proposal **and the ask canon then in STM** (`_ask_context`) as its context.

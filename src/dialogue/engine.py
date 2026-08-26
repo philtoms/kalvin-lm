@@ -17,8 +17,10 @@ from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
 from dialogue.pivot_fill import PivotFill
+from dialogue.expand_fit import ExpandFit
 from kalvin.kline import (
     KLine,
+    KNode,
     is_canon,
     is_identity,
     is_misfit,
@@ -61,7 +63,8 @@ class Engine:
 
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
-        self._misfit = PivotFill(state)
+        # self._misfit = PivotFill(state)
+        self._misfit = ExpandFit(state)
 
     @property
     def state(self) -> EngineState:
@@ -150,7 +153,7 @@ class Engine:
             return None
         return taught
 
-    def _ask_context(self, signature: int) -> KLine | None:
+    def _ask_context(self, signature: KNode) -> KLine | None:
         """The canon ``signature`` asked about, if one is in attention."""
         signifier = self._state.signifier
         for entry in self._state.stm:
@@ -281,7 +284,7 @@ class Engine:
             and not is_canon(k, signifier)
         ]
 
-    def _resolved_nodes(self, nodes: list[int]) -> list[int]:
+    def _resolved_nodes(self, nodes: list[KNode]) -> list[KNode]:
         """Resolve node groups through grounded canon resolutions.
 
         A grounded canon (e.g. DH:[did,have]) whose signature also holds a

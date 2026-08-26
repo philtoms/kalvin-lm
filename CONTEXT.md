@@ -13,7 +13,7 @@ The fundamental unit of Kalvin's memory, and the unit Kalvin rationalises. A str
 The value occupying a kline's head position — the head value a kline's nodes compose against (see **Structural Significance**). Also a value other klines hold as nodes to evaluate **Rational Significance**.
 
 **Node**:
-A structural slot: a value occupying a position in a kline's nodes list. A node is either a **Token Id** or the **signature** of another kline.
+A structural slot: a value occupying a position in a kline's nodes list. A node is either a **Token Id** or the **signature** of another kline. At runtime a node may carry an optional label (the authored word it was encoded from).
 _Avoid_: child, element (the structural slot is specifically a node)
 
 **Structural Significance**:
