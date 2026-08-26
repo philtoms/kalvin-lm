@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 from dialogue.engine_state import EngineState
 from kalvin.kline import (
     KLine,
+    KNode,
     classify_misfit,
     is_canon,
     is_identity,
@@ -161,10 +162,10 @@ class PivotFill:
     def _fills(
         self,
         entry: KLine,
-        underfit: int,
-        overfit: int,
-        gap: int,
-        excess: int,
+        underfit: bool,
+        overfit: bool,
+        gap: KNode,
+        excess: KNode,
     ) -> Iterator[KValue]:
         """Yield gated, graded fill proposals, nearest first."""
         signifier = self._state.signifier
@@ -245,7 +246,7 @@ class PivotFill:
         # Canon-side entities: each canon node, plus grounded sub-canon
         # groups (canon nodes resolving as a unit through their signature).
         canon_set = set(canon)
-        entities: list[dict[int, int]] = []
+        entities: list[dict[KNode, int]] = []
         for c in canon:
             entities.append(self._chain(c))
         for sub in self._state.where(
@@ -276,8 +277,8 @@ class PivotFill:
         return aggregator.compose_terminal(slots)
 
     def _chain(
-        self, sig: int, containment: bool = False
-    ) -> dict[int, int]:
+        self, sig: KNode, containment: bool = False
+    ) -> dict[KNode, int]:
         """``sig -> hops`` over the edge-hop chain from ``sig`` (self at 0).
 
         Beyond the bucket edges, a canon's word has a containment edge into
@@ -293,8 +294,8 @@ class PivotFill:
         """
         state = self._state
         signifier = self._state.signifier
-        chain: dict[int, int] = {sig: 0}
-        frontier: list[int] = []
+        chain: dict[KNode, int] = {sig: 0}
+        frontier: list[KNode] = []
         if containment:
             for kline in state.where(
                 lambda k: sig in k.nodes and is_canon(k, signifier)
@@ -347,11 +348,11 @@ class PivotFill:
             pnode_set = set(pnodes)
             if not (canon_set & pnode_set):
                 continue  # no S1 anchor: not a pivot
-            resolved: list[int | None] = []
-            gaps: list[int] = []
+            resolved: list[KNode | None] = []
+            gaps: list[KNode] = []
             # Grouped resolution first: canon nodes forming a grounded
             # sub-canon resolve as a unit through its signature's path.
-            grouped: set[int] = set()
+            grouped: set[KNode] = set()
             for sub in state.where(lambda k: is_canon(k, signifier)):
                 sub_set = set(sub.nodes)
                 if sub_set and sub_set < canon_set and sub.signature != pivot.signature:
@@ -401,7 +402,7 @@ class PivotFill:
                     resolved = [
                         r if r is not None else next(it) for r in resolved
                     ]
-            nodes: list[int] = []
+            nodes: list[KNode] = []
             for n in resolved:
                 if n not in nodes:
                     nodes.append(n)
@@ -420,11 +421,11 @@ class PivotFill:
             out.append(KValue(kline, self._grade(entry, kline)))
         return out
 
-    def _crossover_connotations(self, entry: KLine) -> dict[int, int]:
+    def _crossover_connotations(self, entry: KLine) -> dict[KNode, int]:
         """``sig -> min hops`` over edge-hop chains from the entry's nodes and
         from its underfit gap's covering bridges."""
         signifier = self._state.signifier
-        conns: dict[int, int] = {}
+        conns: dict[KNode, int] = {}
         for node in entry.nodes:
             for hops, sig in self._edge_hops(node):
                 if sig not in conns or hops < conns[sig]:
@@ -445,7 +446,7 @@ class PivotFill:
         return conns
 
     def _crossing_candidates(
-        self, entry: KLine, conns: dict[int, int]
+        self, entry: KLine, conns: dict[KNode, int]
     ) -> list[KLine]:
         """Grounded canon klines whose edge-hop chains cross a connotation."""
         signifier = self._state.signifier
@@ -464,15 +465,15 @@ class PivotFill:
         return out
 
     def _crossing_fills(
-        self, entry: KLine, conns: dict[int, int]
-    ) -> dict[int, int]:
+        self, entry: KLine, conns: dict[KNode, int]
+    ) -> dict[KNode, int]:
         """``fill sig -> total hops`` for candidate values crossing a connotation.
 
         A candidate's signature or node is a fill when it reaches a connotation
         through its own edge-hop chain; the distance is the connotation's hops
         plus the crossing hops.
         """
-        fills: dict[int, int] = {}
+        fills: dict[KNode, int] = {}
         for candidate in self._crossing_candidates(entry, conns):
             for sig in (candidate.signature, *candidate.nodes):
                 if sig in conns and (sig not in fills or conns[sig] < fills[sig]):
@@ -485,8 +486,8 @@ class PivotFill:
         return fills
 
     def _edge_hops(
-        self, sig: int
-    ) -> Iterator[tuple[int, int]]:
+        self, sig: KNode
+    ) -> Iterator[tuple[int, KNode]]:
         """Yield ``(hops, sig)`` breadth-first over *every* non-terminal,
         non-identity resolution edge — not one deterministic path.
 
@@ -495,12 +496,12 @@ class PivotFill:
         """
         state = self._state
         signifier = self._state.signifier
-        frontier: list[int] = [sig]
-        visited: set[int] = {sig}
+        frontier: list[KNode] = [sig]
+        visited: set[KNode] = {sig}
         hop_count = 0
         while frontier and hop_count < _MAX_HOP:
             hop_count += 1
-            next_frontier: list[int] = []
+            next_frontier: list[KNode] = []
             for cur in frontier:
                 for kline in state.find_bucket(cur):
                     if (
