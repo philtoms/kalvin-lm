@@ -608,6 +608,11 @@ def main(argv: list[str] | None = None) -> int:
              "proposals are filed as patterns/pivots and replayed for "
              "matching asks.",
     )
+    parser.add_argument(
+        "-p", "--persist", nargs="?", const="auto", default=None, metavar="PATH",
+        help="Load engine state before the run and save it after. PATH "
+             "defaults to data/dialogue/{script_name}.json.",
+    )
     args = parser.parse_args(argv)
 
     source_path = Path(args.source)
@@ -618,7 +623,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
             return 2
         tok = NLPTokenizer()
-        harness = make_engine(tok)
+        state_path = (
+            Path(f"data/dialogue/{source_path.stem}.json")
+            if args.persist == "auto"
+            else Path(args.persist) if args.persist else None
+        )
+        if args.persist and state_path.exists():
+            harness = load_engine(state_path, tok)
+        else:
+            harness = make_engine(tok)
         if args.training:
             from dialogue.engine import Engine
             Engine.TRAINING = True
@@ -640,6 +653,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
+        if args.persist:
+            harness.state.save(state_path)
         return 0
 
     try:

@@ -43,9 +43,9 @@ as the suspect first.
 
 Every run ends with a trace and two lists. Read all before reading code.
 
-- **trace** - What K did (asks, proposals, groundings)
-- **grounded** — what K knows (identities, canons, relationships).
-- **work_list (pending at end of run)** — what K was still working on
+- **trace** - What the engine did (asks, proposals, groundings)
+- **grounded** — what the engine knows (identities, canons, relationships).
+- **work_list (pending at end of run)** — what the engine was still working on
   when turns ran out. Distinguish _genuine residue_ (signatures the
   script never makes groundable — e.g. an unbound `L`) from _stalled
   klines_ (something that should have grounded but the engine had no
@@ -75,11 +75,11 @@ presents the trace. One linear pass, no waits, no convergence loop.
    **exploratory expectation** from the annotation + what has grounded —
    something to compare the trace against and explore, not a pass/fail
    spec. Write it down so you can compare later. A near-match (right nodes,
-   different signature) is a finding that K is on the right track, not a
-   failure. Then **report** what you found: did K meet the expectation, how
+   different signature) is a finding that the engine is on the right track, not a
+   failure. Then **report** what you found: did the engine meet the expectation, how
    was it out, what went wrong — feeding the next step. See trace-reading
    §Worked example 2 and script-reading §Reading a run (the decode loop).
-   Judge the decoded prose honestly: if K's proposal is semantic
+   Judge the decoded prose honestly: if the engine's proposal is semantic
    gibberish, say so — a near-match is only "on the right track" when
    its decoded prose actually means something.
 3. **Diagnose: engine or script?** (See below. Engine first.)
@@ -130,8 +130,7 @@ header. Always compile the `.ks` to ensure there are no errors.
   only to test a theory or shake things up, never to work around an
   engine bug.
 - **Check the source before asserting behaviour as fact.** Inferences
-  stated as established rules cause real bugs (on record: the
-  `_is_groundable` lift; the invented "fast route is for terminals" rule).
+  stated as established rules cause real bugs.
 - **The engine speaks in semantic predicates** (`is_identity`,
   `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
 

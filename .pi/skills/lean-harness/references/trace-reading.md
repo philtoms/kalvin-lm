@@ -8,24 +8,27 @@ verdict. This is the vocabulary for reading it.
 
 ```
 ── Step 1  in  S1  MHALL:[SVO] ──
-  out   S4  MHALL:[]
-  out   S4  SVO:[]
+  T01  feed    MHALL:[SVO] S1
+        asks     SVO:[]
+        asks     MHALL:[]
+  T02  feed    SVO:[MHALL] S1 + SVO:[Subject, Verb, Object] S2 + MHALL:[Mary, had, a, little, lamb] S2
 ```
 
-- **`── Step N ──`** — one compiled script entry fed to the engine.
-- **`in  <band>  <kline>`** — the entry fed this step. `<band>` is the
+- **`── Step N  in  <band>  <kline> ──`** — the task for this step. `<band>` is the
   compiled **target** significance (what the script asserts the entry
   should become). `<kline>` is `signature:[nodes]` in scripted labels
   (hex when no label is known).
-- **`offer  <kline>`** — the harness fed this S1 identity `X:[X]` to answer
-  an S4 ask `{X:[]}` the engine emitted this step (the script defines
-  it; the harness answers unsupervised, per-step dedup). No judgement.
-- **`out  <band>  <kline>`** — one engine emission this step. `<band>` here
+- **`<turn>  feed  <kline> <band>`** — the harness fed these compiled entries to the
+  engine. The `<turn>` is incremented every time the harness feeds another entry. It
+  is reset on the next step.
+- **`asks <kline>`** — The ask here is the engine's request for klines with this
+  signature. The engine always asks about entries it has not previously seen.
+- **`propose  <kline> <band> <significance`** — one engine emission this step. `<band>` here
   is the engine's _actual_ output band (S1 ground-and-cascade, S2 propose,
   S3 connote, S4 ask). `(none)` = the engine had nothing to emit.
-- **`ground  <kline>`** — an S1 observation: a kline the engine grounded
+- **`grounds <kline>`** — an S1 observation: a kline the engine grounded
   internally this step (added to its grounded model). Distinct from `out`:
-  groundings are K's private S1 state; `out` is what it would say.
+  groundings are the engine's private S1 state; `out` is what it would say.
 
 ## Bands (quick reference)
 
@@ -47,7 +50,7 @@ changes. The annotation is the trainer-facing rationale (the parenthetical
 prose in the `.ks`). Use it to form an exploratory expectation. For example:
 The annotation for WDMH is (What did mary have) — You know that Mary had a
 little lamb, so a useful expectation might be "Mary had a little lamb".
-But remember that K proposes klines, not prose Always check the nodes.
+But remember that the engine proposes klines, not prose. Always check the nodes.
 
 Note: a single annotation can appear non-contiguously — source entries and
 MTS entries for the same block are split by the encoder's source-before-MTS
@@ -67,9 +70,9 @@ partition (see behaviour-notes §Compilation).
 
 - **`batch by band`** — counts of engine _emissions_ across the run. A
   factual histogram, not a score.
-- **`grounded`** — the final grounded model: everything K ended up knowing
+- **`grounded`** — the final grounded model: everything the engine ended up knowing
   (identities, canons, relationships), in scripted labels.
-- **`work_list (pending at end of run)`** — what K was still working on when
+- **`work_list (pending at end of run)`** — what the engine was still working on when
   turns ran out. **This is the diagnostic.** Distinguish:
   - _Genuine residue_ — signatures the script never makes groundable
     (an unbound `L`; a connotes target like `a:[Det]` where `a` is never an
@@ -113,7 +116,7 @@ Decide on a useful expectation and write it down so that you can compare
 later. You are looking for a match that you can explore. It might not be
 exact. If you wrote down "MHALL:[Mary, had, a, little, lamb]" but the only
 match you find is "WDMH:[Mary, had, a, little, lamb]" then report it. It is
-useful analysis and in this case it shows that K is on the right track.
+useful analysis and in this case it shows that the engine is on the right track.
 
 **Find where that kline actually appears** — it may not be the step you
 expect:
@@ -139,4 +142,4 @@ So the order of judgement is fixed:
    near-match (any step, any line kind — `out`, `ground`, or the summary's
    `grounded`).
 3. **Report your findings**, so that you can formulate your next step.
-   Did K meet your expectations? How was it out? What went wrong?
+   Did the engine meet your expectations? How was it out? What went wrong?
