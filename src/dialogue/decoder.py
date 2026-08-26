@@ -331,7 +331,7 @@ def _turn_from_dict(raw: dict) -> Turn:
         nodes=nodes,
         significance=raw.get("significance"),
         notes=raw.get("notes", ""),
-        close=close,
+        close=close is True,
         record=raw,
     )
 

@@ -270,11 +270,11 @@ class EngineState:
             signifier,
             stm=[_kl(p) for p in data.get("stm", [])],
             ltm={
-                int(sig): [_kl(k) for k in bucket]
+                KNode(int(sig)): [_kl(k) for k in bucket]
                 for sig, bucket in data.get("ltm", {}).items()
             },
             frame={
-                int(sig): [_kl(k) for k in bucket]
+                KNode(int(sig)): [_kl(k) for k in bucket]
                 for sig, bucket in data.get("frame", {}).items()
             },
         )

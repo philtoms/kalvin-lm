@@ -24,7 +24,7 @@ from typing import cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
-from kalvin.kline import KLine
+from kalvin.kline import KLine, KNode
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.significance import SIG_MASK, SIG_S1, SIG_S3, SIG_S4, BandLayout
@@ -145,7 +145,7 @@ class Harness:
                 # MTS entries dedup globally: one set per compound. The whole
                 # set belongs to the first occurrence of its annotation.
                 if annotation:
-                    key = next(
+                    match = next(
                         (
                             f"{annotation}#{i}"
                             for i in range(
@@ -158,7 +158,7 @@ class Harness:
                         ),
                         None,
                     )
-                    target = by_key.get(key) if key else None
+                    target = by_key.get(match) if match else None
                 else:
                     target = None
                 if target is None and annotation and not any(
@@ -176,7 +176,10 @@ class Harness:
                     target = next(
                         (
                             g for k, g in reversed(list(by_key.items()))
-                            if any(e.kline.dbg.scope != 0 for e in g)
+                            if any(
+                                (e.kline.dbg.scope if e.kline.dbg else 0) != 0
+                                for e in g
+                            )
                         ),
                         groups[0][1] if groups else None,
                     )
@@ -468,7 +471,7 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
 
 
 def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool,
-                        pre_grounded: set[tuple[int, tuple[int, ...]]] | None = None) -> str:
+                        pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
     if not state.ltm:
         return "  (grounded nothing)"
     lines = []
@@ -499,7 +502,7 @@ def _render_stm(state: EngineState, labels: dict[int, str], verbose: bool) -> st
 
 def _render_summary(results: list[StepResult], state: EngineState,
                     labels: dict[int, str], verbose: bool,
-                    pre_grounded: set[tuple[int, tuple[int, ...]]] | None = None) -> str:
+                    pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
     bands: Counter = Counter()
     for step in results:
         for turn in step.turns:
@@ -517,7 +520,7 @@ def _render_summary(results: list[StepResult], state: EngineState,
 
 def present(results: list[StepResult], state: EngineState, source: str,
             tokenizer: NLPTokenizer, signifier: NLPSignifier, *, verbose: bool,
-            pre_grounded: set[tuple[int, tuple[int, ...]]] | None = None) -> None:
+            pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> None:
     labels = _sig_to_label(source, tokenizer, signifier)
     last_annotation: str | None = None
     for step in results:
@@ -645,7 +648,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.persist == "auto"
             else Path(args.persist) if args.persist else None
         )
-        if args.persist and state_path.exists():
+        if state_path is not None and state_path.exists():
             harness = load_engine(state_path, tok)
             n = sum(len(b) for b in harness.state.ltm.values())
             print(f"── running on reloaded state: {n} grounded klines "
@@ -674,12 +677,12 @@ def main(argv: list[str] | None = None) -> int:
         pre_grounded = (
             {(sig, tuple(kl.nodes))
              for sig, bucket in harness.state.ltm.items() for kl in bucket}
-            if args.persist and state_path.exists() else None
+            if state_path is not None and state_path.exists() else None
         )
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier,
                 verbose=args.verbose, pre_grounded=pre_grounded)
-        if args.persist:
+        if state_path is not None:
             harness.state.save(state_path)
         return 0
 

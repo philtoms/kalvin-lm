@@ -121,11 +121,11 @@ class PivotFill:
         if _depth > 0:
             # Reentry: each proposal's own nodes widen the connotation set;
             # propose from them to reach fills one hop further out.
-            for kv in self._reentry_targets(entry):
+            for target in self._reentry_targets(entry):
                 if emitted >= budget:
                     return
                 for sub in self.propose(
-                    kv, _depth=_depth - 1, _budget=budget - emitted
+                    target, _depth=_depth - 1, _budget=budget - emitted
                 ):
                     emitted += 1
                     yield sub
@@ -402,9 +402,9 @@ class PivotFill:
                         r if r is not None else next(it) for r in resolved
                     ]
             nodes: list[KNode] = []
-            for n in resolved:
-                if n not in nodes:
-                    nodes.append(n)
+            for rn in resolved:
+                if rn is not None and rn not in nodes:
+                    nodes.append(rn)
             if sorted(nodes) == sorted(entry.nodes):
                 continue
             kline = KLine(entry.signature, nodes, entry.dbg)

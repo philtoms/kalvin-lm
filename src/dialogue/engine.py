@@ -143,7 +143,11 @@ class Engine:
                 self._ground(kline)
                 return None
 
-        return self._fast_route(query) or self._slow_route(query)
+        result = self._fast_route(query)
+        if result is None:
+            self._slow_route(query)
+            return None
+        return result
 
     def _taught_pattern(self, kline: KLine) -> KValue | None:
         """A taught answer for the ask ``kline`` poses, not already refused."""

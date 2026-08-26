@@ -16,9 +16,10 @@ Installed at the harness escalation seam; the harness itself never judges.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from kalvin.kline import KLine, is_canon, is_relationship
+from kalvin.kline import KLine, KNode, is_canon, is_relationship
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG8_MAX, SIG_S1, SIG_S2, SIG_S4, BandLayout
 
@@ -88,7 +89,7 @@ class SemanticEvidence:
             self._dirty = False
         return self._intended
 
-    def _fixpoint(self, candidates: set[Key], seeds: set[int] = set()) -> set[Key]:
+    def _fixpoint(self, candidates: set[Key], seeds: set[KNode] = set()) -> set[Key]:
         grounded: set[Key] = set()
         # Seed: every node value is a potential terminal word identity — the
         # same tokenizer-guaranteed identity the harness's _answer forges.
@@ -176,7 +177,7 @@ class SemanticEvidence:
         return Grade(SIG_S4)
 
     def _missing_for_nodes(
-        self, nodes: list[int], intended: set[Key], held: set[Key]
+        self, nodes: Sequence[KNode], intended: set[Key], held: set[Key]
     ) -> list[KLine]:
         out: list[KLine] = []
         for n in nodes:

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeAlias
 
@@ -42,8 +42,9 @@ class KNode(int):
         return f"KNode({int(self)}, {self.label!r})" if self.label else f"KNode({int(self)})"
 
 
-# Accepted input representations for KLine's ``nodes`` parameter
-KNodes: TypeAlias = int | None | list[int]
+# Accepted input representations for KLine's ``nodes`` parameter.
+# Sequence (covariant) so list[KNode] is assignable to it.
+KNodes: TypeAlias = int | None | Sequence[int]
 
 # Type alias for Signatures (uint64)
 KSig: TypeAlias = int
@@ -59,7 +60,7 @@ KSig: TypeAlias = int
 # checks, codec deserialisation) run outside any resolver context and pay
 # only a contextvar peek, never the per-node resolve.
 
-KResolver: TypeAlias = Callable[[int], "KLine | None"]
+KResolver: TypeAlias = Callable[[KNode], "KLine | None"]
 _resolver: contextvars.ContextVar[KResolver | None] = contextvars.ContextVar(
     "kalvin.kline.resolver", default=None
 )
