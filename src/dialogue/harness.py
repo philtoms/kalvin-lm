@@ -390,7 +390,9 @@ def _dedup(batch: list[KValue]) -> list[KValue]:
 
 
 def _label(signature: int, labels: dict[int, str], verbose: bool) -> str:
-    name = labels.get(signature)
+    # Script labels are authoritative; a loaded state's kline label is the
+    # fallback for words the current script never mentions.
+    name = labels.get(signature) or getattr(signature, "label", "")
     if verbose:
         return f"{name}|0x{signature:x}" if name else f"0x{signature:x}"
     return name or f"0x{signature:x}"
@@ -477,11 +479,10 @@ def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool,
     lines = []
     reloaded: list[str] = []
     for signature in sorted(state.ltm, key=lambda s: (s.bit_length(), s)):
-        owner = _label(signature, labels, verbose)
         bucket = state.ltm[signature]
         for kl in bucket:
             nodes = ", ".join(_label(n, labels, verbose) for n in kl.nodes)
-            line = f"      {owner}:[{nodes}]"
+            line = f"      {_label(kl.signature, labels, verbose)}:[{nodes}]"
             if pre_grounded is not None and (signature, tuple(kl.nodes)) in pre_grounded:
                 reloaded.append(line)
             else:
