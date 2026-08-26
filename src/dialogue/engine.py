@@ -16,8 +16,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-from dialogue.pivot_fill import PivotFill
-from dialogue.expand_fit import ExpandFit
+from dialogue.reentry import Reentry
 from kalvin.kline import (
     KLine,
     KNode,
@@ -30,11 +29,10 @@ from kalvin.kline import (
 )
 from kalvin.kvalue import KValue
 from kalvin.significance import (
-    SIG_S1,
-    SIG_S3,
-    SIG_S4,
     SIG8_MAX,
     SIG_MASK,
+    SIG_S1,
+    SIG_S4,
     BandLayout,
 )
 
@@ -64,7 +62,8 @@ class Engine:
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
         # self._misfit = PivotFill(state)
-        self._misfit = ExpandFit(state)
+        # self._misfit = ExpandFit(state)
+        self._misfit = Reentry(state)
 
     @property
     def state(self) -> EngineState:
@@ -317,7 +316,6 @@ class Engine:
         coverage (contained / containing). Identities are not answers; a
         canon here is the sentence itself — exactly what K should say.
         """
-        signifier = self._state.signifier
         resolved = self._resolved_nodes(list(query.kline.nodes))
         if not resolved:
             return []

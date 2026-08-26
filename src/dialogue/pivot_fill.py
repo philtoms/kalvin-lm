@@ -35,7 +35,6 @@ from kalvin.kvalue import KValue
 from kalvin.significance import (
     PROPOSAL_AGGREGATOR,
     SIG8_MAX,
-    SIG_MASK,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only

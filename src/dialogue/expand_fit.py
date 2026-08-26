@@ -28,19 +28,14 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-
-from kalvin.kline import KLine, KNode, is_canon, is_terminal, is_identity, classify_misfit
+from kalvin.kline import KLine, KNode, classify_misfit, is_identity, is_terminal
 from kalvin.kvalue import KValue
 from kalvin.significance import (
-    DEFAULT_AGGREGATOR,
     PROPOSAL_AGGREGATOR,
-    SIG_S4,
-    Aggregator,
 )
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
-    from kalvin.model import Model
 
 # Upper bound on edge hop chain depth (edge_hops's traversal bound).
 MAX_HOP = 100
@@ -68,7 +63,9 @@ class ExpandFit:
         """Held nodes whose bit pattern sits inside ``signature``."""
         out: list[KNode] = []
         signifier = self.signifier
-        for kline in self._state.where(lambda k: signifier.bit_in(k.signature, signature) and is_identity(k)):
+        for kline in self._state.where(
+            lambda k: signifier.bit_in(k.signature, signature) and is_identity(k)
+        ):
             out.append(kline.signature)
         return out
 
@@ -112,7 +109,7 @@ class ExpandFit:
             if c_kline is not None and not is_identity(c_kline):
                 yield from self.expand(entry, c_kline)
         return
-    
+
     def expand(
         self,
         query: KLine,

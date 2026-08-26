@@ -10,9 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from ks.compiler import compile_source
 
 if TYPE_CHECKING:
@@ -29,7 +29,9 @@ BAND_TO_SIG: dict[str, int] = {
 
 Role = Literal["T", "K"]  # trainer (T) or trainee (K)
 OnDivergence = Literal["fail", "accept"]
-DIALOGUE_OPS = frozenset({"COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY", "UNKNOWN"})
+DIALOGUE_OPS = frozenset(
+    {"COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY", "UNKNOWN"}
+)
 
 
 class DecodeError(Exception):
@@ -269,7 +271,7 @@ def decode_events(
 def _decode_turns(
     turns: tuple[Turn, ...], resolved, *, what: str
 ) -> list[DecodedTurn]:
-    """Resolve ``turns`` to :class:`DecodedTurn`\ s (shared by turns and events).
+    r"""Resolve ``turns`` to :class:`DecodedTurn`\ s (shared by turns and events).
     Annotation-only rows are dropped; ``what`` labels the row kind in errors."""
     out: list[DecodedTurn] = []
     for idx, turn in enumerate(turns):

@@ -17,16 +17,17 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, cast
+from typing import cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
-from kalvin.significance import BandLayout, SIG_MASK, SIG_S1, SIG_S3, SIG_S4
+from kalvin.significance import SIG_MASK, SIG_S1, SIG_S3, SIG_S4, BandLayout
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.trainer.curriculum_document import (
@@ -129,7 +130,9 @@ class Harness:
             annotation = entry.kline.dbg.annotation if entry.kline.dbg else ""
             scope = entry.kline.dbg.scope if entry.kline.dbg else 0
             if scope == 0:
-                if current is None or (annotation and annotation != groups[-1][0].rsplit("#", 1)[0]):
+                if current is None or (
+                    annotation and annotation != groups[-1][0].rsplit("#", 1)[0]
+                ):
                     occurrence = sum(
                         1 for k, _ in groups if k.rsplit("#", 1)[0] == annotation
                     )
@@ -458,7 +461,9 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
                 )
                 lines.append(f"        {'supervisor':<8} {verdict} ({_band(r)})")
     if step.stopped_on is not None:
-        lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
+        lines.append(
+            f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}"
+        )
     return "\n".join(lines)
 
 
@@ -591,7 +596,8 @@ def _interactive_supervisor(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run a script (markdown plan) or KScript source through the lean engine and present the trace.",
+        description="Run a script (markdown plan) or KScript source through the "
+             "lean engine and present the trace.",
     )
     parser.add_argument("source", help="Path to a markdown plan file or a .ks KScript file")
     parser.add_argument(

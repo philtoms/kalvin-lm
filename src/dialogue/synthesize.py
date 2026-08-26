@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from kalvin.significance import SIG_S1, SIG_S2, SIG_S4
 from kalvin.kline import KLine, is_canon, is_unknown
 from kalvin.kvalue import KValue
+from kalvin.significance import SIG_S1, SIG_S2, SIG_S4
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
@@ -54,8 +54,9 @@ def _reply_identity(
     1. canon — teach its parts (S1 if K grounded every node, else S2);
     2. CONNOTES — a teachable gloss at S2 (a DENOTES role-binding is left for
        the S3 phase, where K proposes and T ratifies);
-    3. otherwise — forge the self-identity ``{sig: [sig]}`` at S1. A compound-word is a self-referential identity, so it is forged
-       by this same rule.
+    3. otherwise — forge the self-identity ``{sig: [sig]}`` at S1. A
+       compound-word is a self-referential identity, so it is forged by
+       this same rule.
     """
     candidates = decompositions.get(signature, [])
 

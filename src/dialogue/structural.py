@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 from kalvin.kline import KLine, is_canon, is_relationship
 from kalvin.kvalue import KValue
-from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4, SIG8_MAX, BandLayout
+from kalvin.significance import SIG8_MAX, SIG_S1, SIG_S2, SIG_S4, BandLayout
 
 _LAYOUT = BandLayout()
 

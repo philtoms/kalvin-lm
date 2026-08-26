@@ -35,7 +35,6 @@ from kalvin.kline import (
     is_relationship,
     is_terminal,
     is_unknown,
-    sig_level,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
