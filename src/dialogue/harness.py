@@ -462,16 +462,25 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
     return "\n".join(lines)
 
 
-def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
+def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool,
+                        pre_grounded: set[tuple[int, tuple[int, ...]]] | None = None) -> str:
     if not state.ltm:
         return "  (grounded nothing)"
     lines = []
+    reloaded: list[str] = []
     for signature in sorted(state.ltm, key=lambda s: (s.bit_length(), s)):
         owner = _label(signature, labels, verbose)
         bucket = state.ltm[signature]
         for kl in bucket:
             nodes = ", ".join(_label(n, labels, verbose) for n in kl.nodes)
-            lines.append(f"      {owner}:[{nodes}]")
+            line = f"      {owner}:[{nodes}]"
+            if pre_grounded is not None and (signature, tuple(kl.nodes)) in pre_grounded:
+                reloaded.append(line)
+            else:
+                lines.append(line)
+    if pre_grounded is not None:
+        lines.append("    (reloaded, held before this run)")
+        lines.extend(reloaded)
     return "\n".join(lines)
 
 
@@ -484,7 +493,8 @@ def _render_stm(state: EngineState, labels: dict[int, str], verbose: bool) -> st
 
 
 def _render_summary(results: list[StepResult], state: EngineState,
-                    labels: dict[int, str], verbose: bool) -> str:
+                    labels: dict[int, str], verbose: bool,
+                    pre_grounded: set[tuple[int, tuple[int, ...]]] | None = None) -> str:
     bands: Counter = Counter()
     for step in results:
         for turn in step.turns:
@@ -495,13 +505,14 @@ def _render_summary(results: list[StepResult], state: EngineState,
         f"── summary ──\n"
         f"  steps: {len(results)}\n"
         f"  asks by band: {band_str}\n"
-        f"  grounded:\n{_render_grounded(state, labels, verbose)}\n"
+        f"  grounded:\n{_render_grounded(state, labels, verbose, pre_grounded)}\n"
         f"  stm (attending to at end of run):\n{_render_stm(state, labels, verbose)}"
     )
 
 
 def present(results: list[StepResult], state: EngineState, source: str,
-            tokenizer: NLPTokenizer, signifier: NLPSignifier, *, verbose: bool) -> None:
+            tokenizer: NLPTokenizer, signifier: NLPSignifier, *, verbose: bool,
+            pre_grounded: set[tuple[int, tuple[int, ...]]] | None = None) -> None:
     labels = _sig_to_label(source, tokenizer, signifier)
     last_annotation: str | None = None
     for step in results:
@@ -511,7 +522,7 @@ def present(results: list[StepResult], state: EngineState, source: str,
             last_annotation = annotation
         print(_render_step(step, labels, verbose))
     print()
-    print(_render_summary(results, state, labels, verbose))
+    print(_render_summary(results, state, labels, verbose, pre_grounded))
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────
@@ -630,6 +641,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         if args.persist and state_path.exists():
             harness = load_engine(state_path, tok)
+            n = sum(len(b) for b in harness.state.ltm.values())
+            print(f"── running on reloaded state: {n} grounded klines "
+                  f"from {state_path} ──")
         else:
             harness = make_engine(tok)
         if args.training:
@@ -651,8 +665,14 @@ def main(argv: list[str] | None = None) -> int:
                 if args.supervise == "interactive"
                 else _queue_supervisor(args.supervise.split(","), labels, args.verbose)
             )
+        pre_grounded = (
+            {(sig, tuple(kl.nodes))
+             for sig, bucket in harness.state.ltm.items() for kl in bucket}
+            if args.persist and state_path.exists() else None
+        )
         results = harness.run(source)
-        present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
+        present(results, harness.state, source, tok, harness.signifier,
+                verbose=args.verbose, pre_grounded=pre_grounded)
         if args.persist:
             harness.state.save(state_path)
         return 0
