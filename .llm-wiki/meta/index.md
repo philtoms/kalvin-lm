@@ -80,6 +80,7 @@
 
 ## Sources
 
+- [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists]] — Observation: No `python -m kscript` entrypoint exists *(created: 2026-08-11)*
@@ -118,6 +119,7 @@
 - [[sources/obs-2026-08-24-structural-supervisor-wired-at-escalation-seam]] — Observation: Structural supervisor wired at escalation seam *(created: 2026-08-24)*
 - [[sources/obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled]] — Observation: All compiler-minted KNodes labelled; mhall run fully labelled *(created: 2026-08-26)*
 - [[sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen]] — Observation: KNode became a labelled int subclass; labels wired at TokenEncoder *(created: 2026-08-26)*
+- [[sources/obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split]] — Observation: -p reloaded-state banner and fresh-vs-held grounding split *(created: 2026-08-26)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -125,4 +127,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-26T13:43:06.924Z* | *Total pages: 113*
+*Last updated: 2026-08-26T16:22:30.724Z* | *Total pages: 115*

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-26T13:43:06.924Z",
+  "last_updated": "2026-08-26T16:22:30.724Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -519,6 +519,15 @@
       "format": "markdown",
       "captured": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "sources/identity-klines-never-proposals": {
+      "type": "source",
+      "title": "Identity klines are never proposals",
+      "category": "bugfix",
+      "status": "insight",
+      "slug": "identity-klines-never-proposals",
+      "created": "2026-08-26",
+      "updated": "2026-08-26"
     },
     "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": {
       "type": "source",
@@ -1172,6 +1181,22 @@
       "relevance": "high",
       "observed_at": "2026-08-26T13:19:04.160Z",
       "source_context": "KNode label struct refactor and wiring labels through the ks compiler",
+      "created": "2026-08-26",
+      "updated": "2026-08-26"
+    },
+    "sources/obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split": {
+      "type": "source",
+      "title": "Observation: -p reloaded-state banner and fresh-vs-held grounding split",
+      "tags": [
+        "harness",
+        "persistence",
+        "presentation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split",
+      "relevance": "medium",
+      "observed_at": "2026-08-26T16:22:30.692Z",
+      "source_context": "Lean harness -p persistence presentation",
       "created": "2026-08-26",
       "updated": "2026-08-26"
     },

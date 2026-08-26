@@ -2,6 +2,8 @@
 
 ## 2026-08-26
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split","title":"-p reloaded-state banner and fresh-vs-held grounding split"}
+- **retro**: {"category":"bugfix","slug":"identity-klines-never-proposals","title":"Identity klines are never proposals"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled","title":"All compiler-minted KNodes labelled; mhall run fully labelled"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen","title":"KNode became a labelled int subclass; labels wired at TokenEncoder"}
 

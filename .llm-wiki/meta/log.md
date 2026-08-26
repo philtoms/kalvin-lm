@@ -152,3 +152,9 @@
 ## [2026-08-26T13:43:06.875Z] observe
 - slug: "obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled", title: "All compiler-minted KNodes labelled; mhall run fully labelled", relevance: "high"
 
+## [2026-08-26T16:15:14.369Z] retro
+- slug: "identity-klines-never-proposals", title: "Identity klines are never proposals", category: "bugfix"
+
+## [2026-08-26T16:22:30.695Z] observe
+- slug: "obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split", title: "-p reloaded-state banner and fresh-vs-held grounding split", relevance: "medium"
+
