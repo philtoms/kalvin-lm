@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-from dialogue.expand_fit import ExpandFit
+from dialogue.pivot_fill import PivotFill
 from kalvin.kline import (
     KLine,
     is_canon,
@@ -61,7 +61,7 @@ class Engine:
 
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
-        self._misfit = ExpandFit(state)
+        self._misfit = PivotFill(state)
 
     @property
     def state(self) -> EngineState:

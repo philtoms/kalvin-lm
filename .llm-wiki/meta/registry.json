@@ -927,7 +927,7 @@
       "slug": "obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-",
       "relevance": "medium",
       "observed_at": "2026-08-21T13:54:38.360Z",
-      "source_context": "Docstring drift pass over expand_fit strategy",
+      "source_context": "Docstring drift pass over pivot_fill strategy",
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },
