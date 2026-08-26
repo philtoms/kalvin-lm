@@ -108,7 +108,8 @@ class ExpandFit:
     def propose(self, entry: KLine) -> Iterator[KValue]:
         for candidate in self._connotations(entry):
             c_kline = self._state.find(candidate)
-            if c_kline is not None:
+            # An identity is an ask or a fact, never a proposal.
+            if c_kline is not None and not is_identity(c_kline):
                 yield from self.expand(entry, c_kline)
         return
     
