@@ -683,7 +683,16 @@ def main(argv: list[str] | None = None) -> int:
         present(results, harness.state, source, tok, harness.signifier,
                 verbose=args.verbose, pre_grounded=pre_grounded)
         if state_path is not None:
-            harness.state.save(state_path)
+            if state_path.stem != source_path.stem:
+                # A persist file named for another script is not this run's
+                # memory to overwrite.
+                print(
+                    f"harness: not saving — persist name {state_path.name!r} "
+                    f"differs from script name {source_path.stem!r}",
+                    file=sys.stderr,
+                )
+            else:
+                harness.state.save(state_path)
         return 0
 
     try:
