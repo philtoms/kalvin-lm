@@ -182,3 +182,6 @@
 ## [2026-08-27T14:08:20.031Z] observe
 - slug: "obs-2026-08-27-harness-feeds-whole-block-in-one-batch", title: "Harness feeds whole block in one batch", relevance: "high"
 
+## [2026-08-27T15:06:35.290Z] observe
+- slug: "obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e", title: "Block-feed filtering + cogitate ground arm committed (9b3414e)", relevance: "high"
+

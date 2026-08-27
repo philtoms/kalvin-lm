@@ -226,6 +226,12 @@ class Harness:
             self._engine.rationalise(
                 [KValue(e.kline, SIG_S1) for e in priming]
             )
+        # Primed entries the engine took are already grounded — feeding
+        # them again in a block's batch would be re-statement, not dialogue.
+        primed = {
+            (e.kline.signature, tuple(e.kline.nodes)) for e in priming
+            if self.state.is_grounded(e.kline)
+        }
         for i, (key, group, opener) in enumerate(steps):
             # Fresh answers per authored group: a repeated group is a second
             # ask, not a replay of the first one's dedup ledger.
@@ -249,8 +255,28 @@ class Harness:
             step = StepResult(i, opener)
             results.append(step)
             # Feed the whole block in one go: the opener and its group's
-            # remaining entries enter the engine as a single batch.
-            queue: list[list[KValue]] = [list(group)]
+            # remaining entries enter the engine as a single batch, minus
+            # entries the priming pass already grounded. Terminal words the
+            # block uses whose identities the script never compiled ride
+            # along at S1 — without them the words never become known.
+            batch = [
+                e for e in group
+                if (e.kline.signature, tuple(e.kline.nodes)) not in primed
+            ]
+            fed_keys = {
+                (e.kline.signature, tuple(e.kline.nodes)) for e in batch
+            }
+            for entry in group:
+                for node in entry.kline.nodes:
+                    identity = (node, (node,))
+                    if (
+                        node in words
+                        and identity not in fed_keys
+                        and not self.state.is_grounded(KLine(node, [node]))
+                    ):
+                        batch.append(KValue(KLine(node, [node]), SIG_S1))
+                        fed_keys.add(identity)
+            queue: list[list[KValue]] = [batch]
             while queue:
                 feeds = queue.pop(0)
                 batch, observations = self._engine.rationalise(feeds)

@@ -62,12 +62,6 @@ class EngineState:
     ltm: dict[KNode, list[KLine]] = field(default_factory=dict)
     frame: dict[KNode, list[KLine]] = field(default_factory=dict)
     refused: set[tuple[KNode, tuple[KNode, ...]]] = field(default_factory=set)
-    #: Signatures fed at S2 as an ask — the user's implied semantics. A
-    #: kline whose signature is asked is a question, not a fact to ground.
-    asked: set[KNode] = field(default_factory=set)
-    #: supervisor-graded proposals filed as teaching material (S2 patterns,
-    #: S3 pivots).
-    teaching: Teaching = field(default_factory=Teaching)
     _dbg_step: int = 0
 
     @property

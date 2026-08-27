@@ -116,7 +116,7 @@ class PivotFill:
             # signature whose canon overlaps grounded knowledge — pivot
             # alignment aligns the overlap and turns the uncovered slots
             # into asks. Only that arm can handle it.
-            if entry.signature not in self._state.asked or not is_canon(
+            if not is_canon(
                 entry, signifier
             ):
                 return

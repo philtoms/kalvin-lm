@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-27T14:08:20.061Z",
+  "last_updated": "2026-08-27T15:06:35.323Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1247,6 +1247,23 @@
       "relevance": "high",
       "observed_at": "2026-08-27T13:03:47.689Z",
       "source_context": "Reworking ASK kline compilation to signature-agnostic ask bit",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e": {
+      "type": "source",
+      "title": "Observation: Block-feed filtering + cogitate ground arm committed (9b3414e)",
+      "tags": [
+        "harness",
+        "engine",
+        "grounding",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e",
+      "relevance": "high",
+      "observed_at": "2026-08-27T15:06:35.288Z",
+      "source_context": "Filtering primed entries from harness block feed",
       "created": "2026-08-27",
       "updated": "2026-08-27"
     },

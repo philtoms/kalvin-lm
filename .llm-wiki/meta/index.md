@@ -124,6 +124,7 @@
 - [[sources/obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split]] — Observation: -p reloaded-state banner and fresh-vs-held grounding split *(created: 2026-08-26)*
 - [[sources/obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b]] — Observation: ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug) *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig]] — Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e]] — Observation: Block-feed filtering + cogitate ground arm committed (9b3414e) *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-build-state-py-dev-tool-added]] — Observation: build_state.py dev tool added *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann]] — Observation: Compiler emits ASK klines for bare compounds and sigless annotations *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-harness-feeds-whole-block-in-one-batch]] — Observation: Harness feeds whole block in one batch *(created: 2026-08-27)*
@@ -135,4 +136,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-27T14:08:20.061Z* | *Total pages: 123*
+*Last updated: 2026-08-27T15:06:35.323Z* | *Total pages: 124*

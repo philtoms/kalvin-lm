@@ -2,6 +2,7 @@
 
 ## 2026-08-27
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e","title":"Block-feed filtering + cogitate ground arm committed (9b3414e)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-harness-feeds-whole-block-in-one-batch","title":"Harness feeds whole block in one batch"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness","title":"\"Lean\" term removed; dialogue harness is the only harness"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig","title":"ASK klines now sig|ASK_NLP_TOKEN with original canonical signature"}
