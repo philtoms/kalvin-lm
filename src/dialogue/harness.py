@@ -214,6 +214,18 @@ class Harness:
                 continue
             steps.append((key, group, opener))
         results: list[StepResult] = []
+        # Priming: every compiled identity is a fact — submit all at S1
+        # before the run, so the dialogue opens on the questions, not on
+        # identity discovery.
+        identities = [
+            e for e in entries
+            if e.kline.dbg and e.kline.dbg.op == "IDENTITY"
+            and not self.state.is_grounded(e.kline)
+        ]
+        if identities:
+            self._engine.rationalise(
+                [KValue(e.kline, SIG_S1) for e in identities]
+            )
         for i, (key, group, opener) in enumerate(steps):
             # Fresh answers per authored group: a repeated group is a second
             # ask, not a replay of the first one's dedup ledger.

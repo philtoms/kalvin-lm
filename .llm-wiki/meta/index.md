@@ -80,7 +80,9 @@
 
 ## Sources
 
+- [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
+- [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists]] — Observation: No `python -m kscript` entrypoint exists *(created: 2026-08-11)*
@@ -127,4 +129,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-26T16:22:30.724Z* | *Total pages: 115*
+*Last updated: 2026-08-27T08:50:34.433Z* | *Total pages: 117*

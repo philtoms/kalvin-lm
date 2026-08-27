@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-08-27
+
+- **retro**: {"category":"bugfix","slug":"identity-priming-and-knowledge-restatement","title":"Identity priming; engine stopped restating knowledge"}
+- **retro**: {"category":"bugfix","slug":"compound-word-identity-label-and-dedup","title":"Compound-word identity labels and MTS dedup"}
+
 ## 2026-08-26
 
 - **observe**: {"relevance":"medium","slug":"obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split","title":"-p reloaded-state banner and fresh-vs-held grounding split"}

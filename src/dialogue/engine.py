@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
+from dialogue.expand_fit import ExpandFit
 from dialogue.reentry import Reentry
 from kalvin.kline import (
     KLine,
@@ -62,8 +63,8 @@ class Engine:
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
         # self._misfit = PivotFill(state)
-        # self._misfit = ExpandFit(state)
-        self._misfit = Reentry(state)
+        self._misfit = ExpandFit(state)
+        # self._misfit = Reentry(state)
 
     @property
     def state(self) -> EngineState:
@@ -242,10 +243,13 @@ class Engine:
             else:
                 asked = kline.signature in self._state.asked
                 if (
-                    not asked
+                    (not asked or is_canon(kline, self._state.signifier))
                     and self._state._is_groundable(kline)
                     and self._state._is_denoted(kline)
                 ):
+                    # A canon is the script's own ground truth — it grounds
+                    # even under an asked signature (the ask under the
+                    # signature is answered by the canon itself).
                     self._ground(kline)
 
                 if is_misfit(kline, self._state.signifier) or asked:

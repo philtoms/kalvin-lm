@@ -219,6 +219,7 @@
     "entities/tokenencoder",
     "sources/SRC-2026-08-11-001",
     "sources/SRC-2026-08-11-002",
+    "sources/compound-word-identity-label-and-dedup",
     "sources/wiki-duplicate-consolidation"
   ],
   "concepts/node": [
@@ -717,7 +718,9 @@
     "entities/kalvin",
     "entities/marys-world"
   ],
+  "sources/compound-word-identity-label-and-dedup": [],
   "sources/identity-klines-never-proposals": [],
+  "sources/identity-priming-and-knowledge-restatement": [],
   "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": [],
   "sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected": [
     "entities/k-engine",

@@ -102,12 +102,16 @@ class ExpandFit:
                     next_frontier.append(reached)
             frontier = next_frontier
 
+    def _sayable(self, kline: KLine) -> bool:
+        """A proposal says something new: not an identity (an ask or a
+        fact), not already grounded (nothing to ratify)."""
+        return not is_identity(kline) and not self._state.is_grounded(kline)
+
     def propose(self, entry: KLine) -> Iterator[KValue]:
-        for candidate in self._connotations(entry):
-            c_kline = self._state.find(candidate)
+        for candidate in self._candidates(entry):
             # An identity is an ask or a fact, never a proposal.
-            if c_kline is not None and not is_identity(c_kline):
-                yield from self.expand(entry, c_kline)
+            if candidate is not None:
+                yield from self.expand(entry, candidate)
         return
 
     def expand(
@@ -116,6 +120,7 @@ class ExpandFit:
         candidate: KLine,
         *,
         _visited: set[tuple[int, KNode]] | None = None,
+        _top: bool = True,
     ) -> Iterator[KValue]:
         """Expand a query-candidate pair, yielding connotations and terminal byte.
 
@@ -173,13 +178,16 @@ class ExpandFit:
                     if match_sig in mismatched_c:
                         # case C: exact opposing match (S2 direct) -> recurse.
                         accounted = decay(hops)
-                        yield from self.expand(q_kline, c_kline, _visited=_visited)
+                        yield from self.expand(
+                            q_kline, c_kline, _visited=_visited, _top=False
+                        )
                         break
                     elif signifier.signifies(n, match_sig):
                         # case D: signifies (S2 loose) -> side-candidate, no recurse.
                         accounted = decay(hops)
                         sig_byte = aggregator.compose_terminal([decay(hops)])
-                        yield KValue(c_kline, sig_byte)
+                        if self._sayable(c_kline):
+                            yield KValue(c_kline, sig_byte)
                         break
                     elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
                         s3_connotations[match_sig] = hops
@@ -196,19 +204,24 @@ class ExpandFit:
                     if match_sig in mismatched_q:
                         # case C: exact opposing match (S2 direct) -> recurse.
                         accounted = decay(hops)
-                        yield from self.expand(q_kline, c_kline, _visited=_visited)
+                        yield from self.expand(
+                            q_kline, c_kline, _visited=_visited, _top=False
+                        )
                         break
                     elif signifier.signifies(n, match_sig):
                         # case D: signifies (S2 loose) -> side-candidate, no recurse.
                         accounted = decay(hops)
                         sig_byte = aggregator.compose_terminal([decay(hops)])
-                        yield KValue(c_kline, sig_byte)
+                        if self._sayable(c_kline):
+                            yield KValue(c_kline, sig_byte)
                         break
                     elif match_sig in s3_connotations:
                         # case E: S3 connotation bridge -> recurse (no side-candidate).
                         s3_hop = s3_connotations[match_sig] + hops
                         accounted = decay(s3_hop)
-                        yield from self.expand(q_kline, c_kline, _visited=_visited)
+                        yield from self.expand(
+                            q_kline, c_kline, _visited=_visited, _top=False
+                        )
                         break
             slot_values.append(accounted)
 
@@ -226,7 +239,21 @@ class ExpandFit:
             slot_values = [1.0]
 
         significance = aggregator.compose_terminal(slot_values)
-        yield KValue(candidate, significance)
+        if _top and self._sayable(candidate):
+            yield KValue(candidate, significance)
+
+    def _candidates(self, entry: KLine) -> list[KLine]:
+        signifier = self._state.signifier
+        conns: list[KLine] = []
+
+        for node in entry.nodes:
+            for sig in self._state.where(
+                lambda k: not is_identity(k)
+                and signifier.signifies(node, k.signature) == 0
+            ):
+                if sig != entry.signature and not is_identity(sig):
+                    conns.append(sig)
+        return conns
 
     def _connotations(self, entry: KLine) -> dict[KNode, int]:
         """``sig -> min hops`` over edge-hop chains from the entry's nodes and
@@ -252,4 +279,3 @@ class ExpandFit:
                         if sig not in conns or hops < conns[sig]:
                             conns[sig] = hops
         return conns
-

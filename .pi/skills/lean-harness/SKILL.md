@@ -133,6 +133,7 @@ header. Always compile the `.ks` to ensure there are no errors.
   stated as established rules cause real bugs.
 - **The engine speaks in semantic predicates** (`is_identity`,
   `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
+- keep all ad-hoc investigative scripts in dev/dialogue. Do not delete after use.
 
 ## Where things live
 

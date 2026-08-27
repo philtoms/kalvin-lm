@@ -73,7 +73,7 @@ def main() -> None:
     tok = NLPTokenizer()
     harness = make_engine(tok)
     entries = compile_source(
-        "(Mary had a little lamb)\nMHALL == SVO",
+        "(Mary had a little lamb)MHALL == SVO",
         tokenizer=tok, signifier=harness.signifier, dev=True,
     )
     labels = _label_map(entries)

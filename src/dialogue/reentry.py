@@ -105,10 +105,8 @@ class Reentry:
         origin = entry if _origin is None else _origin
 
         if _origin is not None and state.is_grounded(entry):
-            # A grounded reentry target short-circuits at S1 — nothing to
-            # complete.
-            if not state.is_refused(entry):
-                yield KValue(self._align_to_grounded(entry), SIG8_MAX)
+            # A grounded reentry target has nothing to complete — and a
+            # grounded kline is not a proposal (nothing to ratify).
             return
 
         nodes = list(entry.nodes)
@@ -160,9 +158,6 @@ class Reentry:
                 expanded = fit + [m for m in c.nodes if m not in fit]
                 target = KLine(o_sig, expanded, entry.dbg)
                 if state.is_grounded(target):
-                    if not state.is_refused(target):
-                        yield KValue(self._align_to_grounded(target), SIG8_MAX)
-                        emitted += 1
                     continue
                 for kv in self.propose(
                     target, _depth=_depth - 1, _budget=budget - emitted, _origin=origin

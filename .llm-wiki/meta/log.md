@@ -158,3 +158,9 @@
 ## [2026-08-26T16:22:30.695Z] observe
 - slug: "obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split", title: "-p reloaded-state banner and fresh-vs-held grounding split", relevance: "medium"
 
+## [2026-08-27T08:44:54.629Z] retro
+- slug: "compound-word-identity-label-and-dedup", title: "Compound-word identity labels and MTS dedup", category: "bugfix"
+
+## [2026-08-27T08:50:34.405Z] retro
+- slug: "identity-priming-and-knowledge-restatement", title: "Identity priming; engine stopped restating knowledge", category: "bugfix"
+
