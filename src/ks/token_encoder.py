@@ -152,6 +152,18 @@ class TokenEncoder:
         is_compound_def = entry.op == "CANONIZES" and len(entry.sig) > 1
         is_compound_ref = entry.sig in self._compound_sigs
 
+        # A multi-token IDENTITY whose compound-word decomposition already
+        # emitted this identity (while encoding an earlier node) is the
+        # same statement — drop the duplicate MTS identity entry.
+        if (
+            entry.op == "IDENTITY"
+            and len(self._tokenizer.encode(entry.sig)) > 1
+            and self._signifier.signature_of(
+                self._tokenizer.encode(entry.sig)
+            ) in self._compound_identity_emitted
+        ):
+            return []
+
         # Compound refs reuse the registry; compound defs defer
         # to step 3 below; others encode the sig directly (a multi-token
         # sig is a compound signature via signature_of, and heads its
@@ -322,7 +334,7 @@ class TokenEncoder:
             id_dbg.annotation = annotation
             id_kline = KLine(
                 signature=compound,
-                nodes=[compound],
+                nodes=[KNode(compound, dbg_label) if dbg_label else compound],
                 dbg=id_dbg,
             )
             extras.append(KValue(id_kline, SIG_S1))
