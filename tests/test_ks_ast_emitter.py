@@ -588,9 +588,10 @@ class TestKS19MTS:
     def test_mts_expansion(self):
         entries = emit(_file(_bare("ABC")))
 
-        # A bare compound is an ask: only the ASK canon — components are
-        # values inside it, not headed klines of their own.
-        assert_has_entry(entries, "ASK", ["A", "B", "C"], "ASK")
+        # A bare compound is an ask: only the ask canon — components are
+        # values inside it, not headed klines of their own. The sig is the
+        # compound's canonical signature; is_ask marks the ASK bit.
+        assert_has_entry(entries, "ABC", ["A", "B", "C"], "ASK")
         assert not _find_entries(entries, sig="A")
         assert not _find_entries(entries, sig="B")
         assert not _find_entries(entries, sig="C")
@@ -599,8 +600,9 @@ class TestKS19MTS:
         """A bare compound produces exactly one entry (the ask canon)."""
         entries = emit(_file(_bare("ABC")))
         assert len(entries) == 1
-        assert entries[0].sig == "ASK"
+        assert entries[0].sig == "ABC"
         assert entries[0].op == "ASK"
+        assert entries[0].is_ask is True
 
     def test_mts_entries_tagged_is_mts(self):
         """ MTS-produced canon entries carry is_mts=True; source entries do not.
@@ -697,7 +699,7 @@ class TestKS20bNoMTSForWords:
         # Sanity: all-uppercase multi-char identifiers still trigger MTS,
         # emitting only the canon (no per-component entries).
         entries = emit(_file(_bare("ALL")))
-        assert_has_entry(entries, "ASK", ["A", "L", "L"], "ASK")
+        assert_has_entry(entries, "ALL", ["A", "L", "L"], "ASK")
         assert not _find_entries(entries, sig="A")
         assert not _find_entries(entries, sig="L")
 
@@ -733,20 +735,20 @@ class TestKS22NodeCount:
 
     def test_node_count_abc(self):
         entries = emit(_file(_bare("ABC")))
-        ask = _find_entries(entries, sig="ASK", op="ASK")
+        ask = _find_entries(entries, op="ASK")
         assert len(ask) == 1
         assert len(ask[0].nodes) == 3  # len("ABC") == 3
 
     def test_node_count_mhall(self):
         entries = emit(_file(_bare("MHALL")))
-        ask = _find_entries(entries, sig="ASK", op="ASK")
+        ask = _find_entries(entries, op="ASK")
         assert len(ask) == 1
         assert len(ask[0].nodes) == 5  # len("MHALL") == 5
 
     @pytest.mark.parametrize("compound", ["AB", "XYZ", "HELLO", "ABCD"])
     def test_node_count_various(self, compound):
         entries = emit(_file(_bare(compound)))
-        ask = _find_entries(entries, sig="ASK", op="ASK")
+        ask = _find_entries(entries, op="ASK")
         assert len(ask) == 1
         assert len(ask[0].nodes) == len(compound)
 
@@ -970,7 +972,7 @@ class TestMTSComponentDedup:
     def test_intra_expansion_node_count(self):
         """MHALL has two L's — the ask canon preserves both as nodes."""
         entries = emit(_file(_bare("MHALL")))
-        canon = _find_entries(entries, sig="ASK", op="ASK")
+        canon = _find_entries(entries, op="ASK")
         assert len(canon) == 1
         assert canon[0].nodes == ["M", "H", "A", "L", "L"]  # 5 nodes, repeats kept
 

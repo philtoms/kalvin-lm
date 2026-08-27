@@ -99,6 +99,9 @@ class SymbolicEntry(NamedTuple):
                           # push every MTS kline after compiled source.
     annotation: str = ""   # the owning scope's annotation text
     scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
+    is_ask: bool = False   # ASK_NLP_TOKEN bit: the sig is the original
+                           # canonical signature; the bit marks the kline
+                           # as an ask (TokenEncoder ORs it into the sig)
 
 
 class ASTEmitter:
@@ -174,13 +177,20 @@ class ASTEmitter:
                 self._process_constructs(construct.constructs)
 
     def _emit_ask(self, text: str) -> None:
-        """Emit a sigless annotation as an ASK kline: ``ASK:[words]``."""
+        """Emit a sigless annotation as an ask kline:
+        ``ABC|ASK_NLP_TOKEN:[a big cat]``.
+
+        The canonical signature is the annotation's word initials (one
+        uppercased letter per word); the nodes are the words. The ASK bit
+        marks it as an ask — any signature can be one.
+        """
         words = self._extract_words(f"({text})")
         if not words:
             return
+        sig = "".join(w[:1].upper() for w in words)
         saved = self._scope_annotation
         self._scope_annotation = text
-        self._emit_entry("ASK", words, "ASK")
+        self._emit_entry(sig, words, "ASK", is_ask=True)
         self._scope_annotation = saved
 
     @staticmethod
@@ -249,9 +259,11 @@ class ASTEmitter:
                 # registry — a later authored canon for the same compound is a
                 # distinct relationship). When the canon is shared with an
                 # earlier authored scope (dedup hit), it stands untouched and
-                # the ask is a fresh entry with the canon's nodes.
+                # the ask is a fresh entry with the canon's nodes. Either way
+                # the ask keeps the compound's original canonical signature;
+                # the ASK_NLP_TOKEN bit marks it as an ask.
                 canon = self.entries[mts_idx]
-                ask = canon._replace(sig="ASK", op="ASK")
+                ask = canon._replace(op="ASK", is_ask=True)
                 if mts_created:
                     self._mts_canonize_seen.pop((canon.sig, tuple(canon.nodes)), None)
                     self.entries[mts_idx] = ask
@@ -483,7 +495,7 @@ class ASTEmitter:
 
     # Entry emission with CANONIZES dedup
 
-    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False) -> None:
+    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, is_ask: bool = False) -> None:
         """Emit a SymbolicEntry.
 
         CANONIZES dedup applies only to MTS expansion (one decoding aid per
@@ -511,7 +523,7 @@ class ASTEmitter:
             self._mts_canonize_seen[key] = (len(self.entries), is_mts)
 
         self.entries.append(SymbolicEntry(
-            sig=sig, nodes=nodes, op=op, is_mts=is_mts,
+            sig=sig, nodes=nodes, op=op, is_mts=is_mts, is_ask=is_ask,
             annotation=self._scope_annotation,
             scope=1 if is_mts else 0,
         ))

@@ -7,7 +7,7 @@ import dataclasses
 import pytest
 
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.nlp_tokenizer import ASK_NLP_TOKEN, NLPTokenizer
 from kalvin.significance import SIG_S1, SIG_S4
 from ks import compile_source
 from ks.ast import Annotation, Block, KScriptFile, OperatorScope, Signature
@@ -631,15 +631,15 @@ class TestEmitterMTS:
     # -- MTS expansion --------------------------------------------
 
     def test_mts_expansion(self):
-        """ABC → only the ASK canon (no per-component entries).
+        """ABC → only the ask canon (no per-component entries).
 
-        A bare compound is an ask: exactly one entry, {ASK:[A,B,C]} (S4). The
-        characters are values inside the canon, not headed klines.
+        A bare compound is an ask: exactly one entry, {ABC|ASK_NLP_TOKEN:[A,B,C]}
+        (S4). The characters are values inside the canon, not headed klines.
         """
         entries = compile_dev("ABC")
         assert len(entries) == 1
 
-        assert _sig_str(entries[0]) == "ASK" and entries[0].kline.dbg.op == "ASK"
+        assert _sig_str(entries[0]) == "ABC" and entries[0].kline.dbg.op == "ASK"
         assert _node_strs(entries[0]) == ["A", "B", "C"]
 
     def test_mts_component_uniformity(self):
@@ -687,13 +687,28 @@ class TestEmitterMTS:
         """A bare-compound ask entry has N nodes for an N-char identifier."""
         for ident in ["AB", "ABC", "ABCD", "MHALL"]:
             entries = compile_dev(ident)
-            ask_entries = _find_entries(entries, sig="ASK", op="ASK")
+            ask_entries = _find_entries(entries, op="ASK")
             assert len(ask_entries) == 1, f"No ASK entry for {ident}"
             canon = ask_entries[0]
             actual = len(canon.kline.nodes)
             assert actual == len(ident), (
                 f"ask for {ident}: expected {len(ident)} nodes, got {actual}"
             )
+
+    def test_sigless_annotation_ask(self):
+        """A sigless annotation compiles to ABC|ASK_NLP_TOKEN:[a big cat]."""
+        entries = compile_dev("(a big cat)")
+        ask = _find_entries(entries, op="ASK")
+        assert len(ask) == 1
+        assert _sig_str(ask[0]) == "ABC"
+        labels = [getattr(n, "label", "") for n in ask[0].kline.nodes]
+        assert labels == ["a", "big", "cat"]
+        assert ask[0].kline.signature & ASK_NLP_TOKEN
+
+        # The ask's canonical signature matches an authored ABC ask.
+        authored = compile_dev("ABC")
+        a = _find_entries(authored, op="ASK")[0]
+        assert ask[0].kline.signature == a.kline.signature
 
 class TestEmitterBinding:
 

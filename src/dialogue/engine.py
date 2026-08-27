@@ -255,7 +255,7 @@ class Engine:
                     # signature is answered by the canon itself).
                     self._ground(kline)
 
-                if is_misfit(kline, self._state.signifier) or asked:
+                if is_misfit(kline, self._state.signifier) or self.signifier.is_ask(kline.signature):
                     taught = self._taught_pattern(kline) if self.TRAINING else None
                     if taught is not None:
                         # Learned behaviour: a supervisor-taught answer for

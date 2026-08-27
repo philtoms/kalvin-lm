@@ -56,12 +56,6 @@ __all__ = ["Reentry"]
 # Upper bound on edge hop chain depth (_edge_hops's traversal bound).
 _MAX_HOP = 100
 
-
-def _bit_in(node: KNode, signature: KNode) -> bool:
-    """Does ``node``'s type-word bit pattern sit inside ``signature``?"""
-    return (node & signature) == node
-
-
 class Reentry:
     """The S2 strategy: rational fills for a pending misfit."""
 
@@ -111,8 +105,8 @@ class Reentry:
 
         nodes = list(entry.nodes)
         sig_nodes = self._nodes_of(entry.signature)
-        fit = [n for n in nodes if _bit_in(n, entry.signature)]
-        overfit = [n for n in nodes if not _bit_in(n, entry.signature)]
+        fit = [n for n in nodes if self.signifier.bit_in(n, entry.signature)]
+        overfit = [n for n in nodes if not self.signifier.bit_in(n, entry.signature)]
         underfit = [n for n in sig_nodes if n not in nodes]
         # underfit = self._underfit(entry, fit)
 
@@ -181,7 +175,7 @@ class Reentry:
         grounded identity delivers itself.
         """
         state = self._state
-        target = KLine(u, [n for n in fit if _bit_in(n, u)], entry.dbg)
+        target = KLine(u, [n for n in fit if self.signifier.bit_in(n, u)], entry.dbg)
         delivered = [
             list(kv.kline.nodes)
             for kv in self.propose(
@@ -219,7 +213,7 @@ class Reentry:
         """Held nodes whose bit pattern sits inside ``signature``."""
         out: list[KNode] = []
         for kline in self._state.where(
-            lambda k: _bit_in(k.signature, signature) and is_identity(k)
+            lambda k: self.signifier.bit_in(k.signature, signature) and is_identity(k)
         ):
             out.append(kline.signature)
         return out

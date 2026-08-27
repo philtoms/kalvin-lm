@@ -110,3 +110,8 @@ class KSignifier(ABC):
     def bit_in(self, node: KNode, signature: KNode) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         ...
+
+    @abstractmethod
+    def is_ask(self, signature: KNode) -> bool:
+        """Does ``signature`` carry the ASK_NLP_TOKEN flag?"""
+        ...

@@ -41,6 +41,7 @@ from __future__ import annotations
 import contextlib
 
 from kalvin.abstract import KSignifier, KTokenizer
+from kalvin.nlp_tokenizer import ASK_NLP_TOKEN
 from kalvin.significance import SIG_S1, band_significance
 from kalvin.kline import KDbg, KLine, KNode, using_resolver
 from kalvin.kvalue import KValue
@@ -221,7 +222,12 @@ class TokenEncoder:
             self._compound_sigs[entry.sig] = sig_uint64
             self._compound_labels.setdefault(sig_uint64, entry.sig)
 
-        # 4. Debug info.
+        # 4. Ask bit: an ask keeps its original canonical signature with
+        #    the ASK_NLP_TOKEN flag OR-ed in — any signature can be an ask.
+        if entry.is_ask:
+            sig_uint64 = KNode(int(sig_uint64) | ASK_NLP_TOKEN, entry.sig)
+
+        # 5. Debug info.
         dbg = KDbg(op=entry.op)
         if self._dev:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)

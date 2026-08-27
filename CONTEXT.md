@@ -107,8 +107,11 @@ The closed set of written tokens that declare how a kline is produced in KScript
 - **CONNOTES** (`>`) — 1:1 `{A: [B]}`. The signature connotes each node (`A > B` ⇒ A connotes B; subjectively, _A is a B_).
 - **DENOTES** (`=`) — 1:1 `{B: [A]}`. The signature denotes each node (`A = B` ⇒ A denotes B; objectively, _B is an A_).
 - **UNKNOWN** — a bare, unbound signature. See **Unknown**. A bare signature with no **Word Binding** compiles to the empty Unknown `{A: []}` — the structural form of an ask. A bare signature that is word-bound compiles instead to an **Identity** `{A: [A]}` (see Identity): the binding gives it a decodable value, so the script labels it a known identity rather than an ask.
-- **ASK** — a bare compound (a signature block with no operation) or a sigless annotation (one not consumed by a following scope). Compiles to the ask kline `{ASK: [words]}` (S4): the registered ASK token heads the kline; its nodes are the compound's resolved characters (canon + identities as MTS would emit) or the annotation's words.
+- **ASK** — a bare compound (a signature block with no operation) or a sigless annotation (one not consumed by a following scope). Compiles to `sig|ASK_NLP_TOKEN:[nodes]` (S4): the kline keeps its original canonical signature — the compound itself, or the annotation's word initials (`(a big cat)` → `ABC|ASK_NLP_TOKEN:[a big cat]`) — with the **ASK_NLP_TOKEN** type-word bit (bit 31) marking it as an ask, so any signature can be an ask. Nodes are the compound's resolved characters (canon + identities as MTS would emit) or the annotation's words.
   _Avoid_: structural relationship (collides with Structural Significance), relational operator (the token declares provenance, not an operation)
+
+**Comment**:
+A leading `#` — the rest of the line is dropped by the lexer. Purely lexical: a comment never reaches binding, compilation, or klines.
 
 **Annotation**:
 The semantic layer of a KScript: parenthetical prose that instructs the agent running the session, in high-level language, what the surrounding structure means — aligning an easily-understood concept with an otherwise opaque structural label. Also resolves **Word Binding**. Annotations exist for the agent, not the trainee: the trainee never sees them and their words are not encoded into klines. A script is valid without annotations; their absence or mismatch with a signature is a missed opportunity for the agent, never a compilation error.

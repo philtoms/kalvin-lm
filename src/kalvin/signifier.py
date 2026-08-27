@@ -35,6 +35,7 @@ from collections.abc import Sequence
 
 from kalvin.abstract import KSignifier
 from kalvin.kline import KNode
+from kalvin.nlp_tokenizer import ASK_NLP_TOKEN
 
 # The NLP type word occupies the upper 32 bits of a node; signifies() compares
 # only that half — the BPE component (lower 32) is masked off so two values
@@ -95,3 +96,7 @@ class NLPSignifier(KSignifier):
     def bit_in(self, node: KNode, signature: KNode) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         return (node & signature) == node
+
+    def is_ask(self, signature: KNode) -> bool:
+        """Does ``signature`` carry the ASK_NLP_TOKEN flag?"""
+        return (signature & ASK_NLP_TOKEN) != 0

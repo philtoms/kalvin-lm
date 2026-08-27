@@ -84,11 +84,21 @@ class Lexer:
             start_col = self.column
             indent = self._count_indent()
 
-            # Blank lines (only whitespace, no content) must not affect
-            # indent state — skip them entirely.
+            # Blank and comment-only lines (only whitespace and/or a
+            # comment, no content) must not affect indent state — skip them
+            # entirely.
             if self.pos >= len(self.source) or self.source[self.pos] == "\n":
                 if self.pos < len(self.source) and self.source[self.pos] == "\n":
                     self.pos += 1
+                    self.line += 1
+                    self.column = 1
+                self.at_line_start = True
+                return None
+
+            if self.source[self.pos] == "#":
+                self._skip_to_eol()
+                if self.pos < len(self.source):
+                    self._advance()
                     self.line += 1
                     self.column = 1
                 self.at_line_start = True
@@ -103,6 +113,11 @@ class Lexer:
             return None
 
         ch = self.source[self.pos]
+
+        if ch == "#":
+            # A trailing comment: the rest of the line is dropped.
+            self._skip_to_eol()
+            return None
 
         if ch == "\n":
             return self._read_newline()
@@ -129,6 +144,11 @@ class Lexer:
             return self._read_annotation()
 
         raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
+
+    def _skip_to_eol(self) -> None:
+        """Skip to just before the next newline (or EOF)."""
+        while self.pos < len(self.source) and self.source[self.pos] != "\n":
+            self.pos += 1
 
     def _count_indent(self) -> int:
         """Count indentation at line start (spaces and tabs)."""

@@ -2,6 +2,9 @@
 
 ## 2026-08-27
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig","title":"ASK klines now sig|ASK_NLP_TOKEN with original canonical signature"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b","title":"ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann","title":"Compiler emits ASK klines for bare compounds and sigless annotations"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-08-27-build-state-py-dev-tool-added","title":"build_state.py dev tool added"}
 - **retro**: {"category":"bugfix","slug":"identity-priming-and-knowledge-restatement","title":"Identity priming; engine stopped restating knowledge"}
 - **retro**: {"category":"bugfix","slug":"compound-word-identity-label-and-dedup","title":"Compound-word identity labels and MTS dedup"}

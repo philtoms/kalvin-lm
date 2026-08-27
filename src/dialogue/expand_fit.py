@@ -109,9 +109,7 @@ class ExpandFit:
 
     def propose(self, entry: KLine) -> Iterator[KValue]:
         for candidate in self._candidates(entry):
-            # An identity is an ask or a fact, never a proposal.
-            if candidate is not None:
-                yield from self.expand(entry, candidate)
+            yield from self.expand(entry, candidate, _visited=set())
         return
 
     def expand(
@@ -119,7 +117,7 @@ class ExpandFit:
         query: KLine,
         candidate: KLine,
         *,
-        _visited: set[tuple[int, KNode]] | None = None,
+        _visited: set[tuple[int, KNode]],
         _top: bool = True,
     ) -> Iterator[KValue]:
         """Expand a query-candidate pair, yielding connotations and terminal byte.
@@ -142,9 +140,6 @@ class ExpandFit:
         ``aggregator`` bundles the layout (S2_S3_BOUNDARY) and the two pluggable
         seams (DecayFunction, ComposeFunction).
         """
-        if _visited is None:
-            _visited = set()
-
         key = (query.signature, candidate.signature)
         if key in _visited:
             return  # cycle detected
@@ -155,10 +150,11 @@ class ExpandFit:
 
         q_set = set(query.nodes)
         c_set = set(candidate.nodes)
-        mismatched_q = q_set - c_set
-        mismatched_c = c_set - q_set
-        matched = q_set & c_set
+        underfit = q_set - c_set
+        overfit = c_set - q_set
+        s2_fit = q_set & c_set
 
+        s2_target: list[KNode] = list(s2_fit)
         s3_connotations: dict[KNode, int] = {}  # sig -> min hops from any query node
 
         # Per-node accountedness, in slot order. One float per slot.
@@ -167,7 +163,7 @@ class ExpandFit:
         aggregator = PROPOSAL_AGGREGATOR
         decay = aggregator.decay
 
-        for n in mismatched_q:
+        for n in underfit:
             accounted = 0.0  # unresolvable default (case F)
             q_kline = state.find(n)
             if q_kline is not None:
@@ -175,7 +171,7 @@ class ExpandFit:
                     c_kline = state.find(match_sig)
                     if c_kline is None:
                         continue
-                    if match_sig in mismatched_c:
+                    if match_sig in overfit:
                         # case C: exact opposing match (S2 direct) -> recurse.
                         accounted = decay(hops)
                         yield from self.expand(
@@ -193,7 +189,7 @@ class ExpandFit:
                         s3_connotations[match_sig] = hops
             slot_values.append(accounted)
 
-        for n in mismatched_c:
+        for n in overfit:
             accounted = 0.0
             q_kline = state.find(n)
             if q_kline is not None:
@@ -201,7 +197,7 @@ class ExpandFit:
                     c_kline = state.find(match_sig)
                     if c_kline is None:
                         continue
-                    if match_sig in mismatched_q:
+                    if match_sig in underfit:
                         # case C: exact opposing match (S2 direct) -> recurse.
                         accounted = decay(hops)
                         yield from self.expand(
@@ -226,7 +222,7 @@ class ExpandFit:
             slot_values.append(accounted)
 
         # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1).
-        for n in matched:
+        for n in s2_fit:
             kl = state.find(n)
             if kl is not None and state.is_grounded(kl):
                 slot_values.append(1.0)
@@ -246,13 +242,12 @@ class ExpandFit:
         signifier = self._state.signifier
         conns: list[KLine] = []
 
-        for node in entry.nodes:
-            for sig in self._state.where(
-                lambda k: not is_identity(k)
-                and signifier.signifies(node, k.signature) == 0
-            ):
-                if sig != entry.signature and not is_identity(sig):
-                    conns.append(sig)
+        for sig in self._state.where(
+            lambda k: entry.signature != k.signature
+            and not is_identity(k)
+            and signifier.signifies(entry.signature, k.signature)
+        ):
+            conns.append(sig)
         return conns
 
     def _connotations(self, entry: KLine) -> dict[KNode, int]:

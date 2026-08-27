@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-27T09:05:18.019Z",
+  "last_updated": "2026-08-27T13:03:47.720Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1218,6 +1218,38 @@
       "created": "2026-08-26",
       "updated": "2026-08-26"
     },
+    "sources/obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b": {
+      "type": "source",
+      "title": "Observation: ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug)",
+      "tags": [
+        "kscript",
+        "compiler",
+        "bugfix",
+        "asks"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b",
+      "relevance": "high",
+      "observed_at": "2026-08-27T12:05:51.775Z",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig": {
+      "type": "source",
+      "title": "Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature",
+      "tags": [
+        "ks",
+        "compiler",
+        "ask"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig",
+      "relevance": "high",
+      "observed_at": "2026-08-27T13:03:47.689Z",
+      "source_context": "Reworking ASK kline compilation to signature-agnostic ask bit",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
     "sources/obs-2026-08-27-build-state-py-dev-tool-added": {
       "type": "source",
       "title": "Observation: build_state.py dev tool added",
@@ -1230,6 +1262,21 @@
       "slug": "obs-2026-08-27-build-state-py-dev-tool-added",
       "relevance": "medium",
       "observed_at": "2026-08-27T09:05:17.992Z",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann": {
+      "type": "source",
+      "title": "Observation: Compiler emits ASK klines for bare compounds and sigless annotations",
+      "tags": [
+        "kscript",
+        "compiler",
+        "asks"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann",
+      "relevance": "high",
+      "observed_at": "2026-08-27T11:00:24.417Z",
       "created": "2026-08-27",
       "updated": "2026-08-27"
     },

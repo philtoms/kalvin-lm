@@ -73,10 +73,16 @@ class PivotFill:
     #: reentry proposals share the budget.
     BUDGET = 3
 
-    def propose(
+    def propose(self, entry: KLine) -> Iterator[KValue]:
+        for candidate in self._candidates(entry):
+            yield from self._expand(entry, candidate, _visited=set())
+        return
+
+    def _expand(
         self,
         entry: KLine,
-        _depth: int = 2,
+        candidate: KLine,
+        _visited: set[tuple[int, KNode]],
         _budget: int | None = None,
     ) -> Iterator[KValue]:
         """Yield proposals for ``entry`` breadth-first, halting at the budget.
@@ -85,10 +91,25 @@ class PivotFill:
         order is significance order — no global sort. Reentry proposals share
         the budget and are explored lazily as it remains.
         """
+        key = (entry.signature, candidate.signature)
+        if key in _visited:
+            return  # cycle detected
+        _visited.add(key)
+
         budget = self.BUDGET if _budget is None else _budget
         if budget <= 0:
             return
+        
         signifier = self._state.signifier
+
+        e_set = set(entry.nodes)
+        c_set = set(candidate.nodes)
+        underfit = e_set - c_set
+        overfit = c_set - e_set
+        fit = e_set & c_set
+
+        s2_target: list[KNode] = list(fit)
+
         underfit, overfit = classify_misfit(entry, signifier)
         if not underfit and not overfit:
             # A gapless canon is not a misfit. The one exception: an asked
@@ -124,7 +145,7 @@ class PivotFill:
             for target in self._reentry_targets(entry):
                 if emitted >= budget:
                     return
-                for sub in self.propose(
+                for sub in self._expand(
                     target, _depth=_depth - 1, _budget=budget - emitted
                 ):
                     emitted += 1
@@ -516,3 +537,15 @@ class PivotFill:
                     yield hop_count, reached
                     next_frontier.append(reached)
             frontier = next_frontier
+
+    def _candidates(self, entry: KLine) -> list[KLine]:
+        signifier = self._state.signifier
+        conns: list[KLine] = []
+
+        for sig in self._state.where(
+            lambda k: entry.signature != k.signature
+            and not is_identity(k)
+            and signifier.signifies(entry.signature, k.signature)
+        ):
+            conns.append(sig)
+        return conns
