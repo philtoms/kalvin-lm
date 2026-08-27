@@ -24,7 +24,7 @@ from typing import cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
-from kalvin.kline import KLine, KNode
+from kalvin.kline import KLine, KNode, is_canon, is_identity
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
 from kalvin.significance import SIG_MASK, SIG_S1, SIG_S3, SIG_S4, BandLayout
@@ -214,17 +214,17 @@ class Harness:
                 continue
             steps.append((key, group, opener))
         results: list[StepResult] = []
-        # Priming: every compiled identity is a fact — submit all at S1
-        # before the run, so the dialogue opens on the questions, not on
-        # identity discovery.
-        identities = [
+        # Priming: every compiled identity and canon is a fact — submit all
+        # at S1 before the run, so the dialogue opens on the questions, not on
+        # identity and canon discovery.
+        priming = [
             e for e in entries
-            if e.kline.dbg and e.kline.dbg.op == "IDENTITY"
+            if (is_identity(e.kline) or is_canon(e.kline, self.state.signifier))
             and not self.state.is_grounded(e.kline)
         ]
-        if identities:
+        if priming:
             self._engine.rationalise(
-                [KValue(e.kline, SIG_S1) for e in identities]
+                [KValue(e.kline, SIG_S1) for e in priming]
             )
         for i, (key, group, opener) in enumerate(steps):
             # Fresh answers per authored group: a repeated group is a second
