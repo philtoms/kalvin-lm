@@ -103,11 +103,12 @@ class TestTokenType:
     """All token types recognized; Token is a frozen dataclass."""
 
     def test_token_type_members(self):
-        """All 10 TokenType members exist."""
+        """All 11 TokenType members exist."""
         expected = {
             "COUNTERSIGNS",
             "CANONIZES",
             "CONNOTES",
+            "RCONNOTES",
             "DENOTES",
             "SIGNATURE",
             "ANNOTATION",
@@ -232,10 +233,10 @@ class TestLexer:
         assert len(tokens) == 1
         assert tokens[0].type == TokenType.EOF
 
-    def test_angle_bracket_error(self):
-        """'<' raises LexerError."""
-        with pytest.raises(LexerError):
-            Lexer("A < B").tokenize()
+    def test_angle_bracket_reversed_connotes(self):
+        """'<' lexes as RCONNOTES."""
+        toks = Lexer("A < B").tokenize()
+        assert toks[1].type == TokenType.RCONNOTES
 
     def test_unknown_char_error(self):
         """Unknown characters raise LexerError."""

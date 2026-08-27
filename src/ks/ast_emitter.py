@@ -83,7 +83,8 @@ class SymbolicEntry(NamedTuple):
         nodes: Always a list — empty for UNKNOWN, single-item for per-item
                operators, multi-item for CANONIZES aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
-        op:   One of "COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES",
+        op:   One of "COUNTERSIGNS", "CANONIZES", "CONNOTES", "RCONNOTES",
+               "DENOTES",
                "UNKNOWN".
         component_labels: Resolved words per signature character (for word
                mode).  None when not applicable.
@@ -354,6 +355,10 @@ class ASTEmitter:
         elif op == "CONNOTES":
             for node in nodes:
                 self._emit_entry(sig, [node], "CONNOTES")
+
+        elif op == "RCONNOTES":
+            for node in nodes:
+                self._emit_entry(node, [sig], "CONNOTES")
 
         elif op == "CANONIZES":
             # A compound-headed CANONIZES scope produces TWO distinct
@@ -896,6 +901,7 @@ class ASTEmitter:
             TokenType.COUNTERSIGNS: "COUNTERSIGNS",
             TokenType.CANONIZES: "CANONIZES",
             TokenType.CONNOTES: "CONNOTES",
+            TokenType.RCONNOTES: "RCONNOTES",
             TokenType.DENOTES: "DENOTES",
         }
         return _map.get(op, "UNKNOWN")

@@ -100,11 +100,11 @@ The language that authors training material. A script is an encounter, authored 
 A value produced by the tokenizer.
 
 **Relational Tokens**:
-The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
+The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `<` (CONNOTES, reversed), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
 
 - **COUNTERSIGNS** (`==`) — 1:1 emits a reciprocal pair `{A: [B]}`, `{B: [A]}`. The signature countersigns each other's nodes.
 - **CANONIZES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonizes its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
-- **CONNOTES** (`>`) — 1:1 `{A: [B]}`. The signature connotes each node (`A > B` ⇒ A connotes B; subjectively, _A is a B_).
+- **CONNOTES** (`>` / `<`) — 1:1. `A > B` ⇒ `{A: [B]}` (the signature connotes each node; subjectively, _A is a B_); `A < B` ⇒ `{B: [A]}` — the same connotation written from the other side.
 - **DENOTES** (`=`) — 1:1 `{B: [A]}`. The signature denotes each node (`A = B` ⇒ A denotes B; objectively, _B is an A_).
 - **UNKNOWN** — a bare, unbound signature. See **Unknown**. A bare signature with no **Word Binding** compiles to the empty Unknown `{A: []}` — the structural form of an ask. A bare signature that is word-bound compiles instead to an **Identity** `{A: [A]}` (see Identity): the binding gives it a decodable value, so the script labels it a known identity rather than an ask.
 - **ASK** — a bare compound (a signature block with no operation) or a sigless annotation (one not consumed by a following scope). Compiles to `sig|ASK_NLP_TOKEN:[nodes]` (S4): the kline keeps its original canonical signature — the compound itself, or the annotation's word initials (`(a big cat)` → `ABC|ASK_NLP_TOKEN:[a big cat]`) — with the **ASK_NLP_TOKEN** type-word bit (bit 31) marking it as an ask, so any signature can be an ask. Nodes are the compound's resolved characters (canon + identities as MTS would emit) or the annotation's words.

@@ -135,7 +135,7 @@ class Lexer:
         if ch == ">":
             return self._make_token(TokenType.CONNOTES, ">")
         if ch == "<":
-            raise LexerError(f"Unexpected character: {ch!r}", self.line, self.column)
+            return self._make_token(TokenType.RCONNOTES, "<")
 
         if ch.isalpha():
             return self._read_identifier()

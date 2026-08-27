@@ -11,7 +11,7 @@ Grammar::
     items           ::= item*
     item            ::= sig | annotation | operator_scope
     sig             ::= SIGNATURE
-    operator        ::= COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES
+    operator        ::= COUNTERSIGNS | CANONIZES | CONNOTES | RCONNOTES | DENOTES
 
 Scope rules enforced:
 
@@ -63,6 +63,7 @@ _OPERATOR_TYPES: frozenset[TokenType] = frozenset(
         TokenType.COUNTERSIGNS,
         TokenType.CANONIZES,
         TokenType.CONNOTES,
+        TokenType.RCONNOTES,
         TokenType.DENOTES,
     }
 )

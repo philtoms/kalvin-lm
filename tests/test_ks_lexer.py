@@ -260,12 +260,11 @@ class TestEdgeCases:
         assert exc_info.value.line == 1
         assert exc_info.value.column == 1
 
-    def test_less_than_error(self):
-        """'<' → LexerError."""
-        with pytest.raises(LexerError) as exc_info:
-            _tokens("A < B")
-        assert exc_info.value.line == 1
-        assert exc_info.value.column == 3
+    def test_less_than_token(self):
+        """'<' → RCONNOTES."""
+        toks = _tokens("A < B")
+        assert toks[1].type == TokenType.RCONNOTES
+        assert toks[1].value == "<"
 
     def test_identifier_with_digits_accepted(self):
         """'AB3' → SIGNATURE (digits after first char are valid)."""
@@ -374,7 +373,7 @@ class TestLexerError:
 
     def test_error_has_line_column(self):
         with pytest.raises(LexerError) as exc_info:
-            _tokens("A < B")
+            _tokens("A @ B")
         assert exc_info.value.line == 1
         assert exc_info.value.column == 3
 
