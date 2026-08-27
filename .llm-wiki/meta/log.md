@@ -164,3 +164,6 @@
 ## [2026-08-27T08:50:34.405Z] retro
 - slug: "identity-priming-and-knowledge-restatement", title: "Identity priming; engine stopped restating knowledge", category: "bugfix"
 
+## [2026-08-27T09:05:17.993Z] observe
+- slug: "obs-2026-08-27-build-state-py-dev-tool-added", title: "build_state.py dev tool added", relevance: "medium"
+

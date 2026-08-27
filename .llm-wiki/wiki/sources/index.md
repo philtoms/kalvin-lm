@@ -47,5 +47,6 @@
 - [Observation: All compiler-minted KNodes labelled; mhall run fully labelled](obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled.md)
 - [Observation: KNode became a labelled int subclass; labels wired at TokenEncoder](obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen.md)
 - [Observation: -p reloaded-state banner and fresh-vs-held grounding split](obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split.md)
+- [Observation: build_state.py dev tool added](obs-2026-08-27-build-state-py-dev-tool-added.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

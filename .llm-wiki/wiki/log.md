@@ -2,6 +2,7 @@
 
 ## 2026-08-27
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-08-27-build-state-py-dev-tool-added","title":"build_state.py dev tool added"}
 - **retro**: {"category":"bugfix","slug":"identity-priming-and-knowledge-restatement","title":"Identity priming; engine stopped restating knowledge"}
 - **retro**: {"category":"bugfix","slug":"compound-word-identity-label-and-dedup","title":"Compound-word identity labels and MTS dedup"}
 

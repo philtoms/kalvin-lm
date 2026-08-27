@@ -52,3 +52,4 @@
 {"slug":"obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split","title":"-p reloaded-state banner and fresh-vs-held grounding split","relevance":"medium","timestamp":"2026-08-26T16:22:30.695Z","kind":"observe"}
 {"slug":"compound-word-identity-label-and-dedup","title":"Compound-word identity labels and MTS dedup","category":"bugfix","timestamp":"2026-08-27T08:44:54.629Z","kind":"retro"}
 {"slug":"identity-priming-and-knowledge-restatement","title":"Identity priming; engine stopped restating knowledge","category":"bugfix","timestamp":"2026-08-27T08:50:34.405Z","kind":"retro"}
+{"slug":"obs-2026-08-27-build-state-py-dev-tool-added","title":"build_state.py dev tool added","relevance":"medium","timestamp":"2026-08-27T09:05:17.993Z","kind":"observe"}
