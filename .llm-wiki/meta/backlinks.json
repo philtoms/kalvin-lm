@@ -219,6 +219,7 @@
     "entities/tokenencoder",
     "sources/SRC-2026-08-11-001",
     "sources/SRC-2026-08-11-002",
+    "sources/compound-word-identity-label-and-dedup",
     "sources/wiki-duplicate-consolidation"
   ],
   "concepts/node": [
@@ -717,6 +718,9 @@
     "entities/kalvin",
     "entities/marys-world"
   ],
+  "sources/compound-word-identity-label-and-dedup": [],
+  "sources/identity-klines-never-proposals": [],
+  "sources/identity-priming-and-knowledge-restatement": [],
   "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": [],
   "sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected": [
     "entities/k-engine",
@@ -752,7 +756,18 @@
   "sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar": [],
   "sources/obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho": [],
   "sources/obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos": [],
+  "sources/obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl": [],
   "sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers": [],
+  "sources/obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs": [],
+  "sources/obs-2026-08-24-kscript-semantic-model-settled-via-grill": [],
+  "sources/obs-2026-08-24-structural-supervisor-wired-at-escalation-seam": [],
+  "sources/obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled": [],
+  "sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen": [],
+  "sources/obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split": [],
+  "sources/obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b": [],
+  "sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig": [],
+  "sources/obs-2026-08-27-build-state-py-dev-tool-added": [],
+  "sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/wiki-duplicate-consolidation": []
 }

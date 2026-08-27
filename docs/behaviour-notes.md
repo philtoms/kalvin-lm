@@ -43,6 +43,14 @@ Rules when it resolves.
 - **Pivot alignment:** `_pivot_proposals` — a pivot is a grounded canon sharing a node with the entry's canon. Per canon node: shared → S2 slot (1.0); edge-hop path into the pivot's nodes → S3 (decay(hops), node **replaced** by its pivot counterpart); no path → gap. Canon nodes forming a grounded sub-canon resolve as a **group** through the sub-canon signature's path (did+have → DH → had). Gap slots take the pivot's leftover nodes (S4 fill): one gap takes the whole leftover residual as a grouped fill; N gaps take one each; gaps outnumbering leftovers drop the proposal; **leftovers with no open gap are excluded** (surplus graft was the `ALL:[a,little,lamb,Mary,had]` bug). Slot accounting — not bit residual — decides pivot survival.
 - Pivot slot semantics: shared node is **S2 (canonical)**, not S1; path is S3; gap fill is S4.
 
+### Supervisor — structural grading (`dialogue/structural.py`)
+
+- `SemanticEvidence` is the derived cross-kline structure of a script: entries by key/signature plus an *intended* fixed point — identity and canon by the universal grounding rule, declared relationships (COUNTERSIGNS/DENOTES/CONNOTES) by their own declaration, seeded with word identities for every node value (the tokenizer-guaranteed terminals; `did`/`have` never head entries). Underfit questions never enter the intended set.
+- `grade(proposal)`: exact canon (full-value `signature_of(nodes)==sig`) → S1 when all nodes held; content recognition (`signature_of(nodes)` names a script kline, e.g. `WDMH:[m h a l l]` ≡ MHALL) → graded S2, byte `0xFF - len(missing)`, missing = intended-but-unheld entries on the content canon and the proposal's signature; underfit → the script's decompositions of the signature are the missing list; no-fit → S2 when type overlap (`signifies`), else S4.
+- Band policy is K's own structural predicates — `is_canon`, `residual`, `signature_of`, `signifies` — never a bespoke table. Masked-residual equality is NOT canon-hood: `lamb`/`sheep` share type bits; only full-value equality is.
+- Installed at the harness escalation seam; the harness notifies it per entry joining the answering pools (`observe`) — same no-look-ahead rule. The harness still never judges.
+- On mhall: `WDMH:[Mary, had, a, little, lamb]` ratifies at S1 via `content=MHALL:[SVO]`; `DMHAL:[had, Mary, a, lamb]` stays S2 (no content bridge — the did/have→had pivot is K's work, not script structure).
+
 ### Harness
 
 - Curriculum-driven: the CLI takes a curriculum markdown file or a raw `.ks`; each lesson's kscript runs through a shared engine, state persisting across lessons; the label map accumulates the cumulative source.
@@ -60,9 +68,20 @@ Rules when it resolves.
 - Compiler output order ≠ authored order: all source entries first, then all MTS. Symbolic-entry indices do not align with compiled-KValue indices.
 - A single-token node word that never heads an entry is labelled via `TokenEncoder.node_labels`; the harness decoder is unsafe for compound-signature-as-node values.
 
+### Training — user significance as teaching material (`dialogue/teaching.py`)
+
+- A supervisor's graded response to K's own proposal is teaching material, distinct from script significance: **S1** grounds (fast path), **S4** refuses (S4 route), **S2** files the shape as a *pattern* (the kind of answer to give), **S3** files it as a *pivot* (a base, not an answer).
+- Recording seam: `route()` checks `query_sig in (S2, S3) and kline.signature in state.asked` — the stamp answers a signature K asked. The exemplar records the proposal **and the ask canon then in STM** (`_ask_context`) as its context.
+- Consumption seam: cogitation's misfit arm consults `teaching.pattern_for(kline)` before structural `propose` — an ask whose canon shares the exemplar's ask (same signature, or canon with node overlap) gets the taught kline verbatim at `SIG_TAUGHT` (0xC0) instead of structural proposals. Like a structural proposal, it is emitted and the misfit stays in STM until ratified/refused.
+- **Gated:** `Engine.TRAINING = False` by default; CLI flag `-t`/`--training` enables. Both seams (recording in `route`, replay in cogitate) sit behind the gate.
+- `Teaching` lives on `EngineState.teaching`; dedup by kline identity; most recent exemplar wins.
+- Goal (branch `training`): teach simple semantics — `what`/`did` keywords trigger response shapes — learned from graded responses, never hard coded. Pattern sketch: T WDMH S2 → K proposes WDMH:MHALL → T stamps it S2 → K grounds the difference as a pattern (including `what`).
+
 ## Active state of K
 
 ⚠️ **Pivot alignment artifacts + S5T2 churn.** mhall now proposes `WDMH:[had, Mary, a, little, lamb]` (the full alignment: did+have grouped-resolve through DH→had at S3, Mary shared at S2, the `what` gap filled by the grouped residual `[a,little,lamb]` at S4). Open: (a) wdmh still emits the greedy `[Mary,had,a,little]` variant because `find(DH)` returns the last bucket entry (`DH:[did,have]`, a cycle) rather than `DH:[had]` — bucket-order fragility; (b) the pivot arm proposes an entry's own canon when zero gaps exist (`ALL:[a,little,lamb]` self-canon echo — proposes nothing unknown; suppression candidate); (c) S5T2 grounds ALL then asks+proposes the same kline — duplicate STM copies of `ALL:[Query]` (opener + reply feed) each spawn asks, and the misfit arm runs on entries resolved earlier in the same pass; (d) refused-set lifetime (does a later grounding clear refusals whose basis changed?); (e) reentry's exponential widening and refusal circumvention via new shapes (`ALL:[lamb,lamb]` after `ALL:[lamb]` refused).
+
+⚠️ **Training arm first wiring.** `pattern_for` matches any canon with node overlap to the exemplar's ask — deliberately loose; the DMHAS ask drew the DMHAL-taught pattern immediately. Open: (a) matching by keyword (`what`/`did`) rather than node overlap — the actual semantic trigger; (b) pivots consumed only as data, `pivot_for` unused; (c) the difference-grounding step of the sketch (pattern as *transformation* from ask to answer, not verbatim shape) — currently the taught kline is replayed verbatim; (d) `SIG_TAUGHT = 0xC0` renders in S2 — a taught-but-untatified answer should perhaps sit below the boundary; (e) exemplar persistence (`to_dict`/`from_dict`) not yet wired.
 
 ## Process — discipline
 

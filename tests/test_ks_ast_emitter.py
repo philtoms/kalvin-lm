@@ -588,19 +588,21 @@ class TestKS19MTS:
     def test_mts_expansion(self):
         entries = emit(_file(_bare("ABC")))
 
-        # MTS emits only the CANONIZES canon — components are values inside
-        # it, not headed klines of their own.
-        assert_has_entry(entries, "ABC", ["A", "B", "C"], "CANONIZES")
+        # A bare compound is an ask: only the ask canon — components are
+        # values inside it, not headed klines of their own. The sig is the
+        # compound's canonical signature; is_ask marks the ASK bit.
+        assert_has_entry(entries, "ABC", ["A", "B", "C"], "ASK")
         assert not _find_entries(entries, sig="A")
         assert not _find_entries(entries, sig="B")
         assert not _find_entries(entries, sig="C")
 
     def test_mts_entry_count(self):
-        """MTS produces exactly one entry (the canon)."""
+        """A bare compound produces exactly one entry (the ask canon)."""
         entries = emit(_file(_bare("ABC")))
         assert len(entries) == 1
         assert entries[0].sig == "ABC"
-        assert entries[0].op == "CANONIZES"
+        assert entries[0].op == "ASK"
+        assert entries[0].is_ask is True
 
     def test_mts_entries_tagged_is_mts(self):
         """ MTS-produced canon entries carry is_mts=True; source entries do not.
@@ -697,7 +699,7 @@ class TestKS20bNoMTSForWords:
         # Sanity: all-uppercase multi-char identifiers still trigger MTS,
         # emitting only the canon (no per-component entries).
         entries = emit(_file(_bare("ALL")))
-        assert_has_entry(entries, "ALL", ["A", "L", "L"], "CANONIZES")
+        assert_has_entry(entries, "ALL", ["A", "L", "L"], "ASK")
         assert not _find_entries(entries, sig="A")
         assert not _find_entries(entries, sig="L")
 
@@ -733,22 +735,22 @@ class TestKS22NodeCount:
 
     def test_node_count_abc(self):
         entries = emit(_file(_bare("ABC")))
-        canonize = _find_entries(entries, sig="ABC", op="CANONIZES")
-        assert len(canonize) == 1
-        assert len(canonize[0].nodes) == 3  # len("ABC") == 3
+        ask = _find_entries(entries, op="ASK")
+        assert len(ask) == 1
+        assert len(ask[0].nodes) == 3  # len("ABC") == 3
 
     def test_node_count_mhall(self):
         entries = emit(_file(_bare("MHALL")))
-        canonize = _find_entries(entries, sig="MHALL", op="CANONIZES")
-        assert len(canonize) == 1
-        assert len(canonize[0].nodes) == 5  # len("MHALL") == 5
+        ask = _find_entries(entries, op="ASK")
+        assert len(ask) == 1
+        assert len(ask[0].nodes) == 5  # len("MHALL") == 5
 
     @pytest.mark.parametrize("compound", ["AB", "XYZ", "HELLO", "ABCD"])
     def test_node_count_various(self, compound):
         entries = emit(_file(_bare(compound)))
-        canonize = _find_entries(entries, sig=compound, op="CANONIZES")
-        assert len(canonize) == 1
-        assert len(canonize[0].nodes) == len(compound)
+        ask = _find_entries(entries, op="ASK")
+        assert len(ask) == 1
+        assert len(ask[0].nodes) == len(compound)
 
 
 # ======================================================================
@@ -944,7 +946,8 @@ class TestMTSDedup:
         assert not _find_entries(entries, sig="A")
         assert not _find_entries(entries, sig="B")
         assert not _find_entries(entries, sig="C")
-        assert len(_find_entries(entries, op="CANONIZES")) == 1
+        assert len(_find_entries(entries, op="ASK")) == 1
+        assert not _find_entries(entries, op="CANONIZES")
 
     def test_non_mts_identity_no_dedup(self):
         """Non-MTS UNKNOWN entries (from bare single-char scopes) are NOT deduped."""
@@ -967,9 +970,9 @@ class TestMTSComponentDedup:
     """MTS canon deduplication — canon only, no component entries."""
 
     def test_intra_expansion_node_count(self):
-        """MHALL has two L's — the canon preserves both as nodes."""
+        """MHALL has two L's — the ask canon preserves both as nodes."""
         entries = emit(_file(_bare("MHALL")))
-        canon = _find_entries(entries, sig="MHALL", op="CANONIZES")
+        canon = _find_entries(entries, op="ASK")
         assert len(canon) == 1
         assert canon[0].nodes == ["M", "H", "A", "L", "L"]  # 5 nodes, repeats kept
 

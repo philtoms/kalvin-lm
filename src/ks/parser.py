@@ -7,6 +7,7 @@ Grammar::
     block           ::= INDENT construct+ DEDENT
     annotation      ::= ANNOTATION
     operator_scope  ::= sig ( operator items )?
+                     |  ANNOTATION operator items   (sigless — synthesized MTS)
     items           ::= item*
     item            ::= sig | annotation | operator_scope
     sig             ::= SIGNATURE
@@ -18,6 +19,14 @@ Scope rules enforced:
     S3  Succeeding identifiers are nodes (items).
     S4  INDENT creates child scope → stored in OperatorScope.child_block.
     S5  DEDENT closes child scope.
+
+Sigless operator scope (single-line annotation):
+
+    (did Fred pet a sheep) =>
+
+    An annotation followed directly by an operator synthesizes the MTS
+    signature from the annotation words' initials (DFPAS), so large texts
+    can be chunked without hand-writing compounds.
 
 Inline annotations:
 
@@ -117,7 +126,7 @@ class Parser:
         if tok.type == TokenType.INDENT:
             return self._parse_block()
         if tok.type == TokenType.ANNOTATION:
-            return self._parse_annotation()
+            return self._parse_annotation_construct()
         if tok.type == TokenType.SIGNATURE:
             return self._parse_operator_scope()
         raise ParseError(
@@ -142,6 +151,46 @@ class Parser:
         tok = self._advance()
         return Annotation(text=tok.value, line=tok.line, column=tok.column)
 
+    def _parse_annotation_construct(self) -> ConstructItem:
+        """An ANNOTATION at construct position: loose, or a sigless scope.
+
+        An annotation synthesizes the operator scope whose signature is
+        its words' initials (the MTS convention): ``(did Fred pet a sheep)
+        =>`` is ``(did Fred pet a sheep)DFPAS =>``, and a bare
+        ``(did Fred pet a sheep)`` is the bare annotated sig. The
+        annotation remains the scope's annotation, so Word Binding
+        resolves the initials as usual. An annotation followed by a
+        SIGNATURE construct (or an indented block) is a prefix annotation
+        for it, not a sentence — no synthesis.
+        """
+        ann = self._parse_annotation()
+        nxt = self._lookahead_past_newlines()
+        if nxt in (TokenType.SIGNATURE, TokenType.INDENT):
+            # A prefix annotation: it heads the construct that follows,
+            # not a sentence of its own.
+            return ann
+        words = self._annotation_words(ann)
+        initials = "".join(w[0].upper() for w in words if w[:1].isalnum())
+        if not initials:
+            return ann
+        sig = Signature(id=initials, line=ann.line, column=ann.column)
+        scope = self._parse_operator_scope_rest(sig)
+        return Block(constructs=[ann, scope])
+
+    @staticmethod
+    def _annotation_words(annotation: Annotation) -> list[str]:
+        text = annotation.text
+        if len(text) >= 2 and text[0] == "(" and text[-1] == ")":
+            text = text[1:-1]
+        return text.split()
+
+    def _lookahead_past_newlines(self) -> TokenType | None:
+        """The next significant token type after any NEWLINEs (no consume)."""
+        i = self.pos
+        while i < len(self.tokens) and self.tokens[i].type == TokenType.NEWLINE:
+            i += 1
+        return self.tokens[i].type if i < len(self.tokens) else None
+
     # OperatorScope  (sig (operator items)?)
 
     def _parse_operator_scope(self) -> OperatorScope:
@@ -159,6 +208,12 @@ class Parser:
                 column=ann_tok.column,
             )
 
+        return self._parse_operator_scope_rest(sig, inline_ann)
+
+    def _parse_operator_scope_rest(
+        self, sig: Signature, inline_ann: Annotation | None = None
+    ) -> OperatorScope:
+        """Parse an operator scope past its (already consumed) signature."""
         # Operator (optional — bare signature if absent)
         op: TokenType | None = None
         if not self._at_end() and self._peek().type in _OPERATOR_TYPES:

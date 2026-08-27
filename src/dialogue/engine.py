@@ -17,8 +17,10 @@ from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
 from dialogue.expand_fit import ExpandFit
+from dialogue.reentry import Reentry
 from kalvin.kline import (
     KLine,
+    KNode,
     is_canon,
     is_identity,
     is_misfit,
@@ -28,11 +30,10 @@ from kalvin.kline import (
 )
 from kalvin.kvalue import KValue
 from kalvin.significance import (
-    SIG_S1,
-    SIG_S3,
-    SIG_S4,
     SIG8_MAX,
     SIG_MASK,
+    SIG_S1,
+    SIG_S4,
     BandLayout,
 )
 
@@ -49,6 +50,9 @@ _LAYOUT = BandLayout()
 class Engine:
     #: Shape-route containment answering (exploratory, off by default).
     SHAPE_ANSWERS = False
+    #: User-significance teaching (S2/S3 supervisor stamps as training
+    #: material; exploratory, off by default).
+    TRAINING = False
     """Derives one turn from ``incoming``.
 
     Holds the :class:`EngineState` it mutates in place and constructs the
@@ -58,7 +62,9 @@ class Engine:
 
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
+        # self._misfit = PivotFill(state)
         self._misfit = ExpandFit(state)
+        # self._misfit = Reentry(state)
 
     @property
     def state(self) -> EngineState:
@@ -108,6 +114,18 @@ class Engine:
         structural_sig = sig_level(kline, self._state.signifier)
         query_sig = _LAYOUT.classify(query.significance)
 
+        if self.TRAINING and query_sig in ("S2", "S3") and (
+            kline.signature in self._state.asked
+        ):
+            # A graded response to K's own proposal under this signature:
+            # teaching material. S2 patterns the answer shape; S3 pivots it.
+            # The ask context is the canon K was attending to when asked.
+            self._state.teaching.record(
+                query_sig,
+                kline,
+                self._ask_context(kline.signature),
+            )
+
         if query_sig == "S4":
             self._state.refuse(kline)
             self._state.remove_stm(kline)
@@ -126,7 +144,26 @@ class Engine:
                 self._ground(kline)
                 return None
 
-        return self._fast_route(query) or self._slow_route(query)
+        result = self._fast_route(query)
+        if result is None:
+            self._slow_route(query)
+            return None
+        return result
+
+    def _taught_pattern(self, kline: KLine) -> KValue | None:
+        """A taught answer for the ask ``kline`` poses, not already refused."""
+        taught = self._state.teaching.pattern_for(kline, self._state.signifier)
+        if taught is None or self._state.is_refused(taught.kline):
+            return None
+        return taught
+
+    def _ask_context(self, signature: KNode) -> KLine | None:
+        """The canon ``signature`` asked about, if one is in attention."""
+        signifier = self._state.signifier
+        for entry in self._state.stm:
+            if entry.signature == signature and is_canon(entry, signifier):
+                return entry
+        return None
 
     def _fast_route(self, query: KValue) -> list[KValue] | None:
         """Answer a question directly from LTM.
@@ -201,23 +238,35 @@ class Engine:
 
             if is_unknown(kline):
                 self._state.remove_stm_at(idx)
-                batch.append(KValue(KLine(kline.signature, []), SIG_S4))
+                if not self._state.ltm.get(kline.signature):
+                    # A signature the model has since grounded answers its
+                    # own ask — nothing to say.
+                    batch.append(KValue(KLine(kline.signature, []), SIG_S4))
                 continue
             else:
                 asked = kline.signature in self._state.asked
                 if (
-                    not asked
+                    (not asked or is_canon(kline, self._state.signifier))
                     and self._state._is_groundable(kline)
                     and self._state._is_denoted(kline)
                 ):
+                    # A canon is the script's own ground truth — it grounds
+                    # even under an asked signature (the ask under the
+                    # signature is answered by the canon itself).
                     self._ground(kline)
 
-                if is_misfit(kline, self._state.signifier) or asked:
-                    proposals = list(self._misfit.propose(kline))
-                    if proposals:
-                        # A misfit stays in STM until its proposal is
-                        # ratified (grounded) or every shape is refused.
-                        batch.extend(proposals)
+                if is_misfit(kline, self._state.signifier) or self.signifier.is_ask(kline.signature):
+                    taught = self._taught_pattern(kline) if self.TRAINING else None
+                    if taught is not None:
+                        # Learned behaviour: a supervisor-taught answer for
+                        # this ask shape preempts structural proposals. Like
+                        # a structural proposal, it is emitted and the misfit
+                        # stays in STM until ratified or refused.
+                        batch.append(taught)
+                    else:
+                        proposals = list(self._misfit.propose(kline))
+                        if proposals:
+                            batch.extend(proposals)
 
                 if self._state.is_grounded(kline):
                     self._state.remove_stm_at(idx)
@@ -245,7 +294,7 @@ class Engine:
             and not is_canon(k, signifier)
         ]
 
-    def _resolved_nodes(self, nodes: list[int]) -> list[int]:
+    def _resolved_nodes(self, nodes: list[KNode]) -> list[KNode]:
         """Resolve node groups through grounded canon resolutions.
 
         A grounded canon (e.g. DH:[did,have]) whose signature also holds a
@@ -278,7 +327,6 @@ class Engine:
         coverage (contained / containing). Identities are not answers; a
         canon here is the sentence itself — exactly what K should say.
         """
-        signifier = self._state.signifier
         resolved = self._resolved_nodes(list(query.kline.nodes))
         if not resolved:
             return []

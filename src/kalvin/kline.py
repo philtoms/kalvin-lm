@@ -7,19 +7,44 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
-    from kalvin.abstract import KSignifier
+    from kalvin.abstract import KSignifier, KTokenizer
 
 # === Core Types ===
 
-KNode: TypeAlias = int
 
-# Type alias for KNodes — accepted input representations
-KNodes: TypeAlias = int | None | list[int]
+class KNode(int):
+    """A node: a uint64 value with an optional label.
+
+    Subclasses ``int`` so nodes hash, compare, and mask as plain values
+    everywhere in the engine; ``.label`` carries the human-readable name
+    and ``.value`` exposes the underlying int.
+    """
+
+    def __new__(cls, value: int, label: str = "") -> "KNode":
+        self = super().__new__(cls, value)
+        self.label = label
+        return self
+
+    @property
+    def value(self) -> int:
+        return int(self)
+
+    def with_label(self, label: str) -> "KNode":
+        """A copy of this node carrying ``label``."""
+        return KNode(self, label)
+
+    def __repr__(self) -> str:
+        return f"KNode({int(self)}, {self.label!r})" if self.label else f"KNode({int(self)})"
+
+
+# Accepted input representations for KLine's ``nodes`` parameter.
+# Sequence (covariant) so list[KNode] is assignable to it.
+KNodes: TypeAlias = int | None | Sequence[int]
 
 # Type alias for Signatures (uint64)
 KSig: TypeAlias = int
@@ -35,7 +60,7 @@ KSig: TypeAlias = int
 # checks, codec deserialisation) run outside any resolver context and pay
 # only a contextvar peek, never the per-node resolve.
 
-KResolver: TypeAlias = Callable[[int], "KLine | None"]
+KResolver: TypeAlias = Callable[[KNode], "KLine | None"]
 _resolver: contextvars.ContextVar[KResolver | None] = contextvars.ContextVar(
     "kalvin.kline.resolver", default=None
 )
@@ -135,7 +160,9 @@ class KLine:
         nodes: KNodes | KNode | None = None,
         dbg: KDbg | None = None,
     ):
-        self.signature = signature
+        self.signature = signature if isinstance(signature, KNode) else KNode(signature)
+        if not self.signature.label and dbg is not None and dbg.label:
+            self.signature = self.signature.with_label(dbg.label)
         self.nodes = _normalize_nodes(nodes)
         resolver = _resolver.get()
         if resolver is None:
@@ -313,7 +340,7 @@ def sig_level(kline: KLine, signifier: KSignifier) -> str:
     return "S1" if kline.signature == signifier.signature_of(kline.nodes) else "S2"
 
 
-def kline_display(kline: KLine, tokenizer: object, signifier: KSignifier) -> str:
+def kline_display(kline: KLine, tokenizer: KTokenizer, signifier: KSignifier) -> str:
     """Format a KLine as human-readable KScript source.
 
     Uses dbg provenance when available (label, op). Falls back to
@@ -353,7 +380,7 @@ def kline_display(kline: KLine, tokenizer: object, signifier: KSignifier) -> str
     return f"{sig_name} {op_sym} {' '.join(node_names)}"
 
 
-def _decode_token(tokenizer: object, token: int) -> str:
+def _decode_token(tokenizer: KTokenizer, token: int) -> str:
     """Decode a uint64 token to a string, falling back to hex."""
     try:
         result = tokenizer.decode([token])
@@ -426,14 +453,14 @@ def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:
 
 
 def _normalize_nodes(nodes: KNodes | KNode | None) -> list[KNode]:
-    """Normalize node input to a list[int].
+    """Normalize node input to a list of KNode.
 
     - None → []
-    - int → [int]
-    - list → list (as-is)
+    - int → [KNode]
+    - list → list (KNodes kept, plain ints wrapped)
     """
     if nodes is None:
         return []
     if isinstance(nodes, int):
-        return [nodes]
-    return list(nodes)
+        return [nodes if isinstance(nodes, KNode) else KNode(nodes)]
+    return [n if isinstance(n, KNode) else KNode(n) for n in nodes]

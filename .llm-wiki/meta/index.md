@@ -80,6 +80,9 @@
 
 ## Sources
 
+- [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
+- [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
+- [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists]] — Observation: No `python -m kscript` entrypoint exists *(created: 2026-08-11)*
@@ -111,7 +114,18 @@
 - [[sources/obs-2026-08-21-proposal-node-order-aligned-to-grounded-exemplar]] — Observation: Proposal node order aligned to grounded exemplar *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-refusal-resolves-the-ask-empty-asks-never-escalate-trace-sho]] — Observation: Refusal resolves the ask; empty asks never escalate; trace shows supervisor *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-speaking-fast-path-supervisor-escalation-only-misfits-propos]] — Observation: Speaking fast path + supervisor escalation + only-misfits-proposed *(created: 2026-08-21)*
+- [[sources/obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl]] — Observation: Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns *(created: 2026-08-21)*
 - [[sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers]] — Observation: User S2 ask path, binding leak fix, question-first openers *(created: 2026-08-21)*
+- [[sources/obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs]] — Observation: Curriculum term deflated to script in training docs *(created: 2026-08-24)*
+- [[sources/obs-2026-08-24-kscript-semantic-model-settled-via-grill]] — Observation: KScript semantic model settled via grill *(created: 2026-08-24)*
+- [[sources/obs-2026-08-24-structural-supervisor-wired-at-escalation-seam]] — Observation: Structural supervisor wired at escalation seam *(created: 2026-08-24)*
+- [[sources/obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled]] — Observation: All compiler-minted KNodes labelled; mhall run fully labelled *(created: 2026-08-26)*
+- [[sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen]] — Observation: KNode became a labelled int subclass; labels wired at TokenEncoder *(created: 2026-08-26)*
+- [[sources/obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split]] — Observation: -p reloaded-state banner and fresh-vs-held grounding split *(created: 2026-08-26)*
+- [[sources/obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b]] — Observation: ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug) *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig]] — Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-build-state-py-dev-tool-added]] — Observation: build_state.py dev tool added *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann]] — Observation: Compiler emits ASK klines for bare compounds and sigless annotations *(created: 2026-08-27)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -119,4 +133,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-21T14:28:38.285Z* | *Total pages: 107*
+*Last updated: 2026-08-27T13:03:47.720Z* | *Total pages: 121*

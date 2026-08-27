@@ -99,6 +99,9 @@ class SymbolicEntry(NamedTuple):
                           # push every MTS kline after compiled source.
     annotation: str = ""   # the owning scope's annotation text
     scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
+    is_ask: bool = False   # ASK_NLP_TOKEN bit: the sig is the original
+                           # canonical signature; the bit marks the kline
+                           # as an ask (TokenEncoder ORs it into the sig)
 
 
 class ASTEmitter:
@@ -150,22 +153,45 @@ class ASTEmitter:
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
         """Walk a KScriptFile AST and return the list of SymbolicEntry tuples."""
-        for construct in file.constructs:
-            self._process_construct(construct)
+        self._process_constructs(file.constructs)
         return self.entries
 
     # Construct dispatch
 
-    def _process_construct(self, construct: ConstructItem) -> None:
-        """Dispatch a top-level construct to the appropriate handler."""
-        if isinstance(construct, OperatorScope):
-            self._process_scope(construct)
-        elif isinstance(construct, Annotation):
-            self._pending_annotation = self._annotation_text(construct)
-            self._feed_annotation(construct)
-        elif isinstance(construct, Block):
-            for c in construct.constructs:
-                self._process_construct(c)
+    def _process_constructs(self, constructs: list) -> None:
+        """Dispatch constructs with one-step lookahead.
+
+        An annotation binds to a following scope (its pending annotation);
+        one not followed by a scope is a sigless ask.
+        """
+        for i, construct in enumerate(constructs):
+            nxt = constructs[i + 1] if i + 1 < len(constructs) else None
+            if isinstance(construct, OperatorScope):
+                self._process_scope(construct)
+            elif isinstance(construct, Annotation):
+                self._pending_annotation = self._annotation_text(construct)
+                self._feed_annotation(construct)
+                if not isinstance(nxt, OperatorScope):
+                    self._emit_ask(self._pending_annotation)
+            elif isinstance(construct, Block):
+                self._process_constructs(construct.constructs)
+
+    def _emit_ask(self, text: str) -> None:
+        """Emit a sigless annotation as an ask kline:
+        ``ABC|ASK_NLP_TOKEN:[a big cat]``.
+
+        The canonical signature is the annotation's word initials (one
+        uppercased letter per word); the nodes are the words. The ASK bit
+        marks it as an ask — any signature can be one.
+        """
+        words = self._extract_words(f"({text})")
+        if not words:
+            return
+        sig = "".join(w[:1].upper() for w in words)
+        saved = self._scope_annotation
+        self._scope_annotation = text
+        self._emit_entry(sig, words, "ASK", is_ask=True)
+        self._scope_annotation = saved
 
     @staticmethod
     def _annotation_text(annotation: Annotation) -> str:
@@ -211,7 +237,9 @@ class ASTEmitter:
         # against the word list, producing a competing token for a char that
         # an inline annotation has already bound (Word Binding regression).
         self._register_inline_overrides(scope)
+        prev_len = len(self.entries)
         mts_idx = self._emit_mts(scope.sig.id)
+        mts_created = len(self.entries) > prev_len
         op = self._op_to_str(scope.op)
 
         if op == "UNKNOWN":
@@ -225,6 +253,22 @@ class ASTEmitter:
                     self._emit_entry(sig_resolved, [sig_resolved], "IDENTITY")
                 else:
                     self._emit_entry(sig_resolved, [], "UNKNOWN")
+            else:
+                # A bare compound is an ask. When this scope created the MTS
+                # canon, it becomes the ask in place (leaving the dedup
+                # registry — a later authored canon for the same compound is a
+                # distinct relationship). When the canon is shared with an
+                # earlier authored scope (dedup hit), it stands untouched and
+                # the ask is a fresh entry with the canon's nodes. Either way
+                # the ask keeps the compound's original canonical signature;
+                # the ASK_NLP_TOKEN bit marks it as an ask.
+                canon = self.entries[mts_idx]
+                ask = canon._replace(op="ASK", is_ask=True)
+                if mts_created:
+                    self._mts_canonize_seen.pop((canon.sig, tuple(canon.nodes)), None)
+                    self.entries[mts_idx] = ask
+                else:
+                    self.entries.append(ask)
             return
 
         node_ids = self._collect_node_ids(scope)
@@ -342,7 +386,8 @@ class ASTEmitter:
             # Rule B4 inline-override patching is unaffected: it patches the
             # MTS entry directly via _parent_kline_canonize_idx, which the
             # MTS entry retains (it is not replaced here).
-            self._emit_entry(sig, list(nodes), "CANONIZES")
+            if nodes:
+                self._emit_entry(sig, list(nodes), "CANONIZES")
 
     # Node collection (Step 2)
 
@@ -432,13 +477,25 @@ class ASTEmitter:
         hit = self._mts_canonize_seen.get(key)
         if hit is not None:
             return hit[0]  # already emitted
-
         self._emit_entry(sig, list(chars), "CANONIZES", is_mts=True)
-        return len(self.entries) - 1
+        idx = len(self.entries) - 1
+        # A word-bound token is the script's own word: emit its identity
+        # (X:[X]) alongside the canon. Unbound raw chars stay unheaded —
+        # an unannotated character is an ask, not a known word.
+        for c, word in zip(sig, chars):
+            if word == c:
+                continue
+            if any(
+                e.sig == word and e.op in ("IDENTITY", "UNKNOWN")
+                for e in self.entries
+            ):
+                continue
+            self._emit_entry(word, [word], "IDENTITY", is_mts=True)
+        return idx
 
     # Entry emission with CANONIZES dedup
 
-    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False) -> None:
+    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, is_ask: bool = False) -> None:
         """Emit a SymbolicEntry.
 
         CANONIZES dedup applies only to MTS expansion (one decoding aid per
@@ -466,7 +523,7 @@ class ASTEmitter:
             self._mts_canonize_seen[key] = (len(self.entries), is_mts)
 
         self.entries.append(SymbolicEntry(
-            sig=sig, nodes=nodes, op=op, is_mts=is_mts,
+            sig=sig, nodes=nodes, op=op, is_mts=is_mts, is_ask=is_ask,
             annotation=self._scope_annotation,
             scope=1 if is_mts else 0,
         ))
@@ -595,7 +652,7 @@ class ASTEmitter:
                     and self._op_to_str(construct.op) == "DENOTES"
                 ):
                     self._emit_identity_if_needed(construct.sig.id)
-                self._process_construct(construct)
+                self._process_constructs([construct])
 
         if pushed_scope and self._scope is not None:
             self._scope.pop_scope()

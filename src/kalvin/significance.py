@@ -116,6 +116,7 @@ _OP_TO_SIG: dict[str, int] = {
     "DENOTES": SIG_S3,
     "IDENTITY": SIG_S1,
     "UNKNOWN": SIG_S4,
+    "ASK": SIG_S4,
 }
 
 

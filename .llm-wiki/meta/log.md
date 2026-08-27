@@ -134,3 +134,45 @@
 ## [2026-08-21T14:28:38.258Z] observe
 - slug: "obs-2026-08-21-negative-proposal-grade-scales-with-coverage-over-all-slots", title: "Negative proposal grade scales with coverage over all slots", relevance: "high"
 
+## [2026-08-21T15:26:12.448Z] observe
+- slug: "obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl", title: "Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns", relevance: "high"
+
+## [2026-08-24T11:01:34.940Z] observe
+- slug: "obs-2026-08-24-structural-supervisor-wired-at-escalation-seam", title: "Structural supervisor wired at escalation seam", relevance: "high"
+
+## [2026-08-24T16:14:36.056Z] observe
+- slug: "obs-2026-08-24-kscript-semantic-model-settled-via-grill", title: "KScript semantic model settled via grill", relevance: "high"
+
+## [2026-08-24T17:08:42.426Z] observe
+- slug: "obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs", title: "Curriculum term deflated to script in training docs", relevance: "high"
+
+## [2026-08-26T13:19:04.165Z] observe
+- slug: "obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen", title: "KNode became a labelled int subclass; labels wired at TokenEncoder", relevance: "high"
+
+## [2026-08-26T13:43:06.875Z] observe
+- slug: "obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled", title: "All compiler-minted KNodes labelled; mhall run fully labelled", relevance: "high"
+
+## [2026-08-26T16:15:14.369Z] retro
+- slug: "identity-klines-never-proposals", title: "Identity klines are never proposals", category: "bugfix"
+
+## [2026-08-26T16:22:30.695Z] observe
+- slug: "obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split", title: "-p reloaded-state banner and fresh-vs-held grounding split", relevance: "medium"
+
+## [2026-08-27T08:44:54.629Z] retro
+- slug: "compound-word-identity-label-and-dedup", title: "Compound-word identity labels and MTS dedup", category: "bugfix"
+
+## [2026-08-27T08:50:34.405Z] retro
+- slug: "identity-priming-and-knowledge-restatement", title: "Identity priming; engine stopped restating knowledge", category: "bugfix"
+
+## [2026-08-27T09:05:17.993Z] observe
+- slug: "obs-2026-08-27-build-state-py-dev-tool-added", title: "build_state.py dev tool added", relevance: "medium"
+
+## [2026-08-27T11:00:24.419Z] observe
+- slug: "obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann", title: "Compiler emits ASK klines for bare compounds and sigless annotations", relevance: "high"
+
+## [2026-08-27T12:05:51.777Z] observe
+- slug: "obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b", title: "ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug)", relevance: "high"
+
+## [2026-08-27T13:03:47.691Z] observe
+- slug: "obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig", title: "ASK klines now sig|ASK_NLP_TOKEN with original canonical signature", relevance: "high"
+

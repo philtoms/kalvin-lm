@@ -1,7 +1,30 @@
 # Wiki Update Log
 
+## 2026-08-27
+
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig","title":"ASK klines now sig|ASK_NLP_TOKEN with original canonical signature"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b","title":"ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann","title":"Compiler emits ASK klines for bare compounds and sigless annotations"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-08-27-build-state-py-dev-tool-added","title":"build_state.py dev tool added"}
+- **retro**: {"category":"bugfix","slug":"identity-priming-and-knowledge-restatement","title":"Identity priming; engine stopped restating knowledge"}
+- **retro**: {"category":"bugfix","slug":"compound-word-identity-label-and-dedup","title":"Compound-word identity labels and MTS dedup"}
+
+## 2026-08-26
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split","title":"-p reloaded-state banner and fresh-vs-held grounding split"}
+- **retro**: {"category":"bugfix","slug":"identity-klines-never-proposals","title":"Identity klines are never proposals"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled","title":"All compiler-minted KNodes labelled; mhall run fully labelled"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen","title":"KNode became a labelled int subclass; labels wired at TokenEncoder"}
+
+## 2026-08-24
+
+- **observe**: {"relevance":"high","slug":"obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs","title":"Curriculum term deflated to script in training docs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-24-kscript-semantic-model-settled-via-grill","title":"KScript semantic model settled via grill"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-24-structural-supervisor-wired-at-escalation-seam","title":"Structural supervisor wired at escalation seam"}
+
 ## 2026-08-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl","title":"Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-negative-proposal-grade-scales-with-coverage-over-all-slots","title":"Negative proposal grade scales with coverage over all slots"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-directional-containment-edge-credits-connotated-gap-fills-in","title":"Directional containment edge credits connotated gap fills in grading"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-21-positional-gap-fills-in-pivot-graft-unblock-multi-gap-propos","title":"Positional gap fills in pivot graft unblock multi-gap proposals"}

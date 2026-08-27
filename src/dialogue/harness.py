@@ -8,8 +8,8 @@ the trace, makes decisions, edits the engine and/or the source, and re-runs.
 
 Usage::
 
-    PYTHONPATH=src python -m dialogue.harness path/to/curriculum.ks
-    PYTHONPATH=src python -m dialogue.harness path/to/curriculum.ks -v
+    PYTHONPATH=src python -m dialogue.harness path/to/script.ks
+    PYTHONPATH=src python -m dialogue.harness path/to/script.ks -v
 """
 
 from __future__ import annotations
@@ -17,16 +17,17 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, cast
+from typing import cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
-from kalvin.kline import KLine
+from kalvin.kline import KLine, KNode, is_canon, is_identity
 from kalvin.kvalue import KValue
 from kalvin.nlp_tokenizer import NLPTokenizer
-from kalvin.significance import BandLayout, SIG_MASK, SIG_S1, SIG_S3, SIG_S4
+from kalvin.significance import SIG_MASK, SIG_S1, SIG_S3, SIG_S4, BandLayout
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.trainer.curriculum_document import (
@@ -129,7 +130,9 @@ class Harness:
             annotation = entry.kline.dbg.annotation if entry.kline.dbg else ""
             scope = entry.kline.dbg.scope if entry.kline.dbg else 0
             if scope == 0:
-                if current is None or (annotation and annotation != groups[-1][0].rsplit("#", 1)[0]):
+                if current is None or (
+                    annotation and annotation != groups[-1][0].rsplit("#", 1)[0]
+                ):
                     occurrence = sum(
                         1 for k, _ in groups if k.rsplit("#", 1)[0] == annotation
                     )
@@ -142,7 +145,7 @@ class Harness:
                 # MTS entries dedup globally: one set per compound. The whole
                 # set belongs to the first occurrence of its annotation.
                 if annotation:
-                    key = next(
+                    match = next(
                         (
                             f"{annotation}#{i}"
                             for i in range(
@@ -155,7 +158,7 @@ class Harness:
                         ),
                         None,
                     )
-                    target = by_key.get(key) if key else None
+                    target = by_key.get(match) if match else None
                 else:
                     target = None
                 if target is None and annotation and not any(
@@ -173,7 +176,10 @@ class Harness:
                     target = next(
                         (
                             g for k, g in reversed(list(by_key.items()))
-                            if any(e.kline.dbg.scope != 0 for e in g)
+                            if any(
+                                (e.kline.dbg.scope if e.kline.dbg else 0) != 0
+                                for e in g
+                            )
                         ),
                         groups[0][1] if groups else None,
                     )
@@ -208,6 +214,18 @@ class Harness:
                 continue
             steps.append((key, group, opener))
         results: list[StepResult] = []
+        # Priming: every compiled identity and canon is a fact — submit all
+        # at S1 before the run, so the dialogue opens on the questions, not on
+        # identity and canon discovery.
+        priming = [
+            e for e in entries
+            if (is_identity(e.kline) or is_canon(e.kline, self.state.signifier))
+            and not self.state.is_grounded(e.kline)
+        ]
+        if priming:
+            self._engine.rationalise(
+                [KValue(e.kline, SIG_S1) for e in priming]
+            )
         for i, (key, group, opener) in enumerate(steps):
             # Fresh answers per authored group: a repeated group is a second
             # ask, not a replay of the first one's dedup ledger.
@@ -218,6 +236,9 @@ class Harness:
                 exact.setdefault(
                     (kline.signature, tuple(kline.nodes)), entry
                 )
+                observe = getattr(self._escalate, "observe", None)
+                if observe is not None:
+                    observe(entry)
                 if (
                     kline.nodes != [kline.signature]
                     and kline.signature == self.signifier.signature_of(kline.nodes)
@@ -381,7 +402,9 @@ def _dedup(batch: list[KValue]) -> list[KValue]:
 
 
 def _label(signature: int, labels: dict[int, str], verbose: bool) -> str:
-    name = labels.get(signature)
+    # Script labels are authoritative; a loaded state's kline label is the
+    # fallback for words the current script never mentions.
+    name = labels.get(signature) or getattr(signature, "label", "")
     if verbose:
         return f"{name}|0x{signature:x}" if name else f"0x{signature:x}"
     return name or f"0x{signature:x}"
@@ -448,23 +471,37 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
                 lines.append(f"        {'asks':<8} {_render_kline(v, labels, verbose)}")
             if i in escalations:
                 r = escalations[i]
-                verdict = "ratified" if _band(r) == "S1" else "declined"
+                verdict = (
+                    "ratified" if _band(r) == "S1" else
+                    "graded" if _band(r) in ("S2", "S3") else
+                    "declined"
+                )
                 lines.append(f"        {'supervisor':<8} {verdict} ({_band(r)})")
     if step.stopped_on is not None:
-        lines.append(f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}")
+        lines.append(
+            f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}"
+        )
     return "\n".join(lines)
 
 
-def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
+def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool,
+                        pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
     if not state.ltm:
         return "  (grounded nothing)"
     lines = []
+    reloaded: list[str] = []
     for signature in sorted(state.ltm, key=lambda s: (s.bit_length(), s)):
-        owner = _label(signature, labels, verbose)
         bucket = state.ltm[signature]
         for kl in bucket:
             nodes = ", ".join(_label(n, labels, verbose) for n in kl.nodes)
-            lines.append(f"      {owner}:[{nodes}]")
+            line = f"      {_label(kl.signature, labels, verbose)}:[{nodes}]"
+            if pre_grounded is not None and (signature, tuple(kl.nodes)) in pre_grounded:
+                reloaded.append(line)
+            else:
+                lines.append(line)
+    if pre_grounded is not None:
+        lines.append("    (reloaded, held before this run)")
+        lines.extend(reloaded)
     return "\n".join(lines)
 
 
@@ -477,7 +514,8 @@ def _render_stm(state: EngineState, labels: dict[int, str], verbose: bool) -> st
 
 
 def _render_summary(results: list[StepResult], state: EngineState,
-                    labels: dict[int, str], verbose: bool) -> str:
+                    labels: dict[int, str], verbose: bool,
+                    pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
     bands: Counter = Counter()
     for step in results:
         for turn in step.turns:
@@ -488,13 +526,14 @@ def _render_summary(results: list[StepResult], state: EngineState,
         f"── summary ──\n"
         f"  steps: {len(results)}\n"
         f"  asks by band: {band_str}\n"
-        f"  grounded:\n{_render_grounded(state, labels, verbose)}\n"
+        f"  grounded:\n{_render_grounded(state, labels, verbose, pre_grounded)}\n"
         f"  stm (attending to at end of run):\n{_render_stm(state, labels, verbose)}"
     )
 
 
 def present(results: list[StepResult], state: EngineState, source: str,
-            tokenizer: NLPTokenizer, signifier: NLPSignifier, *, verbose: bool) -> None:
+            tokenizer: NLPTokenizer, signifier: NLPSignifier, *, verbose: bool,
+            pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> None:
     labels = _sig_to_label(source, tokenizer, signifier)
     last_annotation: str | None = None
     for step in results:
@@ -504,7 +543,7 @@ def present(results: list[StepResult], state: EngineState, source: str,
             last_annotation = annotation
         print(_render_step(step, labels, verbose))
     print()
-    print(_render_summary(results, state, labels, verbose))
+    print(_render_summary(results, state, labels, verbose, pre_grounded))
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────
@@ -573,9 +612,10 @@ def _interactive_supervisor(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run a curriculum (markdown) or KScript source through the lean engine and present the trace.",
+        description="Run a script (markdown plan) or KScript source through the "
+             "lean engine and present the trace.",
     )
-    parser.add_argument("source", help="Path to a curriculum markdown file or a .ks KScript file")
+    parser.add_argument("source", help="Path to a markdown plan file or a .ks KScript file")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
         help="Show hex signatures alongside scripted labels.",
@@ -589,6 +629,23 @@ def main(argv: list[str] | None = None) -> int:
              "1 ratifies at S1 (grounds in LTM), 2/3 grade and decline, "
              "4 declines.",
     )
+    parser.add_argument(
+        "-e", "--structural", action="store_true",
+        help="Grade off-script asks with the structural supervisor: compiler "
+             "evidence (canons, countersigns, denotations) decides the band, "
+             "S1 only when the script's proof completes.",
+    )
+    parser.add_argument(
+        "-t", "--training", action="store_true",
+        help="User-significance teaching: supervisor S2/S3 stamps on K's own "
+             "proposals are filed as patterns/pivots and replayed for "
+             "matching asks.",
+    )
+    parser.add_argument(
+        "-p", "--persist", nargs="?", const="auto", default=None, metavar="PATH",
+        help="Load engine state before the run and save it after. PATH "
+             "defaults to data/dialogue/{script_name}.json.",
+    )
     args = parser.parse_args(argv)
 
     source_path = Path(args.source)
@@ -599,7 +656,30 @@ def main(argv: list[str] | None = None) -> int:
             print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
             return 2
         tok = NLPTokenizer()
-        harness = make_engine(tok)
+        state_path = (
+            Path(f"data/dialogue/{source_path.stem}.json")
+            if args.persist == "auto"
+            else Path(args.persist) if args.persist else None
+        )
+        if state_path is not None and state_path.exists():
+            harness = load_engine(state_path, tok)
+            n = sum(len(b) for b in harness.state.ltm.values())
+            print(f"── running on reloaded state: {n} grounded klines "
+                  f"from {state_path} ──")
+        else:
+            harness = make_engine(tok)
+        if args.training:
+            from dialogue.engine import Engine
+            Engine.TRAINING = True
+        if args.structural:
+            from dialogue.structural import SemanticEvidence, StructuralSupervisor
+
+            labels = _sig_to_label(source, tok, harness.signifier)
+            render = lambda v: _render_kline(v, labels, args.verbose)  # noqa: E731
+            supervisor = StructuralSupervisor(
+                SemanticEvidence(harness.signifier), harness.state, render
+            )
+            harness._escalate = supervisor
         if args.supervise:
             labels = _sig_to_label(source, tok, harness.signifier)
             harness._escalate = (
@@ -607,14 +687,31 @@ def main(argv: list[str] | None = None) -> int:
                 if args.supervise == "interactive"
                 else _queue_supervisor(args.supervise.split(","), labels, args.verbose)
             )
+        pre_grounded = (
+            {(sig, tuple(kl.nodes))
+             for sig, bucket in harness.state.ltm.items() for kl in bucket}
+            if state_path is not None and state_path.exists() else None
+        )
         results = harness.run(source)
-        present(results, harness.state, source, tok, harness.signifier, verbose=args.verbose)
+        present(results, harness.state, source, tok, harness.signifier,
+                verbose=args.verbose, pre_grounded=pre_grounded)
+        if state_path is not None:
+            if state_path.stem != source_path.stem:
+                # A persist file named for another script is not this run's
+                # memory to overwrite.
+                print(
+                    f"harness: not saving — persist name {state_path.name!r} "
+                    f"differs from script name {source_path.stem!r}",
+                    file=sys.stderr,
+                )
+            else:
+                harness.state.save(state_path)
         return 0
 
     try:
         document = CurriculumDocument.from_file(source_path)
     except (CurriculumParseError, OSError) as exc:
-        print(f"harness: could not read curriculum {args.source!r}: {exc}", file=sys.stderr)
+        print(f"harness: could not read source {args.source!r}: {exc}", file=sys.stderr)
         return 2
 
     tok = NLPTokenizer()

@@ -7,7 +7,7 @@ import dataclasses
 import pytest
 
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.nlp_tokenizer import ASK_NLP_TOKEN, NLPTokenizer
 from kalvin.significance import SIG_S1, SIG_S4
 from ks import compile_source
 from ks.ast import Annotation, Block, KScriptFile, OperatorScope, Signature
@@ -297,12 +297,27 @@ class TestParserAST:
     # -- Annotations preserved -------------------------------------
 
     def test_annotations_preserved(self):
-        """'(Mary Had)' produces an Annotation node in the AST."""
+        """'(Mary Had)' heads no following construct, so it synthesizes
+        the bare sigless MH scope (a standalone sentence)."""
         ast = self._parse("(Mary Had)")
         assert len(ast.constructs) == 1
-        ann = ast.constructs[0]
+        block = ast.constructs[0]
+        assert isinstance(block, Block)
+        ann, scope = block.constructs
         assert isinstance(ann, Annotation)
         assert ann.text == "(Mary Had)"
+        assert isinstance(scope, OperatorScope)
+        assert scope.sig.id == "MH"
+        assert scope.op is None
+
+    def test_prefix_annotation_stays_loose(self):
+        """An annotation followed by a SIGNATURE construct is a prefix
+        annotation for it — no synthesis."""
+        ast = self._parse("(Mary Had)\nMH == SVO")
+        assert len(ast.constructs) == 2
+        assert isinstance(ast.constructs[0], Annotation)
+        assert isinstance(ast.constructs[1], OperatorScope)
+        assert ast.constructs[1].sig.id == "MH"
 
     # -- Inline annotations ----------------------------------------
 
@@ -616,15 +631,15 @@ class TestEmitterMTS:
     # -- MTS expansion --------------------------------------------
 
     def test_mts_expansion(self):
-        """ABC → only the CANONIZES canon (no per-component entries).
+        """ABC → only the ask canon (no per-component entries).
 
-        MTS emits exactly one entry: the canon {ABC:[A,B,C]} (S2). The
-        characters are values inside the canon, not headed klines.
+        A bare compound is an ask: exactly one entry, {ABC|ASK_NLP_TOKEN:[A,B,C]}
+        (S4). The characters are values inside the canon, not headed klines.
         """
         entries = compile_dev("ABC")
         assert len(entries) == 1
 
-        assert _sig_str(entries[0]) == "ABC" and entries[0].kline.dbg.op == "CANONIZES"
+        assert _sig_str(entries[0]) == "ABC" and entries[0].kline.dbg.op == "ASK"
         assert _node_strs(entries[0]) == ["A", "B", "C"]
 
     def test_mts_component_uniformity(self):
@@ -669,16 +684,31 @@ class TestEmitterMTS:
     # -- Node count invariant --------------------------------------
 
     def test_node_count_invariant(self):
-        """MTS canonization entry has N nodes for an N-char identifier."""
+        """A bare-compound ask entry has N nodes for an N-char identifier."""
         for ident in ["AB", "ABC", "ABCD", "MHALL"]:
             entries = compile_dev(ident)
-            canonize_entries = _find_entries(entries, sig=ident, op="CANONIZES")
-            assert len(canonize_entries) >= 1, f"No CANONIZES entry for {ident}"
-            canon = canonize_entries[0]
+            ask_entries = _find_entries(entries, op="ASK")
+            assert len(ask_entries) == 1, f"No ASK entry for {ident}"
+            canon = ask_entries[0]
             actual = len(canon.kline.nodes)
             assert actual == len(ident), (
-                f"MTS canonize for {ident}: expected {len(ident)} nodes, got {actual}"
+                f"ask for {ident}: expected {len(ident)} nodes, got {actual}"
             )
+
+    def test_sigless_annotation_ask(self):
+        """A sigless annotation compiles to ABC|ASK_NLP_TOKEN:[a big cat]."""
+        entries = compile_dev("(a big cat)")
+        ask = _find_entries(entries, op="ASK")
+        assert len(ask) == 1
+        assert _sig_str(ask[0]) == "ABC"
+        labels = [getattr(n, "label", "") for n in ask[0].kline.nodes]
+        assert labels == ["a", "big", "cat"]
+        assert ask[0].kline.signature & ASK_NLP_TOKEN
+
+        # The ask's canonical signature matches an authored ABC ask.
+        authored = compile_dev("ABC")
+        a = _find_entries(authored, op="ASK")[0]
+        assert ask[0].kline.signature == a.kline.signature
 
 class TestEmitterBinding:
 

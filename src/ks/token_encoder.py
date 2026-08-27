@@ -41,8 +41,9 @@ from __future__ import annotations
 import contextlib
 
 from kalvin.abstract import KSignifier, KTokenizer
+from kalvin.nlp_tokenizer import ASK_NLP_TOKEN
 from kalvin.significance import SIG_S1, band_significance
-from kalvin.kline import KDbg, KLine, using_resolver
+from kalvin.kline import KDbg, KLine, KNode, using_resolver
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 
@@ -152,6 +153,18 @@ class TokenEncoder:
         is_compound_def = entry.op == "CANONIZES" and len(entry.sig) > 1
         is_compound_ref = entry.sig in self._compound_sigs
 
+        # A multi-token IDENTITY whose compound-word decomposition already
+        # emitted this identity (while encoding an earlier node) is the
+        # same statement — drop the duplicate MTS identity entry.
+        if (
+            entry.op == "IDENTITY"
+            and len(self._tokenizer.encode(entry.sig)) > 1
+            and self._signifier.signature_of(
+                self._tokenizer.encode(entry.sig)
+            ) in self._compound_identity_emitted
+        ):
+            return []
+
         # Compound refs reuse the registry; compound defs defer
         # to step 3 below; others encode the sig directly (a multi-token
         # sig is a compound signature via signature_of, and heads its
@@ -175,15 +188,17 @@ class TokenEncoder:
                 self._compound_identity_emitted.add(compound)
                 sig_uint64 = compound
             elif len(sig_tokens) == 1:
-                sig_uint64 = sig_tokens[0]
+                sig_uint64 = KNode(sig_tokens[0], entry.sig)
             else:
                 sig_uint64 = self._signifier.signature_of(sig_tokens)
+                if entry.sig:
+                    self._compound_labels.setdefault(sig_uint64, entry.sig)
 
         # 2. Encode nodes (compound nodes reuse the registry value).
         node_values: list[int] = []
         for node_str in entry.nodes or []:
             if node_str in self._compound_sigs:
-                node_values.append(self._compound_sigs[node_str])
+                node_values.append(KNode(self._compound_sigs[node_str], node_str))
             else:
                 node_val, node_extras = self._encode_node(
                     node_str, annotation=entry.annotation, scope=entry.scope,
@@ -207,7 +222,12 @@ class TokenEncoder:
             self._compound_sigs[entry.sig] = sig_uint64
             self._compound_labels.setdefault(sig_uint64, entry.sig)
 
-        # 4. Debug info.
+        # 4. Ask bit: an ask keeps its original canonical signature with
+        #    the ASK_NLP_TOKEN flag OR-ed in — any signature can be an ask.
+        if entry.is_ask:
+            sig_uint64 = KNode(int(sig_uint64) | ASK_NLP_TOKEN, entry.sig)
+
+        # 5. Debug info.
         dbg = KDbg(op=entry.op)
         if self._dev:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)
@@ -245,7 +265,7 @@ class TokenEncoder:
 
         if len(tokens) == 1:
             self.node_labels.setdefault(tokens[0], word)
-            return (tokens[0], [])
+            return (KNode(tokens[0], word), [])
 
         # Multi-token word → compound-word decomposition.
         return self._emit_mts_for_tokens(
@@ -320,11 +340,11 @@ class TokenEncoder:
             id_dbg.annotation = annotation
             id_kline = KLine(
                 signature=compound,
-                nodes=[compound],
+                nodes=[KNode(compound, dbg_label) if dbg_label else compound],
                 dbg=id_dbg,
             )
             extras.append(KValue(id_kline, SIG_S1))
-        return (compound, extras)
+        return (KNode(compound, dbg_label) if dbg_label else compound, extras)
 
     # Debug construction
 

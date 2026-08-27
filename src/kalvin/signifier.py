@@ -34,6 +34,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from kalvin.abstract import KSignifier
+from kalvin.kline import KNode
+from kalvin.nlp_tokenizer import ASK_NLP_TOKEN
 
 # The NLP type word occupies the upper 32 bits of a node; signifies() compares
 # only that half — the BPE component (lower 32) is masked off so two values
@@ -51,19 +53,27 @@ class NLPSignifier(KSignifier):
     - :meth:`residual` is ``(a & ~b) & _TYPE_MASK``.
     """
 
-    def signature_of(self, nodes: Sequence[int]) -> int:
+    def signature_of(self, nodes: Sequence[KNode]) -> KNode:
         """Produce a signature by OR-reducing the full node values.
 
         Every node contributes its entire 64-bit value; the result
         accumulates the NLP type words of all nodes. Lossy of order and
         multiplicity (``{A, B}`` and ``{A, A, B}`` reduce identically).
+        The returned KNode is labelled with the whole label of the single
+        node, or the first character of each node's label uppercased and
+        concatenated.
         """
         sig = 0
         for node in nodes:
             sig |= node
-        return sig
+        labels = [getattr(n, "label", "") for n in nodes]
+        if len(labels) == 1:
+            label = labels[0]
+        else:
+            label = "".join(l[:1].upper() for l in labels)
+        return KNode(sig, label)
 
-    def signifies(self, a: int, b: int) -> bool:
+    def signifies(self, a: KNode, b: KNode) -> bool:
         """Test whether two values share an NLP type-word bit.
 
         The lower 32 bits (BPE token IDs) are masked off; only the upper 32
@@ -71,11 +81,22 @@ class NLPSignifier(KSignifier):
         """
         return (a & b & _TYPE_MASK) != 0
 
-    def residual(self, a: int, b: int) -> int:
+    def residual(self, a: KNode, b: KNode) -> KNode:
         """Return the masked type-word bits of *a* not in *b*.
 
         ``(a & ~b) & _TYPE_MASK`` — consistent with :meth:`signifies`,
         BPE-token-id residuals are excluded so the residual captures
-        type-dimension claims, not token-id differences.
+        type-dimension claims, not token-id differences. The label is the
+        mask expression ``a.label & ~b.label``.
         """
-        return (a & ~b) & _TYPE_MASK
+        mask = (a & ~b) & _TYPE_MASK
+        label = f"{getattr(a, 'label', '')} & ~{getattr(b, 'label', '')}"
+        return KNode(mask, label)
+
+    def bit_in(self, node: KNode, signature: KNode) -> bool:
+        """Does ``node``'s bit pattern sit inside ``signature``?"""
+        return (node & signature) == node
+
+    def is_ask(self, signature: KNode) -> bool:
+        """Does ``signature`` carry the ASK_NLP_TOKEN flag?"""
+        return (signature & ASK_NLP_TOKEN) != 0

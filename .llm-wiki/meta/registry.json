@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-21T14:28:38.285Z",
+  "last_updated": "2026-08-27T13:03:47.720Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -520,6 +520,33 @@
       "captured": "2026-08-11",
       "updated": "2026-08-11"
     },
+    "sources/compound-word-identity-label-and-dedup": {
+      "type": "source",
+      "title": "Compound-word identity labels and MTS dedup",
+      "category": "bugfix",
+      "status": "insight",
+      "slug": "compound-word-identity-label-and-dedup",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/identity-klines-never-proposals": {
+      "type": "source",
+      "title": "Identity klines are never proposals",
+      "category": "bugfix",
+      "status": "insight",
+      "slug": "identity-klines-never-proposals",
+      "created": "2026-08-26",
+      "updated": "2026-08-26"
+    },
+    "sources/identity-priming-and-knowledge-restatement": {
+      "type": "source",
+      "title": "Identity priming; engine stopped restating knowledge",
+      "category": "bugfix",
+      "status": "insight",
+      "slug": "identity-priming-and-knowledge-restatement",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
     "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": {
       "type": "source",
       "title": "Observation: All Kalvin wiki stub pages filled in",
@@ -927,7 +954,7 @@
       "slug": "obs-2026-08-21-expandfit-docstrings-rewritten-three-arm-module-doc-session-",
       "relevance": "medium",
       "observed_at": "2026-08-21T13:54:38.360Z",
-      "source_context": "Docstring drift pass over expand_fit strategy",
+      "source_context": "Docstring drift pass over pivot_fill strategy",
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },
@@ -1054,6 +1081,24 @@
       "created": "2026-08-21",
       "updated": "2026-08-21"
     },
+    "sources/obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl": {
+      "type": "source",
+      "title": "Observation: Training arm wired: S2/S3 supervisor stamps recorded and replayed as taught patterns",
+      "tags": [
+        "dialogue",
+        "training",
+        "teaching",
+        "supervisor",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-21-training-arm-wired-s2-s3-supervisor-stamps-recorded-and-repl",
+      "relevance": "high",
+      "observed_at": "2026-08-21T15:26:12.446Z",
+      "source_context": "Starting branch training: supervisor S2/S3 as teaching material",
+      "created": "2026-08-21",
+      "updated": "2026-08-21"
+    },
     "sources/obs-2026-08-21-user-s2-ask-path-binding-leak-fix-question-first-openers": {
       "type": "source",
       "title": "Observation: User S2 ask path, binding leak fix, question-first openers",
@@ -1071,6 +1116,169 @@
       "source_context": "User significance path + crossover-as-misfit-generator exploration",
       "created": "2026-08-21",
       "updated": "2026-08-21"
+    },
+    "sources/obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs": {
+      "type": "source",
+      "title": "Observation: Curriculum term deflated to script in training docs",
+      "tags": [
+        "kscript",
+        "terminology",
+        "context-md",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-24-curriculum-term-deflated-to-script-in-training-docs",
+      "relevance": "high",
+      "observed_at": "2026-08-24T17:08:42.424Z",
+      "source_context": "Deflating curriculum terminology after the encounter-model grill",
+      "created": "2026-08-24",
+      "updated": "2026-08-24"
+    },
+    "sources/obs-2026-08-24-kscript-semantic-model-settled-via-grill": {
+      "type": "source",
+      "title": "Observation: KScript semantic model settled via grill",
+      "tags": [
+        "kscript",
+        "curriculum",
+        "lean-harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-24-kscript-semantic-model-settled-via-grill",
+      "relevance": "high",
+      "observed_at": "2026-08-24T16:14:36.052Z",
+      "source_context": "Writing the lean-harness script-reading reference; user grilled the semantic model",
+      "created": "2026-08-24",
+      "updated": "2026-08-24"
+    },
+    "sources/obs-2026-08-24-structural-supervisor-wired-at-escalation-seam": {
+      "type": "source",
+      "title": "Observation: Structural supervisor wired at escalation seam",
+      "tags": [
+        "dialogue",
+        "supervisor",
+        "structural-significance",
+        "compiler"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-24-structural-supervisor-wired-at-escalation-seam",
+      "relevance": "high",
+      "observed_at": "2026-08-24T11:01:34.936Z",
+      "source_context": "Compiler-emitted semantic evidence + structural supervisor for the lean harness",
+      "created": "2026-08-24",
+      "updated": "2026-08-24"
+    },
+    "sources/obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled": {
+      "type": "source",
+      "title": "Observation: All compiler-minted KNodes labelled; mhall run fully labelled",
+      "tags": [
+        "knode",
+        "labels",
+        "token-encoder",
+        "compiler"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled",
+      "relevance": "high",
+      "observed_at": "2026-08-26T13:43:06.872Z",
+      "source_context": "Labelling all KNodes including MTS/compound nodes in token_encoder",
+      "created": "2026-08-26",
+      "updated": "2026-08-26"
+    },
+    "sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen": {
+      "type": "source",
+      "title": "Observation: KNode became a labelled int subclass; labels wired at TokenEncoder",
+      "tags": [
+        "knode",
+        "kline",
+        "labels",
+        "token-encoder",
+        "refactoring"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen",
+      "relevance": "high",
+      "observed_at": "2026-08-26T13:19:04.160Z",
+      "source_context": "KNode label struct refactor and wiring labels through the ks compiler",
+      "created": "2026-08-26",
+      "updated": "2026-08-26"
+    },
+    "sources/obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split": {
+      "type": "source",
+      "title": "Observation: -p reloaded-state banner and fresh-vs-held grounding split",
+      "tags": [
+        "harness",
+        "persistence",
+        "presentation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split",
+      "relevance": "medium",
+      "observed_at": "2026-08-26T16:22:30.692Z",
+      "source_context": "Lean harness -p persistence presentation",
+      "created": "2026-08-26",
+      "updated": "2026-08-26"
+    },
+    "sources/obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b": {
+      "type": "source",
+      "title": "Observation: ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug)",
+      "tags": [
+        "kscript",
+        "compiler",
+        "bugfix",
+        "asks"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b",
+      "relevance": "high",
+      "observed_at": "2026-08-27T12:05:51.775Z",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig": {
+      "type": "source",
+      "title": "Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature",
+      "tags": [
+        "ks",
+        "compiler",
+        "ask"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig",
+      "relevance": "high",
+      "observed_at": "2026-08-27T13:03:47.689Z",
+      "source_context": "Reworking ASK kline compilation to signature-agnostic ask bit",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-build-state-py-dev-tool-added": {
+      "type": "source",
+      "title": "Observation: build_state.py dev tool added",
+      "tags": [
+        "kscript",
+        "dialogue",
+        "devtools"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-build-state-py-dev-tool-added",
+      "relevance": "medium",
+      "observed_at": "2026-08-27T09:05:17.992Z",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann": {
+      "type": "source",
+      "title": "Observation: Compiler emits ASK klines for bare compounds and sigless annotations",
+      "tags": [
+        "kscript",
+        "compiler",
+        "asks"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann",
+      "relevance": "high",
+      "observed_at": "2026-08-27T11:00:24.417Z",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

@@ -452,3 +452,26 @@ class TestComplexScenarios:
         source = "A\n(multi\nline)\nB"
         types = _types(source)
         assert types == [SG, NL, AN, NL, SG]
+
+
+class TestComments:
+    """Hash comments: the rest of the line is dropped."""
+
+    def test_full_line_comment_dropped(self):
+        assert _types("# comment\nA == B") == [SG, CS, SG]
+
+    def test_trailing_comment_dropped(self):
+        assert _types("A == B # trailing\nC") == [SG, CS, SG, NL, SG]
+
+    def test_comment_after_operator(self):
+        assert _types("SVO => # note\n  S = M") == [SG, CZ, NL, IN, SG, US, SG, DD]
+
+    def test_indented_comment_line_ignored(self):
+        assert _types("A\n   # indented comment\nB") == [SG, NL, SG]
+
+    def test_comment_at_eof(self):
+        assert _types("A == B\n# eof comment") == [SG, CS, SG, NL]
+
+    def test_comment_content_not_tokenized(self):
+        toks = [t for t in _tokens("A # == => B (x)\nC") if t.value not in ("\n", "")]
+        assert [t.value for t in toks] == ["A", "C"]

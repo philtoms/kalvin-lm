@@ -33,6 +33,7 @@ from kalvin.significance import (
     DEFAULT_AGGREGATOR,
     SIG_S4,
     Aggregator,
+    is_s1,
 )
 
 if TYPE_CHECKING:
@@ -65,8 +66,10 @@ def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[i
         sig = signifier.signature_of(kline.nodes)
         yield hop_count, sig
 
-# Model-state grounding queries (is_countersigned) live on Model;
-# sig_level lives in kalvin.kline. expand() calls model.grounded directly.
+# Structural Grounding re-export
+#
+# is_s1 / is_countersigned live in kalvin.significance; sig_level in kalvin.kline.
+# expand() calls is_s1 directly; the others are imported by callers from there.
 
 
 # Graph Expansion
@@ -191,7 +194,7 @@ def expand(
     # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1).
     for n in matched:
         kl = model.find(n)
-        if kl is not None and model.grounded(kl):
+        if kl is not None and is_s1(model, kl, signifier):
             slot_values.append(1.0)
         else:
             # Ungrounded match OR not in model: one hop of doubt.
