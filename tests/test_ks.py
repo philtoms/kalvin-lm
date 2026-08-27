@@ -297,12 +297,27 @@ class TestParserAST:
     # -- Annotations preserved -------------------------------------
 
     def test_annotations_preserved(self):
-        """'(Mary Had)' produces an Annotation node in the AST."""
+        """'(Mary Had)' heads no following construct, so it synthesizes
+        the bare sigless MH scope (a standalone sentence)."""
         ast = self._parse("(Mary Had)")
         assert len(ast.constructs) == 1
-        ann = ast.constructs[0]
+        block = ast.constructs[0]
+        assert isinstance(block, Block)
+        ann, scope = block.constructs
         assert isinstance(ann, Annotation)
         assert ann.text == "(Mary Had)"
+        assert isinstance(scope, OperatorScope)
+        assert scope.sig.id == "MH"
+        assert scope.op is None
+
+    def test_prefix_annotation_stays_loose(self):
+        """An annotation followed by a SIGNATURE construct is a prefix
+        annotation for it — no synthesis."""
+        ast = self._parse("(Mary Had)\nMH == SVO")
+        assert len(ast.constructs) == 2
+        assert isinstance(ast.constructs[0], Annotation)
+        assert isinstance(ast.constructs[1], OperatorScope)
+        assert ast.constructs[1].sig.id == "MH"
 
     # -- Inline annotations ----------------------------------------
 
