@@ -238,7 +238,10 @@ class Engine:
 
             if is_unknown(kline):
                 self._state.remove_stm_at(idx)
-                batch.append(KValue(KLine(kline.signature, []), SIG_S4))
+                if not self._state.ltm.get(kline.signature):
+                    # A signature the model has since grounded answers its
+                    # own ask — nothing to say.
+                    batch.append(KValue(KLine(kline.signature, []), SIG_S4))
                 continue
             else:
                 asked = kline.signature in self._state.asked
