@@ -1,7 +1,7 @@
-"""The lean training harness.
+"""The dialogue training harness.
 
-A minimal, synchronous, non-judging loop. Compile a KScript source, feed each
-compiled entry to the engine one at a time, and present the engine's
+A minimal, synchronous, non-judging loop. Compile a KScript source, feed
+compiled entry to the engine one block at a time, and present the engine's
 ``(batch, observations)`` response. The harness is feeder, driver, and
 presenter — it never judges. The trainer (a pi agent, outside the loop) reads
 the trace, makes decisions, edits the engine and/or the source, and re-runs.
@@ -103,12 +103,12 @@ class Harness:
         return cast(NLPSignifier, self._engine.state.signifier)
 
     def run(self, source: str) -> list[StepResult]:
-        """Compile ``source``, open each sub-script's dialogue, and let the
-        engine drive.
+        """Compile ``source``, open each sub-script's dialogue with the
+        whole block, and let the engine drive.
 
-        Each sub-script (annotation group) is opened with its first entry.
-        From there the engine asks; the harness answers each ask from the
-        script or the run stops.
+        Each sub-script (annotation group) opens with all its entries fed in
+        a single batch. From there the engine asks; the harness answers each
+        ask from the script or the run stops.
         """
         entries = compile_source(
             source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True
@@ -248,7 +248,9 @@ class Harness:
                     words.update(kline.nodes)
             step = StepResult(i, opener)
             results.append(step)
-            queue: list[list[KValue]] = [[opener]]
+            # Feed the whole block in one go: the opener and its group's
+            # remaining entries enter the engine as a single batch.
+            queue: list[list[KValue]] = [list(group)]
             while queue:
                 feeds = queue.pop(0)
                 batch, observations = self._engine.rationalise(feeds)
@@ -613,7 +615,7 @@ def _interactive_supervisor(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run a script (markdown plan) or KScript source through the "
-             "lean engine and present the trace.",
+             "engine and present the trace.",
     )
     parser.add_argument("source", help="Path to a markdown plan file or a .ks KScript file")
     parser.add_argument(
