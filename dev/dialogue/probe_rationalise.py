@@ -1,6 +1,6 @@
 """Probe the engine turn-by-turn on the MHALL opening.
 
-Feeds the first T queries by hand through the lean harness's engine and
+Feeds the first T queries by hand through the dialogue harness's engine and
 prints K's batch + observations, so we can verify the expected behaviour:
   - After `MHALL COUNTERSIGNS SVO` (S2 proposal), K emits identity asks
     for the unrecognised signatures.

@@ -11,7 +11,7 @@ sources:
 
 # Non-judging harness
 
-The defining principle of the lean dialogue harness.
+The defining principle of the dialogue harness.
 
 ## Definition
 
@@ -30,6 +30,6 @@ output.
 
 - [SRC-2026-08-11-002](/sources/SRC-2026-08-11-002.md) — the principle
 - [[concepts/harness]] — the general runtime concept
-- [[entities/harness]] — the lean dialogue harness implementation
+- [[entities/harness]] — the dialogue harness implementation
 - [[concepts/engine-first]] — the companion process discipline
 - [[entities/auto-tune]] — the agent that consumes the non-judging trace

@@ -51,5 +51,7 @@
 - [Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature](obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig.md)
 - [Observation: build_state.py dev tool added](obs-2026-08-27-build-state-py-dev-tool-added.md)
 - [Observation: Compiler emits ASK klines for bare compounds and sigless annotations](obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann.md)
+- [Observation: Harness feeds whole block in one batch](obs-2026-08-27-harness-feeds-whole-block-in-one-batch.md)
+- [Observation: "Lean" term removed; dialogue harness is the only harness](obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

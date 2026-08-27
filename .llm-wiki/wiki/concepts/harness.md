@@ -29,7 +29,7 @@ training harnesses use [[concepts/significance]] to decide what to teach next.
 
 Two harnesses exist in the codebase: the multi-agent
 [[entities/harness|training harness]] (WebSocket broker, asynchronous) and the
-lean [[concepts/non-judging-harness|dialogue harness]] (synchronous, compile →
+ [[concepts/non-judging-harness|dialogue harness]] (synchronous, compile →
 feed → present). Both share the principle that the harness itself does not
 judge.
 

@@ -36,7 +36,7 @@ Established properties:
   distinction is the relation: Frame is what is in focus, LTM is what is
   counted on.
 
-In the lean dialogue harness's `EngineState`, `frame` has a narrower
+In the dialogue harness's `EngineState`, `frame` has a narrower
 operational sense — the **emission memory** (outgoing proposals and identity
 requests, consumed by replies) — and is not monotonic there. This is a
 projection of the concept, not its definition.

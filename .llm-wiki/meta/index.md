@@ -126,6 +126,8 @@
 - [[sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig]] — Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-build-state-py-dev-tool-added]] — Observation: build_state.py dev tool added *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann]] — Observation: Compiler emits ASK klines for bare compounds and sigless annotations *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-harness-feeds-whole-block-in-one-batch]] — Observation: Harness feeds whole block in one batch *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness]] — Observation: "Lean" term removed; dialogue harness is the only harness *(created: 2026-08-27)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -133,4 +135,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-27T13:03:47.720Z* | *Total pages: 121*
+*Last updated: 2026-08-27T14:08:20.061Z* | *Total pages: 123*

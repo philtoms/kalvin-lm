@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-27T13:03:47.720Z",
+  "last_updated": "2026-08-27T14:08:20.061Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -374,14 +374,14 @@
     "entities/expand": {
       "type": "entity",
       "title": "expand",
-      "description": "A cogitation strategy for the S2 arm — grades grounded candidates via kalvin.expand.expand. The lean harness default. Emits few proposals; exhibits silent synthesis on mhall.",
+      "description": "A cogitation strategy for the S2 arm — grades grounded candidates via kalvin.expand.expand. The dialogue harness default. Emits few proposals; exhibits silent synthesis on mhall.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
     "entities/harness": {
       "type": "entity",
       "title": "Harness (implementation)",
-      "description": "The training harness runtime — the multi-agent WebSocket server and message bus, plus the lean synchronous dialogue harness. Both drive the K engine.",
+      "description": "The training harness runtime — the multi-agent WebSocket server and message bus, plus the synchronous dialogue harness. Both drive the K engine.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
@@ -1277,6 +1277,38 @@
       "slug": "obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann",
       "relevance": "high",
       "observed_at": "2026-08-27T11:00:24.417Z",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-harness-feeds-whole-block-in-one-batch": {
+      "type": "source",
+      "title": "Observation: Harness feeds whole block in one batch",
+      "tags": [
+        "harness",
+        "dialogue",
+        "feeding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-harness-feeds-whole-block-in-one-batch",
+      "relevance": "high",
+      "observed_at": "2026-08-27T14:08:20.028Z",
+      "source_context": "Refactoring src/dialogue/harness.py feeding behaviour",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness": {
+      "type": "source",
+      "title": "Observation: \"Lean\" term removed; dialogue harness is the only harness",
+      "tags": [
+        "terminology",
+        "dialogue",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness",
+      "relevance": "high",
+      "observed_at": "2026-08-27T14:07:41.836Z",
+      "source_context": "Terminology cleanup: removing the \"lean\" distinction from dialogue",
       "created": "2026-08-27",
       "updated": "2026-08-27"
     },

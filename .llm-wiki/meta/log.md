@@ -176,3 +176,9 @@
 ## [2026-08-27T13:03:47.691Z] observe
 - slug: "obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig", title: "ASK klines now sig|ASK_NLP_TOKEN with original canonical signature", relevance: "high"
 
+## [2026-08-27T14:07:41.839Z] observe
+- slug: "obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness", title: "\"Lean\" term removed; dialogue harness is the only harness", relevance: "high"
+
+## [2026-08-27T14:08:20.031Z] observe
+- slug: "obs-2026-08-27-harness-feeds-whole-block-in-one-batch", title: "Harness feeds whole block in one batch", relevance: "high"
+

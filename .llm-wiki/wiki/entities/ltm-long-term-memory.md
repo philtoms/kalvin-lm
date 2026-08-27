@@ -29,7 +29,7 @@ candidate ideas (edge-count thresholds like `MIN_EDGES`, counted across frames)
 exist but are unimplemented. Currently, both implementations populate their
 LTM-equivalent directly on grounding/ratification.
 
-In the lean dialogue harness's `EngineState`, LTM is the `ltm` field (ratified
+In the dialogue harness's `EngineState`, LTM is the `ltm` field (ratified
 klines, keyed by signature; renamed from `grounded`).
 
 _Avoid_: persistent store (too vague), knowledge base, LTM frame.

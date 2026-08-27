@@ -49,5 +49,5 @@ and of [[entities/auto-tune|auto-tune]].
 - [[entities/harness]] — assembles and drives the engine
 - [[concepts/non-judging-harness]] — how the engine is exercised
 - [[concepts/engine-first]] — the discipline for editing it
-- [[entities/stm-short-term-memory]] — STM's distinct lean-engine role (reserved for expansion)
+- [[entities/stm-short-term-memory]] — STM's distinct engine role (reserved for expansion)
 - [obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected](/sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected.md) — the four-store model
