@@ -631,15 +631,15 @@ class TestEmitterMTS:
     # -- MTS expansion --------------------------------------------
 
     def test_mts_expansion(self):
-        """ABC → only the CANONIZES canon (no per-component entries).
+        """ABC → only the ASK canon (no per-component entries).
 
-        MTS emits exactly one entry: the canon {ABC:[A,B,C]} (S2). The
+        A bare compound is an ask: exactly one entry, {ASK:[A,B,C]} (S4). The
         characters are values inside the canon, not headed klines.
         """
         entries = compile_dev("ABC")
         assert len(entries) == 1
 
-        assert _sig_str(entries[0]) == "ABC" and entries[0].kline.dbg.op == "CANONIZES"
+        assert _sig_str(entries[0]) == "ASK" and entries[0].kline.dbg.op == "ASK"
         assert _node_strs(entries[0]) == ["A", "B", "C"]
 
     def test_mts_component_uniformity(self):
@@ -684,15 +684,15 @@ class TestEmitterMTS:
     # -- Node count invariant --------------------------------------
 
     def test_node_count_invariant(self):
-        """MTS canonization entry has N nodes for an N-char identifier."""
+        """A bare-compound ask entry has N nodes for an N-char identifier."""
         for ident in ["AB", "ABC", "ABCD", "MHALL"]:
             entries = compile_dev(ident)
-            canonize_entries = _find_entries(entries, sig=ident, op="CANONIZES")
-            assert len(canonize_entries) >= 1, f"No CANONIZES entry for {ident}"
-            canon = canonize_entries[0]
+            ask_entries = _find_entries(entries, sig="ASK", op="ASK")
+            assert len(ask_entries) == 1, f"No ASK entry for {ident}"
+            canon = ask_entries[0]
             actual = len(canon.kline.nodes)
             assert actual == len(ident), (
-                f"MTS canonize for {ident}: expected {len(ident)} nodes, got {actual}"
+                f"ask for {ident}: expected {len(ident)} nodes, got {actual}"
             )
 
 class TestEmitterBinding:

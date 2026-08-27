@@ -150,22 +150,38 @@ class ASTEmitter:
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
         """Walk a KScriptFile AST and return the list of SymbolicEntry tuples."""
-        for construct in file.constructs:
-            self._process_construct(construct)
+        self._process_constructs(file.constructs)
         return self.entries
 
     # Construct dispatch
 
-    def _process_construct(self, construct: ConstructItem) -> None:
-        """Dispatch a top-level construct to the appropriate handler."""
-        if isinstance(construct, OperatorScope):
-            self._process_scope(construct)
-        elif isinstance(construct, Annotation):
-            self._pending_annotation = self._annotation_text(construct)
-            self._feed_annotation(construct)
-        elif isinstance(construct, Block):
-            for c in construct.constructs:
-                self._process_construct(c)
+    def _process_constructs(self, constructs: list) -> None:
+        """Dispatch constructs with one-step lookahead.
+
+        An annotation binds to a following scope (its pending annotation);
+        one not followed by a scope is a sigless ask.
+        """
+        for i, construct in enumerate(constructs):
+            nxt = constructs[i + 1] if i + 1 < len(constructs) else None
+            if isinstance(construct, OperatorScope):
+                self._process_scope(construct)
+            elif isinstance(construct, Annotation):
+                self._pending_annotation = self._annotation_text(construct)
+                self._feed_annotation(construct)
+                if not isinstance(nxt, OperatorScope):
+                    self._emit_ask(self._pending_annotation)
+            elif isinstance(construct, Block):
+                self._process_constructs(construct.constructs)
+
+    def _emit_ask(self, text: str) -> None:
+        """Emit a sigless annotation as an ASK kline: ``ASK:[words]``."""
+        words = self._extract_words(f"({text})")
+        if not words:
+            return
+        saved = self._scope_annotation
+        self._scope_annotation = text
+        self._emit_entry("ASK", words, "ASK")
+        self._scope_annotation = saved
 
     @staticmethod
     def _annotation_text(annotation: Annotation) -> str:
@@ -211,7 +227,9 @@ class ASTEmitter:
         # against the word list, producing a competing token for a char that
         # an inline annotation has already bound (Word Binding regression).
         self._register_inline_overrides(scope)
+        prev_len = len(self.entries)
         mts_idx = self._emit_mts(scope.sig.id)
+        mts_created = len(self.entries) > prev_len
         op = self._op_to_str(scope.op)
 
         if op == "UNKNOWN":
@@ -225,6 +243,20 @@ class ASTEmitter:
                     self._emit_entry(sig_resolved, [sig_resolved], "IDENTITY")
                 else:
                     self._emit_entry(sig_resolved, [], "UNKNOWN")
+            else:
+                # A bare compound is an ask. When this scope created the MTS
+                # canon, it becomes the ask in place (leaving the dedup
+                # registry — a later authored canon for the same compound is a
+                # distinct relationship). When the canon is shared with an
+                # earlier authored scope (dedup hit), it stands untouched and
+                # the ask is a fresh entry with the canon's nodes.
+                canon = self.entries[mts_idx]
+                ask = canon._replace(sig="ASK", op="ASK")
+                if mts_created:
+                    self._mts_canonize_seen.pop((canon.sig, tuple(canon.nodes)), None)
+                    self.entries[mts_idx] = ask
+                else:
+                    self.entries.append(ask)
             return
 
         node_ids = self._collect_node_ids(scope)
@@ -608,7 +640,7 @@ class ASTEmitter:
                     and self._op_to_str(construct.op) == "DENOTES"
                 ):
                     self._emit_identity_if_needed(construct.sig.id)
-                self._process_construct(construct)
+                self._process_constructs([construct])
 
         if pushed_scope and self._scope is not None:
             self._scope.pop_scope()
