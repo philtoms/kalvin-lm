@@ -114,7 +114,7 @@ The semantic layer of a KScript: parenthetical prose that instructs the agent ru
 _Avoid_: comment (an annotation is load-bearing for binding and interpretation), trainer rationale (it is instruction for the reading agent)
 
 **MTS (Multi-Token Signature)**:
-A KScript device for representing a multi-token signature on the LHS in a simpler syntax than would otherwise be required. A compound signature built from more than one Token ID by composition; the compiler expands a multi-character KScript identifier into its constituent character identities plus one MTS relationship. The identifier may be omitted entirely: a single-line annotation followed directly by an operator (`(did Fred pet a sheep) =>`) synthesizes the MTS signature from the annotation words' initials (`DFPAS`), compiling identically to the explicit form — the capability large texts are chunked through.
+A KScript device for representing a multi-token signature on the LHS in a simpler syntax than would otherwise be required. A compound signature built from more than one Token ID by composition; the compiler expands a multi-character KScript identifier into one MTS canon relationship (compound → its resolved characters) plus a self-identity (`X:[X]`) for each word-bound token. The identifier may be omitted entirely: a single-line annotation followed directly by an operator (`(did Fred pet a sheep) =>`) synthesizes the MTS signature from the annotation words' initials (`DFPAS`), compiling identically to the explicit form — the capability large texts are chunked through.
 _Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS expands a signature into characters)
 
 **Word Binding**:

@@ -342,7 +342,8 @@ class ASTEmitter:
             # Rule B4 inline-override patching is unaffected: it patches the
             # MTS entry directly via _parent_kline_canonize_idx, which the
             # MTS entry retains (it is not replaced here).
-            self._emit_entry(sig, list(nodes), "CANONIZES")
+            if nodes:
+                self._emit_entry(sig, list(nodes), "CANONIZES")
 
     # Node collection (Step 2)
 
@@ -432,9 +433,21 @@ class ASTEmitter:
         hit = self._mts_canonize_seen.get(key)
         if hit is not None:
             return hit[0]  # already emitted
-
         self._emit_entry(sig, list(chars), "CANONIZES", is_mts=True)
-        return len(self.entries) - 1
+        idx = len(self.entries) - 1
+        # A word-bound token is the script's own word: emit its identity
+        # (X:[X]) alongside the canon. Unbound raw chars stay unheaded —
+        # an unannotated character is an ask, not a known word.
+        for c, word in zip(sig, chars):
+            if word == c:
+                continue
+            if any(
+                e.sig == word and e.op in ("IDENTITY", "UNKNOWN")
+                for e in self.entries
+            ):
+                continue
+            self._emit_entry(word, [word], "IDENTITY", is_mts=True)
+        return idx
 
     # Entry emission with CANONIZES dedup
 
