@@ -193,23 +193,23 @@ class TestKS35ComplexNested:
         assert _has_entry(self.entries, "COUNTERSIGNS", "SVO", "MHALL")
 
     def test_denote_pairs(self) -> None:
-        """Denote entries: M→S, H→V (reversed direction)."""
-        assert _has_entry(self.entries, "DENOTES", "M", "S")
-        assert _has_entry(self.entries, "DENOTES", "H", "V")
+        """Denote entries: S→M, V→H (forward direction)."""
+        assert _has_entry(self.entries, "DENOTES", "S", "M")
+        assert _has_entry(self.entries, "DENOTES", "V", "H")
 
     def test_mts_all(self) -> None:
         """MTS for ALL: canonize entry and denote O→ALL."""
         assert _has_entry(self.entries, "CANONIZES", "ALL", "ALL")
-        assert _has_entry(self.entries, "DENOTES", "ALL", "O")
+        assert _has_entry(self.entries, "DENOTES", "O", "ALL")
 
     def test_leaf_denote(self) -> None:
-        """Leaf denote: D→A, M→L."""
-        assert _has_entry(self.entries, "DENOTES", "D", "A")
-        assert _has_entry(self.entries, "DENOTES", "M", "L")
+        """Leaf denote: A→D, L→M."""
+        assert _has_entry(self.entries, "DENOTES", "A", "D")
+        assert _has_entry(self.entries, "DENOTES", "L", "M")
 
     def test_connote(self) -> None:
-        """Connote: L → O."""
-        assert _has_entry(self.entries, "CONNOTES", "L", "O")
+        """Connote: LO → O (compound signature)."""
+        assert _has_entry(self.entries, "CONNOTES", "LO", "O")
 
     def test_all_entries_are_compiled_entry(self) -> None:
         """Every entry is a KValue instance."""
@@ -923,10 +923,6 @@ class TestDuplicateCharOccurrences:
 
     def test_two_ls_resolve_to_little_and_lamb(self, tokenizer):
         entries = self._entries(tokenizer)
-        connotes = [
-            e.kline.dbg.decoded
-            for e in entries
-            if e.kline.dbg.op == "CONNOTES" and e.kline.dbg.label in ("little", "lamb", "L")
-        ]
-        assert "little:[Mod]" in connotes
-        assert "lamb:[Object]" in connotes
+        connotes = [e.kline.dbg.decoded for e in entries if e.kline.dbg.op == "CONNOTES"]
+        assert "littleMod:[Mod]" in connotes
+        assert "lambObject:[Object]" in connotes

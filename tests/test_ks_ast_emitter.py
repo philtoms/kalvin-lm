@@ -182,24 +182,23 @@ class TestKS11Countersign:
 
 
 class TestKS12Denote:
-    """A = B C → {B:[A], DENOTES}, {C:[A], DENOTES}."""
+    """A = B C → {A:[B,C], DENOTES}."""
 
-    def test_denote_reversed(self):
+    def test_denote_forward(self):
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("B"), _sig("C")])))
-        assert_has_entry(entries, "B", ["A"], "DENOTES")
-        assert_has_entry(entries, "C", ["A"], "DENOTES")
+        assert_has_entry(entries, "A", ["B", "C"], "DENOTES")
 
     def test_denote_single(self):
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("B")])))
-        assert_has_entry(entries, "B", ["A"], "DENOTES")
+        assert_has_entry(entries, "A", ["B"], "DENOTES")
 
     def test_entry_count(self):
         """Exact entry counts — no spurious UNKNOWN from bare Signature nodes."""
-        # A = B C → 2 DENOTES, 0 UNKNOWN
+        # A = B C → 1 DENOTES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("B"), _sig("C")])))
-        assert len(entries) == 2
+        assert len(entries) == 1
         assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
-        assert sum(1 for e in entries if e.op == "DENOTES") == 2
+        assert sum(1 for e in entries if e.op == "DENOTES") == 1
 
         # A = B → 1 DENOTES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.DENOTES, items=[_sig("B")])))
@@ -213,24 +212,23 @@ class TestKS12Denote:
 
 
 class TestKS13Connote:
-    """A > B C → {A:[B], CONNOTES}, {A:[C], CONNOTES}."""
+    """A > B C → {ABC:[B,C], CONNOTES} — compound signature."""
 
-    def test_connote_forward(self):
+    def test_connote_compound_sig(self):
         entries = emit(_file(_scope("A", TokenType.CONNOTES, items=[_sig("B"), _sig("C")])))
-        assert_has_entry(entries, "A", ["B"], "CONNOTES")
-        assert_has_entry(entries, "A", ["C"], "CONNOTES")
+        assert_has_entry(entries, "ABC", ["B", "C"], "CONNOTES")
 
     def test_connote_single(self):
         entries = emit(_file(_scope("A", TokenType.CONNOTES, items=[_sig("B")])))
-        assert_has_entry(entries, "A", ["B"], "CONNOTES")
+        assert_has_entry(entries, "AB", ["B"], "CONNOTES")
 
     def test_entry_count(self):
         """Exact entry counts — no spurious UNKNOWN from bare Signature nodes."""
-        # A > B C → 2 CONNOTES, 0 UNKNOWN
+        # A > B C → 1 CONNOTES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.CONNOTES, items=[_sig("B"), _sig("C")])))
-        assert len(entries) == 2
+        assert len(entries) == 1
         assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
-        assert sum(1 for e in entries if e.op == "CONNOTES") == 2
+        assert sum(1 for e in entries if e.op == "CONNOTES") == 1
 
         # A > B → 1 CONNOTES, 0 UNKNOWN
         entries = emit(_file(_scope("A", TokenType.CONNOTES, items=[_sig("B")])))
@@ -312,11 +310,11 @@ class TestKS15OperatorChain:
         assert_has_entry(entries, "A", ["B"], "COUNTERSIGNS")
         assert_has_entry(entries, "B", ["A"], "COUNTERSIGNS")
 
-        # CONNOTES B → C
-        assert_has_entry(entries, "B", ["C"], "CONNOTES")
+        # CONNOTES B > C → {BC:[C]}
+        assert_has_entry(entries, "BC", ["C"], "CONNOTES")
 
-        # DENOTES D ← C
-        assert_has_entry(entries, "D", ["C"], "DENOTES")
+        # DENOTES C = D → {C:[D]}
+        assert_has_entry(entries, "C", ["D"], "DENOTES")
 
     def test_entry_count(self):
         """Exact entry counts — no spurious UNKNOWN from chained operator nodes."""
@@ -399,26 +397,29 @@ class TestKS16SubscriptBlock14x8:
         )
 
     def test_entry_count(self):
-        """Exactly 5 entries per spec."""
-        assert len(self.entries) == 5
+        """Exactly 4 entries per spec.
+
+        CANONIZES A:[B,C]; DENOTES C:[D] (C now heads its own entry);
+        UNKNOWN for B and D only.
+        """
+        assert len(self.entries) == 4
 
     def test_canonize_entry(self):
         """A | [B, C] | CANONIZES — aggregated single entry."""
         assert_has_entry(self.entries, "A", ["B", "C"], "CANONIZES")
 
     def test_denote_entry(self):
-        """D | [C] | DENOTES — reversed direction."""
-        assert_has_entry(self.entries, "D", ["C"], "DENOTES")
+        """C | [D] | DENOTES — forward direction."""
+        assert_has_entry(self.entries, "C", ["D"], "DENOTES")
 
     def test_identity_entries(self):
-        """B, C, D each get identity UNKNOWN entries."""
+        """B and D get identity UNKNOWN entries; C heads its DENOTES entry."""
         assert_has_entry(self.entries, "B", [], "UNKNOWN")
-        assert_has_entry(self.entries, "C", [], "UNKNOWN")
         assert_has_entry(self.entries, "D", [], "UNKNOWN")
 
     def test_no_duplicate_identity(self):
-        """Exactly 3 UNKNOWN entries total — no duplicates."""
-        assert sum(1 for e in self.entries if e.op == "UNKNOWN") == 3
+        """Exactly 2 UNKNOWN entries total — no duplicates."""
+        assert sum(1 for e in self.entries if e.op == "UNKNOWN") == 2
 
 
 # ======================================================================
@@ -482,7 +483,7 @@ class TestKS17Dedent:
 
         assert_has_entry(entries, "A", ["B"], "COUNTERSIGNS")
         assert_has_entry(entries, "B", ["A"], "COUNTERSIGNS")
-        assert_has_entry(entries, "C", ["D"], "CONNOTES")
+        assert_has_entry(entries, "CD", ["D"], "CONNOTES")
         # No cross-contamination
         assert_no_entry(entries, "A", ["D"], "COUNTERSIGNS")
 
@@ -554,8 +555,8 @@ class TestKS18NonCanonizeIndent:
             )
         )
         entries = emit(ast)
-        assert len(entries) == 3  # B→[A] DENOTES, C→[A] DENOTES, D→[A] DENOTES
-        assert sum(1 for e in entries if e.op == "DENOTES") == 3
+        assert len(entries) == 1  # A:[B,C,D] DENOTES
+        assert sum(1 for e in entries if e.op == "DENOTES") == 1
         assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
     def test_connote_with_child_block(self):
@@ -572,8 +573,8 @@ class TestKS18NonCanonizeIndent:
             )
         )
         entries = emit(ast)
-        assert len(entries) == 3  # A→[B] CONNOTES, A→[C] CONNOTES, A→[D] CONNOTES
-        assert sum(1 for e in entries if e.op == "CONNOTES") == 3
+        assert len(entries) == 1  # ABCD:[B,C,D] CONNOTES
+        assert sum(1 for e in entries if e.op == "CONNOTES") == 1
         assert sum(1 for e in entries if e.op == "UNKNOWN") == 0
 
 

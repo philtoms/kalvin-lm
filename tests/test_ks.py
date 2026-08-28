@@ -459,37 +459,33 @@ class TestEmitterOperators:
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["C"])
         assert has_entry(entries, sig="C", op="COUNTERSIGNS", nodes=["A"])
 
-    # -- DENOTES per-item reversed -------------------------------
+    # -- DENOTES forward ------------------------------------------
 
-    def test_denote_per_item_reversed(self):
-        """A = B C → {B:[A]}, {C:[A]} DENOTES."""
+    def test_denote_aggregated(self):
+        """A = B C → {A:[B,C]} DENOTES."""
         entries = compile_dev("A = B C")
-        assert len(entries) == 2
+        assert len(entries) == 1
         assert all(e.kline.dbg.op == "DENOTES" for e in entries)
-        assert has_entry(entries, sig="B", op="DENOTES", nodes=["A"])
-        assert has_entry(entries, sig="C", op="DENOTES", nodes=["A"])
+        assert has_entry(entries, sig="A", op="DENOTES", nodes=["B", "C"])
 
     def test_denote_entries_present(self):
-        """relaxed): The 2 DENOTES entries are present."""
+        """relaxed): The DENOTES entry is present."""
         entries = compile_dev("A = B C")
-        assert has_entry(entries, sig="B", op="DENOTES", nodes=["A"])
-        assert has_entry(entries, sig="C", op="DENOTES", nodes=["A"])
+        assert has_entry(entries, sig="A", op="DENOTES", nodes=["B", "C"])
 
-    # -- CONNOTES per-item ----------------------------------------
+    # -- CONNOTES compound signature --------------------------------
 
-    def test_connote_per_item(self):
-        """A > B C → {A:[B]}, {A:[C]} CONNOTES."""
+    def test_connote_compound_sig(self):
+        """A > B C → {ABC:[B,C]} CONNOTES."""
         entries = compile_dev("A > B C")
-        assert len(entries) == 2
+        assert len(entries) == 1
         assert all(e.kline.dbg.op == "CONNOTES" for e in entries)
-        assert has_entry(entries, sig="A", op="CONNOTES", nodes=["B"])
-        assert has_entry(entries, sig="A", op="CONNOTES", nodes=["C"])
+        assert has_entry(entries, sig="ABC", op="CONNOTES", nodes=["B", "C"])
 
     def test_connote_entries_present(self):
-        """relaxed): The 2 CONNOTES entries are present."""
+        """relaxed): The CONNOTES entry is present."""
         entries = compile_dev("A > B C")
-        assert has_entry(entries, sig="A", op="CONNOTES", nodes=["B"])
-        assert has_entry(entries, sig="A", op="CONNOTES", nodes=["C"])
+        assert has_entry(entries, sig="ABC", op="CONNOTES", nodes=["B", "C"])
 
     # -- CANONIZES aggregates ---------------------------------------
 
@@ -514,16 +510,16 @@ class TestEmitterOperators:
         assert len(entries) == 4
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
         assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
-        assert has_entry(entries, sig="B", op="CONNOTES", nodes=["C"])
-        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
+        assert has_entry(entries, sig="BC", op="CONNOTES", nodes=["C"])
+        assert has_entry(entries, sig="C", op="DENOTES", nodes=["D"])
 
     def test_operator_chain_entries_present(self):
         """relaxed): The 4 operator chain entries are present."""
         entries = compile_dev("A == B > C = D")
         assert has_entry(entries, sig="A", op="COUNTERSIGNS", nodes=["B"])
         assert has_entry(entries, sig="B", op="COUNTERSIGNS", nodes=["A"])
-        assert has_entry(entries, sig="B", op="CONNOTES", nodes=["C"])
-        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
+        assert has_entry(entries, sig="BC", op="CONNOTES", nodes=["C"])
+        assert has_entry(entries, sig="C", op="DENOTES", nodes=["D"])
 
     # -- Indent extends scope --------------------------------------
 
@@ -542,8 +538,8 @@ class TestEmitterOperators:
         entries = compile_dev(source)
         # A CANONIZES with B as node (from indented block)
         assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B"])
-        # D DENOTES [C] (at parent level after dedent)
-        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
+        # C DENOTES [D] (at parent level after dedent)
+        assert has_entry(entries, sig="C", op="DENOTES", nodes=["D"])
 
     # -- Non-CANONIZES with indent ---------------------------------
 
@@ -810,29 +806,26 @@ class TestComplexExamples:
     # -- secondary regression (simpler nested case) ----------------
 
     def test_sec148_strict(self):
-        """ secondary regression — strict spec count (5 entries)."""
+        """ secondary regression — strict spec count (4 entries)."""
         entries = compile_dev(_SEC148_SOURCE)
-        assert len(entries) == 5
+        assert len(entries) == 4
         assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
-        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
+        assert has_entry(entries, sig="C", op="DENOTES", nodes=["D"])
         assert has_entry(entries, sig="B", op="UNKNOWN", nodes=[])
-        assert has_entry(entries, sig="C", op="UNKNOWN", nodes=[])
         assert has_entry(entries, sig="D", op="UNKNOWN", nodes=[])
 
     def test_sec148_presence(self):
-        """ secondary regression — key entries present (5 entries).
+        """ secondary regression — key entries present (4 entries).
 
-        CANONIZES subscript blocks emit identity for
-        bare scopes, DENOTES scope sigs, and leaf Signature items.
-        identity entries use UNKNOWN op.
-        Now matches spec exactly (5 entries).
+        CANONIZES subscript blocks emit identity for bare scopes and
+        leaf Signature items; DENOTES scope sigs head their own entries.
+        Identity entries use UNKNOWN op.
         """
         entries = compile_dev(_SEC148_SOURCE)
-        assert len(entries) == 5
+        assert len(entries) == 4
         assert has_entry(entries, sig="A", op="CANONIZES", nodes=["B", "C"])
-        assert has_entry(entries, sig="D", op="DENOTES", nodes=["C"])
+        assert has_entry(entries, sig="C", op="DENOTES", nodes=["D"])
         assert has_entry(entries, sig="B", op="UNKNOWN", nodes=[])
-        assert has_entry(entries, sig="C", op="UNKNOWN", nodes=[])
         assert has_entry(entries, sig="D", op="UNKNOWN", nodes=[])
 
     # -- complex nested (master regression) ----------------
@@ -848,12 +841,12 @@ class TestComplexExamples:
         Source entries (S1/S3, in emission order):
         1:     MHALL countersign [SVO] (S1)
         2:     SVO countersign [MHALL] (S1)
-        3:     M denote [S] (S3)
-        4:     H denote [V] (S3)
-        5:     ALL denote [O] (S3)
-        6:     D denote [A] (S3)
-        7:     M denote [L] (S3)
-        8:     L connote [O] (S3)
+        3:     S denote [M] (S3)
+        4:     V denote [H] (S3)
+        5:     O denote [ALL] (S3)
+        6:     A denote [D] (S3)
+        7:     L denote [M] (S3)
+        8:     LO connote [O] (S3)
         MTS entries (S2, after all source — canons only, no components):
         9:     MHALL canonize [M, H, A, L, L] (S2)
         10:    SVO canonize [S, V, O] (S2)
@@ -892,13 +885,13 @@ class TestComplexExamples:
         assert has_entry(entries, sig="SVO", op="COUNTERSIGNS")
 
         # Denote entries
-        assert has_entry(entries, sig="M", op="DENOTES")
-        assert has_entry(entries, sig="H", op="DENOTES")
-        assert has_entry(entries, sig="ALL", op="DENOTES")
-        assert has_entry(entries, sig="D", op="DENOTES")
+        assert has_entry(entries, sig="S", op="DENOTES")
+        assert has_entry(entries, sig="V", op="DENOTES")
+        assert has_entry(entries, sig="O", op="DENOTES")
+        assert has_entry(entries, sig="A", op="DENOTES")
 
         # Connote
-        assert has_entry(entries, sig="L", op="CONNOTES")
+        assert has_entry(entries, sig="LO", op="CONNOTES")
 
         # MTS emits no per-component entries.
         for char in ["M", "H", "A", "L", "S", "V", "O"]:
@@ -942,14 +935,14 @@ class TestComplexExamples:
         assert has_entry(entries, sig="SVO", op="COUNTERSIGNS")
 
         # Denote entries from subscript
-        assert has_entry(entries, sig="M", op="DENOTES")  # M denote [S]
-        assert has_entry(entries, sig="H", op="DENOTES")  # H denote [V]
-        assert has_entry(entries, sig="ALL", op="DENOTES")  # ALL denote [O]
-        assert has_entry(entries, sig="D", op="DENOTES")  # D denote [A]
-        assert has_entry(entries, sig="M", op="DENOTES")  # M denote [L]
+        assert has_entry(entries, sig="S", op="DENOTES")  # S denote [M]
+        assert has_entry(entries, sig="V", op="DENOTES")  # V denote [H]
+        assert has_entry(entries, sig="O", op="DENOTES")  # O denote [ALL]
+        assert has_entry(entries, sig="A", op="DENOTES")  # A denote [D]
+        assert has_entry(entries, sig="L", op="DENOTES")  # L denote [M]
 
         # Connote
-        assert has_entry(entries, sig="L", op="CONNOTES")  # L connote [O]
+        assert has_entry(entries, sig="LO", op="CONNOTES")  # LO connote [O]
 
         # Verify structural significance levels. Significance is derived
         # from kline shape (sig_level), not the op token: a canonical kline
