@@ -129,6 +129,10 @@
 - [[sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann]] — Observation: Compiler emits ASK klines for bare compounds and sigless annotations *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-harness-feeds-whole-block-in-one-batch]] — Observation: Harness feeds whole block in one batch *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness]] — Observation: "Lean" term removed; dialogue harness is the only harness *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-rconnotes-operator-committed-fe845f5]] — Observation: '<' RCONNOTES operator committed (fe845f5) *(created: 2026-08-27)*
+- [[sources/obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp]] — Observation: CONNOTES/DENOTES structural semantics inverted and made compound *(created: 2026-08-28)*
+- [[sources/obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points]] — Observation: EngineState reads now layered STM→Frame→LTM access points *(created: 2026-08-28)*
+- [[sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue]] — Observation: Teaching and synthesize modules removed from src/dialogue *(created: 2026-08-28)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -136,4 +140,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-27T15:06:35.323Z* | *Total pages: 124*
+*Last updated: 2026-08-28T15:21:52.245Z* | *Total pages: 128*

@@ -185,3 +185,15 @@
 ## [2026-08-27T15:06:35.290Z] observe
 - slug: "obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e", title: "Block-feed filtering + cogitate ground arm committed (9b3414e)", relevance: "high"
 
+## [2026-08-27T16:35:13.389Z] observe
+- slug: "obs-2026-08-27-rconnotes-operator-committed-fe845f5", title: "'<' RCONNOTES operator committed (fe845f5)", relevance: "medium"
+
+## [2026-08-28T14:09:14.782Z] observe
+- slug: "obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp", title: "CONNOTES/DENOTES structural semantics inverted and made compound", relevance: "high"
+
+## [2026-08-28T15:16:14.158Z] observe
+- slug: "obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points", title: "EngineState reads now layered STM→Frame→LTM access points", relevance: "high"
+
+## [2026-08-28T15:21:52.196Z] observe
+- slug: "obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue", title: "Teaching and synthesize modules removed from src/dialogue", relevance: "medium"
+

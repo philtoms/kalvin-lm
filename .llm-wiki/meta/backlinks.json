@@ -771,6 +771,10 @@
   "sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann": [],
   "sources/obs-2026-08-27-harness-feeds-whole-block-in-one-batch": [],
   "sources/obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness": [],
+  "sources/obs-2026-08-27-rconnotes-operator-committed-fe845f5": [],
+  "sources/obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp": [],
+  "sources/obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points": [],
+  "sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/wiki-duplicate-consolidation": []
 }

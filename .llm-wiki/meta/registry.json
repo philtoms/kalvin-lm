@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-27T15:06:35.323Z",
+  "last_updated": "2026-08-28T15:21:52.245Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1328,6 +1328,70 @@
       "source_context": "Terminology cleanup: removing the \"lean\" distinction from dialogue",
       "created": "2026-08-27",
       "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-rconnotes-operator-committed-fe845f5": {
+      "type": "source",
+      "title": "Observation: '<' RCONNOTES operator committed (fe845f5)",
+      "tags": [
+        "kscript",
+        "compiler",
+        "relational-tokens"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-rconnotes-operator-committed-fe845f5",
+      "relevance": "medium",
+      "observed_at": "2026-08-27T16:35:13.386Z",
+      "source_context": "Adding reversed CONNOTES operator to KScript",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp": {
+      "type": "source",
+      "title": "Observation: CONNOTES/DENOTES structural semantics inverted and made compound",
+      "tags": [
+        "kscript",
+        "compiler",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp",
+      "relevance": "high",
+      "observed_at": "2026-08-28T14:09:14.777Z",
+      "source_context": "Changing KScript conote/denote structural semantics",
+      "created": "2026-08-28",
+      "updated": "2026-08-28"
+    },
+    "sources/obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points": {
+      "type": "source",
+      "title": "Observation: EngineState reads now layered STM→Frame→LTM access points",
+      "tags": [
+        "dialogue",
+        "engine",
+        "memory",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points",
+      "relevance": "high",
+      "observed_at": "2026-08-28T15:16:14.154Z",
+      "source_context": "Refactoring EngineState read semantics to layered access points",
+      "created": "2026-08-28",
+      "updated": "2026-08-28"
+    },
+    "sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue": {
+      "type": "source",
+      "title": "Observation: Teaching and synthesize modules removed from src/dialogue",
+      "tags": [
+        "dialogue",
+        "cleanup"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue",
+      "relevance": "medium",
+      "observed_at": "2026-08-28T15:21:52.189Z",
+      "source_context": "Removing Teaching and synthesize from src/dialogue",
+      "created": "2026-08-28",
+      "updated": "2026-08-28"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",
