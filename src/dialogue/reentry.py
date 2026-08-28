@@ -183,7 +183,7 @@ class Reentry:
             )
         ]
         if not delivered and any(
-            is_identity(k) for k in state.find_bucket(u)
+            is_identity(k) for k in state.find_sig(u)
         ):
             delivered = [[u]]
         yield from delivered
@@ -222,7 +222,7 @@ class Reentry:
         """Grounded, non-terminal klines reached from ``node`` by edge hops."""
         out: list[KLine] = []
         for _, sig in self._edge_hops(node):
-            for kline in self._state.find_bucket(sig):
+            for kline in self._state.find_sig(sig):
                 if not is_terminal(kline) and not is_identity(kline):
                     out.append(kline)
         return out
@@ -354,7 +354,7 @@ class Reentry:
             hop_count += 1
             next_frontier: list[KNode] = []
             for cur in frontier:
-                for kline in state.find_bucket(cur):
+                for kline in state.find_sig(cur):
                     if (
                         kline is None
                         or is_terminal(kline)

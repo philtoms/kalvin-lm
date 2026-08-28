@@ -76,21 +76,15 @@ class Engine:
         with using_resolver(resolver):
             batch: list[KValue] = []
             for query in incoming:
-                batch.extend(self.route(query) or [])
+                if not self._fast_route(query):
+                    self._slow_route(query)
             batch.extend(self.cogitate())
             return batch, self.observations
 
 
     # ── Routing ──────────────────────────────────────────────────────
 
-    def route(self, query: KValue) -> list[KValue] | None:
-        result = self._fast_route(query)
-        if result is None:
-            self._slow_route(query)
-            return None
-        return result
-
-    def _fast_route(self, query: KValue) -> list[KValue] | None:
+    def _fast_route(self, query: KValue) -> bool:
         kline = query.kline
         structural_sig = sig_level(kline, self._state.signifier)
         query_sig = _LAYOUT.classify(query.significance)
@@ -98,7 +92,7 @@ class Engine:
         if query_sig == "S4":
             self._state.refuse(kline)
             self._state.remove_stm(kline)
-            return None
+            return True
 
         # A stamped-S1 query is a ratification: ground on receipt, before
         # any answering — the ratified kline is the answer just granted.
@@ -107,9 +101,9 @@ class Engine:
         ):
             if self._state._is_groundable(kline):
                 self._ground(kline)
-                return None
+                return True
 
-        return None
+        return False
 
     def _slow_route(self, query: KValue) -> None:
         """Attend to the query: append it and its unknown parts to STM.

@@ -2,13 +2,8 @@
 
 An authored **dialogue table** drives a lesson between Trainer (T) and
 Trainee (K). The package has a configuration-time **decoder** (table → flat
-ordered ``list[DecodedTurn]``), dialogue **actors**, and a **runner** that
-drives the two actors over the harness ``MessageBus`` and tracks how much of
-the authored exchange they traverse.
-
-The decoder runs once at configuration time. The default actors are
-table-reading scaffolding, individually replaceable by a real trainer or
-trainee.
+ordered ``list[DecodedTurn]``), the rationalising **engine** and its
+**harness** that drive a lesson over compiled ``.ks`` scripts.
 """
 
 from dialogue.decoder import (
@@ -26,10 +21,6 @@ __all__ = [
     "BAND_TO_SIG",
     "DecodedTurn",
     "DialogueScript",
-    "RationalisingTrainee",
-    "RationalisingTrainer",
-    "ScriptTrainee",
-    "ScriptTrainer",
     "Turn",
     "decode",
     "decode_events",

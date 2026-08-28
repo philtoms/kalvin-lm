@@ -7,8 +7,15 @@ relations:
   incoming entries plus the ungrounded signatures and nodes their routing
   unpacked. Written by attention: whatever routing or cogitation touches
   lands here until it grounds or is asked about.
-- **ltm** — grounded klines (Long-Term Memory): what Kalvin counts on.
 - **frame** — the outgoing kline proposals and identity requests K has emitted.
+- **ltm** — grounded klines (Long-Term Memory): what Kalvin counts on.
+
+Reads are continuous, layered access points over these stores — STM
+(attention) first, then the Frame (emissions), then LTM (grounded):
+:meth:`find`, :meth:`find_sig`, :meth:`findCanons`, :meth:`where`,
+:meth:`sig_nodes`, and :meth:`canon_nodes` all span the layers in that
+order. Store-specific predicates (``is_grounded`` = in LTM, ``is_framed``
+= in Frame) keep their single-store meaning.
 
 State is plain nodes (signature + node lists); ``dbg`` is debug-only and dropped
 on save. A saved state is a grounded prior injected into an actor at
@@ -19,6 +26,7 @@ per-turn memory lives here, owned by the actor and mutated in place.
 """
 
 from __future__ import annotations
+from collections.abc import Iterator
 
 import json
 from collections.abc import Callable
@@ -26,7 +34,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dialogue.teaching import Teaching
 from kalvin.kline import (
     KLine,
     KNode,
@@ -69,15 +76,40 @@ class EngineState:
         """The structural-significance oracle this state's queries dispatch through."""
         return self._signifier
 
-    # -- LTM (grounded) memory -------------------------------------------------
+    # -- Layered read access (STM → Frame → LTM) ---------------------------
 
     def find(self, signature: KNode) -> KLine | None:
-        """The last grounded kline under ``signature``, or ``None``."""
-        bucket = self.ltm.get(signature)
-        return bucket[-1] if bucket else None
+        """The most recent kline under ``signature`` across the layers.
 
-    def find_bucket(self, signature: KNode) -> list[KLine]:
-        return self.ltm.get(signature) or []
+        Searches STM (attention) first, then the Frame (emissions), then
+        LTM (grounded). Within a bucket the last entry (most recent) wins.
+        """
+        for entry in reversed(self.stm):
+            if entry.signature == signature:
+                return entry
+        for store in (self.frame, self.ltm):
+            bucket = store.get(signature)
+            if bucket:
+                return bucket[-1]
+        return None
+
+    def find_sig(self, signature: KNode) -> list[KLine]:
+        """Every kline under ``signature`` across the layers.
+
+        All STM entries with the signature, then the Frame bucket, then the
+        LTM bucket — in attention-first order.
+        """
+        entries = [e for e in self.stm if e.signature == signature]
+        entries.extend(self.frame.get(signature, ()))
+        entries.extend(self.ltm.get(signature, ()))
+        return entries
+
+    def findCanons(self, signature: KNode) -> list[KLine]:
+        return [
+            item
+            for item in self.find_sig(signature)
+            if is_canon(item, self.signifier)
+        ]
 
     def is_grounded(self, kline: KLine) -> bool:
         """Is an isomorphic kline (same signature and nodes) in LTM?"""
@@ -87,13 +119,20 @@ class EngineState:
         )
 
     def where(self, predicate: Callable[[KLine], bool]) -> list[KLine]:
-        """All grounded klines matching ``predicate``."""
-        return [
-            kline
-            for bucket in self.ltm.values()
-            for kline in bucket
-            if predicate(kline)
-        ]
+        """All klines matching ``predicate`` across the layers, STM first."""
+        matches = [kline for kline in self.stm if predicate(kline)]
+        for store in (self.frame, self.ltm):
+            for bucket in store.values():
+                matches.extend(kline for kline in bucket if predicate(kline))
+        return matches
+
+    def sig_nodes(self, signature: KNode) -> list[KNode] | None:
+        """The nodes of the first kline under ``signature`` with non-empty
+        nodes, searching STM, Frame, then LTM."""
+        for kline in self.find_sig(signature):
+            if kline.nodes:
+                return list(kline.nodes)
+        return None
 
     def ground(self, kline: KLine, stm_idx = -1) -> bool:
         """Record ``kline`` in LTM. Idempotent on nodes.
@@ -130,22 +169,12 @@ class EngineState:
         """
         return kline.signature in self.ltm or is_canon(kline, self._signifier)
 
-    def ltm_nodes(self, signature: KNode) -> list[KNode] | None:
-        """The nodes of any grounded kline under ``signature`` with non-empty nodes."""
-        for kline in self.ltm.get(signature, []):
-            if kline.nodes:
-                return list(kline.nodes)
-        return None
-
     def canon_nodes(self, signature: KNode) -> list[KNode] | None:
-        """The nodes of ``signature``'s canon, in LTM or STM."""
+        """The nodes of ``signature``'s canon, searching STM, Frame, then LTM."""
         signifier = self._signifier
-        for kline in self.ltm.get(signature, []):
+        for kline in self.find_sig(signature):
             if is_canon(kline, signifier):
                 return list(kline.nodes)
-        for entry in self.stm:
-            if entry.signature == signature and is_canon(entry, signifier):
-                return list(entry.nodes)
         return None
 
     # -- STM (attention) ---------------------------------------------

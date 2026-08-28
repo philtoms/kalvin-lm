@@ -59,57 +59,12 @@ class ExpandFit:
         return self._state
 
 
-    def _nodes_of(self, signature: KNode) -> list[KNode]:
-        """Held nodes whose bit pattern sits inside ``signature``."""
-        out: list[KNode] = []
-        signifier = self.signifier
-        for kline in self._state.where(
-            lambda k: signifier.bit_in(k.signature, signature) and is_identity(k)
-        ):
-            out.append(kline.signature)
-        return out
-
-    def _edge_hops(
-        self, sig: KNode
-    ) -> Iterator[tuple[int, KNode]]:
-        """Yield ``(hops, sig)`` breadth-first over *every* non-terminal,
-        non-identity resolution edge — not one deterministic path.
-
-        BFS order is min-hops-first, so consumers halt at their k nearest
-        results and never explore past them.
-        """
-        state = self._state
-        signifier = self._state.signifier
-        frontier: list[KNode] = [sig]
-        visited: set[KNode] = {sig}
-        hop_count = 0
-        while frontier and hop_count < MAX_HOP:
-            hop_count += 1
-            next_frontier: list[KNode] = []
-            for cur in frontier:
-                for kline in state.find_bucket(cur):
-                    if (
-                        kline is None
-                        or is_terminal(kline)
-                        or is_identity(kline)
-                    ):
-                        continue
-                    reached = signifier.signature_of(kline.nodes)
-                    if reached in visited:
-                        continue
-                    visited.add(reached)
-                    yield hop_count, reached
-                    next_frontier.append(reached)
-            frontier = next_frontier
-
-    def _sayable(self, kline: KLine) -> bool:
-        """A proposal says something new: not an identity (an ask or a
-        fact), not already grounded (nothing to ratify)."""
-        return not is_identity(kline) and not self._state.is_grounded(kline)
-
     def propose(self, entry: KLine) -> Iterator[KValue]:
-        for candidate in self._candidates(entry):
-            yield from self.expand(entry, candidate, _visited=set())
+        candidates = self._candidates(entry)
+        queries = [entry] if self.signifier.is_ask(entry.signature) else self.state.findCanons(entry.signature)
+        for query in queries:
+            for candidate in candidates:
+                yield from self.expand(query, candidate, _visited=set())
         return
 
     def expand(
@@ -167,53 +122,59 @@ class ExpandFit:
             accounted = 0.0  # unresolvable default (case F)
             q_kline = state.find(n)
             if q_kline is not None:
-                for hops, match_sig in self._edge_hops(n):
-                    c_kline = state.find(match_sig)
+                s3_connotations[n] = 1
+                for hops, hop_sig in self._edge_hops(n):
+                    c_kline = state.find(hop_sig)
                     if c_kline is None:
                         continue
-                    if match_sig in overfit:
+                    if hop_sig in overfit:
                         # case C: exact opposing match (S2 direct) -> recurse.
                         accounted = decay(hops)
                         yield from self.expand(
                             q_kline, c_kline, _visited=_visited, _top=False
                         )
                         break
-                    elif signifier.signifies(n, match_sig):
+                    elif signifier.signifies(n, hop_sig):
                         # case D: signifies (S2 loose) -> side-candidate, no recurse.
                         accounted = decay(hops)
                         sig_byte = aggregator.compose_terminal([decay(hops)])
                         if self._sayable(c_kline):
                             yield KValue(c_kline, sig_byte)
                         break
-                    elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
-                        s3_connotations[match_sig] = hops
+                    if hop_sig not in s3_connotations or hops < s3_connotations[hop_sig]:
+                        s3_connotations[hop_sig] = hops
             slot_values.append(accounted)
 
         for n in overfit:
             accounted = 0.0
             q_kline = state.find(n)
             if q_kline is not None:
-                for hops, match_sig in self._edge_hops(n):
-                    c_kline = state.find(match_sig)
+                for hops, hop_sig in self._edge_hops(n):
+                    c_kline = state.find(hop_sig)
                     if c_kline is None:
                         continue
-                    if match_sig in underfit:
+                    underfit_sig = signifier.signature_of(list(underfit))
+                    if signifier.bit_in(hop_sig, underfit_sig):
+                        accounted = decay(hops)
+                        s2_target.append(n)
+                        break
+                    if hop_sig in underfit:
                         # case C: exact opposing match (S2 direct) -> recurse.
                         accounted = decay(hops)
                         yield from self.expand(
                             q_kline, c_kline, _visited=_visited, _top=False
                         )
                         break
-                    elif signifier.signifies(n, match_sig):
+                    elif signifier.signifies(n, hop_sig):
                         # case D: signifies (S2 loose) -> side-candidate, no recurse.
                         accounted = decay(hops)
                         sig_byte = aggregator.compose_terminal([decay(hops)])
                         if self._sayable(c_kline):
                             yield KValue(c_kline, sig_byte)
                         break
-                    elif match_sig in s3_connotations:
+                    elif hop_sig in s3_connotations:
                         # case E: S3 connotation bridge -> recurse (no side-candidate).
-                        s3_hop = s3_connotations[match_sig] + hops
+                        s3_hop = s3_connotations[hop_sig] + hops
                         accounted = decay(s3_hop)
                         yield from self.expand(
                             q_kline, c_kline, _visited=_visited, _top=False
@@ -274,3 +235,51 @@ class ExpandFit:
                         if sig not in conns or hops < conns[sig]:
                             conns[sig] = hops
         return conns
+
+    def _nodes_of(self, signature: KNode) -> list[KNode]:
+        """Held nodes whose bit pattern sits inside ``signature``."""
+        out: list[KNode] = []
+        signifier = self.signifier
+        for kline in self._state.where(
+            lambda k: signifier.bit_in(k.signature, signature) and is_identity(k)
+        ):
+            out.append(kline.signature)
+        return out
+
+    def _edge_hops(
+        self, sig: KNode
+    ) -> Iterator[tuple[int, KNode]]:
+        """Yield ``(hops, sig)`` breadth-first over *every* non-terminal,
+        non-identity resolution edge — not one deterministic path.
+
+        BFS order is min-hops-first, so consumers halt at their k nearest
+        results and never explore past them.
+        """
+        state = self._state
+        signifier = self._state.signifier
+        frontier: list[KNode] = [sig]
+        visited: set[KNode] = {sig}
+        hop_count = 0
+        while frontier and hop_count < MAX_HOP:
+            hop_count += 1
+            next_frontier: list[KNode] = []
+            for cur in frontier:
+                for kline in state.find_sig(cur):
+                    if (
+                        kline is None
+                        or is_terminal(kline)
+                        or is_identity(kline)
+                    ):
+                        continue
+                    reached = signifier.signature_of(kline.nodes)
+                    if reached in visited:
+                        continue
+                    visited.add(reached)
+                    yield hop_count, reached
+                    next_frontier.append(reached)
+            frontier = next_frontier
+
+    def _sayable(self, kline: KLine) -> bool:
+        """A proposal says something new: not an identity (an ask or a
+        fact), not already grounded (nothing to ratify)."""
+        return not is_identity(kline) and not self._state.is_grounded(kline)

@@ -523,7 +523,7 @@ class PivotFill:
             hop_count += 1
             next_frontier: list[KNode] = []
             for cur in frontier:
-                for kline in state.find_bucket(cur):
+                for kline in state.find_sig(cur):
                     if (
                         kline is None
                         or is_terminal(kline)

@@ -663,12 +663,7 @@ def main(argv: list[str] | None = None) -> int:
              "evidence (canons, countersigns, denotations) decides the band, "
              "S1 only when the script's proof completes.",
     )
-    parser.add_argument(
-        "-t", "--training", action="store_true",
-        help="User-significance teaching: supervisor S2/S3 stamps on K's own "
-             "proposals are filed as patterns/pivots and replayed for "
-             "matching asks.",
-    )
+    
     parser.add_argument(
         "-p", "--persist", nargs="?", const="auto", default=None, metavar="PATH",
         help="Load engine state before the run and save it after. PATH "
@@ -696,9 +691,6 @@ def main(argv: list[str] | None = None) -> int:
                   f"from {state_path} ──")
         else:
             harness = make_engine(tok)
-        if args.training:
-            from dialogue.engine import Engine
-            Engine.TRAINING = True
         if args.structural:
             from dialogue.structural import SemanticEvidence, StructuralSupervisor
 
