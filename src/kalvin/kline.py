@@ -38,13 +38,25 @@ class KNode(int):
         """A copy of this node carrying ``label``."""
         return KNode(self, label)
 
+    def merge(self, other: int) -> "KNode":
+        """A new node OR-combined with *other*, labels composed with ``|``.
+
+        The node-level counterpart of the Signifier's OR-reduction
+        (``signature_of``): accumulates values into a running signature
+        where no Signifier is at hand. Unlike ``|``, the result stays a
+        KNode. An empty label on either side yields the other side's
+        label; both empty stays empty.
+        """
+        parts = (self.label, getattr(other, "label", ""))
+        return KNode(self | other, "|".join(p for p in parts if p))
+
     def __repr__(self) -> str:
         return f"KNode({int(self)}, {self.label!r})" if self.label else f"KNode({int(self)})"
 
 
 # Accepted input representations for KLine's ``nodes`` parameter.
 # Sequence (covariant) so list[KNode] is assignable to it.
-KNodes: TypeAlias = int | None | Sequence[int]
+KNodes: TypeAlias = Sequence[int]
 
 # Type alias for Signatures (uint64)
 KSig: TypeAlias = int

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 from dialogue.engine_state import EngineState
 from dialogue.expand_fit import ExpandFit
 from dialogue.reentry import Reentry
+from dialogue.cogitator import Cogitator
 from kalvin.kline import (
     KLine,
     is_canon,
@@ -52,7 +53,8 @@ class Engine:
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
         # self._misfit = PivotFill(state)
-        self._misfit = ExpandFit(state)
+        # self._misfit = ExpandFit(state)
+        self._misfit = Cogitator(state)
         # self._misfit = Reentry(state)
 
     @property
@@ -148,7 +150,7 @@ class Engine:
                 self._ground(kline)
 
             if self.signifier.is_ask(kline.signature) or is_misfit(kline, self._state.signifier):
-                proposals = list(self._misfit.propose(kline))
+                proposals = list(self._misfit.cogitate(kline))
                 if proposals:
                     batch.extend(proposals)
 
