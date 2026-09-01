@@ -36,7 +36,7 @@ class KTokenizer(ABC):
     ordered sequence of uint64 nodes and back. It does not specify a node
     layout, a type-word concept, or any bit packing — those are
     concrete-tokenizer concerns. The production concrete `KTokenizer` is
-    :class:`kalvin.nlp_tokenizer.NLPTokenizer`.
+    :class:`kalvin.nlp_tokenizer.BPETokenizer`.
     """
 
     @property

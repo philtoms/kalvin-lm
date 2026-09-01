@@ -232,9 +232,9 @@ def is_terminal(kline: KLine) -> bool:
 
     A terminal carries no further decomposition. Two shapes are terminal:
       - empty nodes: ``{S: []}`` (an Unknown), or
-      - self-referential: ``{S: [S]}`` (an Identity; this includes
-        compound-words, which are self-referential identities whose
-        signature is the OR-reduction of their subword tokens).
+      - self-referential: ``{S: [S]}`` (an Identity; a multi-subword
+        word is a plain identity — one word bit, its subword token ids
+        OR-reduced into the value).
 
     Terminal is the genus of :func:`is_unknown` and :func:`is_identity`;
     the canon/misfit distinction applies only to non-terminals.
@@ -259,9 +259,8 @@ def is_identity(kline: KLine) -> bool:
     An Identity is a terminal that translates to a known value in the
     outside world — directly decodable. The sole structural shape is the
     self-referential form ``{S: [S]}``: a value that decodes into itself.
-    A compound-word is an identity by this same rule — its signature is
-    the OR-reduction of its subword tokens, so it is a self-ref with no
-    marker.
+    A multi-subword word is an identity by this same rule — one word bit,
+    its subword token ids OR-reduced into the value.
 
     The empty form ``{S: []}`` is an :func:`is_unknown`, not an Identity.
     Identity overrules any canon classification (see :func:`is_canon`).

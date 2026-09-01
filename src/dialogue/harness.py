@@ -26,7 +26,7 @@ from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
 from kalvin.kline import KLine, KNode, is_canon, is_identity
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.significance import SIG_MASK, SIG_S1, SIG_S3, SIG_S4, BandLayout
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
@@ -77,7 +77,7 @@ class Harness:
 
     def __init__(
         self,
-        tokenizer: NLPTokenizer,
+        tokenizer: BPETokenizer,
         engine: Engine,
         escalate: Callable[[KValue], KValue] | None = None,
     ) -> None:
@@ -87,6 +87,9 @@ class Harness:
         # supervisor, who decides its significance (ratify at S1 to ground it;
         # decline at S4 to refuse). Default: decline.
         self._escalate = escalate or (lambda ask: KValue(ask.kline, SIG_S4))
+        # The word→bit table compiles share; persisted with the state so a
+        # reloaded state's node values mean the same words.
+        self.word_bits: dict[str, int] = {}
 
     @property
     def engine(self) -> Engine:
@@ -111,7 +114,8 @@ class Harness:
         ask from the script or the run stops.
         """
         entries = compile_source(
-            source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True
+            source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True,
+            word_bits=self.word_bits,
         )
         tokens = {
             sig: word
@@ -317,7 +321,8 @@ class Harness:
         from ks.compiler import Compiler
         from ks.lexer import Lexer
         from ks.parser import Parser
-        compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True)
+        compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True,
+                            word_bits=self.word_bits)
         compiler.compile(Parser(Lexer(source).tokenize()).parse())
         return {
             sig: word
@@ -396,7 +401,7 @@ class Harness:
 # strategy (ExpandFit) over the state.
 
 def make_engine(
-    tokenizer: NLPTokenizer,
+    tokenizer: BPETokenizer,
 ) -> Harness:
     """Build a harness over a fresh state: new signifier → state → engine."""
     state = EngineState(NLPSignifier())
@@ -405,12 +410,15 @@ def make_engine(
 
 def load_engine(
     path: str | Path,
-    tokenizer: NLPTokenizer,
+    tokenizer: BPETokenizer,
 ) -> Harness:
     """Build a harness over a loaded prior state (reusing its signifier)."""
     signifier = NLPSignifier()
     state = EngineState.load(signifier, path)
-    return Harness(tokenizer, Engine(state))
+    harness = Harness(tokenizer, Engine(state))
+    # Compiles must continue the loaded state's word→bit mapping.
+    harness.word_bits = dict(state.word_bits or {})
+    return harness
 
 
 # ── Presentation ──────────────────────────────────────────────────────────
@@ -456,7 +464,8 @@ def _sig_display(value: KValue) -> str:
     return f"{_band(value)} {value.significance & SIG_MASK}"
 
 
-def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier) -> dict[int, str]:
+def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
+                  word_bits: dict[str, int] | None = None) -> dict[int, str]:
     """Recompile once to recover ``{signature: scripted label}`` for display.
 
     Compiled-entry labels are authoritative; the encoder's ``node_labels``
@@ -466,7 +475,7 @@ def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier)
     from ks.compiler import Compiler
     from ks.lexer import Lexer
     from ks.parser import Parser
-    compiler = Compiler(tokenizer, signifier=signifier, dev=True)
+    compiler = Compiler(tokenizer, signifier=signifier, dev=True, word_bits=word_bits)
     entries = compiler.compile(Parser(Lexer(source).tokenize()).parse())
     out: dict[int, str] = dict(compiler.node_labels)
     for e in entries:
@@ -560,9 +569,10 @@ def _render_summary(results: list[StepResult], state: EngineState,
 
 
 def present(results: list[StepResult], state: EngineState, source: str,
-            tokenizer: NLPTokenizer, signifier: NLPSignifier, *, verbose: bool,
-            pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> None:
-    labels = _sig_to_label(source, tokenizer, signifier)
+            tokenizer: BPETokenizer, signifier: NLPSignifier, *, verbose: bool,
+            pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None,
+            word_bits: dict[str, int] | None = None) -> None:
+    labels = _sig_to_label(source, tokenizer, signifier, word_bits)
     last_annotation: str | None = None
     for step in results:
         annotation = step.entry.kline.dbg.annotation if step.entry.kline.dbg else ""
@@ -678,7 +688,7 @@ def main(argv: list[str] | None = None) -> int:
         except OSError as exc:
             print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
             return 2
-        tok = NLPTokenizer()
+        tok = BPETokenizer()
         state_path = (
             Path(f"data/dialogue/{source_path.stem}.json")
             if args.persist == "auto"
@@ -694,14 +704,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.structural:
             from dialogue.structural import SemanticEvidence, StructuralSupervisor
 
-            labels = _sig_to_label(source, tok, harness.signifier)
+            labels = _sig_to_label(source, tok, harness.signifier, harness.word_bits)
             render = lambda v: _render_kline(v, labels, args.verbose)  # noqa: E731
             supervisor = StructuralSupervisor(
                 SemanticEvidence(harness.signifier), harness.state, render
             )
             harness._escalate = supervisor
         if args.supervise:
-            labels = _sig_to_label(source, tok, harness.signifier)
+            labels = _sig_to_label(source, tok, harness.signifier, harness.word_bits)
             harness._escalate = (
                 _interactive_supervisor(labels, args.verbose)
                 if args.supervise == "interactive"
@@ -714,7 +724,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier,
-                verbose=args.verbose, pre_grounded=pre_grounded)
+                verbose=args.verbose, pre_grounded=pre_grounded,
+                word_bits=harness.word_bits)
         if state_path is not None:
             if state_path.stem != source_path.stem:
                 # A persist file named for another script is not this run's
@@ -725,6 +736,7 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
             else:
+                harness.state.word_bits = harness.word_bits
                 harness.state.save(state_path)
         return 0
 
@@ -734,7 +746,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"harness: could not read source {args.source!r}: {exc}", file=sys.stderr)
         return 2
 
-    tok = NLPTokenizer()
+    tok = BPETokenizer()
     harness = make_engine(tok)
     cumulative = ""
     for lesson in document.lessons:

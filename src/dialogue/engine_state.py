@@ -69,6 +69,9 @@ class EngineState:
     ltm: dict[KNode, list[KLine]] = field(default_factory=dict)
     frame: dict[KNode, list[KLine]] = field(default_factory=dict)
     refused: set[tuple[KNode, tuple[KNode, ...]]] = field(default_factory=set)
+    # The word→bit mapping the persisted node values were encoded under
+    # (word word → bit mask). None on a fresh state; set by the harness.
+    word_bits: dict[str, int] | None = None
     _dbg_step: int = 0
 
     @property
@@ -267,7 +270,7 @@ class EngineState:
             return [int(n), getattr(n, "label", "")]
         def _kl(k: KLine) -> list:
             return [_n(k.signature), [_n(n) for n in k.nodes]]
-        return {
+        out = {
             "stm": [_kl(k) for k in self.stm],
             "ltm": {
                 str(int(sig)): [_kl(k) for k in bucket]
@@ -278,6 +281,9 @@ class EngineState:
                 for sig, bucket in self.frame.items()
             },
         }
+        if self.word_bits is not None:
+            out["word_bits"] = self.word_bits
+        return out
 
     @classmethod
     def from_dict(cls, signifier: KSignifier, data: dict) -> EngineState:
@@ -291,6 +297,7 @@ class EngineState:
             return KLine(sig, [_n(n) for n in nodes])
         return cls(
             signifier,
+            word_bits=data.get("word_bits"),
             stm=[_kl(p) for p in data.get("stm", [])],
             ltm={
                 KNode(int(sig)): [_kl(k) for k in bucket]

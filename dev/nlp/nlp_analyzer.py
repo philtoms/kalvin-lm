@@ -23,7 +23,7 @@ import spacy
 from tqdm import tqdm
 
 from kalvin.tokenizer import Tokenizer
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 
 # spaCy model versions for auto-download
 SPACY_MODEL_VERSIONS = {
@@ -1030,7 +1030,7 @@ def analyze_texts(
             "count-weighted". See NLPFineTypeRegistry.build_nlp_fine_type_class.
     """
     analysis = LinguisticAnalysis(fine_order=fine_order)
-    tokenizer = NLPTokenizer()
+    tokenizer = BPETokenizer()
 
     # Initialize with existing dictionaries if provided
     if existing_grammar:

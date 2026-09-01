@@ -15,10 +15,11 @@ observed_at: 2026-08-27T09:05:17.992Z
 
 # 🔍 Observation: build_state.py dev tool added
 
-New dev script `dev/ks/build_state.py` compiles a .ks source via `compile_source` (NLPTokenizer + NLPSignifier, dev=True), grounds every entry kline into a fresh EngineState's ltm, and saves via `EngineState.save`. Usage: `PYTHONPATH=src .venv/bin/python dev/ks/build_state.py <src.ks> [out.json]`; default output is `data/dialogue/<stem>.json`. Verified on mhall.ks: 22 entries, 13 ltm signatures, stm/frame empty; round-trips through `EngineState.load`.
+New dev script `dev/ks/build_state.py` compiles a .ks source via `compile_source` (BPETokenizer + NLPSignifier, dev=True), grounds every entry kline into a fresh EngineState's ltm, and saves via `EngineState.save`. Usage: `PYTHONPATH=src .venv/bin/python dev/ks/build_state.py <src.ks> [out.json]`; default output is `data/dialogue/<stem>.json`. Verified on mhall.ks: 22 entries, 13 ltm signatures, stm/frame empty; round-trips through `EngineState.load`.
 
-*Relevance: medium*
-*Tags: kscript dialogue devtools*
+_Relevance: medium_
+_Tags: kscript dialogue devtools_
 
 ---
-*Observed: 2026-08-27T09:05:17.992Z*
+
+_Observed: 2026-08-27T09:05:17.992Z_

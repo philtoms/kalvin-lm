@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-09-01
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-","title":"ks TokenEncoder now packs a word word: one bit per word, size 31"}
+
 ## 2026-08-28
 
 - **observe**: {"relevance":"medium","slug":"obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue","title":"Teaching and synthesize modules removed from src/dialogue"}
@@ -72,8 +76,8 @@
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed","title":"work_list renamed to stm; duplicate STM index removed"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n","title":"Grounding broadened to all significance levels; glossary is normative"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto","title":"Model/Memory definitions settled: tiers are relations, not storage"}
-- **ensure_page**: {"page_type":"concept","path":"concepts/memory","title":"Memory"}
-- **ensure_page**: {"page_type":"concept","path":"concepts/model","title":"Model"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/memory","title":"Memory"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/model","title":"Model"}
 
 ## 2026-08-11
 

@@ -58,5 +58,6 @@
 - [Observation: CONNOTES/DENOTES structural semantics inverted and made compound](obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp.md)
 - [Observation: EngineState reads now layered STM→Frame→LTM access points](obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points.md)
 - [Observation: Teaching and synthesize modules removed from src/dialogue](obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue.md)
+- [Observation: ks TokenEncoder now packs a word word: one bit per word, size 31](obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

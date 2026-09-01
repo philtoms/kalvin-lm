@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-28T15:21:52.245Z",
+  "last_updated": "2026-09-01T10:43:50.202Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1392,6 +1392,23 @@
       "source_context": "Removing Teaching and synthesize from src/dialogue",
       "created": "2026-08-28",
       "updated": "2026-08-28"
+    },
+    "sources/obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-": {
+      "type": "source",
+      "title": "Observation: ks TokenEncoder now packs a word word: one bit per word, size 31",
+      "tags": [
+        "ks",
+        "tokenizer",
+        "bpe",
+        "word-bits"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-",
+      "relevance": "high",
+      "observed_at": "2026-09-01T10:43:50.164Z",
+      "source_context": "ks TokenEncoder word-bit scheme implementation",
+      "created": "2026-09-01",
+      "updated": "2026-09-01"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

@@ -22,7 +22,7 @@ from kalvin.events import EventBus, RationaliseEvent
 from kalvin.expand import D_MAX, SIG_S4, boundaries, classify
 from kalvin.kline import is_identity
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import compile_source
 
 SOURCE = """
@@ -170,7 +170,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    tokenizer = NLPTokenizer()
+    tokenizer = BPETokenizer()
     kvalues = compile_source(SOURCE, tokenizer, dev=True)
 
     adapter = EventBus()

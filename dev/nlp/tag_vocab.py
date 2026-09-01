@@ -61,7 +61,7 @@ if str(_project_root) not in sys.path:
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.tokenizer import Tokenizer
 
 # The unknown-token fallback bit is no longer a hardcoded constant; it is
@@ -636,7 +636,7 @@ def main() -> None:
 
     # Load BPE tokenizer (for BPE decomposition of grammar words)
     print(f"Loading tokenizer: {args.tokenizer_dir}/{args.tokenizer_name}")
-    bpe_tokenizer = NLPTokenizer(
+    bpe_tokenizer = BPETokenizer(
         tokenizer_path=args.tokenizer_dir,
         tokenizer_name=args.tokenizer_name,
     )

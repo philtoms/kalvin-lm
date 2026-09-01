@@ -44,7 +44,7 @@ import websockets
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine, kline_display
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 from training.harness.constants import TRAINER_ROLE
 from training.harness.llm import LLMClient, LLMResponse, OpenAICompatibleClient
@@ -523,9 +523,9 @@ class Cogitator:
 
 
 @lru_cache(maxsize=1)
-def _display_tokenizer() -> NLPTokenizer:
+def _display_tokenizer() -> BPETokenizer:
     """Lazily-built kalvin tokenizer for kline display (cached; data required)."""
-    return NLPTokenizer()
+    return BPETokenizer()
 
 
 @lru_cache(maxsize=1)

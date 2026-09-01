@@ -775,6 +775,7 @@
   "sources/obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp": [],
   "sources/obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points": [],
   "sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue": [],
+  "sources/obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/wiki-duplicate-consolidation": []
 }

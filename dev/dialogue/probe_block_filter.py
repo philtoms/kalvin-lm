@@ -5,10 +5,10 @@ from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, SIG_S3
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 
 src = open("data/scripts/mhall.ks").read()
-tok = NLPTokenizer(); sign = NLPSignifier()
+tok = BPETokenizer(); sign = NLPSignifier()
 entries = compile_source(src, tokenizer=tok, signifier=sign, dev=True)
 from kalvin.kline import is_identity, is_canon
 

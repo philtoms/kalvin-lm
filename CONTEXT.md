@@ -20,7 +20,7 @@ _Avoid_: child, element (the structural slot is specifically a node)
 The significance a kline's structure **claims** — an S-level (the same **S1**–**S4** as **Rational Significance**) derived from the signature–nodes relationship alone, without model traversal. Each structure makes its claim: **Unknown** claims **S4** (nothing held for this signature), **Identity** and **Canon** claim **S1** (a known value; a signature that stands for its nodes), **Misfit** claims **S2** (diverges). A claim that **Cogitation** measures against what Kalvin actually holds.
 
 **Terminal**:
-A kline whose structure carries no further decomposition — a leaf that tells Kalvin to stop traversing. Three shapes are terminal: empty nodes, self-referential nodes, and the compound-word form. _Avoid_: leaf node (a terminal is a kline, not a node), base case (implementation term), atomic (overloaded)
+A kline whose structure carries no further decomposition — a leaf that tells Kalvin to stop traversing. Two shapes are terminal: empty nodes and self-referential nodes. _Avoid_: leaf node (a terminal is a kline, not a node), base case (implementation term), atomic (overloaded)
 
 **Unknown**:
 A kline **structure**: a **Terminal** with empty nodes (`{S: []}`). Claims **S4** — _"I don't know this"_ (nothing held for this signature). The structural form of an ask: an S4 proposal that requests an **Identity** ratification.
@@ -97,7 +97,8 @@ The unit of exchange between participants — a **KLine** (objective structure) 
 The language that authors training material. A script is an encounter, authored in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step — priming before questioning, asks awaiting answers.
 
 **Token ID**:
-A value produced by the tokenizer.
+A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The **word word** (upper 32 bits) carries one bit per distinct word — assigned on a first-encountered basis at bits 0–30 (the word size is 31; a 32nd distinct word is a system error), with bit 31 reserved for **ASK_BPE_TOKEN**. A multi-subword word (one the BPE tokenizer splits) is still one word and one bit; its subword token ids OR into the lower half. A compound signature (e.g. MTS) composes no bit of its own — it is the OR-reduction of its component words' values.
+_Avoid_: type word (the NLP POS/DEP type dictionary is retired)
 
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `<` (CONNOTES, reversed), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
@@ -107,7 +108,7 @@ The closed set of written tokens that declare how a kline is produced in KScript
 - **CONNOTES** (`>` / `<`) — 1:1 with a compound signature. `A > B` ⇒ `{AB: [B]}` (the signature connotes each node; subjectively, _A is a kind of B_); `A < B` ⇒ `{AB: [A]}` — the same connotation written from the other side (_B is a kind of A_). Self-reference (`A > A`) collapses to IDENTITY `{A: [A]}`.
 - **DENOTES** (`=`) — 1:1 `{A: [B]}`. The signature denotes each node (`A = B` ⇒ objectively, _A is a B_; the node denotes the signature). Self-denote (`A = A`) collapses to IDENTITY.
 - **UNKNOWN** — a bare, unbound signature. See **Unknown**. A bare signature with no **Word Binding** compiles to the empty Unknown `{A: []}` — the structural form of an ask. A bare signature that is word-bound compiles instead to an **Identity** `{A: [A]}` (see Identity): the binding gives it a decodable value, so the script labels it a known identity rather than an ask.
-- **ASK** — a bare compound (a signature block with no operation) or a sigless annotation (one not consumed by a following scope). Compiles to `sig|ASK_BPE_TOKEN:[nodes]` (S4): the kline keeps its original canonical signature — the compound itself, or the annotation's word initials (`(a big cat)` → `ABC|ASK_BPE_TOKEN:[a big cat]`) — with the **ASK_BPE_TOKEN** type-word bit (bit 31) marking it as an ask, so any signature can be an ask. Nodes are the compound's resolved characters (canon + identities as MTS would emit) or the annotation's words.
+- **ASK** — a bare compound (a signature block with no operation) or a sigless annotation (one not consumed by a following scope). Compiles to `sig|ASK_BPE_TOKEN:[nodes]` (S4): the kline keeps its original canonical signature — the compound itself, or the annotation's word initials (`(a big cat)` → `ABC|ASK_BPE_TOKEN:[a big cat]`) — with the **ASK_BPE_TOKEN** word-word bit (bit 31 of the word word) marking it as an ask, so any signature can be an ask. Nodes are the compound's resolved characters (canon + identities as MTS would emit) or the annotation's words.
   _Avoid_: structural relationship (collides with Structural Significance), relational operator (the token declares provenance, not an operation)
 
 **Comment**:

@@ -15,7 +15,7 @@ if str(_SYS_SRC) not in sys.path:
     sys.path.insert(0, str(_SYS_SRC))
 
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from dialogue import decode, load_script
@@ -42,7 +42,7 @@ class _Sink(list):
 
 
 def main() -> None:
-    tok = NLPTokenizer()
+    tok = BPETokenizer()
     sigf = NLPSignifier()
     script = load_script(__import__("json").loads(
         Path("scripts/dialogue-wdmh.json").read_text()))

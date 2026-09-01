@@ -1,27 +1,29 @@
-"""NLPSignifier — the NLP signature bit-algebra.
+"""NLPSignifier — the signature bit-algebra.
 
 This module is the NLP interpretation of the signature algebra defined by
 :class:`kalvin.abstract.KSignifier`. It is the **sole concrete Signifier**
 and the production implementation.
+Nodes pack a word word into the upper 32 bits and a BPE token ID into
+the lower 32 (assigned by the ks compiler's TokenEncoder; the standard
+BPE tokenizer returns tokens with the upper 32 bits zero — see
+:mod:`kalvin.bpe_tokenizer`)::
 
-NLP nodes pack an NLP type word into the upper 32 bits and a BPE token ID
-into the lower 32 (see :mod:`kalvin.nlp_tokenizer` for the type-word
-layout)::
+    node = (word_bit << 32) | bpe_token_id
 
-    node = (nlp_type32 << 32) | bpe_token_id
+The word word gives one bit per distinct word (bits 0-30,
+first-encountered basis); bit 31 is reserved for ASK_BPE_TOKEN.
 
-``NLPSignifier`` understands this packing — the peer coupling permitted
-between the NLP Tokenizer and the NLP Signifier. Its operations:
+``NLPSignifier`` understands this packing. Its operations:
 
 - :meth:`signature_of` — bitwise OR-reduce over the full 64-bit node
   values.
 - :meth:`signifies` — masked overlap: AND the two values restricted to the
-  upper 32 bits (the NLP type word); non-zero means overlap.
-- :meth:`residual` — masked set-difference: the type-word bits of *a* not
+  upper 32 bits (the word word); non-zero means overlap.
+- :meth:`residual` — masked set-difference: the word-word bits of *a* not
   in *b*.
 
 The lower 32 bits (BPE token IDs) are masked off in :meth:`signifies` so two
-values are compared by NLP type-word overlap, not by token-ID collision.
+values are compared by word-bit overlap, not by token-ID collision.
 
 Misfit classification of a kline's signature against its nodes is a
 structural concern: see :func:`kalvin.kline.classify_misfit`, which
@@ -36,21 +38,21 @@ from collections.abc import Sequence
 from kalvin.abstract import KSignifier
 from kalvin.kline import KNode
 
-# ASK is a type-word flag, not a token: bit 31 of the NLP type word (the
-# type dictionary allocates bits 0-29). OR-ed into a kline signature, it
+# ASK is a word-word flag, not a token: bit 31 of the word word (words
+# occupy bits 0-30). OR-ed into a kline signature, it
 # marks the kline as an ask regardless of its signature — any signature
 # can be an ask. Compiled asks read ``sig|ASK_BPE_TOKEN:[nodes]``.
-ASK_BPE_TOKEN = 1 << 31
+ASK_BPE_TOKEN = 1 << 63
 
 
-# The NLP type word occupies the upper 32 bits of a node; signifies() compares
+# The word word occupies the upper 32 bits of a node; signifies() compares
 # only that half — the BPE component (lower 32) is masked off so two values
-# signify each other based on type-word overlap, not token identity.
+# signify each other based on word-bit overlap, not token identity.
 _TYPE_MASK = 0xFFFF_FFFF_0000_0000
 
 
 class NLPSignifier(KSignifier):
-    """The production Signifier: the NLP masked bit-algebra.
+    """The production Signifier: the masked bit-algebra.
 
     Operationally:
 
@@ -63,7 +65,7 @@ class NLPSignifier(KSignifier):
         """Produce a signature by OR-reducing the full node values.
 
         Every node contributes its entire 64-bit value; the result
-        accumulates the NLP type words of all nodes. Lossy of order and
+        accumulates the word words of all nodes. Lossy of order and
         multiplicity (``{A, B}`` and ``{A, A, B}`` reduce identically).
         The returned KNode is labelled with the whole label of the single
         node, or the first character of each node's label uppercased and
@@ -80,19 +82,20 @@ class NLPSignifier(KSignifier):
         return KNode(sig, label)
 
     def signifies(self, a: KNode, b: KNode) -> bool:
-        """Test whether two values share an NLP type-word bit.
+        """Test whether two values share a word-word bit.
 
         The lower 32 bits (BPE token IDs) are masked off; only the upper 32
-        (the NLP type word) participate.
+        (the word word) participate.
         """
-        return (a & b & _TYPE_MASK) != 0
+        s = (a & b & _TYPE_MASK) != 0
+        return s
 
     def residual(self, a: KNode, b: KNode) -> KNode:
-        """Return the masked type-word bits of *a* not in *b*.
+        """Return the masked word-word bits of *a* not in *b*.
 
         ``(a & ~b) & _TYPE_MASK`` — consistent with :meth:`signifies`,
         BPE-token-id residuals are excluded so the residual captures
-        type-dimension claims, not token-id differences. The label is the
+        word-dimension claims, not token-id differences. The label is the
         mask expression ``a.label & ~b.label``.
         """
         mask = (a & ~b) & _TYPE_MASK
