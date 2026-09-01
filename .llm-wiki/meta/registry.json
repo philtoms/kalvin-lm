@@ -1236,7 +1236,7 @@
     },
     "sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig": {
       "type": "source",
-      "title": "Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature",
+      "title": "Observation: ASK klines now sig|ASK_BPE_TOKEN with original canonical signature",
       "tags": [
         "ks",
         "compiler",

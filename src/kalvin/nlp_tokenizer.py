@@ -34,13 +34,6 @@ from kalvin.tokenizer import Tokenizer
 # untyped tokens still carry a valid NLP POS flag.
 UNKNOWN_NLP_TYPE = 65536
 
-# ASK is a type-word flag, not a token: bit 31 of the NLP type word (the
-# type dictionary allocates bits 0-29). OR-ed into a kline signature, it
-# marks the kline as an ask regardless of its signature — any signature
-# can be an ask. Compiled asks read ``sig|ASK_NLP_TOKEN:[nodes]``.
-ASK_NLP_TOKEN = 1 << 31
-
-
 def load_grammar_dict(path: str | Path) -> dict[int, dict]:
     """Load an NLP grammar dictionary from JSON.
 

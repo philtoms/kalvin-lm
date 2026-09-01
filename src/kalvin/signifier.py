@@ -35,7 +35,13 @@ from collections.abc import Sequence
 
 from kalvin.abstract import KSignifier
 from kalvin.kline import KNode
-from kalvin.nlp_tokenizer import ASK_NLP_TOKEN
+
+# ASK is a type-word flag, not a token: bit 31 of the NLP type word (the
+# type dictionary allocates bits 0-29). OR-ed into a kline signature, it
+# marks the kline as an ask regardless of its signature — any signature
+# can be an ask. Compiled asks read ``sig|ASK_BPE_TOKEN:[nodes]``.
+ASK_BPE_TOKEN = 1 << 31
+
 
 # The NLP type word occupies the upper 32 bits of a node; signifies() compares
 # only that half — the BPE component (lower 32) is masked off so two values
@@ -98,5 +104,5 @@ class NLPSignifier(KSignifier):
         return (node & signature) == node
 
     def is_ask(self, signature: KNode) -> bool:
-        """Does ``signature`` carry the ASK_NLP_TOKEN flag?"""
-        return (signature & ASK_NLP_TOKEN) != 0
+        """Does ``signature`` carry the ASK_BPE_TOKEN flag?"""
+        return (signature & ASK_BPE_TOKEN) != 0

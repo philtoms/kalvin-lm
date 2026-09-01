@@ -48,7 +48,7 @@
 - [Observation: KNode became a labelled int subclass; labels wired at TokenEncoder](obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen.md)
 - [Observation: -p reloaded-state banner and fresh-vs-held grounding split](obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split.md)
 - [Observation: ASK dedup-hit clobbered authored compound definition (DH \['DH'\] bug)](obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b.md)
-- [Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature](obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig.md)
+- [Observation: ASK klines now sig|ASK_BPE_TOKEN with original canonical signature](obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig.md)
 - [Observation: Block-feed filtering + cogitate ground arm committed (9b3414e)](obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e.md)
 - [Observation: build_state.py dev tool added](obs-2026-08-27-build-state-py-dev-tool-added.md)
 - [Observation: Compiler emits ASK klines for bare compounds and sigless annotations](obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann.md)

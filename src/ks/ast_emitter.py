@@ -101,7 +101,7 @@ class SymbolicEntry(NamedTuple):
                           # push every MTS kline after compiled source.
     annotation: str = ""   # the owning scope's annotation text
     scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
-    is_ask: bool = False   # ASK_NLP_TOKEN bit: the sig is the original
+    is_ask: bool = False   # ASK_BPE_TOKEN bit: the sig is the original
                            # canonical signature; the bit marks the kline
                            # as an ask (TokenEncoder ORs it into the sig)
 
@@ -180,7 +180,7 @@ class ASTEmitter:
 
     def _emit_ask(self, text: str) -> None:
         """Emit a sigless annotation as an ask kline:
-        ``ABC|ASK_NLP_TOKEN:[a big cat]``.
+        ``ABC|ASK_BPE_TOKEN:[a big cat]``.
 
         The canonical signature is the annotation's word initials (one
         uppercased letter per word); the nodes are the words. The ASK bit
@@ -263,7 +263,7 @@ class ASTEmitter:
                 # earlier authored scope (dedup hit), it stands untouched and
                 # the ask is a fresh entry with the canon's nodes. Either way
                 # the ask keeps the compound's original canonical signature;
-                # the ASK_NLP_TOKEN bit marks it as an ask.
+                # the ASK_BPE_TOKEN bit marks it as an ask.
                 canon = self.entries[mts_idx]
                 ask = canon._replace(op="ASK", is_ask=True)
                 if mts_created:

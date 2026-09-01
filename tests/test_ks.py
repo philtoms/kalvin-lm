@@ -7,7 +7,8 @@ import dataclasses
 import pytest
 
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import ASK_NLP_TOKEN, NLPTokenizer
+from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.signifier import ASK_BPE_TOKEN
 from kalvin.significance import SIG_S1, SIG_S4
 from ks import compile_source
 from ks.ast import Annotation, Block, KScriptFile, OperatorScope, Signature
@@ -630,7 +631,7 @@ class TestEmitterMTS:
     def test_mts_expansion(self):
         """ABC → only the ask canon (no per-component entries).
 
-        A bare compound is an ask: exactly one entry, {ABC|ASK_NLP_TOKEN:[A,B,C]}
+        A bare compound is an ask: exactly one entry, {ABC|ASK_BPE_TOKEN:[A,B,C]}
         (S4). The characters are values inside the canon, not headed klines.
         """
         entries = compile_dev("ABC")
@@ -693,14 +694,14 @@ class TestEmitterMTS:
             )
 
     def test_sigless_annotation_ask(self):
-        """A sigless annotation compiles to ABC|ASK_NLP_TOKEN:[a big cat]."""
+        """A sigless annotation compiles to ABC|ASK_BPE_TOKEN:[a big cat]."""
         entries = compile_dev("(a big cat)")
         ask = _find_entries(entries, op="ASK")
         assert len(ask) == 1
         assert _sig_str(ask[0]) == "ABC"
         labels = [getattr(n, "label", "") for n in ask[0].kline.nodes]
         assert labels == ["a", "big", "cat"]
-        assert ask[0].kline.signature & ASK_NLP_TOKEN
+        assert ask[0].kline.signature & ASK_BPE_TOKEN
 
         # The ask's canonical signature matches an authored ABC ask.
         authored = compile_dev("ABC")

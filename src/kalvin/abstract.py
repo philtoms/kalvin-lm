@@ -113,5 +113,5 @@ class KSignifier(ABC):
 
     @abstractmethod
     def is_ask(self, signature: KNode) -> bool:
-        """Does ``signature`` carry the ASK_NLP_TOKEN flag?"""
+        """Does ``signature`` carry the ASK_BPE_TOKEN flag?"""
         ...

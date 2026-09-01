@@ -12,7 +12,7 @@
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e","title":"Block-feed filtering + cogitate ground arm committed (9b3414e)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-harness-feeds-whole-block-in-one-batch","title":"Harness feeds whole block in one batch"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness","title":"\"Lean\" term removed; dialogue harness is the only harness"}
-- **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig","title":"ASK klines now sig|ASK_NLP_TOKEN with original canonical signature"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig","title":"ASK klines now sig|ASK_BPE_TOKEN with original canonical signature"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b","title":"ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann","title":"Compiler emits ASK klines for bare compounds and sigless annotations"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-08-27-build-state-py-dev-tool-added","title":"build_state.py dev tool added"}
@@ -72,8 +72,8 @@
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed","title":"work_list renamed to stm; duplicate STM index removed"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n","title":"Grounding broadened to all significance levels; glossary is normative"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto","title":"Model/Memory definitions settled: tiers are relations, not storage"}
-- **ensure\_page**: {"page_type":"concept","path":"concepts/memory","title":"Memory"}
-- **ensure\_page**: {"page_type":"concept","path":"concepts/model","title":"Model"}
+- **ensure_page**: {"page_type":"concept","path":"concepts/memory","title":"Memory"}
+- **ensure_page**: {"page_type":"concept","path":"concepts/model","title":"Model"}
 
 ## 2026-08-11
 
