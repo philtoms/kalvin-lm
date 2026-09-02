@@ -135,7 +135,11 @@
 - [[sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue]] — Observation: Teaching and synthesize modules removed from src/dialogue *(created: 2026-08-28)*
 - [[sources/obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-]] — Observation: ks TokenEncoder now packs a word word: one bit per word, size 31 *(created: 2026-09-01)*
 - [[sources/obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry]] — Observation: Batch scaffolding now primes K before the entry *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa]] — Observation: kalvin-symbolic.md converted from denotational to operational framing *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not]] — Observation: LTM as algebra carrier; grounding delimits; time on states not signatures *(created: 2026-09-02)*
 - [[sources/obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness]] — Observation: Scaffolding delivery-mode flag added to dialogue harness *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe]] — Observation: Solver reading of Kalvin's operations: temporality and existence proofs *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list]] — Observation: Symbolic-AI perspective document drafted with gap list *(created: 2026-09-02)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -143,4 +147,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-02T12:23:09.621Z* | *Total pages: 131*
+*Last updated: 2026-09-02T13:51:57.596Z* | *Total pages: 135*

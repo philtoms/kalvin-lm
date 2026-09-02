@@ -777,7 +777,11 @@
   "sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue": [],
   "sources/obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-": [],
   "sources/obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry": [],
+  "sources/obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa": [],
+  "sources/obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not": [],
   "sources/obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness": [],
+  "sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe": [],
+  "sources/obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/wiki-duplicate-consolidation": []
 }

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-02T12:23:09.621Z",
+  "last_updated": "2026-09-02T13:51:57.596Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1426,6 +1426,41 @@
       "created": "2026-09-02",
       "updated": "2026-09-02"
     },
+    "sources/obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa": {
+      "type": "source",
+      "title": "Observation: kalvin-symbolic.md converted from denotational to operational framing",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "solver",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa",
+      "relevance": "high",
+      "observed_at": "2026-09-02T13:42:27.980Z",
+      "source_context": "Reconciling the denotational body of kalvin-symbolic.md with the operational solver reading",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not": {
+      "type": "source",
+      "title": "Observation: LTM as algebra carrier; grounding delimits; time on states not signatures",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "ltm",
+        "grounding",
+        "time"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not",
+      "relevance": "high",
+      "observed_at": "2026-09-02T13:51:57.560Z",
+      "source_context": "Formalising Kalvin's algebra: grounding, memory tiers, and time",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
     "sources/obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness": {
       "type": "source",
       "title": "Observation: Scaffolding delivery-mode flag added to dialogue harness",
@@ -1439,6 +1474,39 @@
       "relevance": "high",
       "observed_at": "2026-09-02T12:19:33.141Z",
       "source_context": "Adding scaffolding delivery-mode flag to dialogue harness",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe": {
+      "type": "source",
+      "title": "Observation: Solver reading of Kalvin's operations: temporality and existence proofs",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "solver",
+        "gst"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe",
+      "relevance": "high",
+      "observed_at": "2026-09-02T13:38:53.469Z",
+      "source_context": "Formalising Kalvin's algebra: temporality and the solver reading of relational operations",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list": {
+      "type": "source",
+      "title": "Observation: Symbolic-AI perspective document drafted with gap list",
+      "tags": [
+        "docs",
+        "formalisation",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list",
+      "relevance": "high",
+      "observed_at": "2026-09-02T13:04:20.435Z",
+      "source_context": "Writing the symbolic-AI perspective document for Kalvin",
       "created": "2026-09-02",
       "updated": "2026-09-02"
     },

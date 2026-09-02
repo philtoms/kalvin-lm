@@ -206,3 +206,15 @@
 ## [2026-09-02T12:23:09.592Z] observe
 - slug: "obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry", title: "Batch scaffolding now primes K before the entry", relevance: "high"
 
+## [2026-09-02T13:04:20.437Z] observe
+- slug: "obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list", title: "Symbolic-AI perspective document drafted with gap list", relevance: "high"
+
+## [2026-09-02T13:38:53.472Z] observe
+- slug: "obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe", title: "Solver reading of Kalvin's operations: temporality and existence proofs", relevance: "high"
+
+## [2026-09-02T13:42:27.982Z] observe
+- slug: "obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa", title: "kalvin-symbolic.md converted from denotational to operational framing", relevance: "high"
+
+## [2026-09-02T13:51:57.563Z] observe
+- slug: "obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not", title: "LTM as algebra carrier; grounding delimits; time on states not signatures", relevance: "high"
+

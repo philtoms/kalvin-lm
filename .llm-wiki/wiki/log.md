@@ -2,6 +2,10 @@
 
 ## 2026-09-02
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not","title":"LTM as algebra carrier; grounding delimits; time on states not signatures"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa","title":"kalvin-symbolic.md converted from denotational to operational framing"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe","title":"Solver reading of Kalvin's operations: temporality and existence proofs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list","title":"Symbolic-AI perspective document drafted with gap list"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry","title":"Batch scaffolding now primes K before the entry"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness","title":"Scaffolding delivery-mode flag added to dialogue harness"}
 
