@@ -278,8 +278,8 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """
     return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
-def is_relationship(kline: KLine) -> bool:
-    """Test whether a kline is a relationship.
+def is_connotation(kline: KLine) -> bool:
+    """Test whether a kline is a 1:1 relationship.
 
     A relationship is the connote/denote structural shape: a non-terminal
     misfit with exactly one node (``{A: [B]}``, ``A != B``). The signature

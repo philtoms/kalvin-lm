@@ -39,7 +39,7 @@ from kalvin.kline import (
     KNode,
     is_canon,
     is_identity,
-    is_relationship,
+    is_connotation,
     is_terminal,
     is_unknown,
 )
@@ -107,7 +107,7 @@ class EngineState:
         entries.extend(self.ltm.get(signature, ()))
         return entries
 
-    def findCanons(self, signature: KNode) -> list[KLine]:
+    def find_canons(self, signature: KNode) -> list[KLine]:
         return [
             item
             for item in self.find_sig(signature)
@@ -217,7 +217,7 @@ class EngineState:
 
     def is_countersignable(self, entry: KLine) -> bool:
         """Is ``entry`` a relationship whose two operands both have canons?"""
-        if not is_relationship(entry):
+        if not is_connotation(entry):
             return False
         return (
             self.canon_nodes(entry.signature) is not None

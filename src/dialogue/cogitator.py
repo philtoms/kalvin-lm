@@ -38,7 +38,7 @@ class Cogitator:
 
     def cogitate(self, entry: KLine) -> Iterator[KValue]:
         candidates = self._candidates(entry)
-        queries = [entry] if self.signifier.is_ask(entry.signature) else self.state.findCanons(entry.signature)
+        queries = [entry] if self.signifier.is_ask(entry.signature) else self.state.find_canons(entry.signature)
         for query in queries:
             for candidate in candidates:
                 q_set = set(query.nodes)
