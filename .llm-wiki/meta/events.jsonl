@@ -64,3 +64,5 @@
 {"slug":"obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points","title":"EngineState reads now layered STM→Frame→LTM access points","relevance":"high","timestamp":"2026-08-28T15:16:14.158Z","kind":"observe"}
 {"slug":"obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue","title":"Teaching and synthesize modules removed from src/dialogue","relevance":"medium","timestamp":"2026-08-28T15:21:52.196Z","kind":"observe"}
 {"slug":"obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-","title":"ks TokenEncoder now packs a word word: one bit per word, size 31","relevance":"high","timestamp":"2026-09-01T10:43:50.167Z","kind":"observe"}
+{"slug":"obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness","title":"Scaffolding delivery-mode flag added to dialogue harness","relevance":"high","timestamp":"2026-09-02T12:19:33.143Z","kind":"observe"}
+{"slug":"obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry","title":"Batch scaffolding now primes K before the entry","relevance":"high","timestamp":"2026-09-02T12:23:09.592Z","kind":"observe"}

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-01T10:43:50.202Z",
+  "last_updated": "2026-09-02T12:23:09.621Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1409,6 +1409,38 @@
       "source_context": "ks TokenEncoder word-bit scheme implementation",
       "created": "2026-09-01",
       "updated": "2026-09-01"
+    },
+    "sources/obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry": {
+      "type": "source",
+      "title": "Observation: Batch scaffolding now primes K before the entry",
+      "tags": [
+        "harness",
+        "scaffolding",
+        "dialogue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry",
+      "relevance": "high",
+      "observed_at": "2026-09-02T12:23:09.590Z",
+      "source_context": "Reordering batch scaffolding before entry in dialogue harness",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness": {
+      "type": "source",
+      "title": "Observation: Scaffolding delivery-mode flag added to dialogue harness",
+      "tags": [
+        "harness",
+        "scaffolding",
+        "dialogue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness",
+      "relevance": "high",
+      "observed_at": "2026-09-02T12:19:33.141Z",
+      "source_context": "Adding scaffolding delivery-mode flag to dialogue harness",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

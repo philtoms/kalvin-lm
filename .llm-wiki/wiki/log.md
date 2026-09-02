@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-09-02
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry","title":"Batch scaffolding now primes K before the entry"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness","title":"Scaffolding delivery-mode flag added to dialogue harness"}
+
 ## 2026-09-01
 
 - **observe**: {"relevance":"high","slug":"obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-","title":"ks TokenEncoder now packs a word word: one bit per word, size 31"}

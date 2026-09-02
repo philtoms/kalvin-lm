@@ -20,7 +20,7 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
@@ -80,9 +80,14 @@ class Harness:
         tokenizer: BPETokenizer,
         engine: Engine,
         escalate: Callable[[KValue], KValue] | None = None,
+        scaffolding: Literal["batch", "on-demand"] = "batch",
     ) -> None:
         self._tokenizer = tokenizer
         self._engine = engine
+        # How a group's scaffolding reaches the engine: "batch" delivers
+        # all compiled klines with the opening entry (current); "on-demand"
+        # feeds only the opener and releases scaffolding as K asks for it.
+        self.scaffolding = scaffolding
         # The escalation point: an ask the script cannot answer goes to the
         # supervisor, who decides its significance (ratify at S1 to ground it;
         # decline at S4 to refuse). Default: decline.
@@ -106,12 +111,15 @@ class Harness:
         return cast(NLPSignifier, self._engine.state.signifier)
 
     def run(self, source: str) -> list[StepResult]:
-        """Compile ``source``, open each sub-script's dialogue with the
-        whole block, and let the engine drive.
+        """Compile ``source``, open each sub-script's dialogue, and let the
+        engine drive.
 
-        Each sub-script (annotation group) opens with all its entries fed in
-        a single batch. From there the engine asks; the harness answers each
-        ask from the script or the run stops.
+        Each sub-script (annotation group) opens with its opener. In
+        ``"batch"`` scaffolding the group's remaining entries are fed first,
+        priming K, and the opener follows once their asks have settled; in
+        ``"on-demand"`` only the opener is fed and the group's remaining
+        entries answer the engine's asks. From there the engine asks; the
+        harness answers each ask from the script or the run stops.
         """
         entries = compile_source(
             source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True,
@@ -258,58 +266,88 @@ class Harness:
                     words.update(kline.nodes)
             step = StepResult(i, opener)
             results.append(step)
-            # Feed the whole block in one go: the opener and its group's
-            # remaining entries enter the engine as a single batch, minus
-            # entries the priming pass already grounded. Terminal words the
-            # block uses whose identities the script never compiled ride
-            # along at S1 — without them the words never become known.
-            batch = [
-                e for e in group
-                if (e.kline.signature, tuple(e.kline.nodes)) not in primed
-            ]
-            fed_keys = {
-                (e.kline.signature, tuple(e.kline.nodes)) for e in batch
-            }
-            for entry in group:
-                for node in entry.kline.nodes:
-                    identity = (node, (node,))
-                    if (
-                        node in words
-                        and identity not in fed_keys
-                        and not self.state.is_grounded(KLine(node, [node]))
-                    ):
-                        batch.append(KValue(KLine(node, [node]), SIG_S1))
-                        fed_keys.add(identity)
-            queue: list[list[KValue]] = [batch]
-            while queue:
-                feeds = queue.pop(0)
-                batch, observations = self._engine.rationalise(feeds)
-                deduped = _dedup(batch)
-                replies: list[KValue] = []
-                turn = Turn(feeds, observations, deduped)
-                step.turns.append(turn)
-                for ask_i, ask in enumerate(deduped):
-                    if self.state.is_grounded(ask.kline):
-                        # K stating knowledge it already holds — not a
-                        # question. No reply, no escalation.
-                        continue
-                    reply = self._answer(ask, heads, exact, words, answered)
-                    if reply is None:
-                        if not ask.kline.nodes:
-                            # An empty ask is signature discovery, not a
-                            # proposal — nothing for a supervisor to decide.
-                            replies.append(KValue(ask.kline, SIG_S4))
-                            continue
-                        # Off-script: escalate — the supervisor decides.
-                        response = self._escalate(ask)
-                        turn.escalations.append((ask_i, response))
-                        replies.append(response)
-                        continue
-                    replies.extend(reply)
-                if replies:
-                    step.answers.extend(replies)
-                    queue.append(replies)
+            # The opening feeds: "batch" primes K with all the group's
+            # scaffolding first, then the entry rationalises against it once
+            # grounded (easier for K and for early development). "on-demand"
+            # withholds the scaffolding — only the opener enters, and the
+            # group's entries answer asks.
+            # Terminal words the feeds use whose identities the script
+            # never compiled ride along at S1 — without them the words never
+            # become known.
+            def build_batch(sources: list[KValue]) -> list[KValue]:
+                batch = [
+                    e for e in sources
+                    if (e.kline.signature, tuple(e.kline.nodes)) not in primed
+                ]
+                fed = {
+                    (e.kline.signature, tuple(e.kline.nodes)) for e in batch
+                }
+                for entry in sources:
+                    for node in entry.kline.nodes:
+                        identity = (node, (node,))
+                        if (
+                            node in words
+                            and identity not in fed
+                            and not self.state.is_grounded(KLine(node, [node]))
+                        ):
+                            batch.append(KValue(KLine(node, [node]), SIG_S1))
+                            fed.add(identity)
+                return batch
+
+            if self.scaffolding == "batch":
+                scaffolding = build_batch(
+                    [e for e in group if e is not opener]
+                )
+                if scaffolding:
+                    self._drive(step, [scaffolding], heads, exact, words,
+                                answered)
+                if (opener.kline.signature, tuple(opener.kline.nodes)) \
+                        not in primed:
+                    self._drive(step, [[opener]], heads, exact, words,
+                                answered)
+            else:
+                self._drive(step, [build_batch([opener])], heads, exact,
+                            words, answered)
         return results
+
+    def _drive(
+        self,
+        step: StepResult,
+        queue: list[list[KValue]],
+        heads: dict[int, list[KValue]],
+        exact: dict[tuple[int, tuple[int, ...]], KValue],
+        words: set[int],
+        answered: set[tuple[int, tuple[int, ...]]],
+    ) -> None:
+        """Run the feed→ask→answer loop until ``queue`` drains."""
+        while queue:
+            feeds = queue.pop(0)
+            batch, observations = self._engine.rationalise(feeds)
+            deduped = _dedup(batch)
+            replies: list[KValue] = []
+            turn = Turn(feeds, observations, deduped)
+            step.turns.append(turn)
+            for ask_i, ask in enumerate(deduped):
+                if self.state.is_grounded(ask.kline):
+                    # K stating knowledge it already holds — not a
+                    # question. No reply, no escalation.
+                    continue
+                reply = self._answer(ask, heads, exact, words, answered)
+                if reply is None:
+                    if not ask.kline.nodes:
+                        # An empty ask is signature discovery, not a
+                        # proposal — nothing for a supervisor to decide.
+                        replies.append(KValue(ask.kline, SIG_S4))
+                        continue
+                    # Off-script: escalate — the supervisor decides.
+                    response = self._escalate(ask)
+                    turn.escalations.append((ask_i, response))
+                    replies.append(response)
+                    continue
+                replies.extend(reply)
+            if replies:
+                step.answers.extend(replies)
+                queue.append(replies)
 
     def _single_token_labels(self, source: str) -> dict[int, str]:
         """``{signature: word}`` for every single-token word in the source.
@@ -402,20 +440,22 @@ class Harness:
 
 def make_engine(
     tokenizer: BPETokenizer,
+    scaffolding: Literal["batch", "on-demand"] = "batch",
 ) -> Harness:
     """Build a harness over a fresh state: new signifier → state → engine."""
     state = EngineState(NLPSignifier())
-    return Harness(tokenizer, Engine(state))
+    return Harness(tokenizer, Engine(state), scaffolding=scaffolding)
 
 
 def load_engine(
     path: str | Path,
     tokenizer: BPETokenizer,
+    scaffolding: Literal["batch", "on-demand"] = "batch",
 ) -> Harness:
     """Build a harness over a loaded prior state (reusing its signifier)."""
     signifier = NLPSignifier()
     state = EngineState.load(signifier, path)
-    harness = Harness(tokenizer, Engine(state))
+    harness = Harness(tokenizer, Engine(state), scaffolding=scaffolding)
     # Compiles must continue the loaded state's word→bit mapping.
     harness.word_bits = dict(state.word_bits or {})
     return harness
@@ -673,7 +713,13 @@ def main(argv: list[str] | None = None) -> int:
              "evidence (canons, countersigns, denotations) decides the band, "
              "S1 only when the script's proof completes.",
     )
-    
+    parser.add_argument(
+        "--scaffolding", choices=("batch", "on-demand"), default="batch",
+        help="How a group's scaffolding reaches the engine: 'batch' (default) "
+             "delivers all compiled klines with the opening entry; 'on-demand' "
+             "feeds only the opener and withholds scaffolding until K asks.",
+    )
+
     parser.add_argument(
         "-p", "--persist", nargs="?", const="auto", default=None, metavar="PATH",
         help="Load engine state before the run and save it after. PATH "
@@ -689,18 +735,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
             return 2
         tok = BPETokenizer()
+        scaffolding = cast(Literal["batch", "on-demand"], args.scaffolding)
         state_path = (
             Path(f"data/dialogue/{source_path.stem}.json")
             if args.persist == "auto"
             else Path(args.persist) if args.persist else None
         )
         if state_path is not None and state_path.exists():
-            harness = load_engine(state_path, tok)
+            harness = load_engine(state_path, tok, scaffolding=scaffolding)
             n = sum(len(b) for b in harness.state.ltm.values())
             print(f"── running on reloaded state: {n} grounded klines "
                   f"from {state_path} ──")
         else:
-            harness = make_engine(tok)
+            harness = make_engine(tok, scaffolding=scaffolding)
         if args.structural:
             from dialogue.structural import SemanticEvidence, StructuralSupervisor
 

@@ -134,6 +134,8 @@
 - [[sources/obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points]] — Observation: EngineState reads now layered STM→Frame→LTM access points *(created: 2026-08-28)*
 - [[sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue]] — Observation: Teaching and synthesize modules removed from src/dialogue *(created: 2026-08-28)*
 - [[sources/obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-]] — Observation: ks TokenEncoder now packs a word word: one bit per word, size 31 *(created: 2026-09-01)*
+- [[sources/obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry]] — Observation: Batch scaffolding now primes K before the entry *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness]] — Observation: Scaffolding delivery-mode flag added to dialogue harness *(created: 2026-09-02)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -141,4 +143,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-01T10:43:50.202Z* | *Total pages: 129*
+*Last updated: 2026-09-02T12:23:09.621Z* | *Total pages: 131*

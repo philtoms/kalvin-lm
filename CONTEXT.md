@@ -152,6 +152,7 @@ _Avoid_: UI (too narrow), human (a supervisor may be an LLMSupervisor)
 
 **Scaffolding**:
 KScript entries that provide grounding context for other entries. Structurally identical regardless of origin; the difference is only when they are created — **pre-compiled** (written into the original script by its author) or **reactive** (written by the supervisor when Kalvin's S2/S3 proposals mismatch expectations).
+Delivery is a harness mode (`--scaffolding batch|on-demand`): **batch** feeds all compiled scaffolding before the group's opening entry (priming K so the entry rationalises against grounded ground); **on-demand** feeds only the opener and releases scaffolding as K asks for it.
 
 **Proposal**:
 A KLine emitted by a trainee during rationalisation.

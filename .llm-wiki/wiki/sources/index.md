@@ -59,5 +59,7 @@
 - [Observation: EngineState reads now layered STM→Frame→LTM access points](obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points.md)
 - [Observation: Teaching and synthesize modules removed from src/dialogue](obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue.md)
 - [Observation: ks TokenEncoder now packs a word word: one bit per word, size 31](obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-.md)
+- [Observation: Batch scaffolding now primes K before the entry](obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry.md)
+- [Observation: Scaffolding delivery-mode flag added to dialogue harness](obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

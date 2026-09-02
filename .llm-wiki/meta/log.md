@@ -200,3 +200,9 @@
 ## [2026-09-01T10:43:50.167Z] observe
 - slug: "obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-", title: "ks TokenEncoder now packs a word word: one bit per word, size 31", relevance: "high"
 
+## [2026-09-02T12:19:33.143Z] observe
+- slug: "obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness", title: "Scaffolding delivery-mode flag added to dialogue harness", relevance: "high"
+
+## [2026-09-02T12:23:09.592Z] observe
+- slug: "obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry", title: "Batch scaffolding now primes K before the entry", relevance: "high"
+
