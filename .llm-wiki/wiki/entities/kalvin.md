@@ -30,7 +30,7 @@ not Kalvin itself. Kalvin can autonomously reach S2 at most; S1 requires
 [[concepts/ratify|ratification]] by another agent.
 
 The codebase implements Kalvin as the [[entities/k-engine|K engine]] running
-inside the [[entities/harness|training harness]] or the lean dialogue harness.
+inside the [[entities/harness|training harness]] or the dialogue harness.
 
 ## Links
 

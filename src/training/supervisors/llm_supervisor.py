@@ -44,7 +44,7 @@ import websockets
 from kalvin.events import RationaliseEvent
 from kalvin.kline import KLine, kline_display
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 from training.harness.constants import TRAINER_ROLE
 from training.harness.llm import LLMClient, LLMResponse, OpenAICompatibleClient
@@ -140,8 +140,8 @@ KScript syntax overview:
 - Relationship: `NAME > N1 N2`  (nodes listed after >)
 - Countersign: `SIG == N1 N2`  (bidirectional mapping)
 - Canonize: `SIG => N1 N2`  (unidirectional mapping)
-- Denote: `SIG = N1 N2`  (objective mapping — SIG denotes each node)
-- Connote: `SIG > N1 N2`  (unidirectional mapping — SIG connotes each node)
+- Denote: `SIG = N1 N2`  (objective mapping — SIG is an N1, an N2)
+- Connote: `SIG > N1 N2`  (subjective mapping — SIG is a kind of each node)
 
 All identifiers are UPPERCASE LETTERS ONLY (A–Z). Never use hex literals \
 (0x...) or numbers — KScript only accepts uppercase names. Each line \
@@ -523,9 +523,9 @@ class Cogitator:
 
 
 @lru_cache(maxsize=1)
-def _display_tokenizer() -> NLPTokenizer:
+def _display_tokenizer() -> BPETokenizer:
     """Lazily-built kalvin tokenizer for kline display (cached; data required)."""
-    return NLPTokenizer()
+    return BPETokenizer()
 
 
 @lru_cache(maxsize=1)

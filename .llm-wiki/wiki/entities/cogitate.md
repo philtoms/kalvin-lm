@@ -22,7 +22,7 @@ in semantic predicates (`is_identity`, `is_unknown`, `is_canon`,
 for ratification and a set of groundings.
 
 Two strategies implement the S2 arm — [[entities/similarfit]] (graft heuristic)
-and [[entities/expand]] (grades grounded candidates) — selectable via the lean
+and [[entities/expand]] (grades grounded candidates) — selectable via the 
 harness `-s` flag (default `expand`). They diverge on S2 emissions, not on the
 grounded model.
 

@@ -27,7 +27,7 @@ from kalvin.events import RationaliseEvent
 from kalvin.significance import SIG8_MAX, SIG_MASK
 from kalvin.kline import classify_misfit, kline_display
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.harness.bus import MessageBus
@@ -49,9 +49,9 @@ _S1_FRAME_THRESHOLD = SIG8_MAX
 
 
 @lru_cache(maxsize=1)
-def _display_tokenizer() -> NLPTokenizer:
+def _display_tokenizer() -> BPETokenizer:
     """Lazily-built kalvin tokenizer for kline display (cached; data required)."""
-    return NLPTokenizer()
+    return BPETokenizer()
 
 
 @lru_cache(maxsize=1)

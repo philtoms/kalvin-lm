@@ -17,7 +17,7 @@ from ks.compiler import compile_source
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
-    from kalvin.nlp_tokenizer import NLPTokenizer
+    from kalvin.bpe_tokenizer import BPETokenizer
 
 # Significance by band lookup (independent of ``op``).
 BAND_TO_SIG: dict[str, int] = {
@@ -122,7 +122,7 @@ class _ResolvedScript:
 def _resolve_script(
     source: str,
     *,
-    tokenizer: NLPTokenizer | None = None,
+    tokenizer: BPETokenizer | None = None,
     signifier: KSignifier | None = None,
 ) -> tuple[list[KValue], _ResolvedScript]:
     """Compile ``source`` once and build the canon + label indices."""
@@ -237,7 +237,7 @@ def _resolve_kline(
 def decode(
     script: DialogueScript,
     *,
-    tokenizer: NLPTokenizer | None = None,
+    tokenizer: BPETokenizer | None = None,
     signifier: KSignifier | None = None,
 ) -> list[DecodedTurn]:
     """Decode ``script.turns`` to a flat ordered ``list[DecodedTurn]``."""
@@ -257,7 +257,7 @@ def decode(
 def decode_events(
     script: DialogueScript,
     *,
-    tokenizer: NLPTokenizer | None = None,
+    tokenizer: BPETokenizer | None = None,
     signifier: KSignifier | None = None,
 ) -> list[DecodedTurn]:
     """Decode the script's ``events`` (expected K groundings) for white-box

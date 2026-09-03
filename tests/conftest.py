@@ -26,16 +26,16 @@ import pytest
 def _tokenizer_data_available() -> bool:
     """Return ``True`` when the kalvin tokenizer data assets are loadable.
 
-    Probes :class:`kalvin.nlp_tokenizer.NLPTokenizer` (the production
+    Probes :class:`kalvin.nlp_tokenizer.BPETokenizer` (the production
     tokenizer, whose constructor loads the BPE engine and NLP type
     dictionary) and returns ``False`` on any of ``ImportError`` (optional
     backend missing), ``FileNotFoundError`` (data directory absent) or
     ``OSError``.
     """
     try:
-        from kalvin.nlp_tokenizer import NLPTokenizer
+        from kalvin.nlp_tokenizer import BPETokenizer
 
-        NLPTokenizer()
+        BPETokenizer()
         return True
     except (ImportError, FileNotFoundError, OSError):
         return False
@@ -57,7 +57,7 @@ requires_tokenizer_data = pytest.mark.skipif(
 # Shared tokenizer fixture
 # ---------------------------------------------------------------------------
 #
-# Returns the production kalvin tokenizer (NLPTokenizer), whose constructor
+# Returns the production kalvin tokenizer (BPETokenizer), whose constructor
 # loads the BPE engine and NLP type dictionary from the standard data files.
 # Built once per module.  Tests using this fixture should also be gated by
 # :data:`requires_tokenizer_data` so the fixture is never instantiated when
@@ -66,12 +66,12 @@ requires_tokenizer_data = pytest.mark.skipif(
 
 @pytest.fixture(scope="session")
 def tokenizer():
-    """Load the production :class:`kalvin.nlp_tokenizer.NLPTokenizer` from data files.
+    """Load the production :class:`kalvin.nlp_tokenizer.BPETokenizer` from data files.
 
     Session-scoped: the tokenizer is immutable/read-only in tests (no test
     mutates the instance), so a single shared instance is constructed once
     for the whole run instead of once per test module.
     """
-    from kalvin.nlp_tokenizer import NLPTokenizer
+    from kalvin.nlp_tokenizer import BPETokenizer
 
-    return NLPTokenizer()
+    return BPETokenizer()

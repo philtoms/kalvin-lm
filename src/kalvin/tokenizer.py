@@ -3,7 +3,7 @@
 This module wraps a BPE subword engine and exposes raw BPE↔text operations.
 It is **not** a `KTokenizer` (see :mod:`kalvin.abstract`): a BPE engine
 produces raw vocabulary indices, not nodes. The production `KTokenizer` is
-:class:`kalvin.nlp_tokenizer.NLPTokenizer`, which builds on this wrapper
+:class:`kalvin.nlp_tokenizer.BPETokenizer`, which builds on this wrapper
 and adds the node packing, type dictionary, and ``encode``/``decode``.
 
 Engine surface:
@@ -67,7 +67,7 @@ class Tokenizer:
     """BPE-engine wrapper: raw text ↔ BPE token IDs.
 
     Not a ``KTokenizer``. The production ``KTokenizer``
-    (:class:`kalvin.nlp_tokenizer.NLPTokenizer`) builds on this wrapper,
+    (:class:`kalvin.nlp_tokenizer.BPETokenizer`) builds on this wrapper,
     adding node packing and the type dictionary.
     """
 
@@ -160,7 +160,7 @@ class Tokenizer:
         """Encode text to raw BPE token IDs (no node packing).
 
         Engine-level accessor. The production tokenizer's ``encode`` builds
-        on this (see :class:`kalvin.nlp_tokenizer.NLPTokenizer`).
+        on this (see :class:`kalvin.nlp_tokenizer.BPETokenizer`).
         """
         self._check_available()
         if pad_ws:

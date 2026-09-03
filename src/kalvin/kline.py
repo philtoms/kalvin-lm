@@ -38,13 +38,25 @@ class KNode(int):
         """A copy of this node carrying ``label``."""
         return KNode(self, label)
 
+    def merge(self, other: int) -> "KNode":
+        """A new node OR-combined with *other*, labels composed with ``|``.
+
+        The node-level counterpart of the Signifier's OR-reduction
+        (``signature_of``): accumulates values into a running signature
+        where no Signifier is at hand. Unlike ``|``, the result stays a
+        KNode. An empty label on either side yields the other side's
+        label; both empty stays empty.
+        """
+        parts = (self.label, getattr(other, "label", ""))
+        return KNode(self | other, "|".join(p for p in parts if p))
+
     def __repr__(self) -> str:
         return f"KNode({int(self)}, {self.label!r})" if self.label else f"KNode({int(self)})"
 
 
 # Accepted input representations for KLine's ``nodes`` parameter.
 # Sequence (covariant) so list[KNode] is assignable to it.
-KNodes: TypeAlias = int | None | Sequence[int]
+KNodes: TypeAlias = Sequence[int]
 
 # Type alias for Signatures (uint64)
 KSig: TypeAlias = int
@@ -220,9 +232,9 @@ def is_terminal(kline: KLine) -> bool:
 
     A terminal carries no further decomposition. Two shapes are terminal:
       - empty nodes: ``{S: []}`` (an Unknown), or
-      - self-referential: ``{S: [S]}`` (an Identity; this includes
-        compound-words, which are self-referential identities whose
-        signature is the OR-reduction of their subword tokens).
+      - self-referential: ``{S: [S]}`` (an Identity; a multi-subword
+        word is a plain identity — one word bit, its subword token ids
+        OR-reduced into the value).
 
     Terminal is the genus of :func:`is_unknown` and :func:`is_identity`;
     the canon/misfit distinction applies only to non-terminals.
@@ -247,9 +259,8 @@ def is_identity(kline: KLine) -> bool:
     An Identity is a terminal that translates to a known value in the
     outside world — directly decodable. The sole structural shape is the
     self-referential form ``{S: [S]}``: a value that decodes into itself.
-    A compound-word is an identity by this same rule — its signature is
-    the OR-reduction of its subword tokens, so it is a self-ref with no
-    marker.
+    A multi-subword word is an identity by this same rule — one word bit,
+    its subword token ids OR-reduced into the value.
 
     The empty form ``{S: []}`` is an :func:`is_unknown`, not an Identity.
     Identity overrules any canon classification (see :func:`is_canon`).
@@ -267,8 +278,8 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """
     return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
-def is_relationship(kline: KLine) -> bool:
-    """Test whether a kline is a relationship.
+def is_connotation(kline: KLine) -> bool:
+    """Test whether a kline is a 1:1 relationship.
 
     A relationship is the connote/denote structural shape: a non-terminal
     misfit with exactly one node (``{A: [B]}``, ``A != B``). The signature

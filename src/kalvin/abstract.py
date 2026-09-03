@@ -36,7 +36,7 @@ class KTokenizer(ABC):
     ordered sequence of uint64 nodes and back. It does not specify a node
     layout, a type-word concept, or any bit packing — those are
     concrete-tokenizer concerns. The production concrete `KTokenizer` is
-    :class:`kalvin.nlp_tokenizer.NLPTokenizer`.
+    :class:`kalvin.nlp_tokenizer.BPETokenizer`.
     """
 
     @property
@@ -113,5 +113,5 @@ class KSignifier(ABC):
 
     @abstractmethod
     def is_ask(self, signature: KNode) -> bool:
-        """Does ``signature`` carry the ASK_NLP_TOKEN flag?"""
+        """Does ``signature`` carry the ASK_BPE_TOKEN flag?"""
         ...

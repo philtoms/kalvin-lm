@@ -16,7 +16,7 @@ A cogitation strategy for the S2 (misfit) arm — the graft heuristic.
 ## Overview
 
 `similar_fit` is implemented in `dialogue/similar_fit.py`. Selectable via the
-lean harness `-s similar_fit` flag (the default is `expand`). On the
+dialogue harness `-s similar_fit` flag (the default is `expand`). On the
 [[entities/mhall]] test case it emits 12 [[concepts/proposal|proposals]],
 including the [[concepts/canonical-synthesis]] at step 16 (the correct
 recombination for the WDMH↔MHALL pair) plus spurious recombinations under wrong

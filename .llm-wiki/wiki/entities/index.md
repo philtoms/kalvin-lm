@@ -5,8 +5,8 @@
 - [Auto-Tune](auto-tune.md) — The project's experimental loop for tuning Kalvin's rationalisation behaviour — an LLM coding agent runs repeated sessions, observes the reactor/cogitator/rationaliser, edits the significance-model code, and re-runs.
 - [cogitate()](cogitate.md) — The engine function implementing cogitation — one full LIFO pass over the work-list, emitting semantic predicates (ask S4 / countersign S3 / propose S2 / ground S1).
 - [CONTEXT.md](contextmd.md) — The project's domain glossary — the source of truth for terminology. Source is the truth document; CONTEXT.md's glossary maps the terms the source uses.
-- [expand](expand.md) — A cogitation strategy for the S2 arm — grades grounded candidates via kalvin.expand.expand. The lean harness default. Emits few proposals; exhibits silent synthesis on mhall.
-- [Harness (implementation)](harness.md) — The training harness runtime — the multi-agent WebSocket server and message bus, plus the lean synchronous dialogue harness. Both drive the K engine.
+- [expand](expand.md) — A cogitation strategy for the S2 arm — grades grounded candidates via kalvin.expand.expand. The dialogue harness default. Emits few proposals; exhibits silent synthesis on mhall.
+- [Harness (implementation)](harness.md) — The training harness runtime — the multi-agent WebSocket server and message bus, plus the synchronous dialogue harness. Both drive the K engine.
 - [_is_groundable()](isgroundable.md) — The engine predicate that decides whether a kline can be grounded, branching in order: identity → signature grounded; canon → all nodes grounded; relationship → reciprocal grounded; misfit → both.
 - [K (engine)](k-engine.md) — The cognitive/reasoning engine — the stateless core that derives one dialogue turn from (state, incoming) and returns (batch, observations). The implementation of Kalvin's rationalisation.
 - [Kalvin](kalvin.md) — The rationalising system — an agent whose every response carries significance, a measurement of how well-grounded the response is in what it already knows.

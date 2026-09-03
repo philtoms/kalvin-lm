@@ -1,6 +1,6 @@
 """Probe the engine turn-by-turn on the MHALL opening.
 
-Feeds the first T queries by hand through the lean harness's engine and
+Feeds the first T queries by hand through the dialogue harness's engine and
 prints K's batch + observations, so we can verify the expected behaviour:
   - After `MHALL COUNTERSIGNS SVO` (S2 proposal), K emits identity asks
     for the unrecognised signatures.
@@ -21,7 +21,7 @@ if str(_SYS_SRC) not in sys.path:
 
 from dialogue.harness import make_engine  # noqa: E402
 from kalvin.kline import sig_level  # noqa: E402
-from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
+from kalvin.bpe_tokenizer import BPETokenizer  # noqa: E402
 from kalvin.significance import BandLayout  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 
@@ -70,7 +70,7 @@ def _show_obs(obs, labels):
 
 
 def main() -> None:
-    tok = NLPTokenizer()
+    tok = BPETokenizer()
     harness = make_engine(tok)
     entries = compile_source(
         "(Mary had a little lamb)MHALL == SVO",

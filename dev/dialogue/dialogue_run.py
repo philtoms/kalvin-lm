@@ -49,7 +49,7 @@ if str(_SYS_SRC) not in sys.path:
     sys.path.insert(0, str(_SYS_SRC))
 
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4  # noqa: E402
-from kalvin.nlp_tokenizer import NLPTokenizer  # noqa: E402
+from kalvin.bpe_tokenizer import BPETokenizer  # noqa: E402
 from kalvin.signifier import NLPSignifier  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 from dialogue import (  # noqa: E402
@@ -418,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     dialogue_path = args.dialogue
-    tok = NLPTokenizer()
+    tok = BPETokenizer()
     sigf = NLPSignifier()
 
     script = load_script(json.loads(Path(dialogue_path).read_text()))

@@ -30,7 +30,7 @@ STM is the first tier of the write cascade — every write reaches it, and
 `grounded()` deliberately excludes it (transient entries have not been
 rationalised).
 
-In the lean dialogue harness's `EngineState`, the pending-attention store
+In the dialogue harness's `EngineState`, the pending-attention store
 (formerly `work_list`) **is** STM: incoming entries and the ungrounded
 signatures/nodes their routing unpacks sit in `stm` until they ground or are
 asked about — exactly the written-by-attention relation. The separate

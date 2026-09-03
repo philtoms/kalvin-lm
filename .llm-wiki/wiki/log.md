@@ -1,8 +1,35 @@
 # Wiki Update Log
 
+## 2026-09-03
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-03-compound-words-no-longer-take-word-bits","title":"Compound words no longer take word bits"}
+
+## 2026-09-02
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not","title":"LTM as algebra carrier; grounding delimits; time on states not signatures"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa","title":"kalvin-symbolic.md converted from denotational to operational framing"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe","title":"Solver reading of Kalvin's operations: temporality and existence proofs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list","title":"Symbolic-AI perspective document drafted with gap list"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry","title":"Batch scaffolding now primes K before the entry"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness","title":"Scaffolding delivery-mode flag added to dialogue harness"}
+
+## 2026-09-01
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-","title":"ks TokenEncoder now packs a word word: one bit per word, size 31"}
+
+## 2026-08-28
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue","title":"Teaching and synthesize modules removed from src/dialogue"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points","title":"EngineState reads now layered STM→Frame→LTM access points"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp","title":"CONNOTES/DENOTES structural semantics inverted and made compound"}
+
 ## 2026-08-27
 
-- **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig","title":"ASK klines now sig|ASK_NLP_TOKEN with original canonical signature"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-08-27-rconnotes-operator-committed-fe845f5","title":"'<' RCONNOTES operator committed (fe845f5)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e","title":"Block-feed filtering + cogitate ground arm committed (9b3414e)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-harness-feeds-whole-block-in-one-batch","title":"Harness feeds whole block in one batch"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness","title":"\"Lean\" term removed; dialogue harness is the only harness"}
+- **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig","title":"ASK klines now sig|ASK_BPE_TOKEN with original canonical signature"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b","title":"ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann","title":"Compiler emits ASK klines for bare compounds and sigless annotations"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-08-27-build-state-py-dev-tool-added","title":"build_state.py dev tool added"}

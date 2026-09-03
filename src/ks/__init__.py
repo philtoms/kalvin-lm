@@ -20,7 +20,7 @@ from __future__ import annotations
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 
 from .ast_emitter import SymbolicEntry
@@ -44,7 +44,7 @@ class KScript:
 
     Args:
         source: KScript source code string.
-        tokenizer: Tokenizer for encoding (default: NLPTokenizer; tokenizer data is mandatory).
+        tokenizer: Tokenizer for encoding (default: BPETokenizer; tokenizer data is mandatory).
         dev: Enable development/diagnostic mode.
 
     Example::
@@ -60,7 +60,7 @@ class KScript:
         signifier: KSignifier | None = None,
         dev: bool = False,
     ) -> None:
-        self._tokenizer: KTokenizer = tokenizer or NLPTokenizer()
+        self._tokenizer: KTokenizer = tokenizer or BPETokenizer()
         self._signifier: KSignifier = signifier or NLPSignifier()
         self._dev = dev
         self._entries: list[KValue] = compile_source(

@@ -1,99 +1,156 @@
 ---
 name: dialogue-dev
-description: Investigates and progresses the dialogue sub-project src/dialogue/ — the authored-script ↔ real-actor ↔ rules triad and the coverage/displacement loop that brings them into agreement. Use when the user says "/dialogue-dev" or asks to work on, debug, advance, tune, or understand the dialogue training system, the rationalising trainee, the synthesizing trainer, the runner, or dialogue scripts.
+description: Drives the dialogue harness (src/dialogue/harness.py + engine.py) — the synchronous, non-judging compile→feed→present loop — to tune Kalvin's rationalising engine against .ks scripts, and to author scripts that test engine theory or bring out new behaviour. Use when the user says "/dialogue-dev".
 ---
 
-# Dialogue Dev
+# Dialogue Harness
 
-Guide for investigating and progressing the dialogue sub-project:
-`src/dialogue/`.
+Tune **Kalvin's rationalising engine** by running a script
+through the dialogue harness, reading what the engine actually did from the
+trace + the grounded/work_list tails, changing the engine so it does
+better, and re-running. The engine is the target of the work; the
+The script is the lever. The harness is a faithful, non-judging presenter.
 
-## Conceptual model
+## Before you start — read, do not infer
 
-`src/dialogue/` is the sub-project. **Read the code for what it means; do not
-re-derive or reassert it in code comments or commits.** `CONTEXT.md`'s
-Dialogue subsystem section maps the modules (actors, runner, rationaliser,
-supervisor, decoder). This skill is navigation and discipline only.
+The discipline of this skill: read before you reason. Each artefact below
+exists because a session learned the hard way that guessing costs more
+than reading. Load them every session.
 
-## The two signals
+1. **`CONTEXT.md`** — the domain glossary. Every term (kline, rationalise,
+   significance bands, grounding, frame, work-list, terminal, canon,
+   misfit, relationship) has a precise meaning; several are counter-
+   intuitive. Do not infer them.
+2. **`src/dialogue/engine.py`** — the engine under tune.
+3. **`src/dialogue/harness.py`** — the loop. Read to confirm the
+   non-judging contract before changing anything.
 
-Every run produces two numbers. Read both before reading code.
+See [trace-reading.md](references/trace-reading.md) for the per-step
+vocabulary and a worked reading, and
+[script-reading.md](references/script-reading.md) for what a `.ks` script
+is, how to read it semantically, and how to construct new ones.
 
-- **Displacement** (`uncovered`) — agreement: coverage rows never emitted.
-  Zero is the target. Zero at a tiny event count is a stall, not a success.
-- **Escalation load** (`supervisor escalations: N asks, M emitted`, only with
-  `--rationalise-trainer` / `--rationalise-both`) — depth: how often the
-  rationalising trainer had nothing to say and asked the supervisor. Lower is
-  the trajectory; it is the real work, not a bug to "fix" by forcing the
-  supervisor to speak.
+## The privileged working mode
 
-## Where everything lives
+**Do not assume existing code is correct.** This contradicts "source is
+the truth document," but here the source is exactly what we are improving.
+Engine behaviour that drops or deadlocks (the fast route dropping unseen
+canons; relationships that couldn't ground) was the bug, not the
+contract. When a trace shows something vanish or stall, treat the engine
+as the suspect first.
 
-| Artefact     | Path                                                | Role                                                                                                                   |
-| ------------ | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Actors       | `src/dialogue/actors.py`                            | `ScriptTrainer`/`ScriptTrainee` (table), `SynthesizingTrainer`, `RationalisingTrainee` (K), `RationalisingTrainer` (T) |
-| Runner       | `src/dialogue/runner.py`                            | Bus subscriber + driver; opens/closes a run; coverage/divergence                                                       |
-| Rationaliser | `src/dialogue/rationalise.py`                       | Pure shared engine: `(state, incoming) -> (batch, observations)`                                                       |
-| Supervisor   | `src/dialogue/synthesize.py`                        | `synthesize` — answers from compiled source when cogitation has nothing                                                |
-| Decoder      | `src/dialogue/decoder.py`                           | Script → `list[DecodedTurn]`; resolver, not gatekeeper                                                                 |
-| Driver       | `dev/dialogue/dialogue_run.py`                      | End-to-end CLI; renders trace, displacement, escalation load                                                           |
-| Probe        | `dev/dialogue/probe_rationalise.py`                 | Drives the pure engine turn-by-turn; edit in place per question                                                        |
-| Scripts      | `scripts/dialogue-mhall.json`, `dialogue-wdmh.json` | Authored dialogues (mhall is canonical)                                                                                |
-| Smoke test   | `tests/test_dialogue_smoke.py`                      | Basic-operation acceptance (DDT-1..3)                                                                                  |
+## The three signals
 
-## Commands
+Every run ends with a trace and two lists. Read all before reading code.
+
+- **trace** - What the engine did (asks, proposals, groundings)
+- **grounded** — what the engine knows (identities, canons, relationships).
+- **work_list (pending at end of run)** — what the engine was still working on
+  when turns ran out. Distinguish _genuine residue_ (signatures the
+  script never makes groundable — e.g. an unbound `L`) from _stalled
+  klines_ (something that should have grounded but the engine had no
+  path). The latter is the work.
+
+## Run
 
 ```bash
-# End-to-end (reach for this first)
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py                            # both table actors
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise              # real trainee, table trainer
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise-trainer      # real trainer, table trainee
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --synthesize               # synthesizing trainer, table trainee
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise-both         # both rationalising (read escalation load)
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --rationalise-both -v      # + groundings + supervisor-supplied turns
-PYTHONPATH=src .venv/bin/python dev/dialogue/dialogue_run.py --divergence               # fail (exit 1) on first divergence
-
-# Turn-by-turn engine probe (edit in place)
-PYTHONPATH=src .venv/bin/python dev/dialogue/probe_rationalise.py
-
-# Smoke test (DDT-3: canonical MHALL with table actors must stay zero displacement)
-PYTHONPATH=src .venv/bin/python -m pytest tests/test_dialogue_smoke.py -q
+PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks             # the canonical kscript
+PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks -e          # structural supervisor
 ```
 
-Flags are orthogonal and combinable, except `--rationalise-both` (shorthand
-for both rationalising actors; exclusive with the others). Default mode
-accepts divergences (exit 0) and reports them in the trace; `--divergence`
-fails fast. A script with `priors` runs them as a sequence of runs before
-the target's own run.
+Each lesson's kscript runs through a shared engine (state persists across
+lessons), and the trace is presented.
+
+```
+
+The harness compiles each lesson's kscript, feeds each compiled entry to the engine
+one at a time, answers S4 identity asks inline , and
+presents the trace. One linear pass, no waits, no convergence loop.
 
 ## Workflow
 
-1. **Reproduce before reading code.** Run the dialogue; read both signals.
-2. **Diagnose** — which artefact is wrong (script / code / rules), and is the
-   turn earned, escalated, or scripted? Read the code, not its comments, for
-   what these mean.
-3. **Edit** — smallest honest change. Keep code and comments minimal: describe
-   _what_ a block does, not a theory of why the design is right. Don't mirror
-   the spec's prose into the code.
-4. **Verify** — re-run; snapshot both signals before and after.
+1. **Read the script.** and understand what it is saying. Use the annotations -
+   they explain what is being taught or asked.
+2. **Run the script.** Read grounded + work_list. Form an
+   **exploratory expectation** from the annotation + what has grounded —
+   something to compare the trace against and explore, not a pass/fail
+   spec. Write it down so you can compare later. A near-match (right nodes,
+   different signature) is a finding that the engine is on the right track, not a
+   failure. Then **report** what you found: did the engine meet the expectation, how
+   was it out, what went wrong — feeding the next step. See trace-reading
+   §Worked example 2 and script-reading §Reading a run (the decode loop).
+   Judge the decoded prose honestly: if the engine's proposal is semantic
+   gibberish, say so — a near-match is only "on the right track" when
+   its decoded prose actually means something.
+3. **Diagnose: engine or script?** (See below. Engine first.)
+4. **Edit** the suspect (engine code, or — only when confident — the
+   `.ks`). Smallest honest change. Comments minimal: describe what, not
+   why the design is right.
+5. **Verify.** Re-run; compare grounded + work_list before/after.
+6. **Commit on the `dialogue` branch.** One change per commit; name what
+   shifted.
 
-## Guardrails (do not violate)
+## Diagnose: engine or script?
 
-- The runner opens a run (delivers the first row to the opposite role) and
-  closes it (close observed / coverage exhausted / mutual PASS). Actors never
-  open.
-- Every `accept` owes `burst >= 1`; nothing substantive publishes a PASS; two
-  consecutive PASSes (one per role) is terminal.
-- DDT-3 (canonical MHALL, table actors) must stay zero displacement — the
-  core-loop guard.
-- Doc maintenance follows `AGENTS.md` (locate → assess → update source and
-  CONTEXT → report). The owning layer for this sub-project is `src/dialogue/`
-  (mapped in CONTEXT.md); do not duplicate its content into code comments,
-  commits, or other docs.
+**Engine first — always.** This is the target work. When a trace stalls,
+a kline vanishes, or grounded/work_list diverge from the trainer
+expectation, suspect the engine and dig there until the engine path is
+genuinely exhausted.
 
-## Escalate to the user when
+**Retreat to script-authoring only when** you are confident a `.ks`
+change can test a theory or bring out a different result. Script
+writing advances the use case for the engine — it is not a workaround for
+engine bugs. Typical retreats:
 
-- A turn can't be earned without a genuine design fork in the engine.
-- A change would alter a dialogue contract in `src/dialogue/`.
-- DDT-3 regresses.
-- Escalation load stalls across three runs.
+- **Prime-before-test ordering.** A question fed before the prime's
+  identities land can't be answered (the parts aren't known yet). Reorder
+  the `.ks` so priming precedes questioning, to test whether the engine
+  _can_ answer given correct ordering. (mhall's WDMH is the canonical
+  example — the question arrives at step 9, the identities at steps 13+.)
+- **Shake things up.** Once the engine settles on a script, author a new
+  new `.ks` to find the next edge — introduce ambiguity, withhold an
+  identity the harness could offer, add a second question, invert
+  ordering deliberately.
+- **Test a theory.** A minimal `.ks` constructed to exercise one engine
+  path (a single countersign; a lone unseen canon; a denotes with no
+  reciprocal) is the fastest way to confirm or refute a hypothesis about
+  engine behaviour.
+
+When you do author a `.ks`, it lives in `data/scripts/`. Annotation
+prose (parenthetical lines) is the trainer rationale — the harness
+carries it onto each kline's `KDbg.annotation` and prints it as a section
+header. Always compile the `.ks` to ensure there are no errors.
+
+## Discipline (do not violate)
+
+- **The harness never judges.** No verdict, no band-matching, no
+  success/failure marker. Judgement is the trainer's (you, outside the
+  loop). If you are adding evaluation logic to the harness, stop.
+- **Engine first.** Suspect the engine before the script; edit `.ks`
+  only to test a theory or shake things up, never to work around an
+  engine bug.
+- **Check the source before asserting behaviour as fact.** Inferences
+  stated as established rules cause real bugs.
+- **The engine speaks in semantic predicates** (`is_identity`,
+  `is_unknown`, `is_canon`, `is_relationship`), never raw `kline.nodes`.
+- keep all ad-hoc investigative scripts in dev/dialogue. Do not delete after use.
+
+## Where things live
+
+| Artefact        | Path                          | Role                                                     |
+| --------------- | ----------------------------- | -------------------------------------------------------- |
+| Engine          | `src/dialogue/engine.py`      | The fork under tune                                      |
+| Harness         | `src/dialogue/harness.py`     | The non-judging compile→feed→present loop + CLI          |
+| Compiler        | `src/ks/`                     | KScript → KValue; carries annotation/scope/labels        |
+| Curricula       | `data/scripts/*.ks`           | `mhall.ks` is canonical                                  |
+| Glossary        | `CONTEXT.md`                  | Domain terms                                             |
+
+## Stop / ask
+
+- **Stop** when grounded + work_list match the trainer expectation and
+  the suite passes.
+- **Ask the user** only on a genuine engine-semantics fork (e.g.
+  "should a countersign require compositional operands, or just two
+  grounded values?"). Do not ask permission to treat engine behaviour as
+  suspect — that is the core activity.
+```

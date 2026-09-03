@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-08-27T13:03:47.720Z",
+  "last_updated": "2026-09-03T10:53:47.462Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -374,14 +374,14 @@
     "entities/expand": {
       "type": "entity",
       "title": "expand",
-      "description": "A cogitation strategy for the S2 arm — grades grounded candidates via kalvin.expand.expand. The lean harness default. Emits few proposals; exhibits silent synthesis on mhall.",
+      "description": "A cogitation strategy for the S2 arm — grades grounded candidates via kalvin.expand.expand. The dialogue harness default. Emits few proposals; exhibits silent synthesis on mhall.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
     "entities/harness": {
       "type": "entity",
       "title": "Harness (implementation)",
-      "description": "The training harness runtime — the multi-agent WebSocket server and message bus, plus the lean synchronous dialogue harness. Both drive the K engine.",
+      "description": "The training harness runtime — the multi-agent WebSocket server and message bus, plus the synchronous dialogue harness. Both drive the K engine.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
@@ -1236,7 +1236,7 @@
     },
     "sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig": {
       "type": "source",
-      "title": "Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature",
+      "title": "Observation: ASK klines now sig|ASK_BPE_TOKEN with original canonical signature",
       "tags": [
         "ks",
         "compiler",
@@ -1247,6 +1247,23 @@
       "relevance": "high",
       "observed_at": "2026-08-27T13:03:47.689Z",
       "source_context": "Reworking ASK kline compilation to signature-agnostic ask bit",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e": {
+      "type": "source",
+      "title": "Observation: Block-feed filtering + cogitate ground arm committed (9b3414e)",
+      "tags": [
+        "harness",
+        "engine",
+        "grounding",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e",
+      "relevance": "high",
+      "observed_at": "2026-08-27T15:06:35.288Z",
+      "source_context": "Filtering primed entries from harness block feed",
       "created": "2026-08-27",
       "updated": "2026-08-27"
     },
@@ -1279,6 +1296,235 @@
       "observed_at": "2026-08-27T11:00:24.417Z",
       "created": "2026-08-27",
       "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-harness-feeds-whole-block-in-one-batch": {
+      "type": "source",
+      "title": "Observation: Harness feeds whole block in one batch",
+      "tags": [
+        "harness",
+        "dialogue",
+        "feeding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-harness-feeds-whole-block-in-one-batch",
+      "relevance": "high",
+      "observed_at": "2026-08-27T14:08:20.028Z",
+      "source_context": "Refactoring src/dialogue/harness.py feeding behaviour",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness": {
+      "type": "source",
+      "title": "Observation: \"Lean\" term removed; dialogue harness is the only harness",
+      "tags": [
+        "terminology",
+        "dialogue",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness",
+      "relevance": "high",
+      "observed_at": "2026-08-27T14:07:41.836Z",
+      "source_context": "Terminology cleanup: removing the \"lean\" distinction from dialogue",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-27-rconnotes-operator-committed-fe845f5": {
+      "type": "source",
+      "title": "Observation: '<' RCONNOTES operator committed (fe845f5)",
+      "tags": [
+        "kscript",
+        "compiler",
+        "relational-tokens"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-27-rconnotes-operator-committed-fe845f5",
+      "relevance": "medium",
+      "observed_at": "2026-08-27T16:35:13.386Z",
+      "source_context": "Adding reversed CONNOTES operator to KScript",
+      "created": "2026-08-27",
+      "updated": "2026-08-27"
+    },
+    "sources/obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp": {
+      "type": "source",
+      "title": "Observation: CONNOTES/DENOTES structural semantics inverted and made compound",
+      "tags": [
+        "kscript",
+        "compiler",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp",
+      "relevance": "high",
+      "observed_at": "2026-08-28T14:09:14.777Z",
+      "source_context": "Changing KScript conote/denote structural semantics",
+      "created": "2026-08-28",
+      "updated": "2026-08-28"
+    },
+    "sources/obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points": {
+      "type": "source",
+      "title": "Observation: EngineState reads now layered STM→Frame→LTM access points",
+      "tags": [
+        "dialogue",
+        "engine",
+        "memory",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points",
+      "relevance": "high",
+      "observed_at": "2026-08-28T15:16:14.154Z",
+      "source_context": "Refactoring EngineState read semantics to layered access points",
+      "created": "2026-08-28",
+      "updated": "2026-08-28"
+    },
+    "sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue": {
+      "type": "source",
+      "title": "Observation: Teaching and synthesize modules removed from src/dialogue",
+      "tags": [
+        "dialogue",
+        "cleanup"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue",
+      "relevance": "medium",
+      "observed_at": "2026-08-28T15:21:52.189Z",
+      "source_context": "Removing Teaching and synthesize from src/dialogue",
+      "created": "2026-08-28",
+      "updated": "2026-08-28"
+    },
+    "sources/obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-": {
+      "type": "source",
+      "title": "Observation: ks TokenEncoder now packs a word word: one bit per word, size 31",
+      "tags": [
+        "ks",
+        "tokenizer",
+        "bpe",
+        "word-bits"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-",
+      "relevance": "high",
+      "observed_at": "2026-09-01T10:43:50.164Z",
+      "source_context": "ks TokenEncoder word-bit scheme implementation",
+      "created": "2026-09-01",
+      "updated": "2026-09-01"
+    },
+    "sources/obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry": {
+      "type": "source",
+      "title": "Observation: Batch scaffolding now primes K before the entry",
+      "tags": [
+        "harness",
+        "scaffolding",
+        "dialogue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry",
+      "relevance": "high",
+      "observed_at": "2026-09-02T12:23:09.590Z",
+      "source_context": "Reordering batch scaffolding before entry in dialogue harness",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa": {
+      "type": "source",
+      "title": "Observation: kalvin-symbolic.md converted from denotational to operational framing",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "solver",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa",
+      "relevance": "high",
+      "observed_at": "2026-09-02T13:42:27.980Z",
+      "source_context": "Reconciling the denotational body of kalvin-symbolic.md with the operational solver reading",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not": {
+      "type": "source",
+      "title": "Observation: LTM as algebra carrier; grounding delimits; time on states not signatures",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "ltm",
+        "grounding",
+        "time"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not",
+      "relevance": "high",
+      "observed_at": "2026-09-02T13:51:57.560Z",
+      "source_context": "Formalising Kalvin's algebra: grounding, memory tiers, and time",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness": {
+      "type": "source",
+      "title": "Observation: Scaffolding delivery-mode flag added to dialogue harness",
+      "tags": [
+        "harness",
+        "scaffolding",
+        "dialogue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness",
+      "relevance": "high",
+      "observed_at": "2026-09-02T12:19:33.141Z",
+      "source_context": "Adding scaffolding delivery-mode flag to dialogue harness",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe": {
+      "type": "source",
+      "title": "Observation: Solver reading of Kalvin's operations: temporality and existence proofs",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "solver",
+        "gst"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe",
+      "relevance": "high",
+      "observed_at": "2026-09-02T13:38:53.469Z",
+      "source_context": "Formalising Kalvin's algebra: temporality and the solver reading of relational operations",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list": {
+      "type": "source",
+      "title": "Observation: Symbolic-AI perspective document drafted with gap list",
+      "tags": [
+        "docs",
+        "formalisation",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list",
+      "relevance": "high",
+      "observed_at": "2026-09-02T13:04:20.435Z",
+      "source_context": "Writing the symbolic-AI perspective document for Kalvin",
+      "created": "2026-09-02",
+      "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-03-compound-words-no-longer-take-word-bits": {
+      "type": "source",
+      "title": "Observation: Compound words no longer take word bits",
+      "tags": [
+        "kscript",
+        "token-encoder",
+        "word-bits"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-03-compound-words-no-longer-take-word-bits",
+      "relevance": "high",
+      "observed_at": "2026-09-03T10:53:47.409Z",
+      "source_context": "Excluding compound words from compiled word_bits",
+      "created": "2026-09-03",
+      "updated": "2026-09-03"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

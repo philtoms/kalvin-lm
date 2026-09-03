@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 from dialogue.engine_state import EngineState
 from ks.compiler import compile_source
@@ -18,7 +18,7 @@ def main() -> None:
     is_file = Path(arg).is_file() or arg.endswith(".ks")
     source = Path(arg).read_text() if is_file else arg
 
-    tok = NLPTokenizer()
+    tok = BPETokenizer()
     sigf = NLPSignifier()
     entries = compile_source(source, tokenizer=tok, signifier=sigf, dev=True)
 

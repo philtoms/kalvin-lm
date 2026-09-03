@@ -12,8 +12,9 @@ SymbolicEntry tuples to encoded uint64 values.
 
   - UNKNOWN (op=None):   {sig: []}   — bare unknown ask
   - COUNTERSIGNS (==):   {sig: [node]}, {node: [sig]} per item  — bidirectional
-  - DENOTES (=):      {node: [sig]} per item  — reversed direction
-  - CONNOTES (>):         {sig: [node]} per item  — forward direction
+  - DENOTES (=):         {sig: [nodes]}  — forward direction
+  - CONNOTES (>):        {sig+nodes: [nodes]}  — compound signature
+  - RCONNOTES (<):       {sig+nodes: [sig]}   — compound signature, reversed
   - CANONIZES (=>):       {sig: [all_nodes]}  — aggregated single entry
 
   Self-identity (A = A) collapses to UNKNOWN with empty nodes.
@@ -83,7 +84,8 @@ class SymbolicEntry(NamedTuple):
         nodes: Always a list — empty for UNKNOWN, single-item for per-item
                operators, multi-item for CANONIZES aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
-        op:   One of "COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES",
+        op:   One of "COUNTERSIGNS", "CANONIZES", "CONNOTES", "RCONNOTES",
+               "DENOTES",
                "UNKNOWN".
         component_labels: Resolved words per signature character (for word
                mode).  None when not applicable.
@@ -99,7 +101,7 @@ class SymbolicEntry(NamedTuple):
                           # push every MTS kline after compiled source.
     annotation: str = ""   # the owning scope's annotation text
     scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
-    is_ask: bool = False   # ASK_NLP_TOKEN bit: the sig is the original
+    is_ask: bool = False   # ASK_BPE_TOKEN bit: the sig is the original
                            # canonical signature; the bit marks the kline
                            # as an ask (TokenEncoder ORs it into the sig)
 
@@ -178,7 +180,7 @@ class ASTEmitter:
 
     def _emit_ask(self, text: str) -> None:
         """Emit a sigless annotation as an ask kline:
-        ``ABC|ASK_NLP_TOKEN:[a big cat]``.
+        ``ABC|ASK_BPE_TOKEN:[a big cat]``.
 
         The canonical signature is the annotation's word initials (one
         uppercased letter per word); the nodes are the words. The ASK bit
@@ -261,9 +263,15 @@ class ASTEmitter:
                 # earlier authored scope (dedup hit), it stands untouched and
                 # the ask is a fresh entry with the canon's nodes. Either way
                 # the ask keeps the compound's original canonical signature;
-                # the ASK_NLP_TOKEN bit marks it as an ask.
+                # the ASK_BPE_TOKEN bit marks it as an ask.
                 canon = self.entries[mts_idx]
-                ask = canon._replace(op="ASK", is_ask=True)
+                # The ask is an authored statement of THIS scope — it takes
+                # the current scope's annotation and authored provenance,
+                # not the cached MTS canon's.
+                ask = canon._replace(
+                    op="ASK", is_ask=True, is_mts=False, scope=0,
+                    annotation=self._scope_annotation,
+                )
                 if mts_created:
                     self._mts_canonize_seen.pop((canon.sig, tuple(canon.nodes)), None)
                     self.entries[mts_idx] = ask
@@ -342,18 +350,25 @@ class ASTEmitter:
                 self._emit_entry(node, [sig], "COUNTERSIGNS")
 
         elif op == "DENOTES":
-            for node in nodes:
-                if node == sig:
-                    # Self-denote → self-referential IDENTITY {S:[S]}.
-                    # Binding-independent: once the author writes the
-                    # self-reference, the structure is fixed at S1.
-                    self._emit_entry(sig, [sig], "IDENTITY")
-                else:
-                    self._emit_entry(node, [sig], "DENOTES")
+            if nodes == [sig]:
+                # Self-denote → self-referential IDENTITY {S:[S]}.
+                # Binding-independent: once the author writes the
+                # self-reference, the structure is fixed at S1.
+                self._emit_entry(sig, [sig], "IDENTITY")
+            elif nodes:
+                self._emit_entry(sig, list(nodes), "DENOTES")
 
         elif op == "CONNOTES":
-            for node in nodes:
-                self._emit_entry(sig, [node], "CONNOTES")
+            if nodes == [sig]:
+                self._emit_entry(sig, [sig], "IDENTITY")
+            elif nodes:
+                self._emit_entry(sig + "".join(nodes), list(nodes), "CONNOTES")
+
+        elif op == "RCONNOTES":
+            if nodes == [sig]:
+                self._emit_entry(sig, [sig], "IDENTITY")
+            elif nodes:
+                self._emit_entry(sig + "".join(nodes), [sig], "CONNOTES")
 
         elif op == "CANONIZES":
             # A compound-headed CANONIZES scope produces TWO distinct
@@ -586,11 +601,9 @@ class ASTEmitter:
         is suppressed for them.
 
         _emit_identity_if_needed is applied to leaf Signature items (no
-        operator entry) and to DENOTES scope sigs (their entries use nodes
-        as sigs, so the scope's own sig lacks identity). Not needed for
-        CANONIZES/COUNTERSIGNS/CONNOTES scope sigs (already produce entries
-        with the scope's sig) nor bare op=None scopes (emit UNKNOWN in
-        _process_scope). The flag does not propagate between CANONIZES scopes.
+        operator entry). Not needed for CANONIZES/COUNTERSIGNS/CONNOTES/
+        DENOTES scope sigs (all produce entries with the scope's sig)
+        nor bare op=None scopes (emit UNKNOWN in _process_scope). The flag does not propagate between CANONIZES scopes.
         """
         is_canonize = op == "CANONIZES"
 
@@ -614,14 +627,6 @@ class ASTEmitter:
 
         for item in scope.items:
             if isinstance(item, OperatorScope):
-                # DENOTES scope sigs in subscript blocks need identity
-                # (their entries use nodes as sigs, not the scope's own sig).
-                if (
-                    self._in_canonize_subscript
-                    and item.op is not None
-                    and self._op_to_str(item.op) == "DENOTES"
-                ):
-                    self._emit_identity_if_needed(item.sig.id)
                 self._process_scope(item)
             elif isinstance(item, Annotation):
                 self._feed_annotation(item)
@@ -642,16 +647,7 @@ class ASTEmitter:
                     # collected by _collect_node_ids; skip to avoid a
                     # spurious UNKNOWN.
                     continue
-                # DENOTES scope sigs in subscript child_blocks need
-                # identity; bare scopes (op=None) emit UNKNOWN in
-                # _process_scope.
-                if (
-                    self._in_canonize_subscript
-                    and isinstance(construct, OperatorScope)
-                    and construct.op is not None
-                    and self._op_to_str(construct.op) == "DENOTES"
-                ):
-                    self._emit_identity_if_needed(construct.sig.id)
+                # Bare scopes (op=None) emit UNKNOWN in _process_scope.
                 self._process_constructs([construct])
 
         if pushed_scope and self._scope is not None:
@@ -896,6 +892,7 @@ class ASTEmitter:
             TokenType.COUNTERSIGNS: "COUNTERSIGNS",
             TokenType.CANONIZES: "CANONIZES",
             TokenType.CONNOTES: "CONNOTES",
+            TokenType.RCONNOTES: "RCONNOTES",
             TokenType.DENOTES: "DENOTES",
         }
         return _map.get(op, "UNKNOWN")

@@ -1,7 +1,7 @@
 ---
 type: entity
 title: expand
-description: A cogitation strategy for the S2 arm — grades grounded candidates via kalvin.expand.expand. The lean harness default. Emits few proposals; exhibits silent synthesis on mhall.
+description: A cogitation strategy for the S2 arm — grades grounded candidates via kalvin.expand.expand. The dialogue harness default. Emits few proposals; exhibits silent synthesis on mhall.
 created: 2026-08-11
 updated: 2026-08-11
 sources:
@@ -15,7 +15,7 @@ A cogitation strategy for the S2 (misfit) arm.
 
 ## Overview
 
-`expand` grades grounded candidates via `kalvin.expand.expand`. It is the lean
+`expand` grades grounded candidates via `kalvin.expand.expand`. It is the 
 dialogue harness's default strategy (`-s expand`). On the [[entities/mhall]]
 test case it emits only 1 proposal (`WDMH:[Mary]` at step 10) and goes silent on
 the WDMH↔MHALL recombination — the [[concepts/silent-synthesis]] open question.

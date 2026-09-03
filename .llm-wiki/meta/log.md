@@ -174,5 +174,50 @@
 - slug: "obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b", title: "ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug)", relevance: "high"
 
 ## [2026-08-27T13:03:47.691Z] observe
-- slug: "obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig", title: "ASK klines now sig|ASK_NLP_TOKEN with original canonical signature", relevance: "high"
+- slug: "obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig", title: "ASK klines now sig|ASK_BPE_TOKEN with original canonical signature", relevance: "high"
+
+## [2026-08-27T14:07:41.839Z] observe
+- slug: "obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness", title: "\"Lean\" term removed; dialogue harness is the only harness", relevance: "high"
+
+## [2026-08-27T14:08:20.031Z] observe
+- slug: "obs-2026-08-27-harness-feeds-whole-block-in-one-batch", title: "Harness feeds whole block in one batch", relevance: "high"
+
+## [2026-08-27T15:06:35.290Z] observe
+- slug: "obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e", title: "Block-feed filtering + cogitate ground arm committed (9b3414e)", relevance: "high"
+
+## [2026-08-27T16:35:13.389Z] observe
+- slug: "obs-2026-08-27-rconnotes-operator-committed-fe845f5", title: "'<' RCONNOTES operator committed (fe845f5)", relevance: "medium"
+
+## [2026-08-28T14:09:14.782Z] observe
+- slug: "obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp", title: "CONNOTES/DENOTES structural semantics inverted and made compound", relevance: "high"
+
+## [2026-08-28T15:16:14.158Z] observe
+- slug: "obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points", title: "EngineState reads now layered STM→Frame→LTM access points", relevance: "high"
+
+## [2026-08-28T15:21:52.196Z] observe
+- slug: "obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue", title: "Teaching and synthesize modules removed from src/dialogue", relevance: "medium"
+
+## [2026-09-01T10:43:50.167Z] observe
+- slug: "obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-", title: "ks TokenEncoder now packs a word word: one bit per word, size 31", relevance: "high"
+
+## [2026-09-02T12:19:33.143Z] observe
+- slug: "obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness", title: "Scaffolding delivery-mode flag added to dialogue harness", relevance: "high"
+
+## [2026-09-02T12:23:09.592Z] observe
+- slug: "obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry", title: "Batch scaffolding now primes K before the entry", relevance: "high"
+
+## [2026-09-02T13:04:20.437Z] observe
+- slug: "obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list", title: "Symbolic-AI perspective document drafted with gap list", relevance: "high"
+
+## [2026-09-02T13:38:53.472Z] observe
+- slug: "obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe", title: "Solver reading of Kalvin's operations: temporality and existence proofs", relevance: "high"
+
+## [2026-09-02T13:42:27.982Z] observe
+- slug: "obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa", title: "kalvin-symbolic.md converted from denotational to operational framing", relevance: "high"
+
+## [2026-09-02T13:51:57.563Z] observe
+- slug: "obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not", title: "LTM as algebra carrier; grounding delimits; time on states not signatures", relevance: "high"
+
+## [2026-09-03T10:53:47.413Z] observe
+- slug: "obs-2026-09-03-compound-words-no-longer-take-word-bits", title: "Compound words no longer take word bits", relevance: "high"
 

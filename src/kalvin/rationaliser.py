@@ -37,7 +37,7 @@ from kalvin.kline import KLine, is_canon, is_identity, sig_level
 from kalvin.kvalue import KValue
 from kalvin.model import Model
 from kalvin.signifier import NLPSignifier
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.tokenizer import TiktokenNotInstalledError
 
 __all__ = [
@@ -66,7 +66,7 @@ def _default_tokenizer() -> KTokenizer:
     ``scripts/rebuild-tokenizer-data.sh``.
     """
     try:
-        return NLPTokenizer()
+        return BPETokenizer()
     except (FileNotFoundError, ImportError, OSError, TiktokenNotInstalledError) as exc:
         raise RuntimeError(
             "Tokenizer data is required but unavailable. "
@@ -110,7 +110,7 @@ class Rationaliser:
     Parameters
     ----------
     tokenizer:
-        Tokenizer instance. Defaults to the kalvin NLPTokenizer (the sole
+        Tokenizer instance. Defaults to the kalvin BPETokenizer (the sole
         production tokenizer). Used for encoding text to nodes.
     model:
         Model instance serving as base memory. Defaults to empty Model.

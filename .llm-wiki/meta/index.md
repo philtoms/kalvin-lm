@@ -123,9 +123,24 @@
 - [[sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen]] — Observation: KNode became a labelled int subclass; labels wired at TokenEncoder *(created: 2026-08-26)*
 - [[sources/obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split]] — Observation: -p reloaded-state banner and fresh-vs-held grounding split *(created: 2026-08-26)*
 - [[sources/obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b]] — Observation: ASK dedup-hit clobbered authored compound definition (DH ['DH'] bug) *(created: 2026-08-27)*
-- [[sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig]] — Observation: ASK klines now sig|ASK_NLP_TOKEN with original canonical signature *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig]] — Observation: ASK klines now sig|ASK_BPE_TOKEN with original canonical signature *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-block-feed-filtering-cogitate-ground-arm-committed-9b3414e]] — Observation: Block-feed filtering + cogitate ground arm committed (9b3414e) *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-build-state-py-dev-tool-added]] — Observation: build_state.py dev tool added *(created: 2026-08-27)*
 - [[sources/obs-2026-08-27-compiler-emits-ask-klines-for-bare-compounds-and-sigless-ann]] — Observation: Compiler emits ASK klines for bare compounds and sigless annotations *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-harness-feeds-whole-block-in-one-batch]] — Observation: Harness feeds whole block in one batch *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-lean-term-removed-dialogue-harness-is-the-only-harness]] — Observation: "Lean" term removed; dialogue harness is the only harness *(created: 2026-08-27)*
+- [[sources/obs-2026-08-27-rconnotes-operator-committed-fe845f5]] — Observation: '<' RCONNOTES operator committed (fe845f5) *(created: 2026-08-27)*
+- [[sources/obs-2026-08-28-connotes-denotes-structural-semantics-inverted-and-made-comp]] — Observation: CONNOTES/DENOTES structural semantics inverted and made compound *(created: 2026-08-28)*
+- [[sources/obs-2026-08-28-enginestate-reads-now-layered-stm-frame-ltm-access-points]] — Observation: EngineState reads now layered STM→Frame→LTM access points *(created: 2026-08-28)*
+- [[sources/obs-2026-08-28-teaching-and-synthesize-modules-removed-from-src-dialogue]] — Observation: Teaching and synthesize modules removed from src/dialogue *(created: 2026-08-28)*
+- [[sources/obs-2026-09-01-ks-tokenencoder-now-packs-a-word-word-one-bit-per-word-size-]] — Observation: ks TokenEncoder now packs a word word: one bit per word, size 31 *(created: 2026-09-01)*
+- [[sources/obs-2026-09-02-batch-scaffolding-now-primes-k-before-the-entry]] — Observation: Batch scaffolding now primes K before the entry *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa]] — Observation: kalvin-symbolic.md converted from denotational to operational framing *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not]] — Observation: LTM as algebra carrier; grounding delimits; time on states not signatures *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness]] — Observation: Scaffolding delivery-mode flag added to dialogue harness *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe]] — Observation: Solver reading of Kalvin's operations: temporality and existence proofs *(created: 2026-09-02)*
+- [[sources/obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list]] — Observation: Symbolic-AI perspective document drafted with gap list *(created: 2026-09-02)*
+- [[sources/obs-2026-09-03-compound-words-no-longer-take-word-bits]] — Observation: Compound words no longer take word bits *(created: 2026-09-03)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -133,4 +148,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-08-27T13:03:47.720Z* | *Total pages: 121*
+*Last updated: 2026-09-03T10:53:47.462Z* | *Total pages: 136*

@@ -33,7 +33,7 @@ grounds (S1). It speaks in semantic predicates (`is_identity`, `is_unknown`,
 `is_canon`, `is_relationship`), never raw `kline.nodes`.
 
 Two cogitation strategies exist — [[entities/similarfit]] (graft heuristic) and
-[[entities/expand]] (grades grounded candidates) — selectable via the lean
+[[entities/expand]] (grades grounded candidates) — selectable via the 
 harness `-s` flag. They diverge on S2 emissions, not on the grounded model: on
 `mhall` both reach the same grounded model, but `similar_fit` emits 12 S2
 proposals and `expand` emits 1 (see [[concepts/canonical-synthesis]],

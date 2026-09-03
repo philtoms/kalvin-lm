@@ -12,6 +12,7 @@ class TokenType(Enum):
         COUNTERSIGNS: ==  (bidirectional link)
         CANONIZES:    =>  (aggregation)
         CONNOTES:     >   (connotation)
+    RCONNOTES:    <   (connotation, reversed direction)
         DENOTES:      =   (denotation)
 
     Node types:
@@ -29,6 +30,7 @@ class TokenType(Enum):
     COUNTERSIGNS = auto()  # ==
     CANONIZES = auto()  # =>
     CONNOTES = auto()  # >
+    RCONNOTES = auto()  # <
     DENOTES = auto()  # =
 
     # Node types

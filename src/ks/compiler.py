@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 
 from .ast import KScriptFile
@@ -44,7 +44,7 @@ class Compiler:
 
     Args:
         tokenizer: Tokenizer for encoding strings to uint64 values.
-            Defaults to NLPTokenizer() (tokenizer data is mandatory).
+            Defaults to BPETokenizer() (tokenizer data is mandatory).
         dev: Enable development/diagnostic mode (populates dbg).
     """
 
@@ -53,10 +53,12 @@ class Compiler:
         tokenizer: KTokenizer | None = None,
         signifier: KSignifier | None = None,
         dev: bool = False,
+        word_bits: dict[str, int] | None = None,
     ) -> None:
-        self.tokenizer: KTokenizer = tokenizer or NLPTokenizer()
+        self.tokenizer: KTokenizer = tokenizer or BPETokenizer()
         self._signifier: KSignifier = signifier or NLPSignifier()
         self.dev = dev
+        self._word_bits = word_bits
         self.entries: list[KValue] = []
 
     def compile(self, file: KScriptFile) -> list[KValue]:
@@ -80,7 +82,7 @@ class Compiler:
         emitter = ASTEmitter(scope=scope, dev=self.dev)
         symbolic: list[SymbolicEntry] = emitter.emit(file)
 
-        encoder = TokenEncoder(tokenizer=self.tokenizer, signifier=self._signifier, dev=self.dev)
+        encoder = TokenEncoder(tokenizer=self.tokenizer, signifier=self._signifier, dev=self.dev, word_bits=self._word_bits)
         self.entries = encoder.encode_entries(symbolic)
         self.node_labels: dict[int, str] = dict(encoder.node_labels)
         return self.entries
@@ -91,6 +93,7 @@ def compile_source(
     tokenizer: KTokenizer | None = None,
     signifier: KSignifier | None = None,
     dev: bool = False,
+    word_bits: dict[str, int] | None = None,
 ) -> list[KValue]:
     """Compile a KScript source string into encoded entries.
 
@@ -100,7 +103,7 @@ def compile_source(
     Args:
         source: KScript source code string.
         tokenizer: Tokenizer for encoding strings to uint64 values.
-            Defaults to NLPTokenizer() (tokenizer data is mandatory).
+            Defaults to BPETokenizer() (tokenizer data is mandatory).
         dev: Enable development/diagnostic mode.
 
     Returns:
@@ -112,4 +115,4 @@ def compile_source(
 
     tokens = Lexer(source).tokenize()
     kfile = Parser(tokens).parse()
-    return Compiler(tokenizer, signifier=signifier, dev=dev).compile(kfile)
+    return Compiler(tokenizer, signifier=signifier, dev=dev, word_bits=word_bits).compile(kfile)

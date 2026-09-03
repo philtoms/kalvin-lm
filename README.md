@@ -89,9 +89,9 @@ uv run pytest
 > bash scripts/rebuild-tokenizer-data.sh
 > ```
 
-### Lean Dialogue Harness
+### Dialogue Harness
 
-The lean harness compiles a KScript script, feeds each entry to the
+The dialogue harness compiles a KScript script, feeds each entry to the
 rationalising engine one at a time, and presents the resulting trace. It is
 synchronous and non-judging — the trainer (a pi agent, outside the loop)
 reads the trace and decides what to edit.
@@ -154,10 +154,10 @@ src/
 │   ├── binding_scope.py  #   Word binding resolution
 │   ├── token_encoder.py  #   TokenEncoder (symbolic → encoded KLines)
 │   └── compiler.py       #   Compiler (orchestrator; source → KLines)
-├── dialogue/             # Lean dialogue harness + rationalising engine
+├── dialogue/             # Dialogue harness + rationalising engine
 │   ├── engine.py         #   Stateless engine: (state, incoming) → (batch, observations)
 │   ├── engine_state.py   #   EngineState — engine-held memory
-│   ├── harness.py        #   Lean harness: compile → feed → present
+│   ├── harness.py        #   Harness: compile → feed → present
 │   ├── runner.py         #   Coverage-tracking wildcard subscriber over the bus
 │   ├── actors.py         #   Actor base + role impls
 │   ├── rationalise.py    #   Rationaliser + RationaliserState

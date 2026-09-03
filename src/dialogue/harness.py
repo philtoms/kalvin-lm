@@ -1,7 +1,7 @@
-"""The lean training harness.
+"""The dialogue training harness.
 
-A minimal, synchronous, non-judging loop. Compile a KScript source, feed each
-compiled entry to the engine one at a time, and present the engine's
+A minimal, synchronous, non-judging loop. Compile a KScript source, feed
+compiled entry to the engine one block at a time, and present the engine's
 ``(batch, observations)`` response. The harness is feeder, driver, and
 presenter — it never judges. The trainer (a pi agent, outside the loop) reads
 the trace, makes decisions, edits the engine and/or the source, and re-runs.
@@ -20,13 +20,13 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
 from kalvin.kline import KLine, KNode, is_canon, is_identity
 from kalvin.kvalue import KValue
-from kalvin.nlp_tokenizer import NLPTokenizer
+from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.significance import SIG_MASK, SIG_S1, SIG_S3, SIG_S4, BandLayout
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
@@ -77,16 +77,24 @@ class Harness:
 
     def __init__(
         self,
-        tokenizer: NLPTokenizer,
+        tokenizer: BPETokenizer,
         engine: Engine,
         escalate: Callable[[KValue], KValue] | None = None,
+        scaffolding: Literal["batch", "on-demand"] = "batch",
     ) -> None:
         self._tokenizer = tokenizer
         self._engine = engine
+        # How a group's scaffolding reaches the engine: "batch" delivers
+        # all compiled klines with the opening entry (current); "on-demand"
+        # feeds only the opener and releases scaffolding as K asks for it.
+        self.scaffolding = scaffolding
         # The escalation point: an ask the script cannot answer goes to the
         # supervisor, who decides its significance (ratify at S1 to ground it;
         # decline at S4 to refuse). Default: decline.
         self._escalate = escalate or (lambda ask: KValue(ask.kline, SIG_S4))
+        # The word→bit table compiles share; persisted with the state so a
+        # reloaded state's node values mean the same words.
+        self.word_bits: dict[str, int] = {}
 
     @property
     def engine(self) -> Engine:
@@ -106,85 +114,50 @@ class Harness:
         """Compile ``source``, open each sub-script's dialogue, and let the
         engine drive.
 
-        Each sub-script (annotation group) is opened with its first entry.
-        From there the engine asks; the harness answers each ask from the
-        script or the run stops.
+        Each sub-script (annotation group) opens with its opener. In
+        ``"batch"`` scaffolding the group's remaining entries are fed first,
+        priming K, and the opener follows once their asks have settled; in
+        ``"on-demand"`` only the opener is fed and the group's remaining
+        entries answer the engine's asks. From there the engine asks; the
+        harness answers each ask from the script or the run stops.
         """
         entries = compile_source(
-            source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True
+            source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True,
+            word_bits=self.word_bits,
         )
         tokens = {
             sig: word
             for sig, word in self._single_token_labels(source).items()
         }
-        # Authored sub-scripts: scope-0 entries preserve authored order — a
-        # group is a maximal run sharing an annotation ('' joins the current
-        # run; a repeated annotation is a distinct authored group). Scope-1/2
-        # entries (MTS/identities) are allocated to the first group with a
-        # matching, not-yet-served occurrence of their annotation; '' joins
-        # the preceding entry's group.
+        # Authored sub-scripts: a group is delimited by an entry annotation
+        # (or EOF) — a new group opens at any authored (scope-0) entry whose
+        # annotation differs from the current group's; '' entries join the
+        # current group. MTS entries follow positionally (they carry their
+        # scope's annotation), but dedup globally: an MTS entry joins the
+        # first group of its annotation, never a later duplicate — the
+        # encoder's source-before-MTS partition would otherwise re-open
+        # every earlier annotation as a trailing group.
         groups: list[tuple[str, list[KValue]]] = []
-        by_key: dict[str, list[KValue]] = {}
+        first_by_ann: dict[str, list[KValue]] = {}
         current: list[KValue] | None = None
+        current_ann: str | None = None
         for entry in entries:
             annotation = entry.kline.dbg.annotation if entry.kline.dbg else ""
             scope = entry.kline.dbg.scope if entry.kline.dbg else 0
-            if scope == 0:
-                if current is None or (
-                    annotation and annotation != groups[-1][0].rsplit("#", 1)[0]
-                ):
-                    occurrence = sum(
-                        1 for k, _ in groups if k.rsplit("#", 1)[0] == annotation
-                    )
-                    key = f"{annotation}#{occurrence}"
-                    groups.append((key, []))
-                    current = groups[-1][1]
-                    by_key.setdefault(key, current)
-                current.append(entry)
-            else:
-                # MTS entries dedup globally: one set per compound. The whole
-                # set belongs to the first occurrence of its annotation.
+            if scope != 0 and annotation and annotation in first_by_ann:
+                first_by_ann[annotation].append(entry)
+                continue
+            if current is None or (annotation and annotation != current_ann):
+                occurrence = sum(
+                    1 for k, _ in groups if k.rsplit("#", 1)[0] == annotation
+                )
+                key = f"{annotation}#{occurrence}"
+                groups.append((key, []))
+                current = groups[-1][1]
+                current_ann = annotation
                 if annotation:
-                    match = next(
-                        (
-                            f"{annotation}#{i}"
-                            for i in range(
-                                sum(
-                                    1 for k, _ in groups
-                                    if k.rsplit("#", 1)[0] == annotation
-                                )
-                            )
-                            if f"{annotation}#{i}" in by_key
-                        ),
-                        None,
-                    )
-                    target = by_key.get(match) if match else None
-                else:
-                    target = None
-                if target is None and annotation and not any(
-                    k.rsplit("#", 1)[0] == annotation for k, _ in groups
-                ):
-                    # A bare annotated sig (empty sub-script body): the only
-                    # entry it produced is this one — it opens its own group.
-                    key = f"{annotation}#0"
-                    groups.append((key, []))
-                    target = groups[-1][1]
-                    by_key[key] = target
-                if target is None:
-                    # No matching group yet (or ''): the nearest preceding
-                    # scope-1/2 entry's group, else the first group.
-                    target = next(
-                        (
-                            g for k, g in reversed(list(by_key.items()))
-                            if any(
-                                (e.kline.dbg.scope if e.kline.dbg else 0) != 0
-                                for e in g
-                            )
-                        ),
-                        groups[0][1] if groups else None,
-                    )
-                if target is not None:
-                    target.append(entry)
+                    first_by_ann.setdefault(annotation, current)
+            current.append(entry)
         # The answering pools grow as groups open — the harness never answers
         # from a sub-script the dialogue has not reached (no look-ahead).
         heads: dict[int, list[KValue]] = {}
@@ -194,38 +167,35 @@ class Harness:
         # when it opens (cumulative — past and current groups only).
         steps: list[tuple[str, list[KValue], KValue]] = []
         for key, group in groups:
-            # The opener is the group's question: a scope-0 authored entry,
-            # else the canon itself (a bare annotated sig's MTS canon) —
-            # never an identity. An identity is an answer, not a question;
-            # opening with it grounds the group's words before the question
-            # is ever asked.
+            # The opener is the group's question: a scope-0 authored ask,
+            # else a scope-0 authored entry, else the canon itself (a bare
+            # annotated sig's MTS canon) — never an identity. An identity is
+            # an answer, not a question; opening with it grounds the group's
+            # words before the question is ever asked.
             opener = next(
-                (e for e in group if e.kline.dbg and e.kline.dbg.scope == 0),
+                (
+                    e for e in group
+                    if e.kline.dbg and e.kline.dbg.scope == 0
+                    and e.kline.dbg.op == "ASK"
+                ),
                 next(
-                    (
-                        e for e in group
-                        if e.kline.dbg and e.kline.dbg.op == "CANONIZES"
+                    (e for e in group if e.kline.dbg and e.kline.dbg.scope == 0),
+                    next(
+                        (
+                            e for e in group
+                            if e.kline.dbg and e.kline.dbg.op == "CANONIZES"
+                        ),
+                        group[0],
                     ),
-                    group[0],
                 ),
             )
             annotation = opener.kline.dbg.annotation if opener.kline.dbg else ""
-            if not annotation:
+            if not annotation and not (
+                opener.kline.dbg and opener.kline.dbg.op == "ASK"
+            ):
                 continue
             steps.append((key, group, opener))
         results: list[StepResult] = []
-        # Priming: every compiled identity and canon is a fact — submit all
-        # at S1 before the run, so the dialogue opens on the questions, not on
-        # identity and canon discovery.
-        priming = [
-            e for e in entries
-            if (is_identity(e.kline) or is_canon(e.kline, self.state.signifier))
-            and not self.state.is_grounded(e.kline)
-        ]
-        if priming:
-            self._engine.rationalise(
-                [KValue(e.kline, SIG_S1) for e in priming]
-            )
         for i, (key, group, opener) in enumerate(steps):
             # Fresh answers per authored group: a repeated group is a second
             # ask, not a replay of the first one's dedup ledger.
@@ -248,36 +218,87 @@ class Harness:
                     words.update(kline.nodes)
             step = StepResult(i, opener)
             results.append(step)
-            queue: list[list[KValue]] = [[opener]]
-            while queue:
-                feeds = queue.pop(0)
-                batch, observations = self._engine.rationalise(feeds)
-                deduped = _dedup(batch)
-                replies: list[KValue] = []
-                turn = Turn(feeds, observations, deduped)
-                step.turns.append(turn)
-                for ask_i, ask in enumerate(deduped):
-                    if self.state.is_grounded(ask.kline):
-                        # K stating knowledge it already holds — not a
-                        # question. No reply, no escalation.
-                        continue
-                    reply = self._answer(ask, heads, exact, words, answered)
-                    if reply is None:
-                        if not ask.kline.nodes:
-                            # An empty ask is signature discovery, not a
-                            # proposal — nothing for a supervisor to decide.
-                            replies.append(KValue(ask.kline, SIG_S4))
-                            continue
-                        # Off-script: escalate — the supervisor decides.
-                        response = self._escalate(ask)
-                        turn.escalations.append((ask_i, response))
-                        replies.append(response)
-                        continue
-                    replies.extend(reply)
-                if replies:
-                    step.answers.extend(replies)
-                    queue.append(replies)
+            # The opening feeds: "batch" primes K with all the group's
+            # scaffolding first, then the entry rationalises against it once
+            # grounded (easier for K and for early development). "on-demand"
+            # withholds the scaffolding — only the opener enters, and the
+            # group's entries answer asks.
+            # Terminal words the feeds use whose identities the script
+            # never compiled ride along at S1 — without them the words never
+            # become known.
+            def build_batch(sources: list[KValue]) -> list[KValue]:
+                batch = [
+                    e for e in sources
+                    if not self.state.is_grounded(e.kline)
+                ]
+                fed = {
+                    (e.kline.signature, tuple(e.kline.nodes)) for e in batch
+                }
+                for entry in sources:
+                    for node in entry.kline.nodes:
+                        identity = (node, (node,))
+                        if (
+                            node in words
+                            and identity not in fed
+                            and not self.state.is_grounded(KLine(node, [node]))
+                        ):
+                            batch.append(KValue(KLine(node, [node]), SIG_S1))
+                            fed.add(identity)
+                return batch
+
+            if self.scaffolding == "batch":
+                scaffolding = build_batch(
+                    [e for e in group if e is not opener]
+                )
+                if scaffolding:
+                    self._drive(step, [scaffolding], heads, exact, words,
+                                answered)
+                if not self.state.is_grounded(opener.kline):
+                    self._drive(step, [[opener]], heads, exact, words,
+                                answered)
+            else:
+                self._drive(step, [build_batch([opener])], heads, exact,
+                            words, answered)
         return results
+
+    def _drive(
+        self,
+        step: StepResult,
+        queue: list[list[KValue]],
+        heads: dict[int, list[KValue]],
+        exact: dict[tuple[int, tuple[int, ...]], KValue],
+        words: set[int],
+        answered: set[tuple[int, tuple[int, ...]]],
+    ) -> None:
+        """Run the feed→ask→answer loop until ``queue`` drains."""
+        while queue:
+            feeds = queue.pop(0)
+            batch, observations = self._engine.rationalise(feeds)
+            deduped = _dedup(batch)
+            replies: list[KValue] = []
+            turn = Turn(feeds, observations, deduped)
+            step.turns.append(turn)
+            for ask_i, ask in enumerate(deduped):
+                if self.state.is_grounded(ask.kline):
+                    # K stating knowledge it already holds — not a
+                    # question. No reply, no escalation.
+                    continue
+                reply = self._answer(ask, heads, exact, words, answered)
+                if reply is None:
+                    if not ask.kline.nodes:
+                        # An empty ask is signature discovery, not a
+                        # proposal — nothing for a supervisor to decide.
+                        replies.append(KValue(ask.kline, SIG_S4))
+                        continue
+                    # Off-script: escalate — the supervisor decides.
+                    response = self._escalate(ask)
+                    turn.escalations.append((ask_i, response))
+                    replies.append(response)
+                    continue
+                replies.extend(reply)
+            if replies:
+                step.answers.extend(replies)
+                queue.append(replies)
 
     def _single_token_labels(self, source: str) -> dict[int, str]:
         """``{signature: word}`` for every single-token word in the source.
@@ -289,7 +310,8 @@ class Harness:
         from ks.compiler import Compiler
         from ks.lexer import Lexer
         from ks.parser import Parser
-        compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True)
+        compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True,
+                            word_bits=self.word_bits)
         compiler.compile(Parser(Lexer(source).tokenize()).parse())
         return {
             sig: word
@@ -368,21 +390,26 @@ class Harness:
 # strategy (ExpandFit) over the state.
 
 def make_engine(
-    tokenizer: NLPTokenizer,
+    tokenizer: BPETokenizer,
+    scaffolding: Literal["batch", "on-demand"] = "batch",
 ) -> Harness:
     """Build a harness over a fresh state: new signifier → state → engine."""
     state = EngineState(NLPSignifier())
-    return Harness(tokenizer, Engine(state))
+    return Harness(tokenizer, Engine(state), scaffolding=scaffolding)
 
 
 def load_engine(
     path: str | Path,
-    tokenizer: NLPTokenizer,
+    tokenizer: BPETokenizer,
+    scaffolding: Literal["batch", "on-demand"] = "batch",
 ) -> Harness:
     """Build a harness over a loaded prior state (reusing its signifier)."""
     signifier = NLPSignifier()
     state = EngineState.load(signifier, path)
-    return Harness(tokenizer, Engine(state))
+    harness = Harness(tokenizer, Engine(state), scaffolding=scaffolding)
+    # Compiles must continue the loaded state's word→bit mapping.
+    harness.word_bits = dict(state.word_bits or {})
+    return harness
 
 
 # ── Presentation ──────────────────────────────────────────────────────────
@@ -428,7 +455,8 @@ def _sig_display(value: KValue) -> str:
     return f"{_band(value)} {value.significance & SIG_MASK}"
 
 
-def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier) -> dict[int, str]:
+def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
+                  word_bits: dict[str, int] | None = None) -> dict[int, str]:
     """Recompile once to recover ``{signature: scripted label}`` for display.
 
     Compiled-entry labels are authoritative; the encoder's ``node_labels``
@@ -438,7 +466,7 @@ def _sig_to_label(source: str, tokenizer: NLPTokenizer, signifier: NLPSignifier)
     from ks.compiler import Compiler
     from ks.lexer import Lexer
     from ks.parser import Parser
-    compiler = Compiler(tokenizer, signifier=signifier, dev=True)
+    compiler = Compiler(tokenizer, signifier=signifier, dev=True, word_bits=word_bits)
     entries = compiler.compile(Parser(Lexer(source).tokenize()).parse())
     out: dict[int, str] = dict(compiler.node_labels)
     for e in entries:
@@ -532,9 +560,10 @@ def _render_summary(results: list[StepResult], state: EngineState,
 
 
 def present(results: list[StepResult], state: EngineState, source: str,
-            tokenizer: NLPTokenizer, signifier: NLPSignifier, *, verbose: bool,
-            pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> None:
-    labels = _sig_to_label(source, tokenizer, signifier)
+            tokenizer: BPETokenizer, signifier: NLPSignifier, *, verbose: bool,
+            pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None,
+            word_bits: dict[str, int] | None = None) -> None:
+    labels = _sig_to_label(source, tokenizer, signifier, word_bits)
     last_annotation: str | None = None
     for step in results:
         annotation = step.entry.kline.dbg.annotation if step.entry.kline.dbg else ""
@@ -613,7 +642,7 @@ def _interactive_supervisor(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run a script (markdown plan) or KScript source through the "
-             "lean engine and present the trace.",
+             "engine and present the trace.",
     )
     parser.add_argument("source", help="Path to a markdown plan file or a .ks KScript file")
     parser.add_argument(
@@ -636,11 +665,12 @@ def main(argv: list[str] | None = None) -> int:
              "S1 only when the script's proof completes.",
     )
     parser.add_argument(
-        "-t", "--training", action="store_true",
-        help="User-significance teaching: supervisor S2/S3 stamps on K's own "
-             "proposals are filed as patterns/pivots and replayed for "
-             "matching asks.",
+        "--scaffolding", choices=("batch", "on-demand"), default="batch",
+        help="How a group's scaffolding reaches the engine: 'batch' (default) "
+             "delivers all compiled klines with the opening entry; 'on-demand' "
+             "feeds only the opener and withholds scaffolding until K asks.",
     )
+
     parser.add_argument(
         "-p", "--persist", nargs="?", const="auto", default=None, metavar="PATH",
         help="Load engine state before the run and save it after. PATH "
@@ -655,33 +685,31 @@ def main(argv: list[str] | None = None) -> int:
         except OSError as exc:
             print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
             return 2
-        tok = NLPTokenizer()
+        tok = BPETokenizer()
+        scaffolding = cast(Literal["batch", "on-demand"], args.scaffolding)
         state_path = (
             Path(f"data/dialogue/{source_path.stem}.json")
             if args.persist == "auto"
             else Path(args.persist) if args.persist else None
         )
         if state_path is not None and state_path.exists():
-            harness = load_engine(state_path, tok)
+            harness = load_engine(state_path, tok, scaffolding=scaffolding)
             n = sum(len(b) for b in harness.state.ltm.values())
             print(f"── running on reloaded state: {n} grounded klines "
                   f"from {state_path} ──")
         else:
-            harness = make_engine(tok)
-        if args.training:
-            from dialogue.engine import Engine
-            Engine.TRAINING = True
+            harness = make_engine(tok, scaffolding=scaffolding)
         if args.structural:
             from dialogue.structural import SemanticEvidence, StructuralSupervisor
 
-            labels = _sig_to_label(source, tok, harness.signifier)
+            labels = _sig_to_label(source, tok, harness.signifier, harness.word_bits)
             render = lambda v: _render_kline(v, labels, args.verbose)  # noqa: E731
             supervisor = StructuralSupervisor(
                 SemanticEvidence(harness.signifier), harness.state, render
             )
             harness._escalate = supervisor
         if args.supervise:
-            labels = _sig_to_label(source, tok, harness.signifier)
+            labels = _sig_to_label(source, tok, harness.signifier, harness.word_bits)
             harness._escalate = (
                 _interactive_supervisor(labels, args.verbose)
                 if args.supervise == "interactive"
@@ -694,7 +722,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier,
-                verbose=args.verbose, pre_grounded=pre_grounded)
+                verbose=args.verbose, pre_grounded=pre_grounded,
+                word_bits=harness.word_bits)
         if state_path is not None:
             if state_path.stem != source_path.stem:
                 # A persist file named for another script is not this run's
@@ -705,6 +734,7 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
             else:
+                harness.state.word_bits = harness.word_bits
                 harness.state.save(state_path)
         return 0
 
@@ -714,7 +744,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"harness: could not read source {args.source!r}: {exc}", file=sys.stderr)
         return 2
 
-    tok = NLPTokenizer()
+    tok = BPETokenizer()
     harness = make_engine(tok)
     cumulative = ""
     for lesson in document.lessons:

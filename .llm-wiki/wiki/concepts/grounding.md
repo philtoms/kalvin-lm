@@ -43,7 +43,7 @@ Grounding is how significance is _produced_ in memory, not what it _means_;
 
 ### Current engine state (S1-shaped)
 
-The lean engine implements the S1 special case: `_is_groundable` admits an
+The engine implements the S1 special case: `_is_groundable` admits an
 identity (self-referential, its node is itself) or any kline whose every node
 is already grounded, and the fast route enforces this for canons. Grounding
 at S2/S3 levels — Frame-grounded partial knowledge — is not yet implemented.
