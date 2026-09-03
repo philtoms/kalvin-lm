@@ -21,7 +21,9 @@ Node layout (the compiler's packing, distinct from the raw tokenizer)::
 
 A compound signature (MTS, e.g. ``MHALL``) is not a word: its signature
 is the OR-reduction of its component words' values — one bit per word
-(5 words → 5 bits).
+(5 words → 5 bits). A CONNOTES concatenation sig (``SubjectMary`` =
+``Subject`` + ``Mary``) is a compound the same way: its signature is the
+OR of its component words — it never takes a word bit.
 
 Encoding rules:
   - Signature → the encoded word value, or the registered compound
@@ -35,8 +37,8 @@ Encoding rules:
 Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.significance.band_significance(op), computed from the production op at
 encode time (never from dbg):
-    COUNTERSIGNS → S1    DENOTES → S3    CANONIZES → S2
-    CONNOTES → S3      UNKNOWN → S4
+    COUNTERSIGNS → S2    DENOTES → S2    CANONIZES → S2
+    CONNOTES → S3      UNKNOWN → S4      MTS → S1
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.significance.band_significance, kalvin.abstract.KTokenizer,
@@ -179,19 +181,46 @@ class TokenEncoder:
         # word and never takes a word bit.
         is_compound_sig = len(entry.sig) > 1 and entry.sig.isupper()
 
-        # Compound refs reuse the registry; compound defs and unregistered
-        # compound sigs defer to step 3 below; others encode the sig as a
-        # word — a multi-subword sig is still one word (one bit), and heads
-        # its kline like any other sig — including an empty-form UNKNOWN.
+        # A compound signature (MTS, e.g. ``MHALL``) is not a word: its signature
+        # is the OR-reduction of its component words' values — one bit per word
+        # (5 words → 5 bits). The same holds for a CONNOTES concatenation
+        # (``Subject`` + ``Mary`` → ``SubjectMary``): the sig string is
+        # ``head + concat(nodes)`` for one side, so the head is recovered by
+        # stripping the node words — it is not a word and never takes a word
+        # bit.
+        concat_head: str | None = None
+        if (
+            entry.op == "CONNOTES"
+            and not is_compound_ref
+            and not is_compound_def
+            and not is_compound_sig
+        ):
+            joined = "".join(entry.nodes or [])
+            if joined and entry.sig != joined and (
+                entry.sig.endswith(joined) or entry.sig.startswith(joined)
+            ):
+                concat_head = (
+                    entry.sig[: -len(joined)]
+                    if entry.sig.endswith(joined)
+                    else entry.sig[len(joined):]
+                )
+                if not concat_head:
+                    concat_head = None
+
+        # Compound refs reuse the registry; compound defs, unregistered
+        # compound sigs, and concatenations defer to step 3 below; others
+        # encode the sig as a word — a multi-subword sig is still one word
+        # (one bit), and heads its kline like any other sig — including an
+        # empty-form UNKNOWN.
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
-        elif is_compound_def or is_compound_sig:
+        elif is_compound_def or is_compound_sig or concat_head is not None:
             sig_uint64 = 0  # computed after nodes are encoded
         else:
             sig_uint64 = self._encode_word(entry.sig)
 
         # 2. Encode nodes (compound nodes reuse the registry value).
-        node_values: list[int] = []
+        node_values: list[KNode] = []
         for node_str in entry.nodes or []:
             if node_str in self._compound_sigs:
                 node_values.append(KNode(self._compound_sigs[node_str], node_str))
@@ -213,6 +242,18 @@ class TokenEncoder:
             if is_compound_def:
                 self._compound_sigs[entry.sig] = sig_uint64
                 self._compound_labels.setdefault(sig_uint64, entry.sig)
+        elif concat_head is not None and not is_compound_ref:
+            # The concatenation's signature composes from its component
+            # words: the nodes plus the recovered head (itself possibly a
+            # registered compound, e.g. ``QueryALL``'s ``ALL``).
+            head_value = self._compound_sigs.get(concat_head)
+            if head_value is None:
+                head_value = self._encode_word(concat_head)
+            sig_uint64 = self._signifier.signature_of(
+                [*node_values, KNode(head_value, concat_head)]
+            )
+            self._compound_sigs[entry.sig] = sig_uint64
+            self._compound_labels.setdefault(sig_uint64, entry.sig)
 
         # 4. Ask bit: an ask keeps its original canonical signature with
         #    the ASK_BPE_TOKEN flag OR-ed in — any signature can be an ask.
@@ -233,12 +274,18 @@ class TokenEncoder:
         )
         # Wrap as a KValue. Significance comes from the production op
         # (entry.op — the SymbolicEntry field), NEVER read back from
-        # main.dbg.op (D3: dbg is unspec'd dev-only provenance).
-        return [(KValue(main, band_significance(entry.op)), entry.is_mts)]
+        # main.dbg.op (D3: dbg is unspec'd dev-only provenance). MTS
+        # emissions are asserted at S1; an MTS ask keeps its ask band.
+        band = (
+            band_significance("MTS")
+            if entry.is_mts and not entry.is_ask
+            else band_significance(entry.op)
+        )
+        return [(KValue(main, band), entry.is_mts)]
 
     # Word encoding
 
-    def _encode_word(self, word: str) -> int:
+    def _encode_word(self, word: str) -> KNode:
         """Encode a word to its uint64 node value.
 
         One word, one bit: ``(word_bit << 32) | OR(bpe_token_ids)``. A
@@ -246,7 +293,7 @@ class TokenEncoder:
         still carries a single word bit — no decomposition kline.
         """
         if not word:
-            return 0
+            return KNode(0, word)
         tokens = self._tokenizer.encode(word)
         bit = self._word_bit(word)
         bpe = 0
