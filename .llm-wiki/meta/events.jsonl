@@ -71,3 +71,5 @@
 {"slug":"obs-2026-09-02-kalvin-symbolic-md-converted-from-denotational-to-operationa","title":"kalvin-symbolic.md converted from denotational to operational framing","relevance":"high","timestamp":"2026-09-02T13:42:27.982Z","kind":"observe"}
 {"slug":"obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not","title":"LTM as algebra carrier; grounding delimits; time on states not signatures","relevance":"high","timestamp":"2026-09-02T13:51:57.563Z","kind":"observe"}
 {"slug":"obs-2026-09-03-compound-words-no-longer-take-word-bits","title":"Compound words no longer take word bits","relevance":"high","timestamp":"2026-09-03T10:53:47.413Z","kind":"observe"}
+{"slug":"obs-2026-09-03-enginestate-stm-renamed-back-to-work-list","title":"EngineState.stm renamed back to work_list","relevance":"high","timestamp":"2026-09-03T11:28:02.821Z","kind":"observe"}
+{"slug":"obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram","title":"Engine observations channel removed; harness diffs state; frame in summary","relevance":"high","timestamp":"2026-09-03T16:34:47.733Z","kind":"observe"}

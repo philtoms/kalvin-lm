@@ -238,7 +238,7 @@ class TokenEncoder:
         #    (the signature is a registry lookup, not a per-entry
         #    reduction of nodes).
         if is_compound_sig and not is_compound_ref:
-            sig_uint64 = self._signifier.signature_of(node_values)
+            sig_uint64 = self._signifier.signature_of(node_values).with_label(entry.sig)
             if is_compound_def:
                 self._compound_sigs[entry.sig] = sig_uint64
                 self._compound_labels.setdefault(sig_uint64, entry.sig)
@@ -251,7 +251,7 @@ class TokenEncoder:
                 head_value = self._encode_word(concat_head)
             sig_uint64 = self._signifier.signature_of(
                 [*node_values, KNode(head_value, concat_head)]
-            )
+            ).with_label(entry.sig)
             self._compound_sigs[entry.sig] = sig_uint64
             self._compound_labels.setdefault(sig_uint64, entry.sig)
 

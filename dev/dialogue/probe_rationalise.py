@@ -89,11 +89,10 @@ def main() -> None:
         print(f"  incoming: {op:12s} {lab!s:20s} nodes={nodes}  "
               f"declared={_LAYOUT.classify(query.significance)}  "
               f"structural={struct}")
-        batch, obs = engine.rationalise([query])
+        batch = engine.rationalise([query])
         _show_batch("K batch", batch, labels)
-        _show_obs(obs, labels)
-        print(f"  stm depth: {len(state.stm)}")
-        for e in state.stm:
+        print(f"  work_list depth: {len(state.work_list)}")
+        for e in state.work_list:
             el = labels.get(e.signature, e.signature.label or e.signature)
             print(f"    - {el!s:16s} nodes={[labels.get(n, n.label or n) for n in e.nodes]}")
         if state.ltm:

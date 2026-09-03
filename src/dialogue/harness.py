@@ -2,7 +2,7 @@
 
 A minimal, synchronous, non-judging loop. Compile a KScript source, feed
 compiled entry to the engine one block at a time, and present the engine's
-``(batch, observations)`` response. The harness is feeder, driver, and
+response. The harness is feeder, driver, and
 presenter — it never judges. The trainer (a pi agent, outside the loop) reads
 the trace, makes decisions, edits the engine and/or the source, and re-runs.
 
@@ -273,10 +273,16 @@ class Harness:
         """Run the feed→ask→answer loop until ``queue`` drains."""
         while queue:
             feeds = queue.pop(0)
-            batch, observations = self._engine.rationalise(feeds)
+            before = _grounded_snapshot(self.state)
+            batch = self._engine.rationalise(feeds)
             deduped = _dedup(batch)
+            after = _grounded_snapshot(self.state)
+            grounds = [
+                KValue(kl, SIG_S1)
+                for key, kl in after.items() if key not in before
+            ]
             replies: list[KValue] = []
-            turn = Turn(feeds, observations, deduped)
+            turn = Turn(feeds, grounds, deduped)
             step.turns.append(turn)
             for ask_i, ask in enumerate(deduped):
                 if self.state.is_grounded(ask.kline):
@@ -343,13 +349,13 @@ class Harness:
             script_klines = [
                 e for e in heads.get(kline.signature, [])
                 if e.kline.nodes != [kline.signature]
-                # K already holds it: grounded, or attending to it in STM
+                # K already holds it: grounded, or attending to it in the work list
                 # (re-feeding the asked question re-arms a refused ask).
                 and not self.state.is_grounded(e.kline)
                 and not any(
                     entry.signature == e.kline.signature
                     and entry.nodes == e.kline.nodes
-                    for entry in self.state.stm
+                    for entry in self.state.work_list
                 )
             ]
             is_word = kline.signature in words or any(
@@ -512,6 +518,16 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
     return "\n".join(lines)
 
 
+def _grounded_snapshot(state: EngineState) -> dict[tuple[KNode, tuple[KNode, ...]], KLine]:
+    """Every grounded kline in frame and LTM, keyed by (signature, nodes)."""
+    snap: dict[tuple[KNode, tuple[KNode, ...]], KLine] = {}
+    for store in (state.frame, state.ltm):
+        for signature, bucket in store.items():
+            for kl in bucket:
+                snap.setdefault((signature, tuple(kl.nodes)), kl)
+    return snap
+
+
 def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool,
                         pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
     if not state.ltm:
@@ -533,11 +549,26 @@ def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool,
     return "\n".join(lines)
 
 
-def _render_stm(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
-    if not state.stm:
+def _render_frame(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
+    """Frame entries with no isomorphic (signature, nodes) entry in LTM."""
+    lines: list[str] = []
+    for signature in sorted(state.frame, key=lambda s: (s.bit_length(), s)):
+        for kl in state.frame[signature]:
+            if any(
+                existing.nodes == kl.nodes
+                for existing in state.ltm.get(signature, [])
+            ):
+                continue
+            nodes = ", ".join(_label(n, labels, verbose) for n in kl.nodes)
+            lines.append(f"      {_label(kl.signature, labels, verbose)}:[{nodes}]")
+    return "\n".join(lines) if lines else "  (empty)"
+
+
+def _render_work_list(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
+    if not state.work_list:
         return "  (empty)"
     return "\n".join(
-        f"      {_render_kline_struct(kl, labels, verbose)}" for kl in state.stm
+        f"      {_render_kline_struct(kl, labels, verbose)}" for kl in state.work_list
     )
 
 
@@ -555,7 +586,8 @@ def _render_summary(results: list[StepResult], state: EngineState,
         f"  steps: {len(results)}\n"
         f"  asks by band: {band_str}\n"
         f"  grounded:\n{_render_grounded(state, labels, verbose, pre_grounded)}\n"
-        f"  stm (attending to at end of run):\n{_render_stm(state, labels, verbose)}"
+        f"  frame (framed, not yet grounded):\n{_render_frame(state, labels, verbose)}\n"
+        f"  work_list (attending to at end of run):\n{_render_work_list(state, labels, verbose)}"
     )
 
 

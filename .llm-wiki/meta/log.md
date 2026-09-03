@@ -221,3 +221,9 @@
 ## [2026-09-03T10:53:47.413Z] observe
 - slug: "obs-2026-09-03-compound-words-no-longer-take-word-bits", title: "Compound words no longer take word bits", relevance: "high"
 
+## [2026-09-03T11:28:02.821Z] observe
+- slug: "obs-2026-09-03-enginestate-stm-renamed-back-to-work-list", title: "EngineState.stm renamed back to work_list", relevance: "high"
+
+## [2026-09-03T16:34:47.733Z] observe
+- slug: "obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram", title: "Engine observations channel removed; harness diffs state; frame in summary", relevance: "high"
+

@@ -141,6 +141,8 @@
 - [[sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe]] — Observation: Solver reading of Kalvin's operations: temporality and existence proofs *(created: 2026-09-02)*
 - [[sources/obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list]] — Observation: Symbolic-AI perspective document drafted with gap list *(created: 2026-09-02)*
 - [[sources/obs-2026-09-03-compound-words-no-longer-take-word-bits]] — Observation: Compound words no longer take word bits *(created: 2026-09-03)*
+- [[sources/obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram]] — Observation: Engine observations channel removed; harness diffs state; frame in summary *(created: 2026-09-03)*
+- [[sources/obs-2026-09-03-enginestate-stm-renamed-back-to-work-list]] — Observation: EngineState.stm renamed back to work_list *(created: 2026-09-03)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -148,4 +150,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-03T10:53:47.462Z* | *Total pages: 136*
+*Last updated: 2026-09-03T16:34:47.773Z* | *Total pages: 138*

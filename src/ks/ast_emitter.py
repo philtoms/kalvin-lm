@@ -368,7 +368,9 @@ class ASTEmitter:
             if nodes == [sig]:
                 self._emit_entry(sig, [sig], "IDENTITY")
             elif nodes:
-                self._emit_entry(sig + "".join(nodes), [sig], "CONNOTES")
+                # Reversed reading: node first, sig second (A < B reads
+                # "B is a kind of A", so the identifier is BA).
+                self._emit_entry("".join(nodes) + sig, [sig], "CONNOTES")
 
         elif op == "CANONIZES":
             # A compound-headed CANONIZES scope produces TWO distinct

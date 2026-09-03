@@ -2,6 +2,8 @@
 
 ## 2026-09-03
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram","title":"Engine observations channel removed; harness diffs state; frame in summary"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-03-enginestate-stm-renamed-back-to-work-list","title":"EngineState.stm renamed back to work_list"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-03-compound-words-no-longer-take-word-bits","title":"Compound words no longer take word bits"}
 
 ## 2026-09-02

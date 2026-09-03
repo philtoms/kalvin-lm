@@ -45,10 +45,70 @@ class Cogitator:
                 c_set = set(candidate.nodes)
                 underfit = list(q_set - c_set)
                 overfit = list(c_set - q_set)
-                proposal = list(q_set & c_set)
+                fit = list(q_set & c_set)
 
-                yield from self.canonise(underfit, overfit, proposal)
+                proposal, distance = self.expand(underfit, overfit, fit)
+                yield KValue(KLine(entry.signature, proposal), distance)
         return
+
+    def expand(self,
+            underfit: list[KNode],
+            overfit: list[KNode],
+            fit: list[KNode],
+    ) -> tuple[list[KNode], int]:
+        proposal: list[KNode] = []
+        remainder: list[KNode] = []
+        distance = 0
+
+        for f1, f2 in [(underfit, overfit), (overfit, remainder)]:
+            while len(f1) > 0:
+                n=f1.pop(0)
+                connotated=False
+                for nx, hops in self.connotateY(n):
+                    for kl in [f2, fit]:
+                        if nx in kl:
+                            distance += hops
+                            proposal.append(nx)
+                            kl.remove(nx)
+                            connotated=True
+                            break
+                if not connotated:
+                    remainder.append(n)
+
+        return proposal, distance
+
+
+    def connotateY(self, sig: KNode, depth: int = MAX_HOP) -> Iterator[tuple[KNode, int]]:
+        """Yield ``(hops, sig)`` breadth-first over *every* non-terminal,
+        non-identity resolution edge — not one deterministic path.
+
+        BFS order is min-hops-first, so consumers halt at their k nearest
+        results and never explore past them.
+        """
+        state = self._state
+        signifier = self._state.signifier
+        frontier: list[KNode] = [sig]
+        visited: set[KNode] = {sig}
+        hop_count = 0
+        while frontier and hop_count < depth:
+            hop_count += 1
+            next_frontier: list[KNode] = []
+            for cur in frontier:
+                for kline in state.find_sig(cur):
+                    if (
+                        kline is None
+                        or is_terminal(kline)
+                        or is_identity(kline)
+                    ):
+                        continue
+                    reached = signifier.signature_of(kline.nodes)
+                    if reached in visited:
+                        continue
+                    visited.add(reached)
+                    yield reached, hop_count
+                    next_frontier.append(reached)
+            frontier = next_frontier
+
 
     def canonise(
         self,

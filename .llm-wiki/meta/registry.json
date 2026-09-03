@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-03T10:53:47.462Z",
+  "last_updated": "2026-09-03T16:34:47.773Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1523,6 +1523,39 @@
       "relevance": "high",
       "observed_at": "2026-09-03T10:53:47.409Z",
       "source_context": "Excluding compound words from compiled word_bits",
+      "created": "2026-09-03",
+      "updated": "2026-09-03"
+    },
+    "sources/obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram": {
+      "type": "source",
+      "title": "Observation: Engine observations channel removed; harness diffs state; frame in summary",
+      "tags": [
+        "dialogue",
+        "engine",
+        "harness",
+        "refactoring"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram",
+      "relevance": "high",
+      "observed_at": "2026-09-03T16:34:47.730Z",
+      "source_context": "Simplifying the engine↔harness observation channel in the dialogue harness",
+      "created": "2026-09-03",
+      "updated": "2026-09-03"
+    },
+    "sources/obs-2026-09-03-enginestate-stm-renamed-back-to-work-list": {
+      "type": "source",
+      "title": "Observation: EngineState.stm renamed back to work_list",
+      "tags": [
+        "dialogue",
+        "engine-state",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-03-enginestate-stm-renamed-back-to-work-list",
+      "relevance": "high",
+      "observed_at": "2026-09-03T11:28:02.817Z",
+      "source_context": "Renaming EngineState.stm to work_list to make room for kalvin.stm import",
       "created": "2026-09-03",
       "updated": "2026-09-03"
     },
