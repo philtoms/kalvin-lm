@@ -65,5 +65,6 @@
 - [Observation: Scaffolding delivery-mode flag added to dialogue harness](obs-2026-09-02-scaffolding-delivery-mode-flag-added-to-dialogue-harness.md)
 - [Observation: Solver reading of Kalvin's operations: temporality and existence proofs](obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe.md)
 - [Observation: Symbolic-AI perspective document drafted with gap list](obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list.md)
+- [Observation: Compound words no longer take word bits](obs-2026-09-03-compound-words-no-longer-take-word-bits.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

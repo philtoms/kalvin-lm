@@ -129,74 +129,35 @@ class Harness:
             sig: word
             for sig, word in self._single_token_labels(source).items()
         }
-        # Authored sub-scripts: scope-0 entries preserve authored order — a
-        # group is a maximal run sharing an annotation ('' joins the current
-        # run; a repeated annotation is a distinct authored group). Scope-1/2
-        # entries (MTS/identities) are allocated to the first group with a
-        # matching, not-yet-served occurrence of their annotation; '' joins
-        # the preceding entry's group.
+        # Authored sub-scripts: a group is delimited by an entry annotation
+        # (or EOF) — a new group opens at any authored (scope-0) entry whose
+        # annotation differs from the current group's; '' entries join the
+        # current group. MTS entries follow positionally (they carry their
+        # scope's annotation), but dedup globally: an MTS entry joins the
+        # first group of its annotation, never a later duplicate — the
+        # encoder's source-before-MTS partition would otherwise re-open
+        # every earlier annotation as a trailing group.
         groups: list[tuple[str, list[KValue]]] = []
-        by_key: dict[str, list[KValue]] = {}
+        first_by_ann: dict[str, list[KValue]] = {}
         current: list[KValue] | None = None
+        current_ann: str | None = None
         for entry in entries:
             annotation = entry.kline.dbg.annotation if entry.kline.dbg else ""
             scope = entry.kline.dbg.scope if entry.kline.dbg else 0
-            if scope == 0:
-                if current is None or (
-                    annotation and annotation != groups[-1][0].rsplit("#", 1)[0]
-                ):
-                    occurrence = sum(
-                        1 for k, _ in groups if k.rsplit("#", 1)[0] == annotation
-                    )
-                    key = f"{annotation}#{occurrence}"
-                    groups.append((key, []))
-                    current = groups[-1][1]
-                    by_key.setdefault(key, current)
-                current.append(entry)
-            else:
-                # MTS entries dedup globally: one set per compound. The whole
-                # set belongs to the first occurrence of its annotation.
+            if scope != 0 and annotation and annotation in first_by_ann:
+                first_by_ann[annotation].append(entry)
+                continue
+            if current is None or (annotation and annotation != current_ann):
+                occurrence = sum(
+                    1 for k, _ in groups if k.rsplit("#", 1)[0] == annotation
+                )
+                key = f"{annotation}#{occurrence}"
+                groups.append((key, []))
+                current = groups[-1][1]
+                current_ann = annotation
                 if annotation:
-                    match = next(
-                        (
-                            f"{annotation}#{i}"
-                            for i in range(
-                                sum(
-                                    1 for k, _ in groups
-                                    if k.rsplit("#", 1)[0] == annotation
-                                )
-                            )
-                            if f"{annotation}#{i}" in by_key
-                        ),
-                        None,
-                    )
-                    target = by_key.get(match) if match else None
-                else:
-                    target = None
-                if target is None and annotation and not any(
-                    k.rsplit("#", 1)[0] == annotation for k, _ in groups
-                ):
-                    # A bare annotated sig (empty sub-script body): the only
-                    # entry it produced is this one — it opens its own group.
-                    key = f"{annotation}#0"
-                    groups.append((key, []))
-                    target = groups[-1][1]
-                    by_key[key] = target
-                if target is None:
-                    # No matching group yet (or ''): the nearest preceding
-                    # scope-1/2 entry's group, else the first group.
-                    target = next(
-                        (
-                            g for k, g in reversed(list(by_key.items()))
-                            if any(
-                                (e.kline.dbg.scope if e.kline.dbg else 0) != 0
-                                for e in g
-                            )
-                        ),
-                        groups[0][1] if groups else None,
-                    )
-                if target is not None:
-                    target.append(entry)
+                    first_by_ann.setdefault(annotation, current)
+            current.append(entry)
         # The answering pools grow as groups open — the harness never answers
         # from a sub-script the dialogue has not reached (no look-ahead).
         heads: dict[int, list[KValue]] = {}
@@ -206,44 +167,35 @@ class Harness:
         # when it opens (cumulative — past and current groups only).
         steps: list[tuple[str, list[KValue], KValue]] = []
         for key, group in groups:
-            # The opener is the group's question: a scope-0 authored entry,
-            # else the canon itself (a bare annotated sig's MTS canon) —
-            # never an identity. An identity is an answer, not a question;
-            # opening with it grounds the group's words before the question
-            # is ever asked.
+            # The opener is the group's question: a scope-0 authored ask,
+            # else a scope-0 authored entry, else the canon itself (a bare
+            # annotated sig's MTS canon) — never an identity. An identity is
+            # an answer, not a question; opening with it grounds the group's
+            # words before the question is ever asked.
             opener = next(
-                (e for e in group if e.kline.dbg and e.kline.dbg.scope == 0),
+                (
+                    e for e in group
+                    if e.kline.dbg and e.kline.dbg.scope == 0
+                    and e.kline.dbg.op == "ASK"
+                ),
                 next(
-                    (
-                        e for e in group
-                        if e.kline.dbg and e.kline.dbg.op == "CANONIZES"
+                    (e for e in group if e.kline.dbg and e.kline.dbg.scope == 0),
+                    next(
+                        (
+                            e for e in group
+                            if e.kline.dbg and e.kline.dbg.op == "CANONIZES"
+                        ),
+                        group[0],
                     ),
-                    group[0],
                 ),
             )
             annotation = opener.kline.dbg.annotation if opener.kline.dbg else ""
-            if not annotation:
+            if not annotation and not (
+                opener.kline.dbg and opener.kline.dbg.op == "ASK"
+            ):
                 continue
             steps.append((key, group, opener))
         results: list[StepResult] = []
-        # Priming: every compiled identity and canon is a fact — submit all
-        # at S1 before the run, so the dialogue opens on the questions, not on
-        # identity and canon discovery.
-        priming = [
-            e for e in entries
-            if (is_identity(e.kline) or is_canon(e.kline, self.state.signifier))
-            and not self.state.is_grounded(e.kline)
-        ]
-        if priming:
-            self._engine.rationalise(
-                [KValue(e.kline, SIG_S1) for e in priming]
-            )
-        # Primed entries the engine took are already grounded — feeding
-        # them again in a block's batch would be re-statement, not dialogue.
-        primed = {
-            (e.kline.signature, tuple(e.kline.nodes)) for e in priming
-            if self.state.is_grounded(e.kline)
-        }
         for i, (key, group, opener) in enumerate(steps):
             # Fresh answers per authored group: a repeated group is a second
             # ask, not a replay of the first one's dedup ledger.
@@ -277,7 +229,7 @@ class Harness:
             def build_batch(sources: list[KValue]) -> list[KValue]:
                 batch = [
                     e for e in sources
-                    if (e.kline.signature, tuple(e.kline.nodes)) not in primed
+                    if not self.state.is_grounded(e.kline)
                 ]
                 fed = {
                     (e.kline.signature, tuple(e.kline.nodes)) for e in batch
@@ -301,8 +253,7 @@ class Harness:
                 if scaffolding:
                     self._drive(step, [scaffolding], heads, exact, words,
                                 answered)
-                if (opener.kline.signature, tuple(opener.kline.nodes)) \
-                        not in primed:
+                if not self.state.is_grounded(opener.kline):
                     self._drive(step, [[opener]], heads, exact, words,
                                 answered)
             else:

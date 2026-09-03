@@ -265,7 +265,13 @@ class ASTEmitter:
                 # the ask keeps the compound's original canonical signature;
                 # the ASK_BPE_TOKEN bit marks it as an ask.
                 canon = self.entries[mts_idx]
-                ask = canon._replace(op="ASK", is_ask=True)
+                # The ask is an authored statement of THIS scope — it takes
+                # the current scope's annotation and authored provenance,
+                # not the cached MTS canon's.
+                ask = canon._replace(
+                    op="ASK", is_ask=True, is_mts=False, scope=0,
+                    annotation=self._scope_annotation,
+                )
                 if mts_created:
                     self._mts_canonize_seen.pop((canon.sig, tuple(canon.nodes)), None)
                     self.entries[mts_idx] = ask

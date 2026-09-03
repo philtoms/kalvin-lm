@@ -101,7 +101,7 @@ class Engine:
         if query_sig == "S1" or (
             structural_sig == query_sig and structural_sig == "S1"
         ):
-            if self._state._is_groundable(kline):
+            if self._state.is_groundable(kline):
                 self._ground(kline)
                 return True
 
@@ -139,14 +139,7 @@ class Engine:
                 break
 
             kline = self._state.stm[idx]
-            if (
-                is_canon(kline, self._state.signifier)
-                and self._state._is_groundable(kline)
-                and self._state._is_denoted(kline)
-            ):
-                # A canon is the script's own ground truth — it grounds
-                # even under an asked signature (the ask under the
-                # signature is answered by the canon itself).
+            if self._state.is_groundable(kline):
                 self._ground(kline)
 
             if self.signifier.is_ask(kline.signature) or is_misfit(kline, self._state.signifier):
@@ -166,7 +159,7 @@ class Engine:
         return batch
 
     def _ground(self, kline: KLine) -> None:
-        """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
+        """ground ``kline`` at S1, then cascade any node-resolution it unblocks.
 
         A grounding may make other STM entries groundable (an identity
         whose signature just landed, a canon whose nodes are now all seen, a
@@ -178,7 +171,7 @@ class Engine:
         while sweep:
             sweep = False
             for entry in self._state.stm:
-                if self._state._is_groundable(entry) and self._state._is_denoted(entry):
+                if self._state.is_groundable(entry):
                     if self._state.ground(entry):
                         self.observations.append(KValue(entry, SIG_S1))
                         sweep = True

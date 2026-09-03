@@ -60,8 +60,8 @@ class EngineState:
       entries and the ungrounded signatures/nodes unpacked from them. Written
       by attention. Entries carry no significance band; dispatch is structural.
     - **ltm** — Long-Term Memory. Grounded klines, keyed by signature.
-    - **frame** — klines K has previously emitted, keyed by signature. The
-      fast route matches incoming S1/S4 queries against it.
+    - **frame** — Working Memory. Framed klines, keyed by signature. 
+    - **word_bits** - The word→bit mapping the persisted node values were encoded under.
     """
 
     _signifier: KSignifier
@@ -69,8 +69,6 @@ class EngineState:
     ltm: dict[KNode, list[KLine]] = field(default_factory=dict)
     frame: dict[KNode, list[KLine]] = field(default_factory=dict)
     refused: set[tuple[KNode, tuple[KNode, ...]]] = field(default_factory=set)
-    # The word→bit mapping the persisted node values were encoded under
-    # (word word → bit mask). None on a fresh state; set by the harness.
     word_bits: dict[str, int] | None = None
     _dbg_step: int = 0
 
@@ -114,13 +112,6 @@ class EngineState:
             if is_canon(item, self.signifier)
         ]
 
-    def is_grounded(self, kline: KLine) -> bool:
-        """Is an isomorphic kline (same signature and nodes) in LTM?"""
-        return any(
-            existing.nodes == kline.nodes
-            for existing in self.ltm.get(kline.signature, [])
-        )
-
     def where(self, predicate: Callable[[KLine], bool]) -> list[KLine]:
         """All klines matching ``predicate`` across the layers, STM first."""
         matches = [kline for kline in self.stm if predicate(kline)]
@@ -137,41 +128,6 @@ class EngineState:
                 return list(kline.nodes)
         return None
 
-    def ground(self, kline: KLine, stm_idx = -1) -> bool:
-        """Record ``kline`` in LTM. Idempotent on nodes.
-
-        Returns ``True`` when a new entry was added, ``False`` when an
-        isomorphic kline (same signature and nodes) was already grounded.
-        """
-        bucket = self.ltm.setdefault(kline.signature, [])
-        if any(existing.nodes == kline.nodes for existing in bucket):
-            return False
-
-        bucket.append(kline)
-        return True
-
-    def _is_groundable(self, kline: KLine) -> bool:
-        """Can ``kline`` be grounded at S1 right now?
-
-        Universal rule: a signature grounds only once every one of its nodes
-        is in LTM. An identity is the exception — it is self-referential
-        (``{S:[S]}``), so its single node is itself and it grounds
-        unconditionally when promoted. An unknown (``{S: []}``) never grounds.
-        """
-        if is_unknown(kline):
-            return False
-        if is_identity(kline):
-            return True
-        return all(node in self.ltm for node in kline.nodes)
-
-    def _is_denoted(self, kline: KLine) -> bool:
-        """Does the store already denote ``kline``'s signature?
-
-        A cascade may only promote an entry that is self-denoting (a canon)
-        or whose signature already has some grounded kline under it.
-        """
-        return kline.signature in self.ltm or is_canon(kline, self._signifier)
-
     def canon_nodes(self, signature: KNode) -> list[KNode] | None:
         """The nodes of ``signature``'s canon, searching STM, Frame, then LTM."""
         signifier = self._signifier
@@ -180,11 +136,24 @@ class EngineState:
                 return list(kline.nodes)
         return None
 
+    def is_countersignable(self, entry: KLine) -> bool:
+        """Is ``entry`` a relationship whose two operands both have canons?"""
+        if not is_connotation(entry):
+            return False
+        return (
+            self.canon_nodes(entry.signature) is not None
+            and self.canon_nodes(entry.nodes[0]) is not None
+        )
+
     # -- STM (attention) ---------------------------------------------
 
     def add_stm(self, kline: KLine) -> None:
         """Append ``kline`` to STM — cogitation is now attending to it."""
-        self.stm.append(kline)
+        if not any(
+            e.signature == kline.signature  and e.nodes == kline.nodes
+            for e in self.stm
+        ):
+            self.stm.append(kline)
 
     def remove_stm_at(self, idx: int) -> KLine | None:
         """Remove and return the STM entry at ``idx``."""
@@ -206,57 +175,54 @@ class EngineState:
     def is_refused(self, kline: KLine) -> bool:
         return (kline.signature, tuple(kline.nodes)) in self.refused
 
-    def is_seen(self, signature: KNode) -> bool:
-        """Has K seen ``signature`` — grounded or pending as an Unknown ask in STM?"""
-        if signature in self.ltm:
-            return True
-        return any(
-            entry.signature == signature and is_unknown(entry)
-            for entry in self.stm
-        )
+    # -- frame / ltm ------------------------------------
 
-    def is_countersignable(self, entry: KLine) -> bool:
-        """Is ``entry`` a relationship whose two operands both have canons?"""
-        if not is_connotation(entry):
-            return False
-        return (
-            self.canon_nodes(entry.signature) is not None
-            and self.canon_nodes(entry.nodes[0]) is not None
-        )
+    def ground(self, kline: KLine, store=None) -> bool:
+        """Record ``kline`` in Frame. Idempotent on nodes.
 
-    # -- frame (emission memory) ------------------------------------
-
-    def is_framed(self, kline: KLine) -> bool:
-        """Is an isomorphic kline in the frame?
-
-        Terminals match by signature (any shape); everything else by exact
-        nodes, as before.
+        Returns ``True`` when a new entry was added, ``False`` when an
+        isomorphic kline (same signature and nodes) was already grounded.
         """
-        bucket = self.frame.get(kline.signature, [])
-        if is_terminal(kline):
-            return any(is_terminal(existing) for existing in bucket)
-        return any(existing.nodes == kline.nodes for existing in bucket)
+        if store is None:
+            store = self.frame
+        bucket = store.setdefault(kline.signature, [])
+        if any(existing.nodes == kline.nodes for existing in bucket):
+            return False if store is self.ltm else self.ground(kline, self.ltm)
 
-    def frame_kline(self, kline: KLine) -> None:
-        self.frame.setdefault(kline.signature, []).append(kline)
+        bucket.append(kline)
+        return True
 
-    def unframe(self, kline: KLine) -> None:
-        bucket = self.frame.get(kline.signature)
-        if not bucket:
-            return
-        if is_terminal(kline):
-            # A terminal reply consumes the framed ask (any shape): drop every
-            # terminal entry under this signature.
-            kept = [k for k in bucket if not is_terminal(k)]
-        else:
-            kept = [
-                k for k in bucket
-                if not (k.signature == kline.signature and k.nodes == kline.nodes)
-            ]
-        if kept:
-            self.frame[kline.signature] = kept
-        else:
-            del self.frame[kline.signature]
+    def is_groundable(self, kline: KLine, store=None) -> bool:
+        """Can ``kline`` be grounded at S1 right now?
+
+        Canons and identities are groundable if all of their nodes are already grounded.
+        Misfits are only groundable if their signatures are also grounded.
+        An unknown (``{S: []}``) never grounds.
+        """
+        if store is None:
+            store = self.frame
+
+        if kline.signature in store:
+            if all(node in store for node in kline.nodes):
+                return True
+        if is_identity(kline):
+            return True
+        if is_canon(kline, self.signifier):
+            return True
+        
+        return False if store is self.ltm else self.is_groundable(kline, self.ltm)
+
+    def is_grounded(self, kline: KLine, store=None) -> bool:
+        """Is an isomorphic kline (same signature and nodes) in Frame ?"""
+        if store is None:
+            store = self.frame
+        if any(
+            existing.nodes == kline.nodes
+            for existing in store.get(kline.signature, [])
+        ):
+            return True
+
+        return False if store is self.ltm else self.is_grounded(kline, self.ltm)
 
     # -- persistence -------------------------------------------------
     #

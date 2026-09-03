@@ -218,3 +218,6 @@
 ## [2026-09-02T13:51:57.563Z] observe
 - slug: "obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not", title: "LTM as algebra carrier; grounding delimits; time on states not signatures", relevance: "high"
 
+## [2026-09-03T10:53:47.413Z] observe
+- slug: "obs-2026-09-03-compound-words-no-longer-take-word-bits", title: "Compound words no longer take word bits", relevance: "high"
+

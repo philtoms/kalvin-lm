@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-09-03
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-03-compound-words-no-longer-take-word-bits","title":"Compound words no longer take word bits"}
+
 ## 2026-09-02
 
 - **observe**: {"relevance":"high","slug":"obs-2026-09-02-ltm-as-algebra-carrier-grounding-delimits-time-on-states-not","title":"LTM as algebra carrier; grounding delimits; time on states not signatures"}

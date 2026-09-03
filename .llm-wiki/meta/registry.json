@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-02T13:51:57.596Z",
+  "last_updated": "2026-09-03T10:53:47.462Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1509,6 +1509,22 @@
       "source_context": "Writing the symbolic-AI perspective document for Kalvin",
       "created": "2026-09-02",
       "updated": "2026-09-02"
+    },
+    "sources/obs-2026-09-03-compound-words-no-longer-take-word-bits": {
+      "type": "source",
+      "title": "Observation: Compound words no longer take word bits",
+      "tags": [
+        "kscript",
+        "token-encoder",
+        "word-bits"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-03-compound-words-no-longer-take-word-bits",
+      "relevance": "high",
+      "observed_at": "2026-09-03T10:53:47.409Z",
+      "source_context": "Excluding compound words from compiled word_bits",
+      "created": "2026-09-03",
+      "updated": "2026-09-03"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",
