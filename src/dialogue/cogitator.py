@@ -87,8 +87,13 @@ class Cogitator:
 
 
     def connotateY(self, sig: KNode, depth: int = MAX_HOP) -> Iterator[tuple[KLine, int]]:
-        """Yield ``(hops, sig)`` breadth-first over *every* non-terminal,
-        non-identity resolution edge — not one deterministic path.
+        """Yield ``(kline, hops)`` breadth-first over *every* non-terminal,
+        non-identity connotation edge — not one deterministic path.
+
+        Forward edges: klines resolving ``cur``'s signature. Reverse edges:
+        klines whose signature shares a word bit with ``cur``, or that
+        contain ``cur`` as a node — the bridges from word-level gaps to
+        compound-signature klines.
 
         BFS order is min-hops-first, so consumers halt at their k nearest
         results and never explore past them.
@@ -102,7 +107,20 @@ class Cogitator:
             hop_count += 1
             next_frontier: list[KLine] = []
             for cur in frontier:
-                for kline in state.find_sig(cur.signature):
+                edges = list(state.find_sig(cur.signature))
+                edges.extend(
+                    k
+                    for k in state.where(
+                        lambda k: k.signature != cur.signature
+                        and not is_terminal(k)
+                        and not is_identity(k)
+                        and (
+                            signifier.signifies(cur.signature, k.signature)
+                            or cur.signature in k.nodes
+                        )
+                    )
+                )
+                for kline in edges:
                     if (
                         kline is None
                         or is_terminal(kline)
