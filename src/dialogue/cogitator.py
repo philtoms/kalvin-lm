@@ -60,25 +60,33 @@ class Cogitator:
         remainder: list[KNode] = []
         distance = 0
 
-        for f1, f2 in [(underfit, overfit), (overfit, remainder)]:
-            while len(f1) > 0:
-                n=f1.pop(0)
-                connotated=False
-                for nx, hops in self.connotateY(n):
-                    for kl in [f2, fit]:
-                        if nx in kl:
+        for m1, m2 in [(underfit, overfit), (overfit, remainder)]:
+            while len(m1) > 0:
+                n=m1.pop(0)
+                reserve=True if m1 is underfit else False
+                for kl, hops in self.connotateY(n):
+                    for m_nodes in [m2, fit]:
+                        if kl.signature in m_nodes:
                             distance += hops
-                            proposal.append(nx)
-                            kl.remove(nx)
-                            connotated=True
+                            proposal.append(kl.signature)
+                            m_nodes.remove(kl.signature)
+                            reserve=False
                             break
-                if not connotated:
+                        if all(n in m_nodes for n in kl.nodes):
+                            proposal.append(kl.signature)
+                            for n in kl.nodes:
+                                distance += hops
+                                m_nodes.remove(n)
+                                reserve=False
+                            break
+
+                if reserve:
                     remainder.append(n)
 
         return proposal, distance
 
 
-    def connotateY(self, sig: KNode, depth: int = MAX_HOP) -> Iterator[tuple[KNode, int]]:
+    def connotateY(self, sig: KNode, depth: int = MAX_HOP) -> Iterator[tuple[KLine, int]]:
         """Yield ``(hops, sig)`` breadth-first over *every* non-terminal,
         non-identity resolution edge — not one deterministic path.
 
@@ -87,24 +95,24 @@ class Cogitator:
         """
         state = self._state
         signifier = self._state.signifier
-        frontier: list[KNode] = [sig]
-        visited: set[KNode] = {sig}
+        frontier: list[KLine] = [KLine(sig, [])]
+        visited: set[KLine] = set()
         hop_count = 0
         while frontier and hop_count < depth:
             hop_count += 1
-            next_frontier: list[KNode] = []
+            next_frontier: list[KLine] = []
             for cur in frontier:
-                for kline in state.find_sig(cur):
+                for kline in state.find_sig(cur.signature):
                     if (
                         kline is None
                         or is_terminal(kline)
                         or is_identity(kline)
                     ):
                         continue
-                    reached = signifier.signature_of(kline.nodes)
-                    if reached in visited:
+                    if kline in visited:
                         continue
-                    visited.add(reached)
+                    visited.add(kline)
+                    reached = KLine(signifier.signature_of(kline.nodes), kline.nodes)
                     yield reached, hop_count
                     next_frontier.append(reached)
             frontier = next_frontier
