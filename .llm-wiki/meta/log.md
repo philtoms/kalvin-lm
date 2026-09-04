@@ -227,3 +227,9 @@
 ## [2026-09-03T16:34:47.733Z] observe
 - slug: "obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram", title: "Engine observations channel removed; harness diffs state; frame in summary", relevance: "high"
 
+## [2026-09-04T09:18:40.574Z] observe
+- slug: "obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded", title: "Cogitator.expand dead: connotateY frontier never seeded", relevance: "high"
+
+## [2026-09-04T09:22:30.327Z] observe
+- slug: "obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall", title: "connotateY reverse edges bridge WDMH to MHALL", relevance: "high"
+

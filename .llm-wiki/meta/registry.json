@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-03T16:34:47.773Z",
+  "last_updated": "2026-09-04T09:22:30.365Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1558,6 +1558,40 @@
       "source_context": "Renaming EngineState.stm to work_list to make room for kalvin.stm import",
       "created": "2026-09-03",
       "updated": "2026-09-03"
+    },
+    "sources/obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded": {
+      "type": "source",
+      "title": "Observation: Cogitator.expand dead: connotateY frontier never seeded",
+      "tags": [
+        "dialogue",
+        "cogitator",
+        "engine",
+        "bugfix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded",
+      "relevance": "high",
+      "observed_at": "2026-09-04T09:18:40.570Z",
+      "source_context": "Dialogue-dev tuning: WDMH underfit proposal investigation",
+      "created": "2026-09-04",
+      "updated": "2026-09-04"
+    },
+    "sources/obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall": {
+      "type": "source",
+      "title": "Observation: connotateY reverse edges bridge WDMH to MHALL",
+      "tags": [
+        "dialogue",
+        "cogitator",
+        "engine",
+        "feat"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall",
+      "relevance": "high",
+      "observed_at": "2026-09-04T09:22:30.325Z",
+      "source_context": "Dialogue-dev: reverse-edge design for connotateY",
+      "created": "2026-09-04",
+      "updated": "2026-09-04"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

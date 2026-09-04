@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-09-04
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall","title":"connotateY reverse edges bridge WDMH to MHALL"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded","title":"Cogitator.expand dead: connotateY frontier never seeded"}
+
 ## 2026-09-03
 
 - **observe**: {"relevance":"high","slug":"obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram","title":"Engine observations channel removed; harness diffs state; frame in summary"}

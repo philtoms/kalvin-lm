@@ -68,5 +68,7 @@
 - [Observation: Compound words no longer take word bits](obs-2026-09-03-compound-words-no-longer-take-word-bits.md)
 - [Observation: Engine observations channel removed; harness diffs state; frame in summary](obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram.md)
 - [Observation: EngineState.stm renamed back to work_list](obs-2026-09-03-enginestate-stm-renamed-back-to-work-list.md)
+- [Observation: Cogitator.expand dead: connotateY frontier never seeded](obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded.md)
+- [Observation: connotateY reverse edges bridge WDMH to MHALL](obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

@@ -47,7 +47,7 @@ class Cogitator:
                 overfit = list(c_set - q_set)
                 fit = list(q_set & c_set)
 
-                proposal, distance = self.expand(underfit, overfit, fit)
+                proposal, distance = self.expand(underfit, overfit, fit, exclude=query.signature)
                 yield KValue(KLine(entry.signature, proposal), distance)
         return
 
@@ -55,6 +55,7 @@ class Cogitator:
             underfit: list[KNode],
             overfit: list[KNode],
             fit: list[KNode],
+            exclude: KNode | None = None,
     ) -> tuple[list[KNode], int]:
         proposal: list[KNode] = []
         remainder: list[KNode] = []
@@ -64,7 +65,7 @@ class Cogitator:
             while len(m1) > 0:
                 n=m1.pop(0)
                 reserve=True if m1 is underfit else False
-                for kl, hops in self.connotateY(n):
+                for kl, hops in self.connotateY(n, exclude=exclude):
                     for m_nodes in [m2, fit]:
                         if kl.signature in m_nodes:
                             distance += hops
@@ -83,17 +84,23 @@ class Cogitator:
                 if reserve:
                     remainder.append(n)
 
+        if underfit or overfit or remainder:
+            return [], 0
+
+        proposal.extend(fit)
         return proposal, distance
 
 
-    def connotateY(self, sig: KNode, depth: int = MAX_HOP) -> Iterator[tuple[KLine, int]]:
+    def connotateY(self, sig: KNode, depth: int = MAX_HOP, exclude: KNode | None = None) -> Iterator[tuple[KLine, int]]:
         """Yield ``(kline, hops)`` breadth-first over *every* non-terminal,
         non-identity connotation edge — not one deterministic path.
 
         Forward edges: klines resolving ``cur``'s signature. Reverse edges:
         klines whose signature shares a word bit with ``cur``, or that
         contain ``cur`` as a node — the bridges from word-level gaps to
-        compound-signature klines.
+        compound-signature klines. Klines resolving ``exclude`` (the
+        query's own signature) are neither yielded nor traversed — the
+        query must not act as a hub between its gap nodes' bits.
 
         BFS order is min-hops-first, so consumers halt at their k nearest
         results and never explore past them.
@@ -129,8 +136,12 @@ class Cogitator:
                         continue
                     if kline in visited:
                         continue
-                    visited.add(kline)
                     reached = KLine(signifier.signature_of(kline.nodes), kline.nodes)
+                    if exclude is not None and (
+                        kline.signature == exclude or reached.signature == exclude
+                    ):
+                        continue
+                    visited.add(kline)
                     yield reached, hop_count
                     next_frontier.append(reached)
             frontier = next_frontier

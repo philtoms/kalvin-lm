@@ -143,6 +143,8 @@
 - [[sources/obs-2026-09-03-compound-words-no-longer-take-word-bits]] — Observation: Compound words no longer take word bits *(created: 2026-09-03)*
 - [[sources/obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram]] — Observation: Engine observations channel removed; harness diffs state; frame in summary *(created: 2026-09-03)*
 - [[sources/obs-2026-09-03-enginestate-stm-renamed-back-to-work-list]] — Observation: EngineState.stm renamed back to work_list *(created: 2026-09-03)*
+- [[sources/obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded]] — Observation: Cogitator.expand dead: connotateY frontier never seeded *(created: 2026-09-04)*
+- [[sources/obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall]] — Observation: connotateY reverse edges bridge WDMH to MHALL *(created: 2026-09-04)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -150,4 +152,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-03T16:34:47.773Z* | *Total pages: 138*
+*Last updated: 2026-09-04T09:22:30.365Z* | *Total pages: 140*

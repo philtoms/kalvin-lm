@@ -73,3 +73,5 @@
 {"slug":"obs-2026-09-03-compound-words-no-longer-take-word-bits","title":"Compound words no longer take word bits","relevance":"high","timestamp":"2026-09-03T10:53:47.413Z","kind":"observe"}
 {"slug":"obs-2026-09-03-enginestate-stm-renamed-back-to-work-list","title":"EngineState.stm renamed back to work_list","relevance":"high","timestamp":"2026-09-03T11:28:02.821Z","kind":"observe"}
 {"slug":"obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram","title":"Engine observations channel removed; harness diffs state; frame in summary","relevance":"high","timestamp":"2026-09-03T16:34:47.733Z","kind":"observe"}
+{"slug":"obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded","title":"Cogitator.expand dead: connotateY frontier never seeded","relevance":"high","timestamp":"2026-09-04T09:18:40.574Z","kind":"observe"}
+{"slug":"obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall","title":"connotateY reverse edges bridge WDMH to MHALL","relevance":"high","timestamp":"2026-09-04T09:22:30.327Z","kind":"observe"}
