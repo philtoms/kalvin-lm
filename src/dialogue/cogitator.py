@@ -5,7 +5,8 @@ from itertools import combinations
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-from kalvin.kline import KLine, KNode, KNodes, classify_misfit, is_identity, is_terminal
+from kalvin.kline import KLine, KNode, KSig, is_identity, is_terminal, is_connotation
+from kalvin.kpath import KPath
 from kalvin.kvalue import KValue
 from kalvin.significance import (
     PROPOSAL_AGGREGATOR,
@@ -37,113 +38,114 @@ class Cogitator:
 
 
     def cogitate(self, entry: KLine) -> Iterator[KValue]:
-        candidates = self._candidates(entry)
-        queries = [entry] if self.signifier.is_ask(entry.signature) else self.state.find_canons(entry.signature)
-        for query in queries:
-            for candidate in candidates:
-                q_set = set(query.nodes)
-                c_set = set(candidate.nodes)
+        query = entry if self.signifier.is_ask(entry.signature) else self.state.find_canon(entry.signature)
+        if query is not None:
+            q_set = self.reduce(query)
+            for candidate in self._candidates(entry.signature):
+                c_set = self.reduce(candidate)
                 underfit = list(q_set - c_set)
                 overfit = list(c_set - q_set)
                 fit = list(q_set & c_set)
 
-                proposal, distance = self.expand(underfit, overfit, fit, exclude=query.signature)
+                proposal, distance = self.expand(underfit, overfit, fit)
                 yield KValue(KLine(entry.signature, proposal), distance)
         return
+
+    def reduce(self, entry: KLine) -> set[KNode]:
+        reduced: list[KNode] = []
+        remaining = list(entry.nodes)
+        idx=0
+        while idx < len(remaining):
+            node = remaining[idx]
+            for overlap in self._candidates(node):
+                if overlap.signature!=entry.signature:
+                    if all(o in remaining for o in overlap.nodes):
+                        reduced.append(overlap.signature)
+                        for o in overlap.nodes:
+                            remaining.remove(o)
+                        continue
+            idx += 1
+        reduced.extend(remaining)
+        return set(reduced)
 
     def expand(self,
             underfit: list[KNode],
             overfit: list[KNode],
             fit: list[KNode],
-            exclude: KNode | None = None,
     ) -> tuple[list[KNode], int]:
         proposal: list[KNode] = []
         remainder: list[KNode] = []
+        rev_paths: dict[KSig, KPath] = {}
         distance = 0
 
-        for m1, m2 in [(underfit, overfit), (overfit, remainder)]:
-            while len(m1) > 0:
-                n=m1.pop(0)
-                reserve=True if m1 is underfit else False
-                for kl, hops in self.connotateY(n, exclude=exclude):
-                    for m_nodes in [m2, fit]:
-                        if kl.signature in m_nodes:
-                            distance += hops
-                            proposal.append(kl.signature)
-                            m_nodes.remove(kl.signature)
-                            reserve=False
-                            break
-                        if all(n in m_nodes for n in kl.nodes):
-                            proposal.append(kl.signature)
-                            for n in kl.nodes:
+        while len(underfit) > 0:
+            n=underfit.pop(0)
+            preserve=True
+            for fwd_path in self.connotateY(n):
+                right, hops = fwd_path.right, fwd_path.hops
+                for m_nodes in [overfit, fit]:
+                    if right in m_nodes:
+                        distance += hops
+                        m_nodes.remove(right)
+                        proposal.append(right)
+                        preserve = False
+                        break
+
+                if preserve:
+                    rev_paths[right] = fwd_path
+                else:
+                    break
+
+            if preserve:
+                remainder.append(n)
+
+        if remainder:
+            underfit = remainder
+            while len(overfit) > 0:
+                n=overfit.pop(0)
+                for fwd_path in self.connotateY(n):
+                    right, hops = fwd_path.right, fwd_path.hops
+                    if right in rev_paths:
+                        rev = rev_paths[right]
+                        distance += hops + rev.hops
+                        if rev.left in underfit:
+                            underfit.remove(rev.left)
+                            proposal.append(n)
+                        elif rev.left in fit:
+                            fit.remove(rev.left)
+                            proposal.append(n)
+                    else:
+                        for m_nodes in [underfit, fit]:
+                            if right in m_nodes:
                                 distance += hops
-                                m_nodes.remove(n)
-                                reserve=False
-                            break
+                                m_nodes.remove(right)
+                                proposal.append(n)
+                                break
 
-                if reserve:
-                    remainder.append(n)
-
-        if underfit or overfit or remainder:
+        if underfit or overfit:
             return [], 0
 
         proposal.extend(fit)
         return proposal, distance
 
 
-    def connotateY(self, sig: KNode, depth: int = MAX_HOP, exclude: KNode | None = None) -> Iterator[tuple[KLine, int]]:
-        """Yield ``(kline, hops)`` breadth-first over *every* non-terminal,
-        non-identity connotation edge — not one deterministic path.
-
-        Forward edges: klines resolving ``cur``'s signature. Reverse edges:
-        klines whose signature shares a word bit with ``cur``, or that
-        contain ``cur`` as a node — the bridges from word-level gaps to
-        compound-signature klines. Klines resolving ``exclude`` (the
-        query's own signature) are neither yielded nor traversed — the
-        query must not act as a hub between its gap nodes' bits.
-
-        BFS order is min-hops-first, so consumers halt at their k nearest
-        results and never explore past them.
-        """
+    def connotateY(self, left: KNode, depth: int = MAX_HOP) -> Iterator[KPath]:
         state = self._state
         signifier = self._state.signifier
-        frontier: list[KLine] = [KLine(sig, [])]
-        visited: set[KLine] = set()
-        hop_count = 0
-        while frontier and hop_count < depth:
-            hop_count += 1
-            next_frontier: list[KLine] = []
+        frontier: list[KNode] = [left]
+        visited: set[KNode] = set()
+        hops = 0
+        while frontier and hops < depth:
+            hops += 1
+            next_frontier: list[KNode] = []
             for cur in frontier:
-                edges = list(state.find_sig(cur.signature))
-                edges.extend(
-                    k
-                    for k in state.where(
-                        lambda k: k.signature != cur.signature
-                        and not is_terminal(k)
-                        and not is_identity(k)
-                        and (
-                            signifier.signifies(cur.signature, k.signature)
-                            or cur.signature in k.nodes
-                        )
-                    )
-                )
-                for kline in edges:
-                    if (
-                        kline is None
-                        or is_terminal(kline)
-                        or is_identity(kline)
-                    ):
-                        continue
-                    if kline in visited:
-                        continue
-                    reached = KLine(signifier.signature_of(kline.nodes), kline.nodes)
-                    if exclude is not None and (
-                        kline.signature == exclude or reached.signature == exclude
-                    ):
-                        continue
-                    visited.add(kline)
-                    yield reached, hop_count
-                    next_frontier.append(reached)
+                for kline in state.where(lambda k: signifier.node_in(cur, k.signature)
+                                         and is_connotation(k)):
+                    right = signifier.signature_of(kline.nodes)
+                    if right != left and right not in visited:
+                        visited.add(right)
+                        yield KPath(left, right, hops)
+                        next_frontier.append(right)
             frontier = next_frontier
 
 
@@ -226,7 +228,7 @@ class Cogitator:
                 brick_sigs = frozenset(brick_hops)
                 if (
                     brick_sigs in seen
-                    or not signifier.bit_in(
+                    or not signifier.node_in(
                         proposal_sig, signifier.signature_of(list(brick_sigs))
                     )
                 ):
@@ -284,14 +286,13 @@ class Cogitator:
                 break
         return paths
 
-    def _candidates(self, entry: KLine) -> list[KLine]:
+    def _candidates(self, sig: KSig) -> Iterator[KLine]:
         signifier = self._state.signifier
-        conns: list[KLine] = []
 
-        for sig in self._state.where(
-            lambda k: entry.signature != k.signature
+        for kline in self._state.where(
+            lambda k: sig != k.signature
             and not is_identity(k)
-            and signifier.signifies(entry.signature, k.signature)
+            and not is_connotation(k)
+            and signifier.signifies(sig, k.signature)
         ):
-            conns.append(sig)
-        return conns
+            yield kline

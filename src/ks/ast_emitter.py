@@ -13,8 +13,8 @@ SymbolicEntry tuples to encoded uint64 values.
   - UNKNOWN (op=None):   {sig: []}   — bare unknown ask
   - COUNTERSIGNS (==):   {sig: [node]}, {node: [sig]} per item  — bidirectional
   - DENOTES (=):         {sig: [nodes]}  — forward direction
-  - CONNOTES (>):        {sig+nodes: [nodes]}  — compound signature
-  - RCONNOTES (<):       {sig+nodes: [sig]}   — compound signature, reversed
+  - CONNOTES (>):        {sig: [sig+nodes]}   — compound node
+  - RCONNOTES (<):       {nodes: [nodes+sig]} — compound node, reversed
   - CANONIZES (=>):       {sig: [all_nodes]}  — aggregated single entry
 
   Self-identity (A = A) collapses to UNKNOWN with empty nodes.
@@ -104,6 +104,11 @@ class SymbolicEntry(NamedTuple):
     is_ask: bool = False   # ASK_BPE_TOKEN bit: the sig is the original
                            # canonical signature; the bit marks the kline
                            # as an ask (TokenEncoder ORs it into the sig)
+    concat: list[str] | None = None
+    # Component words of a synthesized compound node (identifier order).
+    # Set only by CONNOTES/RCONNOTES, whose single node is the compound
+    # sig+nodes; the TokenEncoder composes the node's value from these
+    # instead of encoding it as a word.
 
 
 class ASTEmitter:
@@ -362,15 +367,26 @@ class ASTEmitter:
             if nodes == [sig]:
                 self._emit_entry(sig, [sig], "IDENTITY")
             elif nodes:
-                self._emit_entry(sig + "".join(nodes), list(nodes), "CONNOTES")
+                # The connoted compound sits in the sig's slot: A > B ⇒
+                # A:[AB]. concat carries the components so the encoder
+                # composes the node instead of encoding it as a word.
+                self._emit_entry(
+                    sig, [sig + "".join(nodes)], "CONNOTES",
+                    concat=[sig, *nodes],
+                )
 
         elif op == "RCONNOTES":
             if nodes == [sig]:
                 self._emit_entry(sig, [sig], "IDENTITY")
             elif nodes:
                 # Reversed reading: node first, sig second (A < B reads
-                # "B is a kind of A", so the identifier is BA).
-                self._emit_entry("".join(nodes) + sig, [sig], "CONNOTES")
+                # "B is a kind of A", so the identifier is BA). The same
+                # connotation as B > A: the compound sits in the species'
+                # slot, reading-order identifier.
+                self._emit_entry(
+                    "".join(nodes), ["".join(nodes) + sig], "CONNOTES",
+                    concat=[*nodes, sig],
+                )
 
         elif op == "CANONIZES":
             # A compound-headed CANONIZES scope produces TWO distinct
@@ -512,7 +528,7 @@ class ASTEmitter:
 
     # Entry emission with CANONIZES dedup
 
-    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, is_ask: bool = False) -> None:
+    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, is_ask: bool = False, concat: list[str] | None = None) -> None:
         """Emit a SymbolicEntry.
 
         CANONIZES dedup applies only to MTS expansion (one decoding aid per
@@ -541,6 +557,7 @@ class ASTEmitter:
 
         self.entries.append(SymbolicEntry(
             sig=sig, nodes=nodes, op=op, is_mts=is_mts, is_ask=is_ask,
+            concat=concat,
             annotation=self._scope_annotation,
             scope=1 if is_mts else 0,
         ))

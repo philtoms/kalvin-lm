@@ -21,9 +21,11 @@ Node layout (the compiler's packing, distinct from the raw tokenizer)::
 
 A compound signature (MTS, e.g. ``MHALL``) is not a word: its signature
 is the OR-reduction of its component words' values — one bit per word
-(5 words → 5 bits). A CONNOTES concatenation sig (``SubjectMary`` =
-``Subject`` + ``Mary``) is a compound the same way: its signature is the
-OR of its component words — it never takes a word bit.
+(5 words → 5 bits). A CONNOTES concatenation node (``SubjectMary`` =
+``Subject`` + ``Mary`` — the compound sitting in the sig's slot) is a
+compound the same way: its value is the OR of its component words — it
+never takes a word bit. The entry's ``concat`` field carries the
+components in identifier order.
 
 Encoding rules:
   - Signature → the encoded word value, or the registered compound
@@ -181,48 +183,28 @@ class TokenEncoder:
         # word and never takes a word bit.
         is_compound_sig = len(entry.sig) > 1 and entry.sig.isupper()
 
-        # A compound signature (MTS, e.g. ``MHALL``) is not a word: its signature
-        # is the OR-reduction of its component words' values — one bit per word
-        # (5 words → 5 bits). The same holds for a CONNOTES concatenation
-        # (``Subject`` + ``Mary`` → ``SubjectMary``): the sig string is
-        # ``head + concat(nodes)`` for one side, so the head is recovered by
-        # stripping the node words — it is not a word and never takes a word
-        # bit.
-        concat_head: str | None = None
-        if (
-            entry.op == "CONNOTES"
-            and not is_compound_ref
-            and not is_compound_def
-            and not is_compound_sig
-        ):
-            joined = "".join(entry.nodes or [])
-            if joined and entry.sig != joined and (
-                entry.sig.endswith(joined) or entry.sig.startswith(joined)
-            ):
-                concat_head = (
-                    entry.sig[: -len(joined)]
-                    if entry.sig.endswith(joined)
-                    else entry.sig[len(joined):]
-                )
-                if not concat_head:
-                    concat_head = None
-
-        # Compound refs reuse the registry; compound defs, unregistered
-        # compound sigs, and concatenations defer to step 3 below; others
-        # encode the sig as a word — a multi-subword sig is still one word
-        # (one bit), and heads its kline like any other sig — including an
-        # empty-form UNKNOWN.
+        # Compound refs reuse the registry; compound defs and unregistered
+        # compound sigs defer to step 3 below; everything else encodes the
+        # sig as a word — a multi-subword sig is still one word (one bit),
+        # and heads its kline like any other sig — including an empty-form
+        # UNKNOWN and the CONNOTES head word.
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
-        elif is_compound_def or is_compound_sig or concat_head is not None:
+        elif is_compound_def or is_compound_sig:
             sig_uint64 = 0  # computed after nodes are encoded
         else:
             sig_uint64 = self._encode_word(entry.sig)
 
-        # 2. Encode nodes (compound nodes reuse the registry value).
+        # 2. Encode nodes. A synthesized compound node (CONNOTES concat —
+        #    the compound in the sig's slot, e.g. Subject:[SubjectMary])
+        #    composes from its components like any compound and never
+        #    takes a word bit; other nodes reuse the registry or encode
+        #    as words.
         node_values: list[KNode] = []
         for node_str in entry.nodes or []:
-            if node_str in self._compound_sigs:
+            if entry.concat is not None:
+                node_values.append(self._compose_concat(entry.concat, node_str))
+            elif node_str in self._compound_sigs:
                 node_values.append(KNode(self._compound_sigs[node_str], node_str))
             else:
                 node_values.append(self._encode_word(node_str))
@@ -242,18 +224,6 @@ class TokenEncoder:
             if is_compound_def:
                 self._compound_sigs[entry.sig] = sig_uint64
                 self._compound_labels.setdefault(sig_uint64, entry.sig)
-        elif concat_head is not None and not is_compound_ref:
-            # The concatenation's signature composes from its component
-            # words: the nodes plus the recovered head (itself possibly a
-            # registered compound, e.g. ``QueryALL``'s ``ALL``).
-            head_value = self._compound_sigs.get(concat_head)
-            if head_value is None:
-                head_value = self._encode_word(concat_head)
-            sig_uint64 = self._signifier.signature_of(
-                [*node_values, KNode(head_value, concat_head)]
-            ).with_label(entry.sig)
-            self._compound_sigs[entry.sig] = sig_uint64
-            self._compound_labels.setdefault(sig_uint64, entry.sig)
 
         # 4. Ask bit: an ask keeps its original canonical signature with
         #    the ASK_BPE_TOKEN flag OR-ed in — any signature can be an ask.
@@ -284,6 +254,25 @@ class TokenEncoder:
         return [(KValue(main, band), entry.is_mts)]
 
     # Word encoding
+
+    def _compose_concat(self, components: list[str], label: str) -> KNode:
+        """Compose a synthesized compound node from its component words.
+
+        Each component resolves to a registered compound signature or an
+        encoded word; the compound is the OR-reduction, registered so
+        later references (as a component of a larger concat, or a plain
+        node ref) reuse the same value. Never takes a word bit.
+        """
+        parts: list[KNode] = []
+        for c in components:
+            if c in self._compound_sigs:
+                parts.append(KNode(self._compound_sigs[c], c))
+            else:
+                parts.append(self._encode_word(c))
+        value = self._signifier.signature_of(parts).with_label(label)
+        self._compound_sigs[label] = value
+        self._compound_labels.setdefault(value, label)
+        return value
 
     def _encode_word(self, word: str) -> KNode:
         """Encode a word to its uint64 node value.

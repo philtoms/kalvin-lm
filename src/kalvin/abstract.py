@@ -107,7 +107,7 @@ class KSignifier(ABC):
         ...
 
     @abstractmethod
-    def bit_in(self, node: KNode, signature: KNode) -> bool:
+    def node_in(self, node: KNode, signature: KNode) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         ...
 

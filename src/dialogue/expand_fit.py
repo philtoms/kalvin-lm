@@ -154,7 +154,7 @@ class ExpandFit:
                     if c_kline is None:
                         continue
                     underfit_sig = signifier.signature_of(list(underfit))
-                    if signifier.bit_in(hop_sig, underfit_sig):
+                    if signifier.sig_in(hop_sig, underfit_sig):
                         accounted = decay(hops)
                         s2_target.append(n)
                         break
@@ -241,7 +241,7 @@ class ExpandFit:
         out: list[KNode] = []
         signifier = self.signifier
         for kline in self._state.where(
-            lambda k: signifier.bit_in(k.signature, signature) and is_identity(k)
+            lambda k: signifier.sig_in(k.signature, signature) and is_identity(k)
         ):
             out.append(kline.signature)
         return out

@@ -78,7 +78,7 @@ class NLPSignifier(KSignifier):
         if len(labels) == 1:
             label = labels[0]
         else:
-            label = "".join(l[:1].upper() for l in labels)
+            label = "".join(l for l in labels)
         return KNode(sig, label)
 
     def signifies(self, a: KNode, b: KNode) -> bool:
@@ -102,7 +102,7 @@ class NLPSignifier(KSignifier):
         label = f"{getattr(a, 'label', '')} & ~{getattr(b, 'label', '')}"
         return KNode(mask, label)
 
-    def bit_in(self, node: KNode, signature: KNode) -> bool:
+    def node_in(self, node: KNode, signature: KNode) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         return (node & signature) == node
 

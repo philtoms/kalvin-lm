@@ -59,7 +59,7 @@ class KNode(int):
 KNodes: TypeAlias = Sequence[int]
 
 # Type alias for Signatures (uint64)
-KSig: TypeAlias = int
+KSig: TypeAlias = KNode
 
 
 # === Decode resolver context ===
@@ -287,11 +287,10 @@ def is_connotation(kline: KLine) -> bool:
     (no-fit/underfit/overfit) and from terminals and canons.
     """
     return (
-        not is_terminal(kline)
-        and len(kline.nodes) == 1
-        and kline.signature != kline.nodes[0]
+        len(kline.nodes) == 1
+        and not is_terminal(kline)
+        and not is_identity(kline)
     )
-
 
 def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.

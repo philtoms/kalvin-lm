@@ -103,12 +103,10 @@ class EngineState:
         entries.extend(self.ltm.get(signature, ()))
         return entries
 
-    def find_canons(self, signature: KNode) -> list[KLine]:
-        return [
-            item
-            for item in self.find_sig(signature)
-            if is_canon(item, self.signifier)
-        ]
+    def find_canon(self, signature: KNode) -> KLine | None:
+        for item in self.find_sig(signature):
+            if is_canon(item, self.signifier):
+                return item
 
     def where(self, predicate: Callable[[KLine], bool]) -> list[KLine]:
         """All klines matching ``predicate`` across the layers, work list first."""
@@ -142,6 +140,18 @@ class EngineState:
             self.canon_nodes(entry.signature) is not None
             and self.canon_nodes(entry.nodes[0]) is not None
         )
+
+    def is_connotation(self, kline: KLine) -> bool:
+        return (
+            len(kline.nodes) == 1
+            and not is_terminal(kline)
+            and not is_identity(kline)
+            # The compound relationship: the sig sits inside its single
+            # node (A:[AB]) — the connotation's compound is the slot
+            # content, so the operands bit-contain one another.
+            and self._signifier.node_in(kline.signature, kline.nodes[0])
+        )
+
 
     # -- work list (attention) ----------------------------------------
 
