@@ -166,11 +166,13 @@
     "entities/kscript",
     "entities/tokenencoder",
     "sources/SRC-2026-08-11-001",
-    "sources/SRC-2026-08-11-003"
+    "sources/SRC-2026-08-11-003",
+    "sources/connotation-compound-relocation-encoder-design"
   ],
   "concepts/kvalue": [
     "concepts/kline",
-    "sources/SRC-2026-08-11-001"
+    "sources/SRC-2026-08-11-001",
+    "sources/connotation-compound-relocation-encoder-design"
   ],
   "concepts/learned-preferences": [
     "concepts/fit",
@@ -719,8 +721,10 @@
     "entities/marys-world"
   ],
   "sources/compound-word-identity-label-and-dedup": [],
+  "sources/connotation-compound-relocation-encoder-design": [],
   "sources/identity-klines-never-proposals": [],
   "sources/identity-priming-and-knowledge-restatement": [],
+  "sources/model-state-graph-layer-rendering": [],
   "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": [],
   "sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected": [
     "entities/k-engine",
@@ -787,6 +791,13 @@
   "sources/obs-2026-09-03-enginestate-stm-renamed-back-to-work-list": [],
   "sources/obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded": [],
   "sources/obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall": [],
+  "sources/obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked": [],
+  "sources/obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab": [],
+  "sources/obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers": [],
+  "sources/obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s": [],
+  "sources/obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-": [],
+  "sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla": [],
+  "sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/wiki-duplicate-consolidation": []
 }

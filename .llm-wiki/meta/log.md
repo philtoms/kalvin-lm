@@ -233,3 +233,33 @@
 ## [2026-09-04T09:22:30.327Z] observe
 - slug: "obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall", title: "connotateY reverse edges bridge WDMH to MHALL", relevance: "high"
 
+## [2026-09-04T10:13:35.609Z] observe
+- slug: "obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked", title: "Query-kline hub exclusion committed; legit path still blocked", relevance: "high"
+
+## [2026-09-08T09:38:28.288Z] observe
+- slug: "obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab", title: "CONNOTES semantics inverted to compound-in-slot (A:[AB])", relevance: "high"
+
+## [2026-09-08T09:38:28.290Z] retro
+- slug: "connotation-compound-relocation-encoder-design", title: "Relocating a compound across the sig/node boundary requires component plumbing", category: "compiler"
+
+## [2026-09-08T09:40:12.036Z] observe
+- slug: "obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers", title: "Harness --graph flag renders model state across all layers", relevance: "medium"
+
+## [2026-09-08T09:40:12.039Z] retro
+- slug: "model-state-graph-layer-rendering", title: "Model-state graph design: klines deduped with layer glyphs, strongest-layer styling", category: "design"
+
+## [2026-09-08T10:01:50.868Z] observe
+- slug: "obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s", title: "Harness -p writes companion .dot/.mmd graph beside state JSON; save-path bug fixed", relevance: "low"
+
+## [2026-09-08T10:24:48.289Z] observe
+- slug: "obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh", title: "Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node)", relevance: "medium"
+
+## [2026-09-08T12:59:16.702Z] observe
+- slug: "obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla", title: "Model graph: sig→compound→identity-members construction replaces node fan-out", relevance: "medium"
+
+## [2026-09-08T13:09:20.137Z] commit
+- commits: ["9773959","2114e10"], tree: "clean", user_request: "commit all"
+
+## [2026-09-08T13:20:24.214Z] observe
+- slug: "obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-", title: "Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key", relevance: "low"
+

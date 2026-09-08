@@ -15,6 +15,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections import Counter
 from collections.abc import Callable
@@ -24,7 +25,15 @@ from typing import Literal, cast
 
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
-from kalvin.kline import KLine, KNode, is_canon, is_identity
+from kalvin.kline import (
+    KLine,
+    KNode,
+    classify_misfit,
+    is_canon,
+    is_connotation,
+    is_identity,
+    is_unknown,
+)
 from kalvin.kvalue import KValue
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.significance import SIG_MASK, SIG_S1, SIG_S3, SIG_S4, BandLayout
@@ -572,6 +581,358 @@ def _render_work_list(state: EngineState, labels: dict[int, str], verbose: bool)
     )
 
 
+# ── Model graph ───────────────────────────────────────────────────────────
+
+_GRAPH_LAYERS = ("L", "F", "W", "R")  # ltm, frame, work_list, refused
+
+# ANSI stand-ins for the renderer fills (ltm green, frame yellow, work
+# blue, refused red); enabled on a tty unless NO_COLOR is set.
+_ANSI = {"L": "\033[32m", "F": "\033[33m", "W": "\033[34m", "R": "\033[31m"}
+_COLOUR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+
+def _paint(text: str, layers: str | set[str]) -> str:
+    if not _COLOUR:
+        return text
+    return f"{_ANSI[min(layers, key=_GRAPH_LAYERS.index)]}{text}\033[0m"
+
+
+def _structure_class(kline: KLine, signifier: NLPSignifier) -> str:
+    if is_unknown(kline):
+        return "unknown"
+    if is_identity(kline):
+        return "id"
+    if is_canon(kline, signifier):
+        return "canon"
+    if is_connotation(kline):
+        # The S3 relationship shape splits on bit containment, as in
+        # EngineState.is_connotation: the sig sits inside its node
+        # (A:[AB]) — a connotation; the disjoint form is a denotation.
+        if signifier.node_in(kline.signature, kline.nodes[0]):
+            return "connotation"
+        return "denotation"
+    under, over = classify_misfit(kline, signifier)
+    if under and not over:
+        return "under"
+    if over and not under:
+        return "over"
+    return "misfit"
+
+
+def _model_graph(
+    state: EngineState,
+) -> tuple[dict[tuple[KNode, tuple[KNode, ...]], tuple[str, KLine]],
+           dict[KNode, set[str]]]:
+    """The model across all layers as ``(klines, values)``.
+
+    ``klines`` maps each distinct (signature, nodes) to the layer glyphs
+    holding it plus a representative kline (ltm → frame → work list →
+    refused). ``values`` maps each value to the layers it appears in, in
+    any role.
+    """
+    klines: dict[tuple[KNode, tuple[KNode, ...]], tuple[str, KLine]] = {}
+
+    def add(kl: KLine, glyph: str) -> None:
+        key = (kl.signature, tuple(kl.nodes))
+        held, _ = klines.get(key, ("", kl))
+        klines[key] = (held + glyph, kl)
+
+    for bucket in state.ltm.values():
+        for kl in bucket:
+            add(kl, "L")
+    for bucket in state.frame.values():
+        for kl in bucket:
+            add(kl, "F")
+    for kl in state.work_list:
+        add(kl, "W")
+    for sig, nodes in state.refused:
+        add(KLine(sig, list(nodes)), "R")
+
+    values: dict[KNode, set[str]] = {}
+    for (sig, nodes), (layers, _) in klines.items():
+        values.setdefault(sig, set()).update(layers)
+        for n in nodes:
+            values.setdefault(n, set()).update(layers)
+    return klines, values
+
+
+def _graph_name(node: KNode, labels: dict[int, str], verbose: bool,
+                signifier: NLPSignifier) -> str:
+    name = _label(node, labels, verbose)
+    return f"?{name}" if signifier.is_ask(node) else name
+
+
+def _sorted_values(values: dict[KNode, set[str]]) -> list[KNode]:
+    return sorted(values, key=lambda n: (n.bit_length(), n))
+
+
+def _compound_of(kline: KLine, signifier: NLPSignifier) -> KNode | None:
+    """The composed node of a multi-node kline — the OR-reduction of its
+    nodes, labelled by their concatenation (e.g. SubjectVerbObject)."""
+    if len(kline.nodes) < 2:
+        return None
+    return signifier.signature_of(kline.nodes)
+
+
+def _compound_name(compound: KNode, verbose: bool) -> str:
+    # The composed label (node labels concatenated), never the script label
+    # a same-valued signature may carry — the compound names what composes it.
+    name = compound.label or f"0x{int(compound):x}"
+    return f"{name}|0x{int(compound):x}" if verbose else name
+
+
+def _graph_heads(
+    klines: dict[tuple[KNode, tuple[KNode, ...]], tuple[str, KLine]],
+) -> tuple[set[KNode], dict[KNode, str], set[KNode]]:
+    """Values heading a non-identity kline, held identities by layer glyphs,
+    and values appearing as nodes of multi-node klines."""
+    heads = {
+        kl.signature for (_, _), (_, kl) in klines.items() if not is_identity(kl)
+    }
+    identities = {
+        kl.signature: layers
+        for (_, _), (layers, kl) in klines.items()
+        if is_identity(kl)
+    }
+    compound_members = {
+        n
+        for (_, _), (_, kl) in klines.items()
+        if len(kl.nodes) > 1
+        for n in kl.nodes
+    }
+    return heads, identities, compound_members
+
+
+def _render_model_graph(state: EngineState, labels: dict[int, str],
+                        verbose: bool) -> str:
+    signifier = state.signifier
+    klines, values = _model_graph(state)
+    if not values:
+        return "── model graph ──\n  (empty)"
+    heads, identities, compound_members = _graph_heads(klines)
+    by_head: dict[KNode, list[tuple[str, KLine]]] = {}
+    for (sig, _nodes), (layers, kl) in klines.items():
+        by_head.setdefault(sig, []).append((layers, kl))
+    key = "  ".join(
+        _paint(f"● {n}", g)
+        for g, n in (("L", "ltm"), ("F", "frame"), ("W", "work"), ("R", "refused"))
+    )
+    lines = [
+        f"── model graph ──  {key}  *=heads klines of its own  ?=ask",
+        "    multi-node klines: sig ---> compound ---> identity-held members",
+    ]
+    leaves: list[str] = []
+    for node in _sorted_values(values):
+        name = _graph_name(node, labels, verbose, signifier)
+        if node in heads:
+            lines.append(f"  {_paint(name, values[node])}")
+            seen_compounds: set[int] = set()
+            for klayers, kl in by_head[node]:
+                if is_identity(kl):
+                    continue
+                cls = _structure_class(kl, signifier)
+                compound = _compound_of(kl, signifier)
+                if compound is not None:
+                    if int(compound) in seen_compounds:
+                        continue
+                    seen_compounds.add(int(compound))
+                    lines.append(
+                        f"      {cls:<11} {_paint('--->', klayers)} "
+                        f"{_compound_name(compound, verbose)}"
+                    )
+                    for n in kl.nodes:
+                        if n not in identities:
+                            continue
+                        lines.append(
+                            f"{' ':27}{_paint('--->', identities[n])} "
+                            f"{_graph_name(n, labels, verbose, signifier)}"
+                            f"{'*' if n in heads else ''}"
+                        )
+                elif kl.nodes:
+                    n = kl.nodes[0]
+                    lines.append(
+                        f"      {cls:<11} {_paint('--->', klayers)} "
+                        f"{_graph_name(n, labels, verbose, signifier)}"
+                        f"{'*' if n in heads else ''}"
+                    )
+                else:
+                    lines.append(f"      {cls:<11} {_paint('--->', klayers)} ∅")
+        elif node in identities and node not in compound_members:
+            lines.append(f"  {_paint(name, values[node])}")
+        elif node not in identities:
+            leaves.append(f"  {_paint(name, values[node])}")
+            continue
+        else:
+            continue
+        if node in identities and node not in compound_members:
+            lines.append(f"      {'id':<11} [{_paint(name, identities[node])}]")
+    if leaves:
+        lines.append("  -- referenced, never headed --")
+        lines.extend(leaves)
+    return "\n".join(lines)
+
+
+def _graph_fill(layers: str | set[str]) -> str:
+    strongest = min(layers, key=_GRAPH_LAYERS.index)
+    return {
+        "L": "#d5e8d4", "F": "#fff2cc", "W": "#dae8fc", "R": "#f8cecc",
+    }[strongest]
+
+
+def _graph_class(layers: str | set[str]) -> str:
+    return {_GRAPH_LAYERS[i]: name
+            for i, name in enumerate(("ltm", "frame", "work", "refused"))}[
+        min(layers, key=_GRAPH_LAYERS.index)
+    ]
+
+
+def _render_model_graph_dot(state: EngineState, labels: dict[int, str],
+                            verbose: bool) -> str:
+    signifier = state.signifier
+    klines, values = _model_graph(state)
+    heads, identities, compound_members = _graph_heads(klines)
+
+    def nid(n: KNode) -> str:
+        return f"n{int(n):x}"
+
+    def esc(text: str) -> str:
+        return text.replace("\\", "\\\\").replace('"', '\\"')
+
+    lines = [
+        "digraph model {",
+        "  rankdir=BT;",
+        '  graph [labelloc=b, '
+        'label="green=ltm  yellow=frame  blue=work  red=refused"];',
+        '  node [shape=ellipse, style=filled, fontname="Helvetica"];',
+        '  edge [fontname="Helvetica", fontsize=10];',
+    ]
+    for node in _sorted_values(values):
+        name = esc(_graph_name(node, labels, verbose, signifier))
+        lines.append(
+            f'  {nid(node)} [label="{name}", '
+            f'fillcolor="{_graph_fill(values[node])}"];'
+        )
+    compounds: dict[int, KNode] = {}
+    for (_, _), (_, kl) in klines.items():
+        compound = _compound_of(kl, signifier)
+        if compound is not None:
+            compounds.setdefault(int(compound), compound)
+    for value, compound in sorted(compounds.items()):
+        lines.append(
+            f'  c{value:x} [label="'
+            f'{esc(_compound_name(compound, verbose))}", '
+            f'shape=box, style="filled,dashed", fillcolor="#ffffff"];'
+        )
+    edge_style = {
+        "canon": "",
+        "under": ' style="dashed" penwidth="2"',
+        "over": ' style="dashed" penwidth="2"',
+        "misfit": ' style="dashed" penwidth="2"',
+        "connotation": ' style="dashed"',
+        "denotation": ' style="dashed"',
+        "identity": ' style="dotted"',
+        "unknown": "",
+    }
+    member_edges: set[tuple[int, int]] = set()
+    compound_edges: set[tuple[int, int]] = set()
+    for (_sig, _nodes), (_layers, kl) in klines.items():
+        if is_identity(kl):
+            if kl.signature not in compound_members:
+                lines.append(
+                    f"  {nid(kl.signature)} -> {nid(kl.signature)}"
+                    f"[{edge_style['identity']}];"
+                )
+            continue
+        cls = _structure_class(kl, signifier)
+        style = edge_style[cls]
+        compound = _compound_of(kl, signifier)
+        if compound is not None:
+            edge_key = (int(kl.signature), int(compound))
+            if edge_key not in compound_edges:
+                compound_edges.add(edge_key)
+                lines.append(
+                    f'  {nid(kl.signature)} -> c{edge_key[1]:x} '
+                    f'[label="{cls}"{style}];'
+                )
+            for n in kl.nodes:
+                key = (int(compound), int(n))
+                if n in identities and key not in member_edges:
+                    member_edges.add(key)
+                    lines.append(
+                        f"  c{key[0]:x} -> {nid(n)}"
+                        f"[{edge_style['identity']}];"
+                    )
+        else:
+            for n in kl.nodes:
+                lines.append(
+                    f'  {nid(kl.signature)} -> {nid(n)} [label="{cls}"{style}];'
+                )
+    lines.append("}")
+    return "\n".join(lines)
+
+
+def _render_model_graph_mermaid(state: EngineState, labels: dict[int, str],
+                                verbose: bool) -> str:
+    signifier = state.signifier
+    klines, values = _model_graph(state)
+    heads, identities, compound_members = _graph_heads(klines)
+
+    def nid(n: KNode) -> str:
+        return f"n{int(n):x}"
+
+    lines = ["flowchart BT"]
+    for cls, fill in (("ltm", "#d5e8d4"), ("frame", "#fff2cc"),
+                      ("work", "#dae8fc"), ("refused", "#f8cecc")):
+        lines.append(f"  classDef {cls} fill:{fill}")
+    lines.append("  classDef compound fill:#ffffff,stroke-dasharray: 5 5")
+    for node in _sorted_values(values):
+        name = _graph_name(node, labels, verbose, signifier).replace('"', "")
+        lines.append(
+            f'  {nid(node)}("{name}")'
+            f":::{_graph_class(values[node])}"
+        )
+    compounds: dict[int, KNode] = {}
+    for (_, _), (_, kl) in klines.items():
+        compound = _compound_of(kl, signifier)
+        if compound is not None:
+            compounds.setdefault(int(compound), compound)
+    for value, compound in sorted(compounds.items()):
+        name = _compound_name(compound, verbose).replace('"', "")
+        lines.append(f'  c{value:x}("{name}"):::compound')
+    member_edges: set[tuple[int, int]] = set()
+    compound_edges: set[tuple[int, int]] = set()
+    for (_sig, _nodes), (layers, kl) in klines.items():
+        if is_identity(kl):
+            if kl.signature not in compound_members:
+                lines.append(f"  {nid(kl.signature)} --> {nid(kl.signature)}")
+            continue
+        cls = _structure_class(kl, signifier)
+        compound = _compound_of(kl, signifier)
+        if compound is not None:
+            edge_key = (int(kl.signature), int(compound))
+            if edge_key not in compound_edges:
+                compound_edges.add(edge_key)
+                lines.append(
+                    f'  {nid(kl.signature)} -->|"{cls}"| c{edge_key[1]:x}'
+                )
+            for n in kl.nodes:
+                key = (int(compound), int(n))
+                if n in identities and key not in member_edges:
+                    member_edges.add(key)
+                    lines.append(f"  c{key[0]:x} --> {nid(n)}")
+        else:
+            for n in kl.nodes:
+                lines.append(f'  {nid(kl.signature)} -->|"{cls}"| {nid(n)}')
+    return "\n".join(lines)
+
+
+_GRAPH_RENDERERS = {
+    "ascii": _render_model_graph,
+    "dot": _render_model_graph_dot,
+    "mermaid": _render_model_graph_mermaid,
+}
+
+
 def _render_summary(results: list[StepResult], state: EngineState,
                     labels: dict[int, str], verbose: bool,
                     pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
@@ -594,7 +955,8 @@ def _render_summary(results: list[StepResult], state: EngineState,
 def present(results: list[StepResult], state: EngineState, source: str,
             tokenizer: BPETokenizer, signifier: NLPSignifier, *, verbose: bool,
             pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None,
-            word_bits: dict[str, int] | None = None) -> None:
+            word_bits: dict[str, int] | None = None,
+            graph: Literal["ascii", "dot", "mermaid"] | None = None) -> None:
     labels = _sig_to_label(source, tokenizer, signifier, word_bits)
     last_annotation: str | None = None
     for step in results:
@@ -605,6 +967,9 @@ def present(results: list[StepResult], state: EngineState, source: str,
         print(_render_step(step, labels, verbose))
     print()
     print(_render_summary(results, state, labels, verbose, pre_grounded))
+    if graph is not None:
+        print()
+        print(_GRAPH_RENDERERS[graph](state, labels, verbose))
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────
@@ -702,11 +1067,21 @@ def main(argv: list[str] | None = None) -> int:
              "delivers all compiled klines with the opening entry; 'on-demand' "
              "feeds only the opener and withholds scaffolding until K asks.",
     )
+    parser.add_argument(
+        "-g", "--graph", nargs="?", const="ascii", default=None,
+        choices=("ascii", "dot", "mermaid"),
+        help="After the summary, print a graph of the end-of-run model state "
+             "across all layers (L ltm, F frame, W work list, R refused): "
+             "'ascii' in the terminal (the default when bare), 'dot' as "
+             "Graphviz DOT, 'mermaid' as a Mermaid flowchart.",
+    )
 
     parser.add_argument(
         "-p", "--persist", nargs="?", const="auto", default=None, metavar="PATH",
         help="Load engine state before the run and save it after. PATH "
-             "defaults to data/dialogue/{script_name}.json.",
+             "defaults to data/dialogue/{script_name}.json. Also writes a "
+             "graph of the end-of-run state next to the saved file (as .dot, "
+             "or .mmd with --graph mermaid) for VSCode preview extensions.",
     )
     args = parser.parse_args(argv)
 
@@ -755,19 +1130,19 @@ def main(argv: list[str] | None = None) -> int:
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier,
                 verbose=args.verbose, pre_grounded=pre_grounded,
-                word_bits=harness.word_bits)
+                word_bits=harness.word_bits, graph=args.graph)
         if state_path is not None:
-            if state_path.stem != source_path.stem:
-                # A persist file named for another script is not this run's
-                # memory to overwrite.
-                print(
-                    f"harness: not saving — persist name {state_path.name!r} "
-                    f"differs from script name {source_path.stem!r}",
-                    file=sys.stderr,
-                )
-            else:
-                harness.state.word_bits = harness.word_bits
-                harness.state.save(state_path)
+            harness.state.word_bits = harness.word_bits
+            # Always save state to script named path
+            state_path = Path(f"data/dialogue/{source_path.stem}.json")
+            harness.state.save(state_path)
+            fmt = args.graph if args.graph in ("dot", "mermaid") else "dot"
+            graph_path = state_path.with_suffix(".dot" if fmt == "dot" else ".mmd")
+            labels = _sig_to_label(source, tok, harness.signifier, harness.word_bits)
+            graph_path.write_text(
+                _GRAPH_RENDERERS[fmt](harness.state, labels, args.verbose)
+            )
+            print(f"── model graph written to {graph_path} ──")
         return 0
 
     try:
@@ -784,7 +1159,8 @@ def main(argv: list[str] | None = None) -> int:
         cumulative = f"{cumulative}\n{source}"
         print(f"\n══ lesson {lesson.label} ══")
         results = harness.run(source)
-        present(results, harness.state, cumulative, tok, harness.signifier, verbose=args.verbose)
+        present(results, harness.state, cumulative, tok, harness.signifier,
+                verbose=args.verbose, graph=args.graph)
     return 0
 
 

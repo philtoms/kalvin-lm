@@ -81,8 +81,10 @@
 ## Sources
 
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
+- [[sources/connotation-compound-relocation-encoder-design]] — Relocating a compound across the sig/node boundary requires component plumbing *(created: 2026-09-08)*
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
+- [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists]] — Observation: No `python -m kscript` entrypoint exists *(created: 2026-08-11)*
@@ -145,6 +147,13 @@
 - [[sources/obs-2026-09-03-enginestate-stm-renamed-back-to-work-list]] — Observation: EngineState.stm renamed back to work_list *(created: 2026-09-03)*
 - [[sources/obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded]] — Observation: Cogitator.expand dead: connotateY frontier never seeded *(created: 2026-09-04)*
 - [[sources/obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall]] — Observation: connotateY reverse edges bridge WDMH to MHALL *(created: 2026-09-04)*
+- [[sources/obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked]] — Observation: Query-kline hub exclusion committed; legit path still blocked *(created: 2026-09-04)*
+- [[sources/obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab]] — Observation: CONNOTES semantics inverted to compound-in-slot (A:[AB]) *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers]] — Observation: Harness --graph flag renders model state across all layers *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s]] — Observation: Harness -p writes companion .dot/.mmd graph beside state JSON; save-path bug fixed *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-]] — Observation: Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla]] — Observation: Model graph: sig→compound→identity-members construction replaces node fan-out *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh]] — Observation: Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node) *(created: 2026-09-08)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -152,4 +161,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-04T09:22:30.365Z* | *Total pages: 140*
+*Last updated: 2026-09-08T13:20:24.265Z* | *Total pages: 149*

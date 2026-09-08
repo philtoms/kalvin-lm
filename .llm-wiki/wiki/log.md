@@ -1,7 +1,20 @@
 # Wiki Update Log
 
+## 2026-09-08
+
+- **observe**: {"relevance":"low","slug":"obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-","title":"Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key"}
+- **commit**: {"commits":["9773959","2114e10"],"tree":"clean","user_request":"commit all"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla","title":"Model graph: sig→compound→identity-members construction replaces node fan-out"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh","title":"Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node)"}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s","title":"Harness -p writes companion .dot/.mmd graph beside state JSON; save-path bug fixed"}
+- **retro**: {"category":"design","slug":"model-state-graph-layer-rendering","title":"Model-state graph design: klines deduped with layer glyphs, strongest-layer styling"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers","title":"Harness --graph flag renders model state across all layers"}
+- **retro**: {"category":"compiler","slug":"connotation-compound-relocation-encoder-design","title":"Relocating a compound across the sig/node boundary requires component plumbing"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab","title":"CONNOTES semantics inverted to compound-in-slot (A:[AB])"}
+
 ## 2026-09-04
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked","title":"Query-kline hub exclusion committed; legit path still blocked"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall","title":"connotateY reverse edges bridge WDMH to MHALL"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded","title":"Cogitator.expand dead: connotateY frontier never seeded"}
 
