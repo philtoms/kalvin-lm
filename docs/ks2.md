@@ -159,10 +159,11 @@ Terminals are **targeting-closed, not rule-closed**: an Identity relationship is
 
 ## 8. Endings, progress, termination
 
-**Definition 15 (endings).** A derivation ends in exactly one of two ways:
+**Definition 15 (endings).** A derivation ends at **done** or **stuck**, or is **abandoned** by strategy:
 
 - **Done** — `fit(C(A,B)) ∈ S1`: the relationship holds. The goal is **value-equality**, `σ(ν_A) = σ(ν_B)`, not node-equality — an Identity relationship is done with `ν_A ≠ ν_B`, B holding A's content as one node.
-- **Stuck** — no licensed move and not done. Two distinct conditions the strategy treats differently: no target was selected (candidate selection is §10), or the target holds nothing (`ν_B = []`) — the ask event.
+- **Stuck** — not done, and no licensed targeting move. Witnessed moves never end a derivation: they preserve the band and cannot reach done; their only use is granularity exposure, and spending them is strategy (the witnessed-run bound, T2). With a target selected and `ν_B ≠ []`, a not-done state always licenses a targeting move — the S2 rows license remove or add, S3 licenses replace — so stuck arises in exactly two conditions, which the strategy treats differently: no target was selected (candidate selection is §10), or the target holds nothing (`ν_B = []`) — the ask event.
+- **Abandoned** — not an ending the rules produce: strategy halts or re-targets a run mid-derivation (§10), e.g. when graded effort falls (§11).
 
 Licenses are permissive, not safe. A licensed remove can strand the derivation: `A = ab:[ab]` against `B = a:[a]` is underfit (remove licensed); removing `ab` empties `ν_A` → Unknown — stuck at the ask. Pruning such dead ends is band feedback's job (§9), not the rule system's.
 
