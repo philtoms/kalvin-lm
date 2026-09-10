@@ -8,9 +8,7 @@ Four tracts: **what exists** — the algebra (§1–5); **what may happen** — 
 
 ## 1. Atoms and values
 
-**Definition 1 (atoms).** `A = {a₀ … a₃₀, ask}` — a finite parameter set; only its finiteness is load-bearing. In the engine this is the 32-bit word space: one bit per distinct word, bit 31 reserved for ASK. The u64 packing `(word_bit << 32) | bpe_token_id` is not literally a set of atoms; this algebra is a deliberate tidying of that encoding, and the tidying is what the formalisation builds on.
-
-`ask` is structurally a peer atom: it composes and overlaps like any other. Its specialness is declarative, not algebraic — an ask-marked kline *claims* S4 by decree (KScript annotation), not because its structure derives it: `(ask ∨ a) ∧ b ≠ ∅` whenever `a ∧ b ≠ ∅`.
+**Definition 1 (atoms).** `A = {a₀ … a₃₀}` — a finite parameter set; only its finiteness is load-bearing. In the engine this is the word-bit space: one bit per distinct word. The u64 packing `(word_bit << 32) | bpe_token_id` is not literally a set of atoms; this algebra is a deliberate tidying of that encoding, and the tidying is what the formalisation builds on.
 
 **Definition 2 (values).** A **value** is a set of atoms: `V = 2^A`. Write `a` for the singleton value `{a}` and `abc` for `{a,b,c}`. The **empty value** is `∅`; the **full value** is `A`. Operations:
 
@@ -67,7 +65,7 @@ The cases are disjoint by construction. Coverage is the primary split: a pair wi
 
 **Species.** **Denotation** is the single-node Underfit (`ab:[b]` — one covered node, gap only); **Connotation** is case 4. These are names of convenience for KScript (`=`, `>`/`<`); algebraically they are single-node instances of cases 6 and 4. Two single-node shapes are unnamed: the single-node Overfit `a:[ab]`, and the single-node Under+over `ab:[bc]` (covered on `b`, gap `a`, excess `c`).
 
-**Bands.** Derived, not asserted: S1 = cases 2–3 (exact), S2 = covered misfits, S3 = uncovered misfits, S4 = Unknown. Readings carry over: S1 — _I know that I know this_; S2 — _I infer this, but it does not yet fit_; S3 — _I recognise aspects of this, indirectly_; S4 — _I do not understand this at all_.
+**Bands.** Derived, not asserted: S1 = cases 2–3 (exact), S2 = covered misfits, S3 = uncovered misfits, S4 = Unknown. Readings carry over: S1 — _I know that I know this_; S2 — _I infer this, but it does not yet fit_; S3 — _I recognise aspects of this, indirectly_; S4 — _I do not understand this at all_. The **ask** is structural, not declared: Unknown (`s:[]` — nothing held for the signature) is the ask's shape, the halt signal under which strategy generates ungrounded proposals (§10). No atom, mark, or decree is involved.
 
 **Invariance.** `fit` is insensitive to node order: it depends on `ν` only through `signature_of(ν)` and the node count. Duplicating a node changes the fit only when it crosses a count boundary (`a:[a]` Identity vs `a:[a,a]` Canon; `a:[b]` Connotation vs `a:[b,b]` No-fit); otherwise the repetition is witness structure invisible to classification.
 
@@ -209,10 +207,15 @@ The relationship's band then routes the derivation: S2 → ordinary targeting (�
 
 Two band attachments are in play: a kline's **own band** — `fit(s, ν)` on itself, the claim it makes standing alone — and a **relationship band** — `fit(C(A,B))`, what the pair achieves. The first is what a kline asserts; the second is what a derivation establishes or fails to.
 
-**Graded distance.** A continuous measure `γ(A, B)`, built from per-slot **accountedness**: `α(n) = |n ∧ σ(ν_B)| / |n|` — the fraction of the node's atoms the target's content covers. Composition across slots (mean by default; a strategy parameter) and a discount `δ` per resolution hop (the witness depth at which the node's content is held — well-defined because licensed expansion terminates, §6) give `γ`. Two requirements pin the family down:
+**Graded distance.** `γ(A, B)` is fixed, not free — three requirements force one form:
 
-- **Band-consistency.** `γ` is 0 exactly at content-disjointness and maximal only at value-equality. The plain overlap fraction fails the second clause — A's content may sit wholly inside B's (underfit, still S2) at full coverage — so composition must weigh B's uncovered content, the excess, as well; the Jaccard form `|σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A) ∨ σ(ν_B)|` is the depth-free core satisfying both ends.
-- **Hop-decay.** Witnessed moves strictly decrease `γ` — depth grows at constant content. This is what makes gratuitous expansion detectable, and why monotonicity of the graded measure is a strategy invariant (T2), not a structural fact.
+> `γ(A, B) = J(σ(ν_A), σ(ν_B)) · δ^D̄`   where   `J(x, y) = |x ∧ y| / |x ∨ y|`
+
+`J` is the **depth-free core**: symmetric, 0 exactly at content-disjointness, 1 exactly at value-equality. It is forced: per-slot accountedness `α(n) = |n ∧ σ(ν_B)| / |n|`, composed atom-weighted (each slot weighed by `|n|`), yields the A-side coverage fraction `|σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A)|` — which fails band-consistency's second clause (A's content may sit wholly inside B's — underfit, still S2 — at full coverage), so B's excess must be weighed too, and Jaccard is the result. `D̄` is the **mean witness depth of A's content**: the atom-weighted mean of the resolution depths at which A's atoms are held — 0 for content held as itself — well-defined because licensed expansion terminates (§6). `δ ∈ (0,1)` is the strategy's knob, the only one. `J` says *how close*; `δ^D̄` says *how hard-won* — γ is directional by design, grading this derivation's effort toward its target; B's depth is B's own derivation's problem.
+
+- **Band-consistency.** `γ` is 0 exactly at content-disjointness and maximal only at value-equality. Both ends are `J`'s; depth only scales down.
+- **Granularity-invariance.** Witnessed moves move `γ` only through `D̄`, never through recomposition: atom-weighted composition is blind to how A's content is sliced into slots. An unweighted per-slot mean violates this — expansion alone can raise it at constant content and constant depth.
+- **Depth-monotonicity.** Expand strictly increases `D̄`, so strictly decreases `γ`; contract strictly decreases `D̄`, so increases `γ`. This is what makes gratuitous expansion detectable — and why monotonicity of the graded measure is a strategy invariant (T2), not a structural fact: targeting moves shift `J` in either direction, and a derivation may wander against the gradient; the strategy declines to.
 
 **Rate of change** per step is defined only at this level — a four-band predicate has no useful derivative — and is the signal cogitation's feedback acts on.
 
