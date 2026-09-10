@@ -25,6 +25,8 @@ The measure of the gap between two klines A and B — Kalvin's formalisation of 
 - **S4** — shares nothing: no connection can be drawn. _I do not understand this at all._
   _Avoid_: confidence, score, weight, grounded
 
+The graded distance is fixed, not free: the Jaccard overlap of the two contents, discounted by the mean witness depth at which A's content is held (`γ = J · δ^D̄`).
+
 **Terminal**:
 A kline whose structure carries no further decomposition — a leaf that stops traversal. Two shapes: **Unknown** and **Identity**.
 _Avoid_: leaf node, base case, atomic
@@ -54,7 +56,7 @@ The nine structures, the band each claims, and the rewrite operation each double
 | Structure   | Shape         | Band | Rewrite operation | Scripted form  |
 | ----------- | ------------- | ---- | ----------------- | -------------- |
 | Canon       | `ABC:[A,B,C]` | S1   | expand nodes      | `ABC => A B C` |
-| Identity    | `A:[A]`       | S1   | retain            | `A = A`        |
+| Identity    | `A:[A]`       | S1   | none — done       | `A = A`        |
 | Underfit    | `ABC:[A,C]`   | S2   | rewrite A→B       | `ABC => A C`   |
 | Overfit     | `AB:[A,B,C]`  | S2   | rewrite B→A       | `AB => A B C`  |
 | Under+over  | `ABC:[B,C,D]` | S2   | rewrite both ways | `ABC => B C D` |
@@ -75,7 +77,7 @@ The slow path of rationalisation: rewrite operations derived from the nine struc
 _Avoid_: thinking, background thread, the cogitator
 
 **Candidates**:
-The klines that fill a rewrite's slots. A is the input or queued kline; B candidates are grounded klines. LTM and Frame klines are selectable through signature overlap at S2 — there must be a grounded kline whose signature is a node in A. STM lets S3 relationships evolve stepwise towards S2 overlap through progressive connotation.
+The klines that fill a rewrite's slots. A is the input or queued kline; B candidates are grounded klines — and a grounded kline holds content, so an Unknown never targets. A B is selectable when its signature occurs as a node of A; the pair's band then routes the derivation — S2 into ordinary targeting, S3 into the progressive path. STM lets S3 relationships evolve stepwise towards S2 overlap through progressive connotation.
 
 **Reentry**:
 Rationalisation on more than one axis — space (significance as a metric of distance between klines) and time (projecting A:B into the future at C) — where the sequence output of one axis is rationalised as the input of another: `space(AB) → time(AB'C) → space(B'C)`. In the engine, the reentry arm proposes from a proposal, one hop further out.

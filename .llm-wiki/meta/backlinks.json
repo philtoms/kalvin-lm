@@ -728,6 +728,7 @@
   "sources/coverage-primary-fit-taxonomy": [],
   "sources/identity-klines-never-proposals": [],
   "sources/identity-priming-and-knowledge-restatement": [],
+  "sources/ks2-third-pass-seven-gap-resolutions": [],
   "sources/model-state-graph-layer-rendering": [],
   "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": [],
   "sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected": [
@@ -804,12 +805,17 @@
   "sources/obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-": [],
   "sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla": [],
   "sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh": [],
+  "sources/obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st": [
+    "sources/ks2-third-pass-seven-gap-resolutions"
+  ],
   "sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi": [],
   "sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem": [],
   "sources/obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla": [],
   "sources/obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t": [],
   "sources/obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe": [],
-  "sources/obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in": [],
+  "sources/obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in": [
+    "sources/ks2-third-pass-seven-gap-resolutions"
+  ],
   "sources/obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap": [],
   "sources/obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-": [
     "sources/coverage-primary-fit-taxonomy"

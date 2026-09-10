@@ -88,6 +88,7 @@
 - [[sources/coverage-primary-fit-taxonomy]] — Coverage-primary split for fit classifiers over set-algebra values *(created: 2026-09-10)*
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
+- [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
 - [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
@@ -158,6 +159,7 @@
 - [[sources/obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-]] — Observation: Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key *(created: 2026-09-08)*
 - [[sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla]] — Observation: Model graph: sig→compound→identity-members construction replaces node fan-out *(created: 2026-09-08)*
 - [[sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh]] — Observation: Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node) *(created: 2026-09-08)*
+- [[sources/obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st]] — Observation: ASK_BPE_TOKEN to be removed; ks2 drops the ask atom — ask is structural S4 only *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi]] — Observation: Connote/denote swap + coverage-based significance levels committed (0f8b56a) *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem]] — Observation: CONTEXT.md glossary rewritten to notes.md's semantic refinement *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla]] — Observation: ks2.md created: Layer 1 second pass with coverage-primary classifier *(created: 2026-09-10)*
@@ -177,4 +179,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-10T14:30:10.340Z* | *Total pages: 165*
+*Last updated: 2026-09-10T16:09:03.294Z* | *Total pages: 167*

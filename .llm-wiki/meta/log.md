@@ -314,3 +314,12 @@
 ## [2026-09-10T14:30:10.306Z] observe
 - slug: "obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in", title: "ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined", relevance: "high"
 
+## [2026-09-10T15:42:38.435Z] query
+- question: "what is the purpose of the ASK_BPE_TOKEN?"
+
+## [2026-09-10T15:52:04.815Z] observe
+- slug: "obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st", title: "ASK_BPE_TOKEN to be removed; ks2 drops the ask atom — ask is structural S4 only", relevance: "high"
+
+## [2026-09-10T16:09:03.249Z] retro
+- slug: "ks2-third-pass-seven-gap-resolutions", title: "ks2 third pass: seven gap resolutions fixing the formal algebra", category: "formalisation"
+

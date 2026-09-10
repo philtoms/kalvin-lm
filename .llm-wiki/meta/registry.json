@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-10T14:30:10.340Z",
+  "last_updated": "2026-09-10T16:09:03.294Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -591,6 +591,15 @@
       "slug": "identity-priming-and-knowledge-restatement",
       "created": "2026-08-27",
       "updated": "2026-08-27"
+    },
+    "sources/ks2-third-pass-seven-gap-resolutions": {
+      "type": "source",
+      "title": "ks2 third pass: seven gap resolutions fixing the formal algebra",
+      "category": "formalisation",
+      "status": "insight",
+      "slug": "ks2-third-pass-seven-gap-resolutions",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
     },
     "sources/model-state-graph-layer-rendering": {
       "type": "source",
@@ -1775,6 +1784,23 @@
       "source_context": "Refining the model-graph relationship labels",
       "created": "2026-09-08",
       "updated": "2026-09-08"
+    },
+    "sources/obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st": {
+      "type": "source",
+      "title": "Observation: ASK_BPE_TOKEN to be removed; ks2 drops the ask atom — ask is structural S4 only",
+      "tags": [
+        "ask",
+        "formalisation",
+        "ks2",
+        "engine"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st",
+      "relevance": "high",
+      "observed_at": "2026-09-10T15:52:04.812Z",
+      "source_context": "ks2 third pass G5 — ask atom removal",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
     },
     "sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi": {
       "type": "source",

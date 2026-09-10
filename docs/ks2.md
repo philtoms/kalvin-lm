@@ -1,6 +1,6 @@
 # Kalvin — Symbolic II
 
-Status: draft. Second pass at the formalisation of `kalvin-symbolic.md` §§1–4; the KScript surface syntax remains normative there (§5). CONTEXT.md remains normative for role names.
+Status: draft. Third pass at the formalisation of `kalvin-symbolic.md` §§1–4; the KScript surface syntax remains normative there (§5). CONTEXT.md remains normative for role names.
 
 Four tracts: **what exists** — the algebra (§1–5); **what may happen** — the rewrite system (§6–9); **what chooses** — strategy (§10); **what is observed** — measurement (§11–12). The first two are the formal system proper; the last two are dynamics over it. §12 fixes terminology; §13 lists what stays outside.
 
@@ -24,7 +24,7 @@ The Boolean laws (commutativity, associativity, idempotence, distribution, `a �
 
 **Definition 4 (evaluation).** `signature_of : V* → V`:
 
-> `signature_of([n₁ … nₖ]) = n₁ ∨ … ∨ nₖ`  `signature_of([]) = ∅`
+> `signature_of([n₁ … nₖ]) = n₁ ∨ … ∨ nₖ` `signature_of([]) = ∅`
 
 It is a monoid homomorphism that forgets exactly order and multiplicity — nothing else. `V` identifies precisely what `signature_of` identifies. The architecture lives in the gap: **node sequences are the terms; values are what they evaluate to.**
 
@@ -34,9 +34,9 @@ It is a monoid homomorphism that forgets exactly order and multiplicity — noth
 
 **Definition 6 (exactness).** `s:ν` is **exact** when `s = signature_of(ν)`. An exact, non-empty kline is a **witness**: a chosen decomposition of `s`. `signature_of` has no distinguished inverse. The trivial one, `s ↦ [s]`, always exists — its images are the identities, witnesses that carry no decomposition content; every other witness is a real choice. Nothing in `V` reconstructs which choice was made — that is what memory is for.
 
-> **The central claim.** Kalvin's memory is a set of claims over a forgetting map. A kline claims its signature as the composition of its nodes; **Canon** is the claim exactly kept; **Underfit/Overfit** are the two directions a claim can miss while still being answered; the S3 shapes are claims nothing answers; **Unknown** is no claim at all. Significance grades the claim.
+> **The central claim.** Kalvin's memory is a set of claims over a forgetting map. A kline claims its signature as the composition of its nodes; **Canon** is the claim exactly kept; **Underfit/Overfit** are the two directions a claim can miss while still being answered; the S3 shapes are claims nothing answers; **Unknown** makes no composition claim — nothing held, or nothing left — and lands S4. Significance grades the claim.
 
-**Definition 7 (memory).** A **memory** `M` is a finite set of klines. Two klines may share a signature — distinct claims, or distinct decompositions of the same value. A node may be the signature of another kline: nesting is by reference, and the reference graph may cycle — canon self-reference (`a:[a,a]`), countersign pairs (`a:[b]`, `b:[a]`) — for memory is unrestricted: any kline may be held. Cycles carry no decomposition content (§6). Which klines are *held*, and in what tier, are relations over `M` defined above the algebra (CONTEXT.md).
+**Definition 7 (memory).** A **memory** `M` is a finite set of klines. Two klines may share a signature — distinct claims, or distinct decompositions of the same value. A node may be the signature of another kline: nesting is by reference, and the reference graph may cycle — canon self-reference (`a:[a,a]`), countersign pairs (`a:[b]`, `b:[a]`) — for memory is unrestricted: any kline may be held. Cycles carry no decomposition content (§6). Which klines are _held_, and in what tier, are relations over `M` defined above the algebra (CONTEXT.md).
 
 A witness may repeat a node (`[l,l]`); the repetition is invisible to `signature_of` but retained — it is part of the chosen decomposition.
 
@@ -48,20 +48,20 @@ No new constructors appear beyond §3. The nine shapes are derived predicates �
 
 **Definition 9 (gap and excess).** For `(s, ν)` with `ν ≠ []`: the **gap** `g = s ∧ ¬signature_of(ν)` — atoms the signature claims beyond its nodes; the **excess** `e = signature_of(ν) ∧ ¬s` — atoms the nodes carry beyond the signature. Note `g = ∅` and `e = ∅` together hold iff `s = signature_of(ν)`.
 
-**Definition 10 (fit).** `fit : V × V* → Shape`. Cases in order; each admissible pair matches exactly one:
+**Definition 10 (fit).** `fit : V × V* → Shape`. Cases in order; every pair matches exactly one:
 
-| # | Condition                    | Shape       | Band |
-| - | ---------------------------- | ----------- | ---- |
-| 1 | `ν = []`                     | Unknown     | S4   |
-| 2 | `ν = [s]`                    | Identity    | S1   |
-| 3 | `s = signature_of(ν)`        | Canon       | S1   |
-| 4 | not covered, `\|ν\| = 1`     | Connotation | S3   |
-| 5 | not covered, `\|ν\| > 1`     | No-fit      | S3   |
-| 6 | covered, `g ≠ ∅`, `e = ∅`    | Underfit    | S2   |
-| 7 | covered, `g = ∅`, `e ≠ ∅`    | Overfit     | S2   |
-| 8 | covered, `g ≠ ∅`, `e ≠ ∅`    | Under+over  | S2   |
+| #   | Condition                 | Shape       | Band |
+| --- | ------------------------- | ----------- | ---- |
+| 1   | `ν = []` or `s = ∅`       | Unknown     | S4   |
+| 2   | `ν = [s]`                 | Identity    | S1   |
+| 3   | `s = signature_of(ν)`     | Canon       | S1   |
+| 4   | not covered, `\|ν\| = 1`  | Connotation | S3   |
+| 5   | not covered, `\|ν\| > 1`  | No-fit      | S3   |
+| 6   | covered, `g ≠ ∅`, `e = ∅` | Underfit    | S2   |
+| 7   | covered, `g = ∅`, `e ≠ ∅` | Overfit     | S2   |
+| 8   | covered, `g ≠ ∅`, `e ≠ ∅` | Under+over  | S2   |
 
-The cases are disjoint by construction. Coverage is the primary split: a pair with no covered node forces `g = s ≠ ∅` and `e = signature_of(ν) ≠ ∅`, so cases 4–5 can never satisfy 6; exactness is caught at case 3, before the covered cases, which require a nonzero gap or excess.
+The cases are disjoint by construction. Coverage is the primary split: a pair with no covered node forces `g = s ≠ ∅` and `e = signature_of(ν) ≠ ∅`, so cases 4–5 can never satisfy 6; exactness is caught at case 3, before the covered cases, which require a nonzero gap or excess. Case 1's disjunction is the no-claim case in both directions: `ν = []` — nothing held; `s = ∅` — nothing left. A derivation that empties `ν_A` acquires an Unknown relationship whatever its target holds (§8).
 
 **Species.** **Denotation** is the single-node Underfit (`ab:[b]` — one covered node, gap only); **Connotation** is case 4. These are names of convenience for KScript (`=`, `>`/`<`); algebraically they are single-node instances of cases 6 and 4. Two single-node shapes are unnamed: the single-node Overfit `a:[ab]`, and the single-node Under+over `ab:[bc]` (covered on `b`, gap `a`, excess `c`).
 
@@ -71,23 +71,23 @@ The cases are disjoint by construction. Coverage is the primary split: a pair wi
 
 **Canonical table** (illustration, not definition):
 
-| Structure   | `s:ν`         | gap | excess | Band |
-| ----------- | ------------- | --- | ------ | ---- |
-| Canon       | `abc:[a,b,c]` | `∅` | `∅`    | S1   |
-| Identity    | `a:[a]`       | `∅` | `∅`    | S1   |
-| Underfit    | `abc:[a,c]`   | `b` | `∅`    | S2   |
-| Overfit     | `ab:[a,b,c]`  | `∅` | `c`    | S2   |
-| Under+over  | `abc:[b,c,d]` | `a` | `d`    | S2   |
-| Denotation  | `ab:[b]`      | `a` | `∅`    | S2   |
-| Connotation | `a:[b]`       | `a` | `b`    | S3   |
-| No-fit      | `ab:[c,d]`    | `ab`| `cd`   | S3   |
-| Unknown     | `a:[]`        | —   | —      | S4   |
+| Structure   | `s:ν`         | gap  | excess | Band |
+| ----------- | ------------- | ---- | ------ | ---- |
+| Canon       | `abc:[a,b,c]` | `∅`  | `∅`    | S1   |
+| Identity    | `a:[a]`       | `∅`  | `∅`    | S1   |
+| Underfit    | `abc:[a,c]`   | `b`  | `∅`    | S2   |
+| Overfit     | `ab:[a,b,c]`  | `∅`  | `c`    | S2   |
+| Under+over  | `abc:[b,c,d]` | `a`  | `d`    | S2   |
+| Denotation  | `ab:[b]`      | `a`  | `∅`    | S2   |
+| Connotation | `a:[b]`       | `a`  | `b`    | S3   |
+| No-fit      | `ab:[c,d]`    | `ab` | `cd`   | S3   |
+| Unknown     | `a:[]`        | —    | —      | S4   |
 
-Note the S3 rows: their gap *and* excess are both nonzero, yet they are not Under+over — coverage decides first. That precedence is what keeps the partition disjoint.
+Note the S3 rows: their gap _and_ excess are both nonzero, yet they are not Under+over — coverage decides first. That precedence is what keeps the partition disjoint.
 
 ## 5. The relationship kline
 
-**Definition 11 (pairwise).** For klines `A = s:ν_A` and `B = t:ν_B`, the **relationship kline** is `C(A,B) = signature_of(ν_A) : ν_B`. Its head is not claimed — it is *defined* as what A's nodes evaluate to — so all of C's misfit-ness comes from B's side. `fit(C(A,B))` is the **structural relationship of A and B**.
+**Definition 11 (pairwise).** For klines `A = s:ν_A` and `B = t:ν_B`, the **relationship kline** is `C(A,B) = signature_of(ν_A) : ν_B`. Its head is not claimed — it is _defined_ as what A's nodes evaluate to — so all of C's misfit-ness comes from B's side. `fit(C(A,B))` is the **structural relationship of A and B**.
 
 `fit` is one function with two readings. Applied to `(s, ν)` it grades a kline's own claim; applied to `(signature_of(ν_A), ν_B)` it grades two klines against each other. Neither reading is a special case of the other construction — both are arguments to the same classifier.
 
@@ -127,20 +127,20 @@ add:       b ∈ ν_B ∖ ν_A, licensed by Def 14
 replace:   remove; add — the one composite; §7 constrains its interleaving
 ```
 
-Canons are exact and non-trivial by Def 10 (case 3 fires after the terminals), so expand is never a no-op. A canon `n:νₙ` with `n ∉ νₙ` is a **well-founded witness**; witnessed moves license only well-founded witnesses. The clause is exactly strong enough: a canon's nodes are atom-subsets of its head (`σ(νₙ) = n`), so an expansion cycle forces atom-equality at every step — a canon containing its own signature. Short of that, every licensed expand replaces a node by strictly atom-smaller nodes; the multiset of node atom-counts descends, and descent is well-founded — expand-only runs terminate per derivation, with no invariant on `M`. Identities (case 2, never canons) and self-containing canons (`a:[a,a]` — classifiable, holdable, selectable as a target) are the two witness classes inert for witnessed moves.
+Canons are exact and non-trivial by Def 10 (case 3 fires after the terminals), so expand is never a no-op. A canon `n:νₙ` with `n ∉ νₙ` is a **well-founded witness**; witnessed moves license only well-founded witnesses. The clause is exactly strong enough: a canon's nodes are atom-subsets of its head (`σ(νₙ) = n`), so an expansion cycle forces atom-equality at every step — a canon containing its own signature. Short of that, every licensed expand replaces a node by strictly atom-smaller nodes; the multiset of node atom-counts descends, and descent is well-founded — expand-only runs terminate per derivation, with no invariant on `M`. Identities (case 2, never canons) and self-containing canons (`a:[a,a]` — classifiable, holdable, selectable as a target) are the two witness classes inert for witnessed moves. The insertion position of `add` is free: invisible to `σ`, retained for witness purposes, consequential only for later contract contiguity — a strategy degree of freedom, like ordering generally (Def 12).
 
 **Definition 14 (licensing).** The relationship's fit at the current state licenses the targeting moves:
 
-| `fit(C(A,B))`               | Licensed targeting  |
-| --------------------------- | ------------------- |
-| S1 — Canon, Identity        | none — done         |
-| Underfit (incl. Denotation) | remove              |
-| Overfit                     | add                 |
-| Under+over                  | remove and add      |
-| S3 — Connotation, No-fit    | replace             |
-| Unknown — S4                | none — stuck        |
+| `fit(C(A,B))`               | Licensed targeting |
+| --------------------------- | ------------------ |
+| S1 — Canon, Identity        | none — done        |
+| Underfit (incl. Denotation) | remove             |
+| Overfit                     | add                |
+| Under+over                  | remove and add     |
+| S3 — Connotation, No-fit    | replace            |
+| Unknown — S4                | none — stuck       |
 
-For S3 the substitution is forced to be total: no node of `ν_A` is covered, so node-disjointness makes both difference sets everything. For S4 the target holds nothing (`ν_B = []`): the ask propagates through the derivation as a stuck state. Witnessed moves need no license from this table — a held well-founded witness anywhere in `M` suffices, whatever the relationship.
+For S3 the substitution is forced to be total: no node of `ν_A` is covered, so node-disjointness makes both difference sets everything. The S4 row is entered through A, not B: selection never yields an empty target (Def 16), so `ν_B = []` is unreachable — but permissive removes can empty `ν_A` (case 1's `s = ∅`), and the ask is then acquired mid-run. Witnessed moves need no license from this table — a held well-founded witness anywhere in `M` suffices, whatever the relationship.
 
 ## 7. The two move families
 
@@ -160,7 +160,7 @@ Terminals are **targeting-closed, not rule-closed**: an Identity relationship is
 **Definition 15 (endings).** A derivation ends at **done** or **stuck**, or is **abandoned** by strategy:
 
 - **Done** — `fit(C(A,B)) ∈ S1`: the relationship holds. The goal is **value-equality**, `σ(ν_A) = σ(ν_B)`, not node-equality — an Identity relationship is done with `ν_A ≠ ν_B`, B holding A's content as one node.
-- **Stuck** — not done, and no licensed targeting move. Witnessed moves never end a derivation: they preserve the band and cannot reach done; their only use is granularity exposure, and spending them is strategy (the witnessed-run bound, T2). With a target selected and `ν_B ≠ []`, a not-done state always licenses a targeting move — the S2 rows license remove or add, S3 licenses replace — so stuck arises in exactly two conditions, which the strategy treats differently: no target was selected (candidate selection is §10), or the target holds nothing (`ν_B = []`) — the ask event.
+- **Stuck** — not done, and no licensed targeting move. Witnessed moves never end a derivation: they preserve the band and cannot reach done; their only use is granularity exposure, and spending them is strategy (the witnessed-run bound, T2). With a target selected and `ν_A` non-empty, a not-done state always licenses a targeting move — the S2 rows license remove or add, S3 licenses replace — so stuck has two reachable conditions, both the ask: **no target was selected** (candidate selection is §10) — the ask at entry, nothing grounded answers, §9's relative non-existence; or **`ν_A` has been emptied** by permissive removes (case 1's `s = ∅`, §4) — the ask acquired mid-run. The `ν_B = []` route into the S4 row remains unreachable: selection never yields an empty target (Def 16).
 - **Abandoned** — not an ending the rules produce: strategy halts or re-targets a run mid-derivation (§10), e.g. when graded effort falls (§11).
 
 Licenses are permissive, not safe. A licensed remove can strand the derivation: `A = ab:[ab]` against `B = a:[a]` is underfit (remove licensed); removing `ab` empties `ν_A` → Unknown — stuck at the ask. Pruning such dead ends is band feedback's job (§9), not the rule system's.
@@ -188,10 +188,10 @@ Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal t
 
 **Definition 16 (selection).** A kline `B = t:ν_B ∈ M` is **selectable** as target for queued `A` when:
 
-- `grounded(B)` — B is held as counted-on knowledge (a tier relation over `M`; CONTEXT.md), and
+- `grounded(B)` — B is held as counted-on knowledge (a tier relation over `M`; CONTEXT.md); grounded excludes the Unknown shape — an empty kline grounds nothing — so a selectable target holds content (`ν_B ≠ []`), and
 - `t ∈ ν_A` — B's signature occurs as a node of A: A already references what B is.
 
-The relationship's band then routes the derivation: S2 → ordinary targeting (§§6–8); S3 → the progressive path, below. Two overlap conditions are easy to conflate and imply neither the other: **content overlap** `σ(ν_A) ∧ σ(ν_B) ≠ ∅` — exactly what relationship-S2 asserts — and **signature-in-node** `t ∈ ν_A` — the selection clause, which is what lets grounding propagate from B into A's nodes. `A = abc:[a]` against `B = x:[c,a]` stands in a Denotation relationship (S2) while `x` neither occurs in nor overlaps A's nodes; `B = x:[y]` against `A = abc:[x]` occurs in A's nodes yet yields S3. Selection requires the second; the band routes by the first.
+The relationship's band then routes the derivation: S2 → ordinary targeting (§§6–8); S3 → the progressive path, below. Two overlap conditions are easy to conflate and imply neither the other: **content overlap** `σ(ν_A) ∧ σ(ν_B) ≠ ∅` — exactly what relationship-S2 asserts — and **signature-in-node** `t ∈ ν_A` — the selection clause, which is what lets grounding propagate from B into A's nodes. `A = abc:[a]` against `B = x:[c,a]` stands in an Overfit relationship (S2) while `x` neither occurs in nor overlaps A's nodes; `B = x:[y]` against `A = abc:[x]` occurs in A's nodes yet yields S3. Selection requires the second; the band routes by the first.
 
 **Progressive path.** An S3 relationship licenses replace — total by node-disjointness (Def 14) — and the path executes that composite incrementally: each inserted node is held in STM as a single-node misfit (a connotation witness), and the next step is licensed against the accumulated overlap. When the relationship reaches S2, ordinary targeting takes over. The stepwise-ness is the composite's licensed interior (§7), spaced out by memory writes.
 
@@ -209,9 +209,9 @@ Two band attachments are in play: a kline's **own band** — `fit(s, ν)` on its
 
 **Graded distance.** `γ(A, B)` is fixed, not free — three requirements force one form:
 
-> `γ(A, B) = J(σ(ν_A), σ(ν_B)) · δ^D̄`   where   `J(x, y) = |x ∧ y| / |x ∨ y|`
+> `γ(A, B) = J(σ(ν_A), σ(ν_B)) · δ^D̄` where `J(x, y) = |x ∧ y| / |x ∨ y|`
 
-`J` is the **depth-free core**: symmetric, 0 exactly at content-disjointness, 1 exactly at value-equality. It is forced: per-slot accountedness `α(n) = |n ∧ σ(ν_B)| / |n|`, composed atom-weighted (each slot weighed by `|n|`), yields the A-side coverage fraction `|σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A)|` — which fails band-consistency's second clause (A's content may sit wholly inside B's — underfit, still S2 — at full coverage), so B's excess must be weighed too, and Jaccard is the result. `D̄` is the **mean witness depth of A's content**: the atom-weighted mean of the resolution depths at which A's atoms are held — 0 for content held as itself — well-defined because licensed expansion terminates (§6). `δ ∈ (0,1)` is the strategy's knob, the only one. `J` says *how close*; `δ^D̄` says *how hard-won* — γ is directional by design, grading this derivation's effort toward its target; B's depth is B's own derivation's problem.
+`J` is the **depth-free core**: symmetric, 0 exactly at content-disjointness, 1 exactly at value-equality. It is forced: per-slot accountedness `α(n) = |n ∧ σ(ν_B)| / |n|`, composed atom-weighted (each slot weighed by `|n|`), yields the A-side coverage fraction `|σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A)|` — which fails band-consistency's second clause (A's content may sit wholly inside B's — underfit, still S2 — at full coverage), so B's excess must be weighed too, and Jaccard is the result. `D̄` is the **mean witness depth of A's content**: the atom-weighted mean of the resolution depths at which A's atoms are held — 0 for content held as itself — well-defined because licensed expansion terminates (§6). `δ ∈ (0,1)` is the strategy's knob, the only one. `J` says _how close_; `δ^D̄` says _how hard-won_ — γ is directional by design, grading this derivation's effort toward its target; B's depth is B's own derivation's problem.
 
 - **Band-consistency.** `γ` is 0 exactly at content-disjointness and maximal only at value-equality. Both ends are `J`'s; depth only scales down.
 - **Granularity-invariance.** Witnessed moves move `γ` only through `D̄`, never through recomposition: atom-weighted composition is blind to how A's content is sliced into slots. An unweighted per-slot mean violates this — expansion alone can raise it at constant content and constant depth.

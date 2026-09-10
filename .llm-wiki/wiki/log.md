@@ -2,6 +2,9 @@
 
 ## 2026-09-10
 
+- **retro**: {"category":"formalisation","slug":"ks2-third-pass-seven-gap-resolutions","title":"ks2 third pass: seven gap resolutions fixing the formal algebra"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st","title":"ASK_BPE_TOKEN to be removed; ks2 drops the ask atom — ask is structural S4 only"}
+- **query**: {"question":"what is the purpose of the ASK_BPE_TOKEN?"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in","title":"ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined"}
 - **observe**: {"relevance":"low","slug":"obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe","title":"ks2.md layer talk replaced by tract orientation + section references"}
 - **retro**: {"category":"design","slug":"coverage-fractions-peak-at-containment","title":"One-directional coverage fractions peak at containment, not equality"}
