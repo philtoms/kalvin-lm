@@ -2,6 +2,12 @@
 
 ## 2026-09-10
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-kalvin-symbolic-md-layer-1-revised-per-review","title":"kalvin-symbolic.md layer 1 revised per review"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla","title":"ks2.md created: Layer 1 second pass with coverage-primary classifier"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap","title":"Layer-1 algebra review: sound core, taxonomy and reference gaps"}
+- **retro**: {"category":"design","slug":"coverage-primary-fit-taxonomy","title":"Coverage-primary split for fit classifiers over set-algebra values"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg","title":"Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-","title":"Layer 1 review: Def 5 misfit partition not disjoint; coverage must be primary split"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem","title":"CONTEXT.md glossary rewritten to notes.md's semantic refinement"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi","title":"Connote/denote swap + coverage-based significance levels committed (0f8b56a)"}
 - **retro**: {"category":"kscript","slug":"structural-significance-coverage-semantics","title":"Structural significance is coverage-based — S2 has ≥1 covered node, S3 none"}

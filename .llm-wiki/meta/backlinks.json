@@ -723,6 +723,7 @@
   "sources/compound-word-identity-label-and-dedup": [],
   "sources/connotation-compound-relocation-encoder-design": [],
   "sources/connote-denote-structure-swap-compound-sig-denotation": [],
+  "sources/coverage-primary-fit-taxonomy": [],
   "sources/identity-klines-never-proposals": [],
   "sources/identity-priming-and-knowledge-restatement": [],
   "sources/model-state-graph-layer-rendering": [],
@@ -803,6 +804,14 @@
   "sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh": [],
   "sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi": [],
   "sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem": [],
+  "sources/obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla": [],
+  "sources/obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap": [],
+  "sources/obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-": [
+    "sources/coverage-primary-fit-taxonomy"
+  ],
+  "sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg": [
+    "sources/coverage-primary-fit-taxonomy"
+  ],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],
   "sources/wiki-duplicate-consolidation": []
