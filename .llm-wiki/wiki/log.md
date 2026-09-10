@@ -2,7 +2,9 @@
 
 ## 2026-09-10
 
-- **observe**: {"relevance":"high","slug":"obs-2026-09-10-kalvin-symbolic-md-layer-1-revised-per-review","title":"kalvin-symbolic.md layer 1 revised per review"}
+- **retro**: {"category":"design","slug":"content-preserving-vs-content-aligning-moves","title":"Split rewrite moves by preserved invariant to get termination for free"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t","title":"ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation","title":"Layer 2 review: termination claims inverted, one-step relation undefined"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla","title":"ks2.md created: Layer 1 second pass with coverage-primary classifier"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap","title":"Layer-1 algebra review: sound core, taxonomy and reference gaps"}
 - **retro**: {"category":"design","slug":"coverage-primary-fit-taxonomy","title":"Coverage-primary split for fit classifiers over set-algebra values"}

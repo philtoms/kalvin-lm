@@ -1,6 +1,6 @@
 # Kalvin — Symbolic II
 
-Status: draft. Second pass at Layer 1 of the formalisation (the algebra). Layers 2–4 of `kalvin-symbolic.md` — rewrite system, strategy, measurement — are unchanged in intent and remain normative there until restated here. CONTEXT.md remains normative for role names.
+Status: draft. Second pass at Layers 1–2 of the formalisation — the algebra (§1–5) and the rewrite system (§6–9). Layers 3–4 of `kalvin-symbolic.md` — strategy, measurement — are unchanged in intent and remain normative there until restated here. CONTEXT.md remains normative for role names.
 
 ---
 
@@ -107,9 +107,85 @@ Canonical relationships (atoms lowercase):
 | No-fit       | [a,b]   | [c,d]   | `ab:[c,d]`    | S3   |
 | Unknown      | [a]     | []      | `a:[]`        | S4   |
 
-## 6. What the algebra does not cover
+## 6. Derivations
 
-- **Held, grounded, tiers** — relations over a memory `M` (attention, commitment); defined in CONTEXT.md, consumed by the rewrite system.
-- **Graded distance and its rate of change** — strategy-level measurement built on the band predicate; a four-band predicate has no useful derivative.
-- **KScript tokens** — surface syntax declaring intent; `fit` may or may not satisfy the declared intent (`=>` declares composition; the result is a Canon only if case 3 fires). See `kalvin-symbolic.md` §5.
+**Definition 12 (derivation).** A **derivation** rewrites the node sequence of a queued kline `A = s:ν` against one held target `B = t:ν_B`. The relation is memory-relative: `A ⊢_{M,B} A′`, with the memory `M` (Def 7), the target `B`, and the queue `A` as parameters. The signature `s` never changes — the claim is fixed; the content is rewritten. States `A₀ ⊢_{M,B} A₁ ⊢_{M,B} …` differ only in `ν`.
+
+Membership and difference on node sequences are **multiset-wise**; sequence order is used only by contract's pattern match and otherwise retained for witness purposes. No rule reads a kline's own fit — licensing reads only the relationship `C(A,B)` (Def 11).
+
+**Definition 13 (one step).** `A = s:ν_A ⊢_{M,B} A′ = s:ν′`:
+
+```text
+expand:    an occurrence of n in ν_A, the canon n:νₙ ∈ M
+               → ν′ replaces that occurrence of n by νₙ
+contract:  w a contiguous block of ν_A, the canon σ(w):w ∈ M
+               → ν′ replaces the block w by [σ(w)]
+remove:    a ∈ ν_A ∖ ν_B, licensed by Def 14
+               → ν′ = ν_A ∖ [a]
+add:       b ∈ ν_B ∖ ν_A, licensed by Def 14
+               → ν′ = ν_A with b inserted
+replace:   remove; add — the one composite
+```
+
+Canons are exact and non-trivial by Def 10 (case 3 fires after the terminals), so expand is never a no-op, and memory is a DAG, so expansion is well-founded at each application site.
+
+**Definition 14 (licensing).** The relationship's fit at the current state licenses the targeting moves:
+
+| `fit(C(A,B))`               | Licensed targeting  |
+| --------------------------- | ------------------- |
+| S1 — Canon, Identity        | none — done         |
+| Underfit (incl. Denotation) | remove              |
+| Overfit                     | add                 |
+| Under+over                  | remove and add      |
+| S3 — Connotation, No-fit    | replace             |
+| Unknown — S4                | none — stuck        |
+
+For S3 the substitution is forced to be total: no node of `ν_A` is covered, so node-disjointness makes both difference sets everything. For S4 the target holds nothing (`ν_B = []`): the ask propagates through the derivation as a stuck state. Witnessed moves need no license from this table — a held canon anywhere in `M` suffices, whatever the relationship.
+
+## 7. The two move families
+
+The families are orthogonal in invariant and in license source; neither reduces to the other.
+
+- **Witnessed moves** (expand, contract) apply a held witness. They **preserve `σ(ν_A)` exactly** — decomposition granularity changes at constant content, so the relationship's band is unchanged. Licensed by `M`, independent of `B`.
+- **Targeting moves** (add, remove) align content toward the target. They **change `σ(ν_A)` toward `σ(ν_B)`** at whatever granularity `ν_A` currently has, and may touch only nodes from the difference sets. Licensed by `B`.
+
+Replace is the only composite, and its interior states are themselves licensed: removing S3 nodes keeps the relationship S3 until the first add makes it covered, after which S2 licensing carries the rest — per-step grading (§9) sees the interior. The composite earns its place where the primitives cannot finish the job alone: targeting is value-complete only modulo the granularities memory supplies. Shedding one atom of a compound node, or adopting one atom of a compound node of `B`, takes a witnessed move to expose.
+
+Read model-theoretically: held canons generate a congruence on sequences — expand and contract are its two directions — and targeting moves operate on representatives. A derivation is rewriting relativised to what is held.
+
+Terminals are **targeting-closed, not rule-closed**: an Identity relationship is done, yet the identity kline's own node may still expand under a held canon (`s:[s]` → `s:[a,b]`) — the claim made explicit, the identity turned canon. There is no retain move; targeting-closure is the S1 row of the licensing table, not a rule.
+
+## 8. Endings, progress, termination
+
+**Definition 15 (endings).** A derivation ends in exactly one of two ways:
+
+- **Done** — `fit(C(A,B)) ∈ S1`: the relationship holds. The goal is **value-equality**, `σ(ν_A) = σ(ν_B)`, not node-equality — an Identity relationship is done with `ν_A ≠ ν_B`, B holding A's content as one node.
+- **Stuck** — no licensed move and not done. Two distinct conditions the strategy treats differently: no target was selected (candidate selection is Layer 3), or the target holds nothing (`ν_B = []`) — the ask event.
+
+Licenses are permissive, not safe. A licensed remove can strand the derivation: `A = ab:[ab]` against `B = a:[a]` is underfit (remove licensed); removing `ab` empties `ν_A` → Unknown — stuck at the ask. Pruning such dead ends is band feedback's job (§9), not the rule system's.
+
+**Termination.** Two statements:
+
+- **(T1)** Any run of targeting moves from `A₀` terminates in at most `D₀ = |ν_{A₀} ∖ ν_B| + |ν_B ∖ ν_{A₀}|` steps. Each targeting move decreases `D` by exactly one: remove requires `count_{ν_A}(a) > count_{ν_B}(a)` and shrinks the left difference; add is symmetric. No significance-monotonicity is required, and the bound is computable — the natural unit for step budgets. In particular, add/remove oscillation is not merely unlikely but unlicensable.
+- **(T2)** Witnessed moves preserve `σ(ν_A)` and can cycle — `bc` expands to `[b,c]` and contracts back against the same held canon, at constant band, forever. Termination of mixed derivations is therefore a **strategy property**: bound witnessed-move runs (for instance, no expand-after-contract of the same witness). Monotonicity of the graded measure is a strategy invariant, not a theorem about arbitrary derivations.
+
+**Confluence — renounced, deliberately.** The order of derivation changes what is grounded first, and the reachable S1 depends on the path. Path-dependence is not a defect to be repaired; it is the learning phenomenon.
+
+**Decidability — in principle.** `V` is finite and `M` is finite and acyclic, so existence and non-existence of a derivation are decidable in principle; the tractability gap between that and any affordable search is exactly where cogitation, study and scaffolding live.
+
+## 9. What a derivation proves
+
+Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal to held content, with the final node sequence as the witness — a constructive existence proof **within what is held**. The solver reading is this layer restated: each held kline is a constraint, each licensed step a resolution step, S1 a constructive existence proof, and a stuck S4 state relative non-existence — nothing in `M` answers. Done does **not** prove A's own head-claim: the end state's own fit may still be a misfit; grounding the claim itself is protocol and strategy, above this layer.
+
+**Feedback.** `fit(C(Aᵢ, B))` is graded at each state and its rate of change tracked over steps — telling Kalvin whether its effort is increasingly or decreasingly significant. These are strategy-level metrics: they steer the derivation; they are not part of the rule set.
+
+**Worked micro-example.** Atoms `m, h, a, l`. Held: identity `m:[m]`, canon `mall:[m,a,l,l]`. Queue `A₀ = mall:[m,a]`. Relationship `C = ma:[m,a,l,l]` — overfit (excess `l`); licensed: add; `D₀ = 2`. Add `l` → `mall:[m,a,l]` — still overfit. Add `l` → `mall:[m,a,l,l]` — canon: done, in exactly `D₀` steps, a constructive existence proof of `mall` within what is held. Had nothing been held, no target exists: stuck before any step — the ask, and ungrounded proposals follow under strategy control.
+
+## 10. What this document does not cover
+
+- **Candidate selection — where `B` comes from.** Grounded klines selected through signature overlap (S2); STM candidates entering at S3 and evolving stepwise toward overlap through progressive connotation, each witness licensed by a held single-node misfit. The derivation takes `B` as a parameter; selecting and sequencing targets is Layer 3.
+- **Step budgets and hop ceilings** — strategy parameters; `D₀` (T1) is the natural unit for the budget.
+- **Held, grounded, tiers** — relations over a memory `M` (attention, commitment); defined in CONTEXT.md. The rewrite system consumes `M`; it does not define how klines enter, leave, or change tier.
+- **Graded distance and its rate of change** — strategy-level measurement built on the band predicate; a four-band predicate has no useful derivative, so rate of change is defined only at this level.
+- **KScript tokens** — surface syntax declaring intent; `fit` may or may not satisfy the declared intent (`=>` declares composition; the result is a Canon only if Def 10 case 3 fires; a bare signature is the ask — stuck at S4). See `kalvin-symbolic.md` §5.
 - **Countersigning** — a protocol commitment (reciprocal connotation pairs held as ratified); the algebra provides the shape, the protocol the commitment.

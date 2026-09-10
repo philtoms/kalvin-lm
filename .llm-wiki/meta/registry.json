@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-10T12:42:04.970Z",
+  "last_updated": "2026-09-10T13:32:40.460Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -546,6 +546,15 @@
       "slug": "connote-denote-structure-swap-compound-sig-denotation",
       "created": "2026-09-09",
       "updated": "2026-09-09"
+    },
+    "sources/content-preserving-vs-content-aligning-moves": {
+      "type": "source",
+      "title": "Split rewrite moves by preserved invariant to get termination for free",
+      "category": "design",
+      "status": "insight",
+      "slug": "content-preserving-vs-content-aligning-moves",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
     },
     "sources/coverage-primary-fit-taxonomy": {
       "type": "source",
@@ -1808,6 +1817,24 @@
       "created": "2026-09-10",
       "updated": "2026-09-10"
     },
+    "sources/obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t": {
+      "type": "source",
+      "title": "Observation: ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination",
+      "tags": [
+        "formalisation",
+        "rewrite-system",
+        "ks2",
+        "derivations",
+        "termination"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t",
+      "relevance": "medium",
+      "observed_at": "2026-09-10T13:32:40.413Z",
+      "source_context": "Writing Layer 2 (rewrite system) into docs/ks2.md per the review",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
     "sources/obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap": {
       "type": "source",
       "title": "Observation: Layer-1 algebra review: sound core, taxonomy and reference gaps",
@@ -1857,6 +1884,24 @@
       "relevance": "medium",
       "observed_at": "2026-09-10T12:24:41.477Z",
       "source_context": "Reviewing docs/kalvin-symbolic.md Layer 1 for a simpler vocabulary retaining purpose and intent",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation": {
+      "type": "source",
+      "title": "Observation: Layer 2 review: termination claims inverted, one-step relation undefined",
+      "tags": [
+        "formalisation",
+        "rewrite-system",
+        "termination",
+        "derivation",
+        "review"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation",
+      "relevance": "high",
+      "observed_at": "2026-09-10T13:16:24.194Z",
+      "source_context": "Reviewing kalvin-symbolic.md §2 (rewrite system) for sense, gaps, and vocabulary",
       "created": "2026-09-10",
       "updated": "2026-09-10"
     },

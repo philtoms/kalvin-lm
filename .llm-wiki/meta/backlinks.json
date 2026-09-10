@@ -723,6 +723,7 @@
   "sources/compound-word-identity-label-and-dedup": [],
   "sources/connotation-compound-relocation-encoder-design": [],
   "sources/connote-denote-structure-swap-compound-sig-denotation": [],
+  "sources/content-preserving-vs-content-aligning-moves": [],
   "sources/coverage-primary-fit-taxonomy": [],
   "sources/identity-klines-never-proposals": [],
   "sources/identity-priming-and-knowledge-restatement": [],
@@ -805,12 +806,16 @@
   "sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi": [],
   "sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem": [],
   "sources/obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla": [],
+  "sources/obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t": [],
   "sources/obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap": [],
   "sources/obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-": [
     "sources/coverage-primary-fit-taxonomy"
   ],
   "sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg": [
     "sources/coverage-primary-fit-taxonomy"
+  ],
+  "sources/obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation": [
+    "sources/content-preserving-vs-content-aligning-moves"
   ],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],
