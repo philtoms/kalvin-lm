@@ -1,5 +1,14 @@
 # Wiki Update Log
 
+## 2026-09-10
+
+- **retro**: {"category":"kscript","slug":"structural-significance-coverage-semantics","title":"Structural significance is coverage-based — S2 has ≥1 covered node, S3 none"}
+
+## 2026-09-09
+
+- **decision**: {"change":"CONNOTE/DENOTE compiled structures swapped; denotation now compound-signature AB:[B] classified S2","files":["src/ks/ast_emitter.py","src/ks/token_encoder.py","src/kalvin/kline.py","src/dialogue/engine_state.py","src/dialogue/harness.py","src/training/trainer/curriculum_generator.py","CONTEXT.md"]}
+- **retro**: {"category":"kscript","slug":"connote-denote-structure-swap-compound-sig-denotation","title":"CONNOTE/DENOTE structures swapped — denotation is compound-signature S2"}
+
 ## 2026-09-08
 
 - **observe**: {"relevance":"low","slug":"obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-","title":"Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key"}

@@ -297,10 +297,9 @@ def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
 
     A kline is a misfit when it is a non-terminal whose signature does not
     equal ``signature_of(nodes)``. This includes the single-node connote/denote
-    shape ``{A: [B]}``; multi-node and single-node misfits differ in the band
-    they claim (S2 vs S3), not in whether they are misfits. Callers that route
-    only multi-node misfits (the S2 expansion path) gate on node count
-    themselves.
+    shape ``{A: [B]}``; misfits differ in the band they claim (S2 when at
+    least one node is covered by the signature, S3 when none is), not in
+    whether they are misfits.
     """
     return not is_terminal(kline) and not is_canon(kline, signifier)
 
@@ -341,13 +340,23 @@ _OP_SYMBOLS = {
 
 def sig_level(kline: KLine, signifier: KSignifier) -> str:
     """Return structural significance level (S1–S4) for a KLine.
+
+    The significance level derives from the signature–nodes relationship
+    alone, independent of node count and of the relational token that
+    compiled the shape:
+
+    - S1 — the signature covers its nodes exactly (canon, identity).
+    - S2 — at least one node is covered by the signature (underfit,
+      overfit, under+over, denotation).
+    - S3 — no node is covered (connotation, misfit).
+    - S4 — no nodes (unknown).
     """
     nodes = kline.nodes
     if not nodes:
         return "S4"
-    if len(nodes) == 1:
-        return "S1" if kline.signature == kline.nodes[0] else "S3"
-    return "S1" if kline.signature == signifier.signature_of(kline.nodes) else "S2"
+    if kline.signature == signifier.signature_of(nodes):
+        return "S1"
+    return "S2" if any(signifier.node_in(n, kline.signature) for n in nodes) else "S3"
 
 
 def kline_display(kline: KLine, tokenizer: KTokenizer, signifier: KSignifier) -> str:

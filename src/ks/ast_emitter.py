@@ -12,9 +12,9 @@ SymbolicEntry tuples to encoded uint64 values.
 
   - UNKNOWN (op=None):   {sig: []}   — bare unknown ask
   - COUNTERSIGNS (==):   {sig: [node]}, {node: [sig]} per item  — bidirectional
-  - DENOTES (=):         {sig: [nodes]}  — forward direction
-  - CONNOTES (>):        {sig: [sig+nodes]}   — compound node
-  - RCONNOTES (<):       {nodes: [nodes+sig]} — compound node, reversed
+  - DENOTES (=):         {sig+nodes: [nodes]}  — compound signature
+  - CONNOTES (>):        {sig: [nodes]}        — forward association
+  - RCONNOTES (<):       {nodes: [sig]}        — reversed association
   - CANONIZES (=>):       {sig: [all_nodes]}  — aggregated single entry
 
   Self-identity (A = A) collapses to UNKNOWN with empty nodes.
@@ -105,10 +105,11 @@ class SymbolicEntry(NamedTuple):
                            # canonical signature; the bit marks the kline
                            # as an ask (TokenEncoder ORs it into the sig)
     concat: list[str] | None = None
-    # Component words of a synthesized compound node (identifier order).
-    # Set only by CONNOTES/RCONNOTES, whose single node is the compound
-    # sig+nodes; the TokenEncoder composes the node's value from these
-    # instead of encoding it as a word.
+    # Component words of a synthesized compound SIGNATURE (identifier
+    # order). Set only by DENOTES (sig+nodes) and multi-node RCONNOTES
+    # (nodes), whose compound sits in the sig's slot; the TokenEncoder
+    # composes the signature's value from these instead of encoding the
+    # joined string as a word.
 
 
 class ASTEmitter:
@@ -361,32 +362,39 @@ class ASTEmitter:
                 # self-reference, the structure is fixed at S1.
                 self._emit_entry(sig, [sig], "IDENTITY")
             elif nodes:
-                self._emit_entry(sig, list(nodes), "DENOTES")
+                # The signature is the compound of both operands; the node
+                # is the denoted value: A = B ⇒ AB:[B]. concat carries the
+                # components so the encoder composes the signature instead
+                # of encoding the joined string as a word.
+                self._emit_entry(
+                    sig + "".join(nodes), list(nodes), "DENOTES",
+                    concat=[sig, *nodes],
+                )
 
         elif op == "CONNOTES":
             if nodes == [sig]:
                 self._emit_entry(sig, [sig], "IDENTITY")
             elif nodes:
-                # The connoted compound sits in the sig's slot: A > B ⇒
-                # A:[AB]. concat carries the components so the encoder
-                # composes the node instead of encoding it as a word.
-                self._emit_entry(
-                    sig, [sig + "".join(nodes)], "CONNOTES",
-                    concat=[sig, *nodes],
-                )
+                # A > B ⇒ A:[B] — the signature connotes each node.
+                self._emit_entry(sig, list(nodes), "CONNOTES")
 
         elif op == "RCONNOTES":
             if nodes == [sig]:
                 self._emit_entry(sig, [sig], "IDENTITY")
             elif nodes:
                 # Reversed reading: node first, sig second (A < B reads
-                # "B is a kind of A", so the identifier is BA). The same
-                # connotation as B > A: the compound sits in the species'
-                # slot, reading-order identifier.
-                self._emit_entry(
-                    "".join(nodes), ["".join(nodes) + sig], "CONNOTES",
-                    concat=[*nodes, sig],
-                )
+                # "B is a kind of A"). The same connotation as B > A: B:[A].
+                # A multi-node reading synthesizes its compound signature
+                # from the node identifiers: A < B C ⇒ BC:[A] (concat so
+                # the encoder composes the signature instead of encoding
+                # the joined string as a word).
+                if len(nodes) > 1:
+                    self._emit_entry(
+                        "".join(nodes), [sig], "CONNOTES",
+                        concat=[*nodes],
+                    )
+                else:
+                    self._emit_entry("".join(nodes), [sig], "CONNOTES")
 
         elif op == "CANONIZES":
             # A compound-headed CANONIZES scope produces TWO distinct

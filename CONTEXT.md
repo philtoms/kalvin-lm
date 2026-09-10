@@ -17,7 +17,7 @@ A structural slot: a value occupying a position in a kline's nodes list. A node 
 _Avoid_: child, element (the structural slot is specifically a node)
 
 **Structural Significance**:
-The significance a kline's structure **claims** — an S-level (the same **S1**–**S4** as **Rational Significance**) derived from the signature–nodes relationship alone, without model traversal. Each structure makes its claim: **Unknown** claims **S4** (nothing held for this signature), **Identity** and **Canon** claim **S1** (a known value; a signature that stands for its nodes), **Misfit** claims **S2** (diverges). A claim that **Cogitation** measures against what Kalvin actually holds.
+The significance a kline's structure **claims** — an S-level (the same **S1**–**S4** as **Rational Significance**) derived from the signature–nodes relationship alone, without model traversal. The claim is coverage: **S4** — no nodes (**Unknown**); **S1** — the signature covers its nodes exactly (**Identity**, **Canon**); **S2** — at least one node is covered by the signature (underfit, overfit, under+over, **Denotation**); **S3** — no node is covered (**Connotation**, no-fit). The rules are independent of node count and of the **Relational Tokens** that compile the shape. A claim that **Cogitation** measures against what Kalvin actually holds.
 
 **Terminal**:
 A kline whose structure carries no further decomposition — a leaf that tells Kalvin to stop traversing. Two shapes are terminal: empty nodes and self-referential nodes. _Avoid_: leaf node (a terminal is a kline, not a node), base case (implementation term), atomic (overloaded)
@@ -39,14 +39,16 @@ _Avoid_: canonical (ambiguous with Relational Tokens), treating `=>` (CANONIZES)
 **Misfit**:
 A kline **structure**: the signature does not equal `signature_of(nodes)`. Structural shapes:
 
-- no-fit (`{AB: [C, D]}`): signature attracts kline substitution. Claims **S2**
-- underfit (`{AB: [A]}`): signature attracts kline expansion. Claims **S2**
-- overfit (`{A: [A, B]}`): signature attracts kline contraction. Claims **S2**
-- connote/denote (`{A: [B]}` / `{A: [AB]}`): signature attracts association. Claims **S3**
+- underfit (`{ABC: [A, C]}`): signature covers every node and more — attracts kline expansion. Claims **S2**
+- overfit (`{AB: [A, B, C]}`): signature covers some nodes, not all — attracts kline contraction. Claims **S2**
+- under+over (`{ABC: [B, C, D]}`): signature covers some nodes while claiming others — attracts both. Claims **S2**
+- denote (`{AB: [B]}`): the compound signature covers its node — attracts association. Claims **S2**
+- connote (`{A: [B]}`): no coverage — attracts association. Claims **S3**
+- no-fit (`{AB: [C, D]}`): no coverage — attracts kline substitution. Claims **S3**
   _Avoid_: fabrication (informal), conjecture/hypothesis (a misfit is a structure, not a distinct emission kind)
 
 **Relationship**:
-A kline **structure**: the single-node misfit — a non-terminal whose signature associates with exactly one other value (`{A: [B]}` or `{A: [AB]}`, sig ≠ node). The connote/denote shape, named in its own right because the engine treats it as a distinct routing class (a candidate for reciprocal grounding / countersignature) separate from multi-node misfits (no-fit/underfit/overfit, which propose rather than associate). A relationship is a kind of **Misfit**; it is not a synonym for "any non-identity" (a canon is also a non-identity, and a multi-node misfit is too).
+A kline **structure**: the single-node misfit — a non-terminal whose signature associates with exactly one other value (`{A: [B]}` or `{AB: [B]}`, sig ≠ node). The connote/denote shape, named in its own right because the engine treats it as a distinct routing class (a candidate for reciprocal grounding / countersignature) separate from multi-node misfits (no-fit/underfit/overfit, which propose rather than associate). A relationship is a kind of **Misfit**; it is not a synonym for "any non-identity" (a canon is also a non-identity, and a multi-node misfit is too).
 _Avoid_: link (too vague), association (overloaded with the connote action), any-non-identity (a canon and a multi-node misfit are also non-identities)
 
 ## Rationalisation
@@ -57,7 +59,7 @@ How a participant tests a kline's structural claim against what Kalvin actually 
 The measurement of whether a kline's structural claim holds against what Kalvin holds — refined through model traversal and learned preferences. Classified into four levels of understanding:
 
 - **S1** Fully accounted for — by its own structure (an **Identity** or a **Canon**) or by ratification. _I know that I know this._
-- **S2** Relates but diverges: an unratified misfit, an active mismatch. _I infer this, but it does not yet fit._
+- **S2** Relates but diverges: an unratified misfit with coverage, an active mismatch. _I infer this, but it does not yet fit._
 - **S3** Connects only indirectly, through intermediaries. _I recognise aspects of this, indirectly._
 - **S4** Shares nothing with what is held; no connection can be drawn. _I do not understand this at all._
   Every agent assesses independently. How Kalvin computes its own significance is a model concern (see **Grounding**); the levels themselves are independent of that computation.
@@ -97,7 +99,7 @@ The unit of exchange between participants — a **KLine** (objective structure) 
 The language that authors training material. A script is an encounter, authored in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step — priming before questioning, asks awaiting answers.
 
 **Token ID**:
-A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The **word word** (upper 32 bits) carries one bit per distinct word — assigned on a first-encountered basis at bits 0–30 (the word size is 31; a 32nd distinct word is a system error), with bit 31 reserved for **ASK_BPE_TOKEN**. A multi-subword word (one the BPE tokenizer splits) is still one word and one bit; its subword token ids OR into the lower half. A compound (an MTS signature, or a CONNOTES concatenation node) composes no bit of its own — it is the OR-reduction of its component words' values.
+A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The **word word** (upper 32 bits) carries one bit per distinct word — assigned on a first-encountered basis at bits 0–30 (the word size is 31; a 32nd distinct word is a system error), with bit 31 reserved for **ASK_BPE_TOKEN**. A multi-subword word (one the BPE tokenizer splits) is still one word and one bit; its subword token ids OR into the lower half. A compound (an MTS signature, or a DENOTES concatenation signature) composes no bit of its own — it is the OR-reduction of its component words' values.
 _Avoid_: type word (the NLP POS/DEP type dictionary is retired)
 
 **Relational Tokens**:
@@ -105,8 +107,8 @@ The closed set of written tokens that declare how a kline is produced in KScript
 
 - **COUNTERSIGNS** (`==`) — 1:1 emits a reciprocal pair `{A: [B]}`, `{B: [A]}`. The signature countersigns each other's nodes.
 - **CANONIZES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonizes its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
-- **CONNOTES** (`>` / `<`) — 1:1 with a compound node. `A > B` ⇒ `{A: [AB]}` (the compound sits in the signature's slot; subjectively, _A is a kind of B_); `A < B` ⇒ `{B: [BA]}` — the same connotation written from the other side (_B is a kind of A_; the identifier reverses to match the reading direction, so `A < B` compiles identically to `B > A`). Self-reference (`A > A`) collapses to IDENTITY `{A: [A]}`.
-- **DENOTES** (`=`) — 1:1 `{A: [B]}`. The signature denotes each node (`A = B` ⇒ objectively, _A is a B_; the node denotes the signature). Self-denote (`A = A`) collapses to IDENTITY.
+- **CONNOTES** (`>` / `<`) — 1:1 `{A: [B]}` (subjectively, _A is a kind of B_); `A < B` ⇒ `{B: [A]}` — the same connotation written from the other side (_B is a kind of A_; the identifier reverses to match the reading direction, so `A < B` compiles identically to `B > A`). Self-reference (`A > A`) collapses to IDENTITY `{A: [A]}`.
+- **DENOTES** (`=`) — 1:1 with a compound signature. `A = B` ⇒ `{AB: [B]}`: the signature is the compound of both operands and the node is the denoted value (objectively, _A is a B_; the compound `AB` denotes `B`). The compound contains its node (underfit), so a denotation claims **S2** — the connotation's disjoint `{A: [B]}` claims **S3**. Self-denote (`A = A`) collapses to IDENTITY.
 - **UNKNOWN** — a bare, unbound signature. See **Unknown**. A bare signature with no **Word Binding** compiles to the empty Unknown `{A: []}` — the structural form of an ask. A bare signature that is word-bound compiles instead to an **Identity** `{A: [A]}` (see Identity): the binding gives it a decodable value, so the script labels it a known identity rather than an ask.
 - **ASK** — a bare compound (a signature block with no operation) or a sigless annotation (one not consumed by a following scope). Compiles to `sig|ASK_BPE_TOKEN:[nodes]` (S4): the kline keeps its original canonical signature — the compound itself, or the annotation's word initials (`(a big cat)` → `ABC|ASK_BPE_TOKEN:[a big cat]`) — with the **ASK_BPE_TOKEN** word-word bit (bit 31 of the word word) marking it as an ask, so any signature can be an ask. Nodes are the compound's resolved characters (canon + identities as MTS would emit) or the annotation's words.
   _Avoid_: structural relationship (collides with Structural Significance), relational operator (the token declares provenance, not an operation)

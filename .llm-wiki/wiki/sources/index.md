@@ -7,6 +7,7 @@
 - [kalvin-vision.md](SRC-2026-08-11-003.md)
 - [Compound-word identity labels and MTS dedup](compound-word-identity-label-and-dedup.md)
 - [Relocating a compound across the sig/node boundary requires component plumbing](connotation-compound-relocation-encoder-design.md)
+- [CONNOTE/DENOTE structures swapped — denotation is compound-signature S2](connote-denote-structure-swap-compound-sig-denotation.md)
 - [Identity klines are never proposals](identity-klines-never-proposals.md)
 - [Identity priming; engine stopped restating knowledge](identity-priming-and-knowledge-restatement.md)
 - [Model-state graph design: klines deduped with layer glyphs, strongest-layer styling](model-state-graph-layer-rendering.md)
@@ -80,4 +81,5 @@
 - [Observation: Model graph: sig→compound→identity-members construction replaces node fan-out](obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla.md)
 - [Observation: Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node)](obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
+- [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

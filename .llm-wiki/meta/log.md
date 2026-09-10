@@ -263,3 +263,12 @@
 ## [2026-09-08T13:20:24.214Z] observe
 - slug: "obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-", title: "Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key", relevance: "low"
 
+## [2026-09-09T17:32:19.932Z] retro
+- slug: "connote-denote-structure-swap-compound-sig-denotation", title: "CONNOTE/DENOTE structures swapped — denotation is compound-signature S2", category: "kscript"
+
+## [2026-09-09T17:32:19.934Z] decision
+- change: "CONNOTE/DENOTE compiled structures swapped; denotation now compound-signature AB:[B] classified S2", files: ["src/ks/ast_emitter.py","src/ks/token_encoder.py","src/kalvin/kline.py","src/dialogue/engine_state.py","src/dialogue/harness.py","src/training/trainer/curriculum_generator.py","CONTEXT.md"]
+
+## [2026-09-10T08:03:56.290Z] retro
+- slug: "structural-significance-coverage-semantics", title: "Structural significance is coverage-based — S2 has ≥1 covered node, S3 none", category: "kscript"
+

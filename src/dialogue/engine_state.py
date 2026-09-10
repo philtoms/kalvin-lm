@@ -146,10 +146,10 @@ class EngineState:
             len(kline.nodes) == 1
             and not is_terminal(kline)
             and not is_identity(kline)
-            # The compound relationship: the sig sits inside its single
-            # node (A:[AB]) — the connotation's compound is the slot
-            # content, so the operands bit-contain one another.
-            and self._signifier.node_in(kline.signature, kline.nodes[0])
+            # The disjoint relationship: the connotation's operands share
+            # no bits (A:[B]) — the denotation's compound signature
+            # contains its node (AB:[B]).
+            and not self._signifier.node_in(kline.nodes[0], kline.signature)
         )
 
 

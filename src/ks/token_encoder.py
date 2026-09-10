@@ -21,8 +21,8 @@ Node layout (the compiler's packing, distinct from the raw tokenizer)::
 
 A compound signature (MTS, e.g. ``MHALL``) is not a word: its signature
 is the OR-reduction of its component words' values — one bit per word
-(5 words → 5 bits). A CONNOTES concatenation node (``SubjectMary`` =
-``Subject`` + ``Mary`` — the compound sitting in the sig's slot) is a
+(5 words → 5 bits). A DENOTES concatenation signature (``SubjectM`` =
+``Subject`` + ``M`` — the compound sitting in the sig's slot) is a
 compound the same way: its value is the OR of its component words — it
 never takes a word bit. The entry's ``concat`` field carries the
 components in identifier order.
@@ -190,21 +190,15 @@ class TokenEncoder:
         # UNKNOWN and the CONNOTES head word.
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
-        elif is_compound_def or is_compound_sig:
+        elif entry.concat is not None or is_compound_def or is_compound_sig:
             sig_uint64 = 0  # computed after nodes are encoded
         else:
             sig_uint64 = self._encode_word(entry.sig)
 
-        # 2. Encode nodes. A synthesized compound node (CONNOTES concat —
-        #    the compound in the sig's slot, e.g. Subject:[SubjectMary])
-        #    composes from its components like any compound and never
-        #    takes a word bit; other nodes reuse the registry or encode
-        #    as words.
+        # 2. Encode nodes — each reuses the registry or encodes as a word.
         node_values: list[KNode] = []
         for node_str in entry.nodes or []:
-            if entry.concat is not None:
-                node_values.append(self._compose_concat(entry.concat, node_str))
-            elif node_str in self._compound_sigs:
+            if node_str in self._compound_sigs:
                 node_values.append(KNode(self._compound_sigs[node_str], node_str))
             else:
                 node_values.append(self._encode_word(node_str))
@@ -219,7 +213,13 @@ class TokenEncoder:
         #    or it would clobber the compound's true signature
         #    (the signature is a registry lookup, not a per-entry
         #    reduction of nodes).
-        if is_compound_sig and not is_compound_ref:
+        if entry.concat is not None and not is_compound_ref:
+            # Synthesized compound signature (DENOTES concat — the compound
+            # in the sig's slot, e.g. AB:[B]): composes from its components
+            # like any compound, never takes a word bit, and registers
+            # under its identifier so later references reuse the value.
+            sig_uint64 = self._compose_concat(entry.concat, entry.sig)
+        elif is_compound_sig and not is_compound_ref:
             sig_uint64 = self._signifier.signature_of(node_values).with_label(entry.sig)
             if is_compound_def:
                 self._compound_sigs[entry.sig] = sig_uint64
@@ -256,7 +256,7 @@ class TokenEncoder:
     # Word encoding
 
     def _compose_concat(self, components: list[str], label: str) -> KNode:
-        """Compose a synthesized compound node from its component words.
+        """Compose a synthesized compound signature from its component words.
 
         Each component resolves to a registered compound signature or an
         encoded word; the compound is the OR-reduction, registered so

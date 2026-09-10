@@ -18,14 +18,17 @@ The significance a kline's structure **claims** — independent of who is lookin
 ## Definition
 
 An S-level (the same S1–S4 as [[concepts/rational-significance]]) derived from
-the signature–nodes relationship alone, without model traversal. Each structure
-makes its claim:
+the signature–nodes relationship alone, without model traversal. The claim is
+**coverage** — how much of the kline the signature covers — with rules
+independent of node count and of the relational token that compiled the shape:
 
-| Structure | Claim | Why |
-| --------- | ----- | --- |
-| [[concepts/unknown]]   | S4 | nothing held for this signature |
-| [[concepts/identity]], [[concepts/canon]] | S1 | a known value; a signature that stands for its nodes |
-| [[concepts/misfit]]    | S2 | diverges |
+| Structure | Kline | Claim | Why |
+| --------- | ----- | ----- | --- |
+| [[concepts/unknown]]   | `A:[]`        | S4 | no nodes |
+| [[concepts/identity]], [[concepts/canon]] | `A:[A]`, `ABC:[A,B,C]` | S1 | signature covers its nodes exactly |
+| Underfit / Overfit / Under+over | `ABC:[A,C]`, `AB:[A,B,C]`, `ABC:[B,C,D]` | S2 | at least one node covered |
+| Denotation | `AB:[B]` | S2 | the compound signature covers its node |
+| [[concepts/misfit]] (no-fit), Connotation | `AB:[C,D]`, `A:[B]` | S3 | no node covered |
 
 Structure is the ground truth every participant measures against; it is
 independent of the observer. [[concepts/cogitation]] then measures this claim

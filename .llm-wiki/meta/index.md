@@ -82,6 +82,7 @@
 
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
 - [[sources/connotation-compound-relocation-encoder-design]] — Relocating a compound across the sig/node boundary requires component plumbing *(created: 2026-09-08)*
+- [[sources/connote-denote-structure-swap-compound-sig-denotation]] — CONNOTE/DENOTE structures swapped — denotation is compound-signature S2 *(created: 2026-09-09)*
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
 - [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
@@ -158,7 +159,8 @@
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
 - [[sources/stm-cascade-removals-orphan-check]] — STM cascade removals must be orphan-checked *(created: 2026-08-11)*
+- [[sources/structural-significance-coverage-semantics]] — Structural significance is coverage-based — S2 has ≥1 covered node, S3 none *(created: 2026-09-10)*
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-08T13:20:24.265Z* | *Total pages: 149*
+*Last updated: 2026-09-10T08:09:04.100Z* | *Total pages: 151*

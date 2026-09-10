@@ -105,10 +105,12 @@ LEVEL_TO_SIG: dict[str, int] = {
 # Compile-time production op → band-representative significance. Producers
 # that assert a band rather than compute a distance (the compiler) look up
 # here. The band is the Target Significance — the answer key a trainee must
-# derive, not a structural measurement. CONNOTES and DENOTES both map to
-# SIG_S3; IDENTITY (self-referential, word-bound or self-denote) maps to
-# SIG_S1; UNKNOWN (empty, orphan) maps to SIG_S4; unknown ops default to
-# SIG_S4.
+# derive, not a structural measurement (kline.sig_level — the kline's
+# significance level — is that measurement; the two may legitimately
+# disagree). CONNOTES maps to
+# SIG_S3 and DENOTES to SIG_S2; IDENTITY (self-referential, word-bound or
+# self-denote) maps to SIG_S1; UNKNOWN (empty, orphan) maps to SIG_S4;
+# unknown ops default to SIG_S4.
 _OP_TO_SIG: dict[str, int] = {
     "COUNTERSIGNS": SIG_S2,
     "CANONIZES": SIG_S2,

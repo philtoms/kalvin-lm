@@ -605,12 +605,12 @@ def _structure_class(kline: KLine, signifier: NLPSignifier) -> str:
     if is_canon(kline, signifier):
         return "canon"
     if is_connotation(kline):
-        # The S3 relationship shape splits on bit containment, as in
-        # EngineState.is_connotation: the sig sits inside its node
-        # (A:[AB]) — a connotation; the disjoint form is a denotation.
-        if signifier.node_in(kline.signature, kline.nodes[0]):
-            return "connotation"
-        return "denotation"
+        # The 1:1 relationship shape splits on bit containment, as in
+        # EngineState.is_connotation: the node sits inside its signature
+        # (AB:[B]) — a denotation; the disjoint form is a connotation.
+        if signifier.node_in(kline.nodes[0], kline.signature):
+            return "denotation"
+        return "connotation"
     under, over = classify_misfit(kline, signifier)
     if under and not over:
         return "under"

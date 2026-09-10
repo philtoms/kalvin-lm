@@ -722,6 +722,7 @@
   ],
   "sources/compound-word-identity-label-and-dedup": [],
   "sources/connotation-compound-relocation-encoder-design": [],
+  "sources/connote-denote-structure-swap-compound-sig-denotation": [],
   "sources/identity-klines-never-proposals": [],
   "sources/identity-priming-and-knowledge-restatement": [],
   "sources/model-state-graph-layer-rendering": [],
@@ -792,12 +793,15 @@
   "sources/obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded": [],
   "sources/obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall": [],
   "sources/obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked": [],
-  "sources/obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab": [],
+  "sources/obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab": [
+    "sources/connote-denote-structure-swap-compound-sig-denotation"
+  ],
   "sources/obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers": [],
   "sources/obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s": [],
   "sources/obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-": [],
   "sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla": [],
   "sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh": [],
   "sources/stm-cascade-removals-orphan-check": [],
+  "sources/structural-significance-coverage-semantics": [],
   "sources/wiki-duplicate-consolidation": []
 }
