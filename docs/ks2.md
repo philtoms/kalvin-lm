@@ -38,7 +38,7 @@ It is a monoid homomorphism that forgets exactly order and multiplicity — noth
 
 > **The central claim.** Kalvin's memory is a set of claims over a forgetting map. A kline claims its signature as the composition of its nodes; **Canon** is the claim exactly kept; **Underfit/Overfit** are the two directions a claim can miss while still being answered; the S3 shapes are claims nothing answers; **Unknown** is no claim at all. Significance grades the claim.
 
-**Definition 7 (memory).** A **memory** `M` is a finite set of klines. Two klines may share a signature — distinct claims, or distinct decompositions of the same value. A node may be the signature of another kline: nesting is by reference, and a memory is a DAG of witnesses, not a tree. Which klines are *held*, and in what tier, are relations over `M` defined above the algebra (CONTEXT.md).
+**Definition 7 (memory).** A **memory** `M` is a finite set of klines. Two klines may share a signature — distinct claims, or distinct decompositions of the same value. A node may be the signature of another kline: nesting is by reference, and the reference graph may cycle — canon self-reference (`a:[a,a]`), countersign pairs (`a:[b]`, `b:[a]`) — for memory is unrestricted: any kline may be held. Cycles carry no decomposition content (§6). Which klines are *held*, and in what tier, are relations over `M` defined above the algebra (CONTEXT.md).
 
 A witness may repeat a node (`[l,l]`); the repetition is invisible to `signature_of` but retained — it is part of the chosen decomposition.
 
@@ -118,18 +118,18 @@ Membership and difference on node sequences are **multiset-wise**; sequence orde
 **Definition 13 (one step).** `A = s:ν_A ⊢_{M,B} A′ = s:ν′`:
 
 ```text
-expand:    an occurrence of n in ν_A, the canon n:νₙ ∈ M
+expand:    an occurrence of n in ν_A, the well-founded canon n:νₙ ∈ M
                → ν′ replaces that occurrence of n by νₙ
-contract:  w a contiguous block of ν_A, the canon σ(w):w ∈ M
+contract:  w a contiguous block of ν_A, the well-founded canon σ(w):w ∈ M
                → ν′ replaces the block w by [σ(w)]
 remove:    a ∈ ν_A ∖ ν_B, licensed by Def 14
                → ν′ = ν_A ∖ [a]
 add:       b ∈ ν_B ∖ ν_A, licensed by Def 14
                → ν′ = ν_A with b inserted
-replace:   remove; add — the one composite
+replace:   remove; add — the one composite; §7 constrains its interleaving
 ```
 
-Canons are exact and non-trivial by Def 10 (case 3 fires after the terminals), so expand is never a no-op, and memory is a DAG, so expansion is well-founded at each application site.
+Canons are exact and non-trivial by Def 10 (case 3 fires after the terminals), so expand is never a no-op. A canon `n:νₙ` with `n ∉ νₙ` is a **well-founded witness**; witnessed moves license only well-founded witnesses. The clause is exactly strong enough: a canon's nodes are atom-subsets of its head (`σ(νₙ) = n`), so an expansion cycle forces atom-equality at every step — a canon containing its own signature. Short of that, every licensed expand replaces a node by strictly atom-smaller nodes; the multiset of node atom-counts descends, and descent is well-founded — expand-only runs terminate per derivation, with no invariant on `M`. Identities (case 2, never canons) and self-containing canons (`a:[a,a]` — classifiable, holdable, selectable as a target) are the two witness classes inert for witnessed moves.
 
 **Definition 14 (licensing).** The relationship's fit at the current state licenses the targeting moves:
 
@@ -142,7 +142,7 @@ Canons are exact and non-trivial by Def 10 (case 3 fires after the terminals), s
 | S3 — Connotation, No-fit    | replace             |
 | Unknown — S4                | none — stuck        |
 
-For S3 the substitution is forced to be total: no node of `ν_A` is covered, so node-disjointness makes both difference sets everything. For S4 the target holds nothing (`ν_B = []`): the ask propagates through the derivation as a stuck state. Witnessed moves need no license from this table — a held canon anywhere in `M` suffices, whatever the relationship.
+For S3 the substitution is forced to be total: no node of `ν_A` is covered, so node-disjointness makes both difference sets everything. For S4 the target holds nothing (`ν_B = []`): the ask propagates through the derivation as a stuck state. Witnessed moves need no license from this table — a held well-founded witness anywhere in `M` suffices, whatever the relationship.
 
 ## 7. The two move families
 
@@ -151,11 +151,11 @@ The families are orthogonal in invariant and in license source; neither reduces 
 - **Witnessed moves** (expand, contract) apply a held witness. They **preserve `σ(ν_A)` exactly** — decomposition granularity changes at constant content, so the relationship's band is unchanged. Licensed by `M`, independent of `B`.
 - **Targeting moves** (add, remove) align content toward the target. They **change `σ(ν_A)` toward `σ(ν_B)`** at whatever granularity `ν_A` currently has, and may touch only nodes from the difference sets. Licensed by `B`.
 
-Replace is the only composite, and its interior states are themselves licensed: removing S3 nodes keeps the relationship S3 until the first add makes it covered, after which S2 licensing carries the rest — per-step grading (§9) sees the interior. The composite earns its place where the primitives cannot finish the job alone: targeting is value-complete only modulo the granularities memory supplies. Shedding one atom of a compound node, or adopting one atom of a compound node of `B`, takes a witnessed move to expose.
+Replace is the only composite, and its interior is licensed under one constraint: it executes as an interleaving of its removes and adds in which `ν_A` never empties. Under that constraint every interior state is S3, S2, or done — never S4: removes shrink `σ(ν_A)`, so S3 persists; the first add covers its node, giving S2 or better; from S2 a remove may drop coverage and return S3, still licensed. Done may arrive early — value-equality can outrun node-equality (`ν_B = [y,y,z]` is done at interior `[y,z]`, an add still pending) — and is a legitimate ending; the pending nodes are witness structure. Per-step grading (§9) sees the interior. The composite earns its place where the primitives cannot finish the job alone: targeting is value-complete only modulo the granularities memory supplies. Shedding one atom of a compound node, or adopting one atom of a compound node of `B`, takes a witnessed move to expose.
 
-Read model-theoretically: held canons generate a congruence on sequences — expand and contract are its two directions — and targeting moves operate on representatives. A derivation is rewriting relativised to what is held.
+Read model-theoretically: held well-founded witnesses generate a congruence on sequences — expand and contract are its two directions — and targeting moves operate on representatives. A derivation is rewriting relativised to what is held.
 
-Terminals are **targeting-closed, not rule-closed**: an Identity relationship is done, yet the identity kline's own node may still expand under a held canon (`s:[s]` → `s:[a,b]`) — the claim made explicit, the identity turned canon. There is no retain move; targeting-closure is the S1 row of the licensing table, not a rule.
+Terminals are **targeting-closed, not rule-closed**: an Identity relationship is done, yet the identity kline's own node may still expand under a held well-founded witness (`s:[s]` → `s:[a,b]`) — the claim made explicit, the identity turned canon. There is no retain move; targeting-closure is the S1 row of the licensing table, not a rule.
 
 ## 8. Endings, progress, termination
 
@@ -173,7 +173,7 @@ Licenses are permissive, not safe. A licensed remove can strand the derivation: 
 
 **Confluence — renounced, deliberately.** The order of derivation changes what is grounded first, and the reachable S1 depends on the path. Path-dependence is not a defect to be repaired; it is the learning phenomenon.
 
-**Decidability — in principle.** `V` is finite and `M` is finite and acyclic, so existence and non-existence of a derivation are decidable in principle; the tractability gap between that and any affordable search is exactly where cogitation, study and scaffolding live.
+**Decidability — in principle.** `V` is finite and licensed expansion terminates (§6), so the states reachable from `A₀` are finite in number, and existence and non-existence of a derivation are decidable in principle; the tractability gap between that and any affordable search is exactly where cogitation, study and scaffolding live.
 
 ## 9. What a derivation proves
 
@@ -208,7 +208,7 @@ The relationship's band then routes the derivation: S2 → ordinary targeting (�
 
 Two band attachments are in play: a kline's **own band** — `fit(s, ν)` on itself, the claim it makes standing alone — and a **relationship band** — `fit(C(A,B))`, what the pair achieves. The first is what a kline asserts; the second is what a derivation establishes or fails to.
 
-**Graded distance.** A continuous measure `γ(A, B)`, built from per-slot **accountedness**: `α(n) = |n ∧ σ(ν_B)| / |n|` — the fraction of the node's atoms the target's content covers. Composition across slots (mean by default; a strategy parameter) and a discount `δ` per resolution hop (the witness depth at which the node's content is held) give `γ`. Two requirements pin the family down:
+**Graded distance.** A continuous measure `γ(A, B)`, built from per-slot **accountedness**: `α(n) = |n ∧ σ(ν_B)| / |n|` — the fraction of the node's atoms the target's content covers. Composition across slots (mean by default; a strategy parameter) and a discount `δ` per resolution hop (the witness depth at which the node's content is held — well-defined because licensed expansion terminates, §6) give `γ`. Two requirements pin the family down:
 
 - **Band-consistency.** `γ` is 0 exactly at content-disjointness and maximal only at value-equality. The plain overlap fraction fails the second clause — A's content may sit wholly inside B's (underfit, still S2) at full coverage — so composition must weigh B's uncovered content, the excess, as well; the Jaccard form `|σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A) ∨ σ(ν_B)|` is the depth-free core satisfying both ends.
 - **Hop-decay.** Witnessed moves strictly decrease `γ` — depth grows at constant content. This is what makes gratuitous expansion detectable, and why monotonicity of the graded measure is a strategy invariant (T2), not a structural fact.
