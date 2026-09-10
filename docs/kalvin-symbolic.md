@@ -2,7 +2,7 @@
 
 Goal: a formal definition of Kalvin as a **term algebra** (what exists) and a working Kalvin system as a **term rewrite system** (what may happen). Terminology here is normative for the formalisation; the source follows later.
 
-Status: draft. Supersedes the formal core of `docs/kalvin-symbolic.md` (see §8).
+Status: draft.
 
 ---
 
@@ -14,8 +14,6 @@ Only the first two layers are the formal system proper; the last two are dynamic
 2. **Rewrite system** — what may happen: licensed steps from a new kline toward held klines (§2).
 3. **Strategy & control** — what chooses: candidate selection, bounds, reentry (§3).
 4. **Measurement** — what is observed: significance bands and the graded distance (§4).
-
-Concepts dropped or deferred by this draft are listed explicitly in §7.
 
 ---
 
@@ -36,14 +34,6 @@ The same value may appear as a head in one kline and a slot in another. A kline'
 `(V, ∨, ∧, 0)` carries the structure of the powerset Boolean algebra over the atoms: `∨` is composition (union), `∧` is overlap (intersection), `0` the empty value.
 
 **Laws.** `∨` is commutative, associative, idempotent, with unit `0`; `∧` distributes over `∨`; and **atoms are pairwise disjoint**: for distinct atoms `a, b`: `a ∧ b = 0`.
-
-The earlier axiom list resolves as follows:
-
-- _discrete_ → the disjointness law above. (The formulation "A AND B is (NOT A) AND (NOT B)" is dropped: it is either a tautology or false, and carries no law.)
-- _compose_ (`a ∨ b = ab`) → the operation `∨` itself.
-- _overlap_ (`ab ∧ bc` on `b`) → a **theorem**: `(a∨b) ∧ (b∨c) = b ∨ (a∧c) = b` for distinct atoms `a, c`. Not an axiom.
-- _decompose_ → not a law and not a function (see §1.4).
-- _relate_ ("A is to B as A is to AB") → **dropped** pending a definition. Candidate reading: containment `a ≤ a∨b`. An undefined axiom is worse than a missing one.
 
 ### 1.3 Evaluation — `signature_of` forgets
 
@@ -195,21 +185,3 @@ Atoms `m, h, a, l`. Held: identity `m:[m]`, canon `mall:[m,a,l,l]`. Queue `A = m
 2. Add `l`, add `l` (targeting, B-licensed): `mall:[m,a,l,l]` — fit S1, canon. Derivation terminates at a constructive existence proof.
 
 Had nothing been held: fit S4, no rule applies, halt — the ask event, and ungrounded proposals follow under strategy control.
-
----
-
-## 7. Dropped or deferred
-
-- **"Relate" axiom** — dropped pending a definition (candidate: containment `a ≤ a∨b`).
-- **Discrete / compose / overlap / decompose as axioms** — re-resolved as law / operation / theorem / witness-relation respectively (§1.2, §1.4).
-- **Halt as a rewrite operation** — moved to control flow as the absence of an applicable rule (§2.2).
-- **Space/time reentry axes** — deferred to the vision document; time re-enters formally only as derivation order (§3).
-- **COUNTERSIGNS as an algebra concept** — placed in the ratification protocol (§3).
-- **Denotation / Connotation as algebra-level rows** — retained only as KScript names for single-node misfit species (§1.5).
-- **"Structural significance is the name of the operations"** — dropped; significance is a predicate (bands) and a metric (graded distance), never an operation (§1.5, §4).
-
----
-
-## 8. Relation to `docs/kalvin-symbolic.md`
-
-This document is intended to become the canonical formal core. Of the earlier document: the GST reading (kline as explicit membership; a memory representable as a single kline) survives as a remark on §1.4; the solver appendix (A.2) is §2.5 restated; the operations table and band table there are superseded by Definitions 4–6 and §2.2. On adoption, `kalvin-symbolic.md` should be reduced to whatever remains distinct.
