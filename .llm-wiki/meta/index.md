@@ -163,6 +163,7 @@
 - [[sources/obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla]] — Observation: ks2.md created: Layer 1 second pass with coverage-primary classifier *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t]] — Observation: ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe]] — Observation: ks2.md layer talk replaced by tract orientation + section references *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in]] — Observation: ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap]] — Observation: Layer-1 algebra review: sound core, taxonomy and reference gaps *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-]] — Observation: Layer 1 review: Def 5 misfit partition not disjoint; coverage must be primary split *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg]] — Observation: Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation *(created: 2026-09-10)*
@@ -176,4 +177,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-10T14:21:07.642Z* | *Total pages: 164*
+*Last updated: 2026-09-10T14:30:10.340Z* | *Total pages: 165*

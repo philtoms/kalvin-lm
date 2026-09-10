@@ -311,3 +311,6 @@
 ## [2026-09-10T14:21:07.606Z] observe
 - slug: "obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe", title: "ks2.md layer talk replaced by tract orientation + section references", relevance: "low"
 
+## [2026-09-10T14:30:10.306Z] observe
+- slug: "obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in", title: "ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined", relevance: "high"
+

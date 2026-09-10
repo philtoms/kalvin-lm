@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-10T14:21:07.642Z",
+  "last_updated": "2026-09-10T14:30:10.340Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1858,6 +1858,23 @@
       "relevance": "low",
       "observed_at": "2026-09-10T14:21:07.604Z",
       "source_context": "Fixing inconsistent layer references in docs/ks2.md",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in": {
+      "type": "source",
+      "title": "Observation: ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "ks2",
+        "review"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in",
+      "relevance": "high",
+      "observed_at": "2026-09-10T14:30:10.304Z",
+      "source_context": "Reviewing docs/ks2.md formal algebra draft for sense, gaps, and implementability",
       "created": "2026-09-10",
       "updated": "2026-09-10"
     },
