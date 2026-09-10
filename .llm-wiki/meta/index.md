@@ -156,6 +156,7 @@
 - [[sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla]] — Observation: Model graph: sig→compound→identity-members construction replaces node fan-out *(created: 2026-09-08)*
 - [[sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh]] — Observation: Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node) *(created: 2026-09-08)*
 - [[sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi]] — Observation: Connote/denote swap + coverage-based significance levels committed (0f8b56a) *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem]] — Observation: CONTEXT.md glossary rewritten to notes.md's semantic refinement *(created: 2026-09-10)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -164,4 +165,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-10T08:31:59.268Z* | *Total pages: 152*
+*Last updated: 2026-09-10T08:39:05.557Z* | *Total pages: 153*

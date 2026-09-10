@@ -275,3 +275,6 @@
 ## [2026-09-10T08:31:59.242Z] observe
 - slug: "obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi", title: "Connote/denote swap + coverage-based significance levels committed (0f8b56a)", relevance: "high"
 
+## [2026-09-10T08:39:05.529Z] observe
+- slug: "obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem", title: "CONTEXT.md glossary rewritten to notes.md's semantic refinement", relevance: "high"
+

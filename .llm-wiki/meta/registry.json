@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-10T08:31:59.268Z",
+  "last_updated": "2026-09-10T08:39:05.557Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1763,6 +1763,22 @@
       "relevance": "high",
       "observed_at": "2026-09-10T08:31:59.240Z",
       "source_context": "Committing the connote/denote structure swap and significance-level redefinition",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md glossary rewritten to notes.md's semantic refinement",
+      "tags": [
+        "docs",
+        "glossary",
+        "domain-model"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem",
+      "relevance": "high",
+      "observed_at": "2026-09-10T08:39:05.527Z",
+      "source_context": "Aligning CONTEXT.md glossary with semantic refinement notes",
       "created": "2026-09-10",
       "updated": "2026-09-10"
     },
