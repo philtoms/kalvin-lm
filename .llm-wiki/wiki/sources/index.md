@@ -80,6 +80,7 @@
 - [Observation: Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key](obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-.md)
 - [Observation: Model graph: sig→compound→identity-members construction replaces node fan-out](obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla.md)
 - [Observation: Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node)](obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh.md)
+- [Observation: Connote/denote swap + coverage-based significance levels committed (0f8b56a)](obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

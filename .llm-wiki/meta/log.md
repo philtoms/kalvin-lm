@@ -272,3 +272,6 @@
 ## [2026-09-10T08:03:56.290Z] retro
 - slug: "structural-significance-coverage-semantics", title: "Structural significance is coverage-based — S2 has ≥1 covered node, S3 none", category: "kscript"
 
+## [2026-09-10T08:31:59.242Z] observe
+- slug: "obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi", title: "Connote/denote swap + coverage-based significance levels committed (0f8b56a)", relevance: "high"
+

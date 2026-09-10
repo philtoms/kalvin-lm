@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-10T08:09:04.100Z",
+  "last_updated": "2026-09-10T08:31:59.268Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1748,6 +1748,23 @@
       "source_context": "Refining the model-graph relationship labels",
       "created": "2026-09-08",
       "updated": "2026-09-08"
+    },
+    "sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi": {
+      "type": "source",
+      "title": "Observation: Connote/denote swap + coverage-based significance levels committed (0f8b56a)",
+      "tags": [
+        "kscript",
+        "compiler",
+        "significance",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi",
+      "relevance": "high",
+      "observed_at": "2026-09-10T08:31:59.240Z",
+      "source_context": "Committing the connote/denote structure swap and significance-level redefinition",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

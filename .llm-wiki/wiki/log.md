@@ -2,6 +2,7 @@
 
 ## 2026-09-10
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi","title":"Connote/denote swap + coverage-based significance levels committed (0f8b56a)"}
 - **retro**: {"category":"kscript","slug":"structural-significance-coverage-semantics","title":"Structural significance is coverage-based — S2 has ≥1 covered node, S3 none"}
 
 ## 2026-09-09
