@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-10T13:32:40.460Z",
+  "last_updated": "2026-09-10T14:04:29.848Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -553,6 +553,15 @@
       "category": "design",
       "status": "insight",
       "slug": "content-preserving-vs-content-aligning-moves",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/coverage-fractions-peak-at-containment": {
+      "type": "source",
+      "title": "One-directional coverage fractions peak at containment, not equality",
+      "category": "design",
+      "status": "insight",
+      "slug": "coverage-fractions-peak-at-containment",
       "created": "2026-09-10",
       "updated": "2026-09-10"
     },
@@ -1902,6 +1911,25 @@
       "relevance": "high",
       "observed_at": "2026-09-10T13:16:24.194Z",
       "source_context": "Reviewing kalvin-symbolic.md §2 (rewrite system) for sense, gaps, and vocabulary",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord": {
+      "type": "source",
+      "title": "Observation: Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core",
+      "tags": [
+        "formalisation",
+        "strategy",
+        "measurement",
+        "selection",
+        "graded-distance",
+        "ks2"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord",
+      "relevance": "medium",
+      "observed_at": "2026-09-10T14:04:29.799Z",
+      "source_context": "Reviewing and rewriting kalvin-symbolic.md §§3–4 (strategy, measurement) into ks2.md",
       "created": "2026-09-10",
       "updated": "2026-09-10"
     },

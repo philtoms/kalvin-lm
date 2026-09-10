@@ -1,6 +1,6 @@
 # Kalvin — Symbolic II
 
-Status: draft. Second pass at Layers 1–2 of the formalisation — the algebra (§1–5) and the rewrite system (§6–9). Layers 3–4 of `kalvin-symbolic.md` — strategy, measurement — are unchanged in intent and remain normative there until restated here. CONTEXT.md remains normative for role names.
+Status: draft. Second pass at all four layers — algebra (§1–5), rewrite system (§6–9), strategy (§10), measurement (§11–12). The KScript surface syntax remains normative in `kalvin-symbolic.md` §5. CONTEXT.md remains normative for role names.
 
 ---
 
@@ -160,7 +160,7 @@ Terminals are **targeting-closed, not rule-closed**: an Identity relationship is
 **Definition 15 (endings).** A derivation ends in exactly one of two ways:
 
 - **Done** — `fit(C(A,B)) ∈ S1`: the relationship holds. The goal is **value-equality**, `σ(ν_A) = σ(ν_B)`, not node-equality — an Identity relationship is done with `ν_A ≠ ν_B`, B holding A's content as one node.
-- **Stuck** — no licensed move and not done. Two distinct conditions the strategy treats differently: no target was selected (candidate selection is Layer 3), or the target holds nothing (`ν_B = []`) — the ask event.
+- **Stuck** — no licensed move and not done. Two distinct conditions the strategy treats differently: no target was selected (candidate selection is §10), or the target holds nothing (`ν_B = []`) — the ask event.
 
 Licenses are permissive, not safe. A licensed remove can strand the derivation: `A = ab:[ab]` against `B = a:[a]` is underfit (remove licensed); removing `ab` empties `ν_A` → Unknown — stuck at the ask. Pruning such dead ends is band feedback's job (§9), not the rule system's.
 
@@ -181,11 +181,47 @@ Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal t
 
 **Worked micro-example.** Atoms `m, h, a, l`. Held: identity `m:[m]`, canon `mall:[m,a,l,l]`. Queue `A₀ = mall:[m,a]`. Relationship `C = ma:[m,a,l,l]` — overfit (excess `l`); licensed: add; `D₀ = 2`. Add `l` → `mall:[m,a,l]` — still overfit. Add `l` → `mall:[m,a,l,l]` — canon: done, in exactly `D₀` steps, a constructive existence proof of `mall` within what is held. Had nothing been held, no target exists: stuck before any step — the ask, and ungrounded proposals follow under strategy control.
 
-## 10. What this document does not cover
+## 10. Strategy — the cogitation loop
 
-- **Candidate selection — where `B` comes from.** Grounded klines selected through signature overlap (S2); STM candidates entering at S3 and evolving stepwise toward overlap through progressive connotation, each witness licensed by a held single-node misfit. The derivation takes `B` as a parameter; selecting and sequencing targets is Layer 3.
-- **Step budgets and hop ceilings** — strategy parameters; `D₀` (T1) is the natural unit for the budget.
-- **Held, grounded, tiers** — relations over a memory `M` (attention, commitment); defined in CONTEXT.md. The rewrite system consumes `M`; it does not define how klines enter, leave, or change tier.
-- **Graded distance and its rate of change** — strategy-level measurement built on the band predicate; a four-band predicate has no useful derivative, so rate of change is defined only at this level.
+Layer 2 fixed the parameters of a derivation; this layer chooses them, step after step. The loop is **cogitation** (CONTEXT.md): **select** a target, **derive** to an ending, **absorb** the result into memory, **reenter** with the output as the next queue's input. Each phase is strategy — the rule system of §§6–9 constrains what any of it may do, never what it must.
+
+**Definition 16 (selection).** A kline `B = t:ν_B ∈ M` is **selectable** as target for queued `A` when:
+
+- `grounded(B)` — B is held as counted-on knowledge (a tier relation over `M`; CONTEXT.md), and
+- `t ∈ ν_A` — B's signature occurs as a node of A: A already references what B is.
+
+The relationship's band then routes the derivation: S2 → ordinary targeting (§§6–8); S3 → the progressive path, below. Two overlap conditions are easy to conflate and imply neither the other: **content overlap** `σ(ν_A) ∧ σ(ν_B) ≠ ∅` — exactly what relationship-S2 asserts — and **signature-in-node** `t ∈ ν_A` — the selection clause, which is what lets grounding propagate from B into A's nodes. `A = abc:[a]` against `B = x:[c,a]` stands in a Denotation relationship (S2) while `x` neither occurs in nor overlaps A's nodes; `B = x:[y]` against `A = abc:[x]` occurs in A's nodes yet yields S3. Selection requires the second; the band routes by the first.
+
+**Progressive path.** An S3 relationship licenses replace — total by node-disjointness (Def 14) — and the path executes that composite incrementally: each inserted node is held in STM as a single-node misfit (a connotation witness), and the next step is licensed against the accumulated overlap. When the relationship reaches S2, ordinary targeting takes over. The stepwise-ness is the composite's licensed interior (§7), spaced out by memory writes.
+
+**Bounds.** Three numbers, all strategy parameters, each with a natural unit: the **targeting budget** — T1 bounds any targeting run by `D₀`, so a budget at or above `D₀` never binds mid-run; the **witnessed-run bound** — T2's requirement, for instance no expand-after-contract of the same witness; and the **hop ceiling** — the reentry depth, below.
+
+**Reentry.** Derivations compose. Hop `k` runs under parameters `(M_k, B_k)`; its end state — done or stuck — queues as hop `k+1`'s input, and memory may grow between hops (`M_{k+1} ⊇ M_k`, by STM writes), so successive hops are not derivations of one fixed system. Propose from a proposal, one hop further out, bounded by the hop ceiling. Hop order is the only time the system has; if a time axis is wanted, it is this order and nothing else. Re-targeting mid-derivation — abandoning a run whose graded effort is falling (§11) and selecting anew — is likewise a strategy move, not a rule.
+
+**Outside the system.** Escalation and ratification are protocol: countersigning (`==`) holds reciprocal connotation pairs as ratified — the algebra provides the shape, the protocol the commitment. The queue itself — which klines are admitted for cogitation, and in what order — belongs to the harness, not the system.
+
+## 11. Measurement
+
+**The band order.** The bands are derived from shape (Def 10); this layer adds one axiom: they are **ordered by significance**, `S1 > S2 > S3 > S4`, the shapes within a band unordered. The predicate is observer-independent — given the same held memory, every agent classifies alike — so a band never needs to be exchanged.
+
+Two band attachments are in play: a kline's **own band** — `fit(s, ν)` on itself, the claim it makes standing alone — and a **relationship band** — `fit(C(A,B))`, what the pair achieves. The first is what a kline asserts; the second is what a derivation establishes or fails to.
+
+**Graded distance.** A continuous measure `γ(A, B)`, built from per-slot **accountedness**: `α(n) = |n ∧ σ(ν_B)| / |n|` — the fraction of the node's atoms the target's content covers. Composition across slots (mean by default; a strategy parameter) and a discount `δ` per resolution hop (the witness depth at which the node's content is held) give `γ`. Two requirements pin the family down:
+
+- **Band-consistency.** `γ` is 0 exactly at content-disjointness and maximal only at value-equality. The plain overlap fraction fails the second clause — A's content may sit wholly inside B's (underfit, still S2) at full coverage — so composition must weigh B's uncovered content, the excess, as well; the Jaccard form `|σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A) ∨ σ(ν_B)|` is the depth-free core satisfying both ends.
+- **Hop-decay.** Witnessed moves strictly decrease `γ` — depth grows at constant content. This is what makes gratuitous expansion detectable, and why monotonicity of the graded measure is a strategy invariant (T2), not a structural fact.
+
+**Rate of change** per step is defined only at this level — a four-band predicate has no useful derivative — and is the signal cogitation's feedback acts on.
+
+**Exchange.** The graded value travels in a KValue (CONTEXT.md) as the sender's assessment; bands need not travel, for they are recomputable from structure.
+
+## 12. Terminology
+
+_Significance_ is the value; _rationalisation_ is the process that produces and consumes it. (Not: "significance is the value Kalvin directly equates to rationalisation".) Understanding, informally, is high significance attained and held.
+
+## 13. What this document does not cover
+
+- **Tier mechanics** — what writes STM, what promotes LTM, how Frame attention shifts: relations over `M` defined in CONTEXT.md and consumed by selection (Def 16).
+- **The multi-agent loop** — trainer, trainee, supervisor; escalation when cogitation yields no reply. Protocol above the system.
 - **KScript tokens** — surface syntax declaring intent; `fit` may or may not satisfy the declared intent (`=>` declares composition; the result is a Canon only if Def 10 case 3 fires; a bare signature is the ask — stuck at S4). See `kalvin-symbolic.md` §5.
 - **Countersigning** — a protocol commitment (reciprocal connotation pairs held as ratified); the algebra provides the shape, the protocol the commitment.

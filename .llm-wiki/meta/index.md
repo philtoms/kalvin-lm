@@ -84,6 +84,7 @@
 - [[sources/connotation-compound-relocation-encoder-design]] — Relocating a compound across the sig/node boundary requires component plumbing *(created: 2026-09-08)*
 - [[sources/connote-denote-structure-swap-compound-sig-denotation]] — CONNOTE/DENOTE structures swapped — denotation is compound-signature S2 *(created: 2026-09-09)*
 - [[sources/content-preserving-vs-content-aligning-moves]] — Split rewrite moves by preserved invariant to get termination for free *(created: 2026-09-10)*
+- [[sources/coverage-fractions-peak-at-containment]] — One-directional coverage fractions peak at containment, not equality *(created: 2026-09-10)*
 - [[sources/coverage-primary-fit-taxonomy]] — Coverage-primary split for fit classifiers over set-algebra values *(created: 2026-09-10)*
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
@@ -165,6 +166,7 @@
 - [[sources/obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-]] — Observation: Layer 1 review: Def 5 misfit partition not disjoint; coverage must be primary split *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg]] — Observation: Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation]] — Observation: Layer 2 review: termination claims inverted, one-step relation undefined *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord]] — Observation: Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core *(created: 2026-09-10)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -173,4 +175,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-10T13:32:40.460Z* | *Total pages: 161*
+*Last updated: 2026-09-10T14:04:29.848Z* | *Total pages: 163*

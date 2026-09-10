@@ -98,3 +98,5 @@
 {"slug":"obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation","title":"Layer 2 review: termination claims inverted, one-step relation undefined","relevance":"high","timestamp":"2026-09-10T13:16:24.199Z","kind":"observe"}
 {"slug":"obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t","title":"ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination","relevance":"medium","timestamp":"2026-09-10T13:32:40.416Z","kind":"observe"}
 {"slug":"content-preserving-vs-content-aligning-moves","title":"Split rewrite moves by preserved invariant to get termination for free","category":"design","timestamp":"2026-09-10T13:32:40.418Z","kind":"retro"}
+{"slug":"obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord","title":"Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core","relevance":"medium","timestamp":"2026-09-10T14:04:29.802Z","kind":"observe"}
+{"slug":"coverage-fractions-peak-at-containment","title":"One-directional coverage fractions peak at containment, not equality","category":"design","timestamp":"2026-09-10T14:04:29.804Z","kind":"retro"}

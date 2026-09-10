@@ -302,3 +302,9 @@
 ## [2026-09-10T13:32:40.418Z] retro
 - slug: "content-preserving-vs-content-aligning-moves", title: "Split rewrite moves by preserved invariant to get termination for free", category: "design"
 
+## [2026-09-10T14:04:29.802Z] observe
+- slug: "obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord", title: "Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core", relevance: "medium"
+
+## [2026-09-10T14:04:29.804Z] retro
+- slug: "coverage-fractions-peak-at-containment", title: "One-directional coverage fractions peak at containment, not equality", category: "design"
+
