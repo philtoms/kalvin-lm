@@ -87,6 +87,7 @@
 - [Observation: CONTEXT.md glossary rewritten to notes.md's semantic refinement](obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem.md)
 - [Observation: ks2.md created: Layer 1 second pass with coverage-primary classifier](obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla.md)
 - [Observation: ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination](obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t.md)
+- [Observation: ks2.md layer talk replaced by tract orientation + section references](obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe.md)
 - [Observation: Layer-1 algebra review: sound core, taxonomy and reference gaps](obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap.md)
 - [Observation: Layer 1 review: Def 5 misfit partition not disjoint; coverage must be primary split](obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-.md)
 - [Observation: Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation](obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg.md)

@@ -2,6 +2,7 @@
 
 ## 2026-09-10
 
+- **observe**: {"relevance":"low","slug":"obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe","title":"ks2.md layer talk replaced by tract orientation + section references"}
 - **retro**: {"category":"design","slug":"coverage-fractions-peak-at-containment","title":"One-directional coverage fractions peak at containment, not equality"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord","title":"Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core"}
 - **retro**: {"category":"design","slug":"content-preserving-vs-content-aligning-moves","title":"Split rewrite moves by preserved invariant to get termination for free"}

@@ -308,3 +308,6 @@
 ## [2026-09-10T14:04:29.804Z] retro
 - slug: "coverage-fractions-peak-at-containment", title: "One-directional coverage fractions peak at containment, not equality", category: "design"
 
+## [2026-09-10T14:21:07.606Z] observe
+- slug: "obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe", title: "ks2.md layer talk replaced by tract orientation + section references", relevance: "low"
+

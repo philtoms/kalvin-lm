@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-10T14:04:29.848Z",
+  "last_updated": "2026-09-10T14:21:07.642Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1841,6 +1841,23 @@
       "relevance": "medium",
       "observed_at": "2026-09-10T13:32:40.413Z",
       "source_context": "Writing Layer 2 (rewrite system) into docs/ks2.md per the review",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe": {
+      "type": "source",
+      "title": "Observation: ks2.md layer talk replaced by tract orientation + section references",
+      "tags": [
+        "ks2",
+        "docs",
+        "structure",
+        "terminology"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe",
+      "relevance": "low",
+      "observed_at": "2026-09-10T14:21:07.604Z",
+      "source_context": "Fixing inconsistent layer references in docs/ks2.md",
       "created": "2026-09-10",
       "updated": "2026-09-10"
     },

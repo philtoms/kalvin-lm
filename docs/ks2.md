@@ -1,6 +1,8 @@
 # Kalvin — Symbolic II
 
-Status: draft. Second pass at all four layers — algebra (§1–5), rewrite system (§6–9), strategy (§10), measurement (§11–12). The KScript surface syntax remains normative in `kalvin-symbolic.md` §5. CONTEXT.md remains normative for role names.
+Status: draft. Second pass at the formalisation of `kalvin-symbolic.md` §§1–4; the KScript surface syntax remains normative there (§5). CONTEXT.md remains normative for role names.
+
+Four tracts: **what exists** — the algebra (§1–5); **what may happen** — the rewrite system (§6–9); **what chooses** — strategy (§10); **what is observed** — measurement (§11–12). The first two are the formal system proper; the last two are dynamics over it. §12 fixes terminology; §13 lists what stays outside.
 
 ---
 
@@ -175,7 +177,7 @@ Licenses are permissive, not safe. A licensed remove can strand the derivation: 
 
 ## 9. What a derivation proves
 
-Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal to held content, with the final node sequence as the witness — a constructive existence proof **within what is held**. The solver reading is this layer restated: each held kline is a constraint, each licensed step a resolution step, S1 a constructive existence proof, and a stuck S4 state relative non-existence — nothing in `M` answers. Done does **not** prove A's own head-claim: the end state's own fit may still be a misfit; grounding the claim itself is protocol and strategy, above this layer.
+Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal to held content, with the final node sequence as the witness — a constructive existence proof **within what is held**. The solver reading is §§6–9 restated: each held kline is a constraint, each licensed step a resolution step, S1 a constructive existence proof, and a stuck S4 state relative non-existence — nothing in `M` answers. Done does **not** prove A's own head-claim: the end state's own fit may still be a misfit; grounding the claim itself is protocol and strategy (§10, §13).
 
 **Feedback.** `fit(C(Aᵢ, B))` is graded at each state and its rate of change tracked over steps — telling Kalvin whether its effort is increasingly or decreasingly significant. These are strategy-level metrics: they steer the derivation; they are not part of the rule set.
 
@@ -183,7 +185,7 @@ Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal t
 
 ## 10. Strategy — the cogitation loop
 
-Layer 2 fixed the parameters of a derivation; this layer chooses them, step after step. The loop is **cogitation** (CONTEXT.md): **select** a target, **derive** to an ending, **absorb** the result into memory, **reenter** with the output as the next queue's input. Each phase is strategy — the rule system of §§6–9 constrains what any of it may do, never what it must.
+§§6–9 fixed the parameters of a derivation; this section chooses them, step after step. The loop is **cogitation** (CONTEXT.md): **select** a target, **derive** to an ending, **absorb** the result into memory, **reenter** with the output as the next queue's input. Each phase is strategy — the rule system of §§6–9 constrains what any of it may do, never what it must.
 
 **Definition 16 (selection).** A kline `B = t:ν_B ∈ M` is **selectable** as target for queued `A` when:
 
@@ -202,7 +204,7 @@ The relationship's band then routes the derivation: S2 → ordinary targeting (�
 
 ## 11. Measurement
 
-**The band order.** The bands are derived from shape (Def 10); this layer adds one axiom: they are **ordered by significance**, `S1 > S2 > S3 > S4`, the shapes within a band unordered. The predicate is observer-independent — given the same held memory, every agent classifies alike — so a band never needs to be exchanged.
+**The band order.** The bands are derived from shape (Def 10); this section adds one axiom: they are **ordered by significance**, `S1 > S2 > S3 > S4`, the shapes within a band unordered. The predicate is observer-independent — given the same held memory, every agent classifies alike — so a band never needs to be exchanged.
 
 Two band attachments are in play: a kline's **own band** — `fit(s, ν)` on itself, the claim it makes standing alone — and a **relationship band** — `fit(C(A,B))`, what the pair achieves. The first is what a kline asserts; the second is what a derivation establishes or fails to.
 
