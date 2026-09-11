@@ -1,5 +1,11 @@
 # Wiki Update Log
 
+## 2026-09-11
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t","title":"ks2: queued head s is unread within a hop — derivation is C's two sides"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation","title":"Remove's over-permissive licence: done-by-claim-amputation"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim","title":"ks2 claim-blindness critique: γ and done never see the claim"}
+
 ## 2026-09-10
 
 - **retro**: {"category":"formalisation","slug":"ks2-third-pass-seven-gap-resolutions","title":"ks2 third pass: seven gap resolutions fixing the formal algebra"}

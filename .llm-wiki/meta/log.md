@@ -323,3 +323,12 @@
 ## [2026-09-10T16:09:03.249Z] retro
 - slug: "ks2-third-pass-seven-gap-resolutions", title: "ks2 third pass: seven gap resolutions fixing the formal algebra", category: "formalisation"
 
+## [2026-09-11T06:32:01.982Z] observe
+- slug: "obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim", title: "ks2 claim-blindness critique: γ and done never see the claim", relevance: "high"
+
+## [2026-09-11T08:18:28.961Z] observe
+- slug: "obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation", title: "Remove's over-permissive licence: done-by-claim-amputation", relevance: "high"
+
+## [2026-09-11T10:26:02.392Z] observe
+- slug: "obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t", title: "ks2: queued head s is unread within a hop — derivation is C's two sides", relevance: "high"
+

@@ -109,7 +109,7 @@ Canonical relationships (atoms lowercase):
 
 ## 6. Derivations
 
-**Definition 12 (derivation).** A **derivation** rewrites the node sequence of a queued kline `A = s:ν` against one held target `B = t:ν_B`. The relation is memory-relative: `A ⊢_{M,B} A′`, with the memory `M` (Def 7), the target `B`, and the queue `A` as parameters. The signature `s` never changes — the claim is fixed; the content is rewritten. States `A₀ ⊢_{M,B} A₁ ⊢_{M,B} …` differ only in `ν`.
+**Definition 12 (derivation).** A **derivation** rewrites the node sequence of a queued kline `A = s:ν` against one held target `B = t:ν_B`. The relation is memory-relative: `A ⊢_{M,B} A′`, with the memory `M` (Def 7), the target `B`, and the queue `A` as parameters. The signature `s` never changes — the claim is fixed; the content is rewritten. States `A₀ ⊢_{M,B} A₁ ⊢_{M,B} …` differ only in `ν`. Nothing in §§6–9 reads `s` — licenses, endings, bounds and grades read only the relationship, whose head `σ(ν_A)` is exact against `ν_A` at every state by construction. Within a hop, then, the derivation is the two sides of `C` — `σ(ν_A):ν_A` against `t:ν_B` — and the queued head rides along inert, mattering only beyond the hop: absorb, reentry (§10), the claim's grounding (§13).
 
 Membership and difference on node sequences are **multiset-wise**; sequence order is used only by contract's pattern match and otherwise retained for witness purposes. No rule reads a kline's own fit — licensing reads only the relationship `C(A,B)` (Def 11).
 
@@ -140,7 +140,7 @@ Canons are exact and non-trivial by Def 10 (case 3 fires after the terminals), s
 | S3 — Connotation, No-fit    | replace            |
 | Unknown — S4                | none — stuck       |
 
-For S3 the substitution is forced to be total: no node of `ν_A` is covered, so node-disjointness makes both difference sets everything. The S4 row is entered through A, not B: selection never yields an empty target (Def 16), so `ν_B = []` is unreachable — but permissive removes can empty `ν_A` (case 1's `s = ∅`), and the ask is then acquired mid-run. Witnessed moves need no license from this table — a held well-founded witness anywhere in `M` suffices, whatever the relationship.
+For S3 the substitution is forced to be total: no node of `ν_A` is covered, so node-disjointness makes both difference sets everything. The S4 row is entered through A, not B: selection never yields an empty target (Def 16), so `ν_B = []` is unreachable — but permissive removes can empty `ν_A` (case 1's empty head, `σ(ν_A) = ∅`), and the ask is then acquired mid-run. Witnessed moves need no license from this table — a held well-founded witness anywhere in `M` suffices, whatever the relationship.
 
 ## 7. The two move families
 
@@ -160,7 +160,7 @@ Terminals are **targeting-closed, not rule-closed**: an Identity relationship is
 **Definition 15 (endings).** A derivation ends at **done** or **stuck**, or is **abandoned** by strategy:
 
 - **Done** — `fit(C(A,B)) ∈ S1`: the relationship holds. The goal is **value-equality**, `σ(ν_A) = σ(ν_B)`, not node-equality — an Identity relationship is done with `ν_A ≠ ν_B`, B holding A's content as one node.
-- **Stuck** — not done, and no licensed targeting move. Witnessed moves never end a derivation: they preserve the band and cannot reach done; their only use is granularity exposure, and spending them is strategy (the witnessed-run bound, T2). With a target selected and `ν_A` non-empty, a not-done state always licenses a targeting move — the S2 rows license remove or add, S3 licenses replace — so stuck has two reachable conditions, both the ask: **no target was selected** (candidate selection is §10) — the ask at entry, nothing grounded answers, §9's relative non-existence; or **`ν_A` has been emptied** by permissive removes (case 1's `s = ∅`, §4) — the ask acquired mid-run. The `ν_B = []` route into the S4 row remains unreachable: selection never yields an empty target (Def 16).
+- **Stuck** — not done, and no licensed targeting move. Witnessed moves never end a derivation: they preserve the band and cannot reach done; their only use is granularity exposure, and spending them is strategy (the witnessed-run bound, T2). With a target selected and `ν_A` non-empty, a not-done state always licenses a targeting move — the S2 rows license remove or add, S3 licenses replace — so stuck has two reachable conditions, both the ask: **no target was selected** (candidate selection is §10) — the ask at entry, nothing grounded answers, §9's relative non-existence; or **`ν_A` has been emptied** by permissive removes (case 1's empty head, `σ(ν_A) = ∅`, §4) — the ask acquired mid-run. The `ν_B = []` route into the S4 row remains unreachable: selection never yields an empty target (Def 16).
 - **Abandoned** — not an ending the rules produce: strategy halts or re-targets a run mid-derivation (§10), e.g. when graded effort falls (§11).
 
 Licenses are permissive, not safe. A licensed remove can strand the derivation: `A = ab:[ab]` against `B = a:[a]` is underfit (remove licensed); removing `ab` empties `ν_A` → Unknown — stuck at the ask. Pruning such dead ends is band feedback's job (§9), not the rule system's.

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-10T16:09:03.294Z",
+  "last_updated": "2026-09-11T10:26:02.439Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1992,6 +1992,59 @@
       "source_context": "Reviewing and rewriting kalvin-symbolic.md §§3–4 (strategy, measurement) into ks2.md",
       "created": "2026-09-10",
       "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim": {
+      "type": "source",
+      "title": "Observation: ks2 claim-blindness critique: γ and done never see the claim",
+      "tags": [
+        "ks2",
+        "model",
+        "critique",
+        "significance",
+        "grounding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim",
+      "relevance": "high",
+      "observed_at": "2026-09-11T06:32:01.979Z",
+      "source_context": "Reviewing docs/ks2.md derivation/licensing model after explaining the emptying-ν_A Unknown clause",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t": {
+      "type": "source",
+      "title": "Observation: ks2: queued head s is unread within a hop — derivation is C's two sides",
+      "tags": [
+        "ks2",
+        "formalisation",
+        "derivation",
+        "signature-inertness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t",
+      "relevance": "high",
+      "observed_at": "2026-09-11T10:26:02.388Z",
+      "source_context": "Reviewing Def 16 (selection) example in docs/ks2.md; user proposed invariant \"A is always a full canon\"",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation": {
+      "type": "source",
+      "title": "Observation: Remove's over-permissive licence: done-by-claim-amputation",
+      "tags": [
+        "ks2",
+        "model",
+        "derivations",
+        "replace",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation",
+      "relevance": "high",
+      "observed_at": "2026-09-11T08:18:28.957Z",
+      "source_context": "Reviewing ks2.md derivation licensing after the emptying-ν_A discussion",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",
