@@ -76,6 +76,10 @@ _Avoid_: thinking, background thread, the cogitator
 **Candidates**:
 The klines that fill a rewrite's slots. A is the input or queued kline; candidates are held correspondence klines — an Unknown has no second side and never targets, an Identity is inert. A candidate is selectable when its signature occurs as a node of A: that occurrence is the replace licence's forward side, and each replace's arrival makes new candidates selectable — the path is the guard. The derivation's goal is declared (`=>`) or supplied by reentry, scopes the misfit, and is checked at done — never selected. STM lets S3 relationships evolve stepwise towards S2 overlap through progressive connotation — the path writes the evidence.
 
+**Slot**:
+The per-node decomposition of a misfit: each node of A carrying a gap atom is a slot, seeking the goal's excess. A slot with a licensed replace fires it; a slot without is walked — a goal-less derivation over the correspondence graph, licensed by occurrence alone (either side of a held kline occurring in the walk's nodes), ending at arrival in the excess or stuck at the ask. The absorbed end state is the composed correspondence the main line consumes.
+_Avoid_: subgoal, subroutine, task
+
 **Reentry**:
 Rationalisation on more than one axis — space (significance as a metric of distance between klines) and time (projecting A:B into the future at C) — where the sequence output of one axis is rationalised as the input of another: `space(AB) → time(AB'C) → space(B'C)`. In the engine, the reentry arm proposes from a proposal, one hop further out.
 

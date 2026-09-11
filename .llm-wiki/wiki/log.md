@@ -2,6 +2,11 @@
 
 ## 2026-09-11
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence","title":"Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno","title":"γ resolved: acquisition depth Ĥ added, ratified edges free, one knob"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence","title":"ks2 fourth pass drafted: replace-only targeting with evidence"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move","title":"Def 14 redesign: evidenced replace as the only targeting move"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose","title":"WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t","title":"ks2: queued head s is unread within a hop — derivation is C's two sides"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation","title":"Remove's over-permissive licence: done-by-claim-amputation"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim","title":"ks2 claim-blindness critique: γ and done never see the claim"}

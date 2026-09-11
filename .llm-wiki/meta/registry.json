@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-11T10:26:02.439Z",
+  "last_updated": "2026-09-11T15:09:27.112Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1993,6 +1993,43 @@
       "created": "2026-09-10",
       "updated": "2026-09-10"
     },
+    "sources/obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move": {
+      "type": "source",
+      "title": "Observation: Def 14 redesign: evidenced replace as the only targeting move",
+      "tags": [
+        "ks2",
+        "def14",
+        "replace",
+        "evidence",
+        "progressive-path",
+        "design-decision"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T13:16:06.737Z",
+      "source_context": "Redesigning ks2.md Def 14 licensing after semantically-vacuous derivation finding",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence": {
+      "type": "source",
+      "title": "Observation: Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival",
+      "tags": [
+        "ks2",
+        "def17",
+        "slot-derivation",
+        "progressive-path",
+        "formalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T15:09:27.067Z",
+      "source_context": "Formalising slot sub-hops in ks2.md after the γ acquisition-depth commit",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
     "sources/obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim": {
       "type": "source",
       "title": "Observation: ks2 claim-blindness critique: γ and done never see the claim",
@@ -2008,6 +2045,26 @@
       "relevance": "high",
       "observed_at": "2026-09-11T06:32:01.979Z",
       "source_context": "Reviewing docs/ks2.md derivation/licensing model after explaining the emptying-ν_A Unknown clause",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence": {
+      "type": "source",
+      "title": "Observation: ks2 fourth pass drafted: replace-only targeting with evidence",
+      "tags": [
+        "ks2",
+        "def13",
+        "def14",
+        "replace",
+        "evidence",
+        "fourth-pass",
+        "context-md"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T13:33:21.287Z",
+      "source_context": "Drafting the evidenced-replace amendment into ks2.md and CONTEXT.md",
       "created": "2026-09-11",
       "updated": "2026-09-11"
     },
@@ -2043,6 +2100,44 @@
       "relevance": "high",
       "observed_at": "2026-09-11T08:18:28.957Z",
       "source_context": "Reviewing ks2.md derivation licensing after the emptying-ν_A discussion",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno": {
+      "type": "source",
+      "title": "Observation: γ resolved: acquisition depth Ĥ added, ratified edges free, one knob",
+      "tags": [
+        "ks2",
+        "gamma",
+        "acquisition-depth",
+        "provenance",
+        "measurement",
+        "engine-reconciliation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T15:05:42.403Z",
+      "source_context": "Resolving the γ composed-evidence depth open item after user rulings",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose": {
+      "type": "source",
+      "title": "Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed",
+      "tags": [
+        "ks2",
+        "formalisation",
+        "wdmh",
+        "mhall",
+        "derivation",
+        "selection"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose",
+      "relevance": "high",
+      "observed_at": "2026-09-11T13:16:06.730Z",
+      "source_context": "Deriving the WDMH=>MHALL worked example against ks2.md",
       "created": "2026-09-11",
       "updated": "2026-09-11"
     },

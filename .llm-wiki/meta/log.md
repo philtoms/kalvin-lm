@@ -332,3 +332,18 @@
 ## [2026-09-11T10:26:02.392Z] observe
 - slug: "obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t", title: "ks2: queued head s is unread within a hop — derivation is C's two sides", relevance: "high"
 
+## [2026-09-11T13:16:06.736Z] observe
+- slug: "obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose", title: "WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed", relevance: "high"
+
+## [2026-09-11T13:16:06.739Z] observe
+- slug: "obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move", title: "Def 14 redesign: evidenced replace as the only targeting move", relevance: "critical"
+
+## [2026-09-11T13:33:21.289Z] observe
+- slug: "obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence", title: "ks2 fourth pass drafted: replace-only targeting with evidence", relevance: "critical"
+
+## [2026-09-11T15:05:42.406Z] observe
+- slug: "obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno", title: "γ resolved: acquisition depth Ĥ added, ratified edges free, one knob", relevance: "critical"
+
+## [2026-09-11T15:09:27.068Z] observe
+- slug: "obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence", title: "Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival", relevance: "critical"
+

@@ -171,9 +171,14 @@
 - [[sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg]] — Observation: Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation]] — Observation: Layer 2 review: termination claims inverted, one-step relation undefined *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord]] — Observation: Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core *(created: 2026-09-10)*
+- [[sources/obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move]] — Observation: Def 14 redesign: evidenced replace as the only targeting move *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence]] — Observation: Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim]] — Observation: ks2 claim-blindness critique: γ and done never see the claim *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence]] — Observation: ks2 fourth pass drafted: replace-only targeting with evidence *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t]] — Observation: ks2: queued head s is unread within a hop — derivation is C's two sides *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation]] — Observation: Remove's over-permissive licence: done-by-claim-amputation *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno]] — Observation: γ resolved: acquisition depth Ĥ added, ratified edges free, one knob *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose]] — Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed *(created: 2026-09-11)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -182,4 +187,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-11T10:26:02.439Z* | *Total pages: 170*
+*Last updated: 2026-09-11T15:09:27.112Z* | *Total pages: 175*
