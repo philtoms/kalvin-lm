@@ -48,22 +48,19 @@ A non-terminal whose signature does not equal `signature_of(nodes)`. Claims S2 w
 _Avoid_: fabrication, conjecture
 
 **Relationship**:
-The single-node misfit — the connotation/denotation shape — named in its own right as a distinct routing class (a candidate for reciprocal grounding), set apart from multi-node misfits, which propose.
-_Avoid_: link, association, any-non-identity
+The nine structures, the band each claims, and the replace licence each doubles as (ks2.md Def 13 — mode by shape, direction by arrival):
 
-The nine structures, the band each claims, and the rewrite operation each doubles as:
-
-| Structure   | Shape         | Band | Rewrite operation | Scripted form  |
-| ----------- | ------------- | ---- | ----------------- | -------------- |
-| Canon       | `ABC:[A,B,C]` | S1   | expand nodes      | `ABC => A B C` |
-| Identity    | `A:[A]`       | S1   | none — done       | `A = A`        |
-| Underfit    | `ABC:[A,C]`   | S2   | rewrite A→B       | `ABC => A C`   |
-| Overfit     | `AB:[A,B,C]`  | S2   | rewrite B→A       | `AB => A B C`  |
-| Under+over  | `ABC:[B,C,D]` | S2   | rewrite both ways | `ABC => B C D` |
-| Denotation  | `AB:[B]`      | S2   | remove nodes      | `A = B`        |
-| Connotation | `A:[B]`       | S3   | replace nodes     | `A > B`        |
-| No-fit      | `AB:[C,D]`    | S3   | rewrite both ways | `AB => C D`    |
-| Unknown     | `A:[]`        | S4   | halt              | `A`            |
+| Structure   | Shape         | Band | Replace mode        | Scripted form  |
+| ----------- | ------------- | ---- | ------------------- | -------------- |
+| Canon       | `ABC:[A,B,C]` | S1   | expand / contract   | `ABC => A B C` |
+| Identity    | `A:[A]`       | S1   | inert — terminal    | `A = A`        |
+| Underfit    | `ABC:[A,C]`   | S2   | shed fwd, adopt rev | `ABC => A C`   |
+| Overfit     | `AB:[A,B,C]`  | S2   | adopt fwd, shed rev | `AB => A B C`  |
+| Under+over  | `ABC:[B,C,D]` | S2   | shed and adopt      | `ABC => B C D` |
+| Denotation  | `AB:[B]`      | S2   | shed                | `A = B`        |
+| Connotation | `A:[B]`       | S3   | traverse            | `A > B`        |
+| No-fit      | `AB:[C,D]`    | S3   | traverse            | `AB => C D`    |
+| Unknown     | `A:[]`        | S4   | inert — the ask     | `A`            |
 
 **Signature Behaviour**:
 Every node is a symbol with signature behaviour — the axioms that constrain how nodes may interact. They are discrete (A AND B is (NOT A) AND (NOT B)); they compose (A OR B → AB); they overlap (AB and BC overlap on B); they decompose (AB → A and B); they relate (A is to B as A is to AB). Every kline construction cogitation performs is constrained by them.
@@ -77,7 +74,7 @@ The slow path of rationalisation: rewrite operations derived from the nine struc
 _Avoid_: thinking, background thread, the cogitator
 
 **Candidates**:
-The klines that fill a rewrite's slots. A is the input or queued kline; B candidates are grounded klines — and a grounded kline holds content, so an Unknown never targets. A B is selectable when its signature occurs as a node of A; the pair's band then routes the derivation — S2 into ordinary targeting, S3 into the progressive path. STM lets S3 relationships evolve stepwise towards S2 overlap through progressive connotation.
+The klines that fill a rewrite's slots. A is the input or queued kline; candidates are held correspondence klines — an Unknown has no second side and never targets, an Identity is inert. A candidate is selectable when its signature occurs as a node of A: that occurrence is the replace licence's forward side, and each replace's arrival makes new candidates selectable — the path is the guard. The derivation's goal is declared (`=>`) or supplied by reentry, scopes the misfit, and is checked at done — never selected. STM lets S3 relationships evolve stepwise towards S2 overlap through progressive connotation — the path writes the evidence.
 
 **Reentry**:
 Rationalisation on more than one axis — space (significance as a metric of distance between klines) and time (projecting A:B into the future at C) — where the sequence output of one axis is rationalised as the input of another: `space(AB) → time(AB'C) → space(B'C)`. In the engine, the reentry arm proposes from a proposal, one hop further out.

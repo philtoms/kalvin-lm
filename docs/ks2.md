@@ -1,6 +1,6 @@
 # Kalvin — Symbolic II
 
-Status: draft. Third pass at the formalisation of `kalvin-symbolic.md` §§1–4; the KScript surface syntax remains normative there (§5). CONTEXT.md remains normative for role names.
+Status: draft. Fourth pass at the formalisation of `kalvin-symbolic.md` §§1–4; the KScript surface syntax remains normative there (§5). CONTEXT.md remains normative for role names.
 
 Four tracts: **what exists** — the algebra (§1–5); **what may happen** — the rewrite system (§6–9); **what chooses** — strategy (§10); **what is observed** — measurement (§11–12). The first two are the formal system proper; the last two are dynamics over it. §12 fixes terminology; §13 lists what stays outside.
 
@@ -61,7 +61,7 @@ No new constructors appear beyond §3. The nine shapes are derived predicates �
 | 7   | covered, `g = ∅`, `e ≠ ∅` | Overfit     | S2   |
 | 8   | covered, `g ≠ ∅`, `e ≠ ∅` | Under+over  | S2   |
 
-The cases are disjoint by construction. Coverage is the primary split: a pair with no covered node forces `g = s ≠ ∅` and `e = signature_of(ν) ≠ ∅`, so cases 4–5 can never satisfy 6; exactness is caught at case 3, before the covered cases, which require a nonzero gap or excess. Case 1's disjunction is the no-claim case in both directions: `ν = []` — nothing held; `s = ∅` — nothing left. A derivation that empties `ν_A` acquires an Unknown relationship whatever its target holds (§8).
+The cases are disjoint by construction. Coverage is the primary split: a pair with no covered node forces `g = s ≠ ∅` and `e = signature_of(ν) ≠ ∅`, so cases 4–5 can never satisfy 6; exactness is caught at case 3, before the covered cases, which require a nonzero gap or excess. Case 1's disjunction is the no-claim case in both directions: `ν = []` — nothing held; `s = ∅` — nothing left. Replace never empties a node sequence (§6) — the empty head is an entry condition (the ask, §10), not a run outcome.
 
 **Species.** **Denotation** is the single-node Underfit (`ab:[b]` — one covered node, gap only); **Connotation** is case 4. These are names of convenience for KScript (`=`, `>`/`<`); algebraically they are single-node instances of cases 6 and 4. Two single-node shapes are unnamed: the single-node Overfit `a:[ab]`, and the single-node Under+over `ab:[bc]` (covered on `b`, gap `a`, excess `c`).
 
@@ -109,49 +109,46 @@ Canonical relationships (atoms lowercase):
 
 ## 6. Derivations
 
-**Definition 12 (derivation).** A **derivation** rewrites the node sequence of a queued kline `A = s:ν` against one held target `B = t:ν_B`. The relation is memory-relative: `A ⊢_{M,B} A′`, with the memory `M` (Def 7), the target `B`, and the queue `A` as parameters. The signature `s` never changes — the claim is fixed; the content is rewritten. States `A₀ ⊢_{M,B} A₁ ⊢_{M,B} …` differ only in `ν`. Nothing in §§6–9 reads `s` — licenses, endings, bounds and grades read only the relationship, whose head `σ(ν_A)` is exact against `ν_A` at every state by construction. Within a hop, then, the derivation is the two sides of `C` — `σ(ν_A):ν_A` against `t:ν_B` — and the queued head rides along inert, mattering only beyond the hop: absorb, reentry (§10), the claim's grounding (§13).
+**Definition 12 (derivation).** A **derivation** rewrites the node sequence of a queued kline `A = s:ν` against one held goal `B = t:ν_B`. The relation is memory-relative: `A ⊢_{M,B} A′`, with the memory `M` (Def 7), the goal `B`, and the queue `A` as parameters. The signature `s` never changes — the claim is fixed; the content is rewritten. States `A₀ ⊢_{M,B} A₁ ⊢_{M,B} …` differ only in `ν`. Nothing in §§6–9 reads `s` — licenses, endings, bounds and grades read only the relationship, whose head `σ(ν_A)` is exact against `ν_A` at every state by construction. Within a hop, then, the derivation is the two sides of `C` — `σ(ν_A):ν_A` against `t:ν_B` — and the queued head rides along inert, mattering only beyond the hop: absorb, reentry (§10), the claim's grounding (§13).
 
-Membership and difference on node sequences are **multiset-wise**; sequence order is used only by contract's pattern match and otherwise retained for witness purposes. No rule reads a kline's own fit — licensing reads only the relationship `C(A,B)` (Def 11).
+Membership and difference on node sequences are **multiset-wise**; sequence order is used only by contract's contiguity and otherwise retained for witness purposes. No rule reads the _queued_ kline's own fit — scoping reads the relationship `C(A,B)` (Def 11); mode and direction read the _evidence_ kline's own fit (Def 13).
 
-**Definition 13 (one step).** `A = s:ν_A ⊢_{M,B} A′ = s:ν′`:
+**Definition 13 (one step).** `A = s:ν_A ⊢_{M,B} A′ = s:ν′` — one rule, instantiated by memory:
 
 ```text
-expand:    an occurrence of n in ν_A, the well-founded canon n:νₙ ∈ M
-               → ν′ replaces that occurrence of n by νₙ
-contract:  w a contiguous block of ν_A, the well-founded canon σ(w):w ∈ M
-               → ν′ replaces the block w by [σ(w)]
-remove:    a ∈ ν_A ∖ ν_B, licensed by Def 14
-               → ν′ = ν_A ∖ [a]
-add:       b ∈ ν_B ∖ ν_A, licensed by Def 14
-               → ν′ = ν_A with b inserted
-replace:   remove; add — the one composite; §7 constrains its interleaving
+replace:   a held correspondence kline K = n:ν_K ∈ M and an occurrence in ν_A
+           matching one of K's two sides:
+  forward:   an occurrence of n  → replaced by ν_K
+  reverse:   an occurrence of ν_K (a contiguous block where K is a canon)
+                                   → replaced by [n]
 ```
 
-Canons are exact and non-trivial by Def 10 (case 3 fires after the terminals), so expand is never a no-op. A canon `n:νₙ` with `n ∉ νₙ` is a **well-founded witness**; witnessed moves license only well-founded witnesses. The clause is exactly strong enough: a canon's nodes are atom-subsets of its head (`σ(νₙ) = n`), so an expansion cycle forces atom-equality at every step — a canon containing its own signature. Short of that, every licensed expand replaces a node by strictly atom-smaller nodes; the multiset of node atom-counts descends, and descent is well-founded — expand-only runs terminate per derivation, with no invariant on `M`. Identities (case 2, never canons) and self-containing canons (`a:[a,a]` — classifiable, holdable, selectable as a target) are the two witness classes inert for witnessed moves. The insertion position of `add` is free: invisible to `σ`, retained for witness purposes, consequential only for later contract contiguity — a strategy degree of freedom, like ordering generally (Def 12).
+The terminals are inert as evidence: an Unknown (`n:[]`) has no second side; an Identity (`n:[n]`) replaces a node by itself. Every other held kline is a correspondence. K's own fit fixes the **mode**: a canon exacts granularity — forward is expand, reverse is contract, both σ(ν_A)-preserving; a covered misfit moves content by its gap and excess — forward sheds K's gap and adopts K's excess, reverse the mirror; an uncovered misfit is a traverse — disjoint atoms swap, either direction. **Direction is not a property of the kline**: a correspondence is read forward from its signature, reverse from its witness; only the side the derivation stands on occurs, so arrival orients the licence — the same kline read from the other side is the mirror derivation's licence.
 
-**Definition 14 (licensing).** The relationship's fit at the current state licenses the targeting moves:
+Canon evidence must be well-founded (`n ∉ ν_K`). The clause is exactly strong enough: a canon's nodes are atom-subsets of its head (`σ(ν_K) = n`), so an expansion cycle forces atom-equality at every step — a canon containing its own signature. Short of that, licensed expansion terminates and depth is well-defined (§11). Identities and self-containing canons are the two inert witness classes.
 
-| `fit(C(A,B))`               | Licensed targeting |
-| --------------------------- | ------------------ |
-| S1 — Canon, Identity        | none — done        |
-| Underfit (incl. Denotation) | remove             |
-| Overfit                     | add                |
-| Under+over                  | remove and add     |
-| S3 — Connotation, No-fit    | replace            |
-| Unknown — S4                | none — stuck       |
+A replace may be _exhibited_ as an interleaving of removals and insertions — a presentational device with no algebraic status: the licence is the correspondence, never the band alone. The interleaving never empties `ν_A` — both sides of a correspondence carry content. Node order and insertion position are retained for witness purposes and for later contract contiguity — strategy degrees of freedom, like ordering generally (Def 12).
 
-For S3 the substitution is forced to be total: no node of `ν_A` is covered, so node-disjointness makes both difference sets everything. The S4 row is entered through A, not B: selection never yields an empty target (Def 16), so `ν_B = []` is unreachable — but permissive removes can empty `ν_A` (case 1's empty head, `σ(ν_A) = ∅`), and the ask is then acquired mid-run. Witnessed moves need no license from this table — a held well-founded witness anywhere in `M` suffices, whatever the relationship.
+**Definition 14 (licensing).** The relationship scopes; the evidence licenses. The band says where work remains; only a correspondence kline (Def 13) says what may move:
 
-## 7. The two move families
+| `fit(C(A,B))`            | Licensed targeting                             |
+| ------------------------ | ---------------------------------------------- |
+| S1 — Canon, Identity     | none — done                                    |
+| S2 — covered misfits     | replace, on the misfit region (scoping clause) |
+| S3 — Connotation, No-fit | replace — every node sits wholly in the misfit |
+| Unknown — S4             | none — stuck                                   |
 
-The families are orthogonal in invariant and in license source; neither reduces to the other.
+**Scoping clause.** A replace is targeting-licensed iff it strictly decreases the misfit mass `|σ(ν_A) Δ σ(ν_B)|` — the node replaced carries a gap atom, or the witness carries excess atoms, or both. Band-blind alignment is thereby unlicensable: a replace that touches only shared content, or grows the misfit, is not a targeting move however well evidenced. Canon-mode replaces (expand, contract) are witnessed moves — σ(ν_A)-preserving, band-preserving, licensed by `M` alone, needing nothing from this table. At S3 no node is covered, so replaces there move whole content and the route to overlap runs through the progressive path (§10). The S4 row is entered through A, not B: with no goal there is nothing to scope against — the ask at entry; with a goal and no licensed replace, the misfit _asks_ — nothing in `M` connects it (§8).
 
-- **Witnessed moves** (expand, contract) apply a held witness. They **preserve `σ(ν_A)` exactly** — decomposition granularity changes at constant content, so the relationship's band is unchanged. Licensed by `M`, independent of `B`.
-- **Targeting moves** (add, remove) align content toward the target. They **change `σ(ν_A)` toward `σ(ν_B)`** at whatever granularity `ν_A` currently has, and may touch only nodes from the difference sets. Licensed by `B`.
+## 7. One rule, two licences
 
-Replace is the only composite, and its interior is licensed under one constraint: it executes as an interleaving of its removes and adds in which `ν_A` never empties. Under that constraint every interior state is S3, S2, or done — never S4: removes shrink `σ(ν_A)`, so S3 persists; the first add covers its node, giving S2 or better; from S2 a remove may drop coverage and return S3, still licensed. Done may arrive early — value-equality can outrun node-equality (`ν_B = [y,y,z]` is done at interior `[y,z]`, an add still pending) — and is a legitimate ending; the pending nodes are witness structure. Per-step grading (§9) sees the interior. The composite earns its place where the primitives cannot finish the job alone: targeting is value-complete only modulo the granularities memory supplies. Shedding one atom of a compound node, or adopting one atom of a compound node of `B`, takes a witnessed move to expose.
+Replace is the only rule; what differs is what licenses it. Canon-mode replaces (expand, contract) are **witnessed**: they preserve `σ(ν_A)` exactly — granularity changes at constant content, band unchanged — licensed by `M` alone, blind to any goal. Denotation- and connotation-mode replaces are **evidenced targeting**: they move `σ(ν_A)` toward `σ(ν_B)`, licensed by a held correspondence and scoped by the misfit region (Def 14). The two licences are orthogonal in invariant and source — two licences on one rule, not two rules.
 
-Read model-theoretically: held well-founded witnesses generate a congruence on sequences — expand and contract are its two directions — and targeting moves operate on representatives. A derivation is rewriting relativised to what is held.
+Done may arrive early — value-equality can outrun node-equality — and is a legitimate ending; pending nodes are witness structure.
+
+Every content move is a claim read off a held kline: shedding one atom of a compound node is a denotation's claim — its gap is exactly what drops; adopting goal content is a connotation traversed or a canon expanded at an arrived node. Targeting is value-complete only modulo the correspondences memory supplies — without a correspondence there is no move, and the misfit asks (§8).
+
+Read model-theoretically: canon evidence generates a congruence on sequences — expand and contract its two directions — and the full evidence set generates a **correspondence graph**: held klines as edges between a signature and its witness, traversable in either direction from wherever the derivation has arrived. A derivation is a path in that graph, relativised to what is held. The path is the semantics: done by blind alignment is unreachable by construction.
 
 Terminals are **targeting-closed, not rule-closed**: an Identity relationship is done, yet the identity kline's own node may still expand under a held well-founded witness (`s:[s]` → `s:[a,b]`) — the claim made explicit, the identity turned canon. There is no retain move; targeting-closure is the S1 row of the licensing table, not a rule.
 
@@ -160,15 +157,15 @@ Terminals are **targeting-closed, not rule-closed**: an Identity relationship is
 **Definition 15 (endings).** A derivation ends at **done** or **stuck**, or is **abandoned** by strategy:
 
 - **Done** — `fit(C(A,B)) ∈ S1`: the relationship holds. The goal is **value-equality**, `σ(ν_A) = σ(ν_B)`, not node-equality — an Identity relationship is done with `ν_A ≠ ν_B`, B holding A's content as one node.
-- **Stuck** — not done, and no licensed targeting move. Witnessed moves never end a derivation: they preserve the band and cannot reach done; their only use is granularity exposure, and spending them is strategy (the witnessed-run bound, T2). With a target selected and `ν_A` non-empty, a not-done state always licenses a targeting move — the S2 rows license remove or add, S3 licenses replace — so stuck has two reachable conditions, both the ask: **no target was selected** (candidate selection is §10) — the ask at entry, nothing grounded answers, §9's relative non-existence; or **`ν_A` has been emptied** by permissive removes (case 1's empty head, `σ(ν_A) = ∅`, §4) — the ask acquired mid-run. The `ν_B = []` route into the S4 row remains unreachable: selection never yields an empty target (Def 16).
+- **Stuck** — not done, and no licensed targeting move. Witnessed moves never end a derivation: they preserve the band and cannot reach done; their only use is granularity exposure, and spending them is strategy (the witnessed-run bound, T2). Stuck has two reachable conditions, both the ask: **no goal** — nothing to scope against, the ask at entry (candidate selection is §10); or **no connection** — a goal is held, the misfit region is non-empty, and no held correspondence licenses a replace into it: nothing in `M` connects A's misfit to the goal's content. Relative non-existence (§9), reachable at entry and mid-run alike — the honest outcome when the semantic bridge is missing. Replace cannot strand a derivation: both sides of a correspondence carry content, so `ν_A` never empties mid-run.
 - **Abandoned** — not an ending the rules produce: strategy halts or re-targets a run mid-derivation (§10), e.g. when graded effort falls (§11).
 
-Licenses are permissive, not safe. A licensed remove can strand the derivation: `A = ab:[ab]` against `B = a:[a]` is underfit (remove licensed); removing `ab` empties `ν_A` → Unknown — stuck at the ask. Pruning such dead ends is band feedback's job (§9), not the rule system's.
+Licences are permissive in one sense: a correspondence may itself be an ungrounded claim — S3 evidence is a promise, not a fact — and the derivation follows it faithfully. Weighing promises is protocol (ratification, §10, §13), not the rule system's.
 
 **Termination.** Two statements:
 
-- **(T1)** Any run of targeting moves from `A₀` terminates in at most `D₀ = |ν_{A₀} ∖ ν_B| + |ν_B ∖ ν_{A₀}|` steps. Each targeting move decreases `D` by exactly one: remove requires `count_{ν_A}(a) > count_{ν_B}(a)` and shrinks the left difference; add is symmetric. No significance-monotonicity is required, and the bound is computable — the natural unit for step budgets. In particular, add/remove oscillation is not merely unlikely but unlicensable.
-- **(T2)** Witnessed moves preserve `σ(ν_A)` and can cycle — `bc` expands to `[b,c]` and contracts back against the same held canon, at constant band, forever. Termination of mixed derivations is therefore a **strategy property**: bound witnessed-move runs (for instance, no expand-after-contract of the same witness). Monotonicity of the graded measure is a strategy invariant, not a theorem about arbitrary derivations.
+- **(T1)** Any run of targeting replaces from `A₀` terminates in at most `Δ₀ = |σ(ν_{A₀}) Δ σ(ν_B)|` steps. Each licensed replace strictly decreases the misfit mass (the scoping clause), and a replace may move several atoms at once: steps are evidence-sized, the bound atom-wise, both computable — the natural unit for step budgets. Regressive and circular targeting is not merely unlikely but unlicensable: a replace that does not shrink the misfit mass is not a targeting move.
+- **(T2)** Witnessed replaces preserve `σ(ν_A)` and can cycle — `bc` expands to `[b,c]` and contracts back against the same held canon, at constant band, forever — and slot-wise traversals (§10) can wander the correspondence graph at constant misfit mass. Termination of mixed derivations is therefore a **strategy property**: bound witnessed runs (for instance, no expand-after-contract of the same witness) and bound traversals by no-revisit — each held signature consumed at most once per slot run; `M` is finite. Monotonicity of the graded measure is a strategy invariant, not a theorem about arbitrary derivations.
 
 **Confluence — renounced, deliberately.** The order of derivation changes what is grounded first, and the reachable S1 depends on the path. Path-dependence is not a defect to be repaired; it is the learning phenomenon.
 
@@ -176,28 +173,28 @@ Licenses are permissive, not safe. A licensed remove can strand the derivation: 
 
 ## 9. What a derivation proves
 
-Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal to held content, with the final node sequence as the witness — a constructive existence proof **within what is held**. The solver reading is §§6–9 restated: each held kline is a constraint, each licensed step a resolution step, S1 a constructive existence proof, and a stuck S4 state relative non-existence — nothing in `M` answers. Done does **not** prove A's own head-claim: the end state's own fit may still be a misfit; grounding the claim itself is protocol and strategy (§10, §13).
+Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal to held content, with the final node sequence as the witness — a constructive existence proof **within and through what is held**: every step of the witness was licensed by a correspondence, so the path itself is carried as evidence. The solver reading is §§6–9 restated: each held kline is a constraint, each correspondence an edge, each licensed replace a resolution step along one, S1 a constructive existence proof, and a stuck state relative non-existence — nothing in `M` connects. Done does **not** prove A's own head-claim, nor the truth of the correspondences followed — S3 evidence is a promise; weighing promises is protocol and strategy (§10, §13).
 
 **Feedback.** `fit(C(Aᵢ, B))` is graded at each state and its rate of change tracked over steps — telling Kalvin whether its effort is increasingly or decreasingly significant. These are strategy-level metrics: they steer the derivation; they are not part of the rule set.
 
-**Worked micro-example.** Atoms `m, h, a, l`. Held: identity `m:[m]`, canon `mall:[m,a,l,l]`. Queue `A₀ = mall:[m,a]`. Relationship `C = ma:[m,a,l,l]` — overfit (excess `l`); licensed: add; `D₀ = 2`. Add `l` → `mall:[m,a,l]` — still overfit. Add `l` → `mall:[m,a,l,l]` — canon: done, in exactly `D₀` steps, a constructive existence proof of `mall` within what is held. Had nothing been held, no target exists: stuck before any step — the ask, and ungrounded proposals follow under strategy control.
+**Worked micro-example.** (what did Mary have)WDMH => MHALL
+Atoms `w, d, m, h, a, l` (word bits; role values such as `o` live outside them, disjoint). Held: canon `mhall:[m,h,a,l,l]` — the rhyme; canon `dh:[d,h]`; canon `all:[a,l,l]` — the object phrase; denotation `dh:[h]` — "did have" → "had", its gap `{d}` naming exactly what drops; connotations `w:[o]` and `all:[o]` — the question word and the object phrase, each claiming the object role; identity `m:[m]`. Queue `A₀ = wdmh:[w,dh,m]` — the question, itself a canon. Declared goal `B = mhall` (the KScript `WDMH => MHALL`, §13). Relationship `C = wdmh:[m,h,a,l,l]` — under+over: gap `{w,d}`, excess `{a,l}`, misfit mass `Δ₀ = 4`.
+
+Two evidenced replaces finish it. **Verb:** replace `dh ⇉ [h]`, forward on the denotation `dh:[h]` — shed mode, `d` leaves the gap. **Object:** no single kline connects `w` to `a,l`; the connection is composed by a slot derivation under reentry (§10): `w:[w] ⊢ w:[o]` (forward on `w:[o]`, traverse), `⊢ w:[all]` (reverse on `all:[o]` — arrived at `o`, the answer-side kline read backwards to find the filler), `⊢ w:[a,l,l]` (forward on the canon `all:[a,l,l]`, expand); its absorbed end state **is** the composed evidence, and the main line replaces `w ⇉ [a,l,l]` forward on it — traverse mode, `{w}` out, `{a,l}` in. **Subject:** `m:[m]`, identity — inert; Mary carries over untouched.
+
+End state `wdmh:[h,m,a,l,l]`: `σ(ν_A) = mhall`, relationship Canon — done, in two targeting replaces under a bound of four, every step licensed by a held correspondence. The witness carries the chain: that is Kalvin _knowing_ what Mary had, not copying it. Had the connotations not been held, no replace reaches the object gap: stuck — the misfit asks, and ungrounded proposals follow under strategy control. Had `mhall` itself not been held, there is no goal to check done against: the ask from the other side. The end state's own fit remains under+over (gap `{w,d}`): the claim is answered, not grounded — grounding is protocol (§13), where the traversed pair `w:[o]`, `all:[o]` countersigns into a standing one-hop licence. Read from the answer side (`MHALL => WDMH`), the same correspondences license the mirror derivation: the klines are direction-free; arrival orients them.
 
 ## 10. Strategy — the cogitation loop
 
-§§6–9 fixed the parameters of a derivation; this section chooses them, step after step. The loop is **cogitation** (CONTEXT.md): **select** a target, **derive** to an ending, **absorb** the result into memory, **reenter** with the output as the next queue's input. Each phase is strategy — the rule system of §§6–9 constrains what any of it may do, never what it must.
+§§6–9 fixed the parameters of a derivation; this section chooses them, step after step. The loop is **cogitation** (CONTEXT.md): **select** a hop, **derive** to an ending, **absorb** the result into memory, **reenter** with the output as the next queue's input. Each phase is strategy — the rule system of §§6–9 constrains what any of it may do, never what it must.
 
-**Definition 16 (selection).** A kline `B = t:ν_B ∈ M` is **selectable** as target for queued `A` when:
+**Definition 16 (selection).** Selection chooses the next hop, never the final goal. A held kline `K = t:ν_K` is **selectable** for queued `A` when `t ∈ ν_A` — K's signature occurs as a node of A: A already references what K is. That clause is the forward half of Def 13's licence: to select K is to be licensed to replace its signature by its witness. The guard compounds into a ratchet: each replace's arrival puts new nodes into `ν_A`, making their klines selectable next — the path is the guard, not the point. The derivation's goal `B` is never selected: it is declared (KScript `=>`, §13) or supplied by reentry, it scopes the misfit region (Def 14), and it is _checked_ at done. S3 connotations are selectable as evidence, and an Unknown has no second side to offer; weighing claims is protocol (§13). The two-overlap caveat stands: **content overlap** `σ(ν_A) ∧ σ(ν_B) ≠ ∅` — exactly what relationship-S2 asserts — and **signature-in-node** `t ∈ ν_A` — the selection clause, which is what lets correspondence propagate into A's nodes — imply neither the other. `A = abc:[a]` against `B = x:[c,a]` stands in an Overfit relationship (S2) while `x` neither occurs in nor overlaps A's nodes; `B = x:[y]` against `A = abc:[x]` occurs in A's nodes yet yields S3. Selection requires the second; the band routes by the first.
 
-- `grounded(B)` — B is held as counted-on knowledge (a tier relation over `M`; CONTEXT.md); grounded excludes the Unknown shape — an empty kline grounds nothing — so a selectable target holds content (`ν_B ≠ []`), and
-- `t ∈ ν_A` — B's signature occurs as a node of A: A already references what B is.
+**Progressive path.** The path is the evidence-builder. A slot whose connection is not held as one kline is queued as its own derivation (reentry, below) and walks the correspondence graph: forward on the question-side kline, reverse on the answer-side kline at the shared node, expand at the arrived canon. Each hop's output is written to STM — inserted nodes as single-node misfits, connotation witnesses — and the walk's absorbed end state is the composed correspondence the main line consumes (the worked example, §9). Evidence is literally the work undertaken by the progressive path; hops matter because `M` grows between them. When the relationship reaches S2, ordinary evidenced targeting takes over.
 
-The relationship's band then routes the derivation: S2 → ordinary targeting (§§6–8); S3 → the progressive path, below. Two overlap conditions are easy to conflate and imply neither the other: **content overlap** `σ(ν_A) ∧ σ(ν_B) ≠ ∅` — exactly what relationship-S2 asserts — and **signature-in-node** `t ∈ ν_A` — the selection clause, which is what lets grounding propagate from B into A's nodes. `A = abc:[a]` against `B = x:[c,a]` stands in an Overfit relationship (S2) while `x` neither occurs in nor overlaps A's nodes; `B = x:[y]` against `A = abc:[x]` occurs in A's nodes yet yields S3. Selection requires the second; the band routes by the first.
+**Bounds.** Three numbers, all strategy parameters, each with a natural unit: the **targeting budget** — T1 bounds any targeting run by `Δ₀`, so a budget at or above it never binds mid-run; the **witnessed-run and traversal bounds** — T2's requirements, no expand-after-contract of the same witness and no-revisit of consumed signatures; and the **hop ceiling** — the reentry depth, below.
 
-**Progressive path.** An S3 relationship licenses replace — total by node-disjointness (Def 14) — and the path executes that composite incrementally: each inserted node is held in STM as a single-node misfit (a connotation witness), and the next step is licensed against the accumulated overlap. When the relationship reaches S2, ordinary targeting takes over. The stepwise-ness is the composite's licensed interior (§7), spaced out by memory writes.
-
-**Bounds.** Three numbers, all strategy parameters, each with a natural unit: the **targeting budget** — T1 bounds any targeting run by `D₀`, so a budget at or above `D₀` never binds mid-run; the **witnessed-run bound** — T2's requirement, for instance no expand-after-contract of the same witness; and the **hop ceiling** — the reentry depth, below.
-
-**Reentry.** Derivations compose. Hop `k` runs under parameters `(M_k, B_k)`; its end state — done or stuck — queues as hop `k+1`'s input, and memory may grow between hops (`M_{k+1} ⊇ M_k`, by STM writes), so successive hops are not derivations of one fixed system. Propose from a proposal, one hop further out, bounded by the hop ceiling. Hop order is the only time the system has; if a time axis is wanted, it is this order and nothing else. Re-targeting mid-derivation — abandoning a run whose graded effort is falling (§11) and selecting anew — is likewise a strategy move, not a rule.
+**Reentry.** Derivations compose. Hop `k` runs under parameters `(M_k, B_k)`; its end state — done or stuck — queues as hop `k+1`'s input, and memory may grow between hops (`M_{k+1} ⊇ M_k`, by STM writes — the growth is the evidence accumulating), so successive hops are not derivations of one fixed system. Propose from a proposal, one hop further out, bounded by the hop ceiling. Hop order is the only time the system has; if a time axis is wanted, it is this order and nothing else. Re-targeting mid-derivation — abandoning a run whose graded effort is falling (§11) and selecting anew — is likewise a strategy move, not a rule.
 
 **Outside the system.** Escalation and ratification are protocol: countersigning (`==`) holds reciprocal connotation pairs as ratified — the algebra provides the shape, the protocol the commitment. The queue itself — which klines are admitted for cogitation, and in what order — belongs to the harness, not the system.
 
@@ -215,7 +212,8 @@ Two band attachments are in play: a kline's **own band** — `fit(s, ν)` on its
 
 - **Band-consistency.** `γ` is 0 exactly at content-disjointness and maximal only at value-equality. Both ends are `J`'s; depth only scales down.
 - **Granularity-invariance.** Witnessed moves move `γ` only through `D̄`, never through recomposition: atom-weighted composition is blind to how A's content is sliced into slots. An unweighted per-slot mean violates this — expansion alone can raise it at constant content and constant depth.
-- **Depth-monotonicity.** Expand strictly increases `D̄`, so strictly decreases `γ`; contract strictly decreases `D̄`, so increases `γ`. This is what makes gratuitous expansion detectable — and why monotonicity of the graded measure is a strategy invariant (T2), not a structural fact: targeting moves shift `J` in either direction, and a derivation may wander against the gradient; the strategy declines to.
+- **Depth-monotonicity.** Expand strictly increases `D̄`, so strictly decreases `γ`; contract strictly decreases `D̄`, so increases `γ`. This is what makes gratuitous expansion detectable — and why monotonicity of the graded measure is a strategy invariant (T2), not a structural fact: evidenced targeting replaces strictly raise `J` (T1) while witnessed replaces move only `D̄`, so a mixed derivation may still wander against the gradient; the strategy declines to.
+- **Composed-evidence depth (open).** Whether content won through a traversed chain accrues depth to `D̄` — hard-won content grading lower until it consolidates — is unsettled; the current definition counts the resolution depth of held witnesses only. Main-line grading needs no change: evidenced replaces strictly shrink the misfit mass, so `J` rises stepwise, and traversals run in slot sub-hops whose heads are their own.
 
 **Rate of change** per step is defined only at this level — a four-band predicate has no useful derivative — and is the signal cogitation's feedback acts on.
 
@@ -229,5 +227,5 @@ _Significance_ is the value; _rationalisation_ is the process that produces and 
 
 - **Tier mechanics** — what writes STM, what promotes LTM, how Frame attention shifts: relations over `M` defined in CONTEXT.md and consumed by selection (Def 16).
 - **The multi-agent loop** — trainer, trainee, supervisor; escalation when cogitation yields no reply. Protocol above the system.
-- **KScript tokens** — surface syntax declaring intent; `fit` may or may not satisfy the declared intent (`=>` declares composition; the result is a Canon only if Def 10 case 3 fires; a bare signature is the ask — stuck at S4). See `kalvin-symbolic.md` §5.
-- **Countersigning** — a protocol commitment (reciprocal connotation pairs held as ratified); the algebra provides the shape, the protocol the commitment.
+- **KScript tokens** — surface syntax declaring intent; `fit` may or may not satisfy the declared intent (`=>` declares composition and supplies the goal for the done-check — it is not a licence; licences are correspondence klines, Def 13; the result is a Canon only if Def 10 case 3 fires; a bare signature is the ask — stuck at S4). See `kalvin-symbolic.md` §5.
+- **Countersigning** — a protocol commitment (reciprocal connotation pairs held as ratified); the algebra provides the shape, the protocol the commitment. Ratifying a traversed pair promotes it to a standing one-hop licence — memory compounds its evidence.
