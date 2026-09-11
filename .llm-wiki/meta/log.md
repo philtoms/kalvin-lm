@@ -347,3 +347,6 @@
 ## [2026-09-11T15:09:27.068Z] observe
 - slug: "obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence", title: "Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival", relevance: "critical"
 
+## [2026-09-11T18:17:35.182Z] observe
+- slug: "obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro", title: "D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state", relevance: "critical"
+

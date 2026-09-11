@@ -171,6 +171,7 @@
 - [[sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg]] — Observation: Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation]] — Observation: Layer 2 review: termination claims inverted, one-step relation undefined *(created: 2026-09-10)*
 - [[sources/obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord]] — Observation: Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core *(created: 2026-09-10)*
+- [[sources/obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro]] — Observation: D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move]] — Observation: Def 14 redesign: evidenced replace as the only targeting move *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence]] — Observation: Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim]] — Observation: ks2 claim-blindness critique: γ and done never see the claim *(created: 2026-09-11)*
@@ -187,4 +188,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-11T15:09:27.112Z* | *Total pages: 175*
+*Last updated: 2026-09-11T18:17:35.229Z* | *Total pages: 176*

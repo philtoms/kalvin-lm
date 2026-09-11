@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-11T15:09:27.112Z",
+  "last_updated": "2026-09-11T18:17:35.229Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -1992,6 +1992,26 @@
       "source_context": "Reviewing and rewriting kalvin-symbolic.md §§3–4 (strategy, measurement) into ks2.md",
       "created": "2026-09-10",
       "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro": {
+      "type": "source",
+      "title": "Observation: D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state",
+      "tags": [
+        "engine",
+        "gamma",
+        "reconciliation",
+        "significance",
+        "expand",
+        "d2",
+        "d3"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T18:17:35.180Z",
+      "source_context": "Implementing D2+D3 engine reconciliation after the ks2 fourth pass",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
     },
     "sources/obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move": {
       "type": "source",

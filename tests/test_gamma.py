@@ -172,3 +172,45 @@ def test_expand_ungrounded_match_discounted():
         kv for kv in expand(model, query, query, signifier) if kv.kline is query
     ]
     assert kv.significance == gamma_to_byte(DEFAULT_DELTA**1)
+
+
+def test_expand_carried_acquisition_depth_prices_won_knowledge():
+    signifier = NLPSignifier()
+    model = Model()
+    model.add_to_stm(KLine(A, [A], acq_depth=3))  # won through three edges
+    query = KLine(A, [A])
+    (kv,) = [
+        kv for kv in expand(model, query, query, signifier) if kv.kline is query
+    ]
+    assert kv.significance == gamma_to_byte(DEFAULT_DELTA**3)
+
+
+def test_grounding_flattens_the_acquisition_record():
+    signifier = NLPSignifier()
+    model = Model()
+    model.add_to_ltm(KLine(A, [A], acq_depth=3))  # grounded — ratified
+    query = KLine(A, [A])
+    (kv,) = [
+        kv for kv in expand(model, query, query, signifier) if kv.kline is query
+    ]
+    assert kv.significance == SIG8_MAX
+
+
+def test_acq_depth_ignored_for_identity():
+    assert KLine(A, [A], acq_depth=3) == KLine(A, [A])
+    assert len({KLine(A, [A], acq_depth=3), KLine(A, [A])}) == 1
+
+
+def test_acq_depth_round_trips_through_state_snapshot():
+    from dialogue.engine_state import EngineState
+
+    state = EngineState(NLPSignifier())
+    won = KLine(A, [A], acq_depth=2)
+    state.work_list.append(won)
+    data = state.to_dict()
+    assert data["work_list"][0][2] == 2
+    rebuilt = EngineState.from_dict(NLPSignifier(), data)
+    assert rebuilt.work_list[0].acq_depth == 2
+    # Legacy two-element snapshots still load.
+    legacy = {"work_list": [[int(A), [int(A)]], ]}
+    assert EngineState.from_dict(NLPSignifier(), legacy).work_list[0].acq_depth == 0

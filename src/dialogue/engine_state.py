@@ -243,7 +243,8 @@ class EngineState:
         def _n(n: KNode) -> list:
             return [int(n), getattr(n, "label", "")]
         def _kl(k: KLine) -> list:
-            return [_n(k.signature), [_n(n) for n in k.nodes]]
+            pair = [_n(k.signature), [_n(n) for n in k.nodes]]
+            return pair + [k.acq_depth] if k.acq_depth else pair
         out = {
             "work_list": [_kl(k) for k in self.work_list],
             "ltm": {
@@ -268,7 +269,8 @@ class EngineState:
             return KNode(p)
         def _kl(pair) -> KLine:
             sig, nodes = _n(pair[0]), pair[1]
-            return KLine(sig, [_n(n) for n in nodes])
+            acq_depth = pair[2] if len(pair) > 2 else 0
+            return KLine(sig, [_n(n) for n in nodes], acq_depth=acq_depth)
         return cls(
             signifier,
             word_bits=data.get("word_bits"),

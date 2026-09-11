@@ -184,11 +184,14 @@ def expand(
                     break
         slots.append((word_atom_count(n), slot_hops))
 
-    # Matched nodes: grounded -> depth 0; matched-ungrounded -> one hop of doubt.
+    # Matched nodes: grounded -> depth 0 (ratification flattens the record);
+    # ungrounded -> the carried acquisition depth, or one hop of doubt.
     for n in matched:
         kl = model.find(n)
         if kl is not None and model.grounded(kl):
             slots.append((word_atom_count(n), 0))
+        elif kl is not None and kl.acq_depth > 0:
+            slots.append((word_atom_count(n), kl.acq_depth))
         else:
             slots.append((word_atom_count(n), 1))
 

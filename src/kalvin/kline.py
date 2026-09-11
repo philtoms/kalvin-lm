@@ -162,17 +162,24 @@ class KLine:
         signature: uint64 identity key (produced by signature_of).
         nodes: list of uint64 node values (always a list, never None).
         dbg: optional debug info (not spec'd).
+        acq_depth: acquisition depth — the unratified correspondence edges
+            crossed to win this kline's content (ks2.md §11). 0 for given
+            content; flattened by grounding. Identity ignores it: two klines
+            with the same signature and nodes are the same kline whatever
+            they cost.
     """
 
-    __slots__ = ("signature", "nodes", "dbg")
+    __slots__ = ("signature", "nodes", "dbg", "acq_depth")
 
     def __init__(
         self,
         signature: KSig,
         nodes: KNodes | KNode | None = None,
         dbg: KDbg | None = None,
+        acq_depth: int = 0,
     ):
         self.signature = signature if isinstance(signature, KNode) else KNode(signature)
+        self.acq_depth = acq_depth
         if not self.signature.label and dbg is not None and dbg.label:
             self.signature = self.signature.with_label(dbg.label)
         self.nodes = _normalize_nodes(nodes)
