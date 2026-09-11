@@ -350,3 +350,6 @@
 ## [2026-09-11T18:17:35.182Z] observe
 - slug: "obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro", title: "D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state", relevance: "critical"
 
+## [2026-09-11T21:28:35.368Z] observe
+- slug: "obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-", title: "Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine", relevance: "critical"
+

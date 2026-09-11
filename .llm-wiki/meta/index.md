@@ -174,6 +174,7 @@
 - [[sources/obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro]] — Observation: D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move]] — Observation: Def 14 redesign: evidenced replace as the only targeting move *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence]] — Observation: Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-]] — Observation: Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim]] — Observation: ks2 claim-blindness critique: γ and done never see the claim *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence]] — Observation: ks2 fourth pass drafted: replace-only targeting with evidence *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t]] — Observation: ks2: queued head s is unread within a hop — derivation is C's two sides *(created: 2026-09-11)*
@@ -188,4 +189,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-11T18:17:35.229Z* | *Total pages: 176*
+*Last updated: 2026-09-11T21:28:35.430Z* | *Total pages: 177*

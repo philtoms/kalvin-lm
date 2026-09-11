@@ -2,6 +2,7 @@
 
 ## 2026-09-11
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-","title":"Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro","title":"D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence","title":"Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno","title":"γ resolved: acquisition depth Ĥ added, ratified edges free, one knob"}

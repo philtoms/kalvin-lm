@@ -99,6 +99,7 @@
 - [Observation: D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state](obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro.md)
 - [Observation: Def 14 redesign: evidenced replace as the only targeting move](obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move.md)
 - [Observation: Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival](obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence.md)
+- [Observation: Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine](obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-.md)
 - [Observation: ks2 claim-blindness critique: γ and done never see the claim](obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim.md)
 - [Observation: ks2 fourth pass drafted: replace-only targeting with evidence](obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence.md)
 - [Observation: ks2: queued head s is unread within a hop — derivation is C's two sides](obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t.md)

@@ -353,6 +353,11 @@ def word_atom_count(value: int) -> int:
     return (value & WORD_BITS).bit_count()
 
 
+def misfit_mass(a_sig: int, b_sig: int) -> int:
+    """The misfit mass |σ(ν_A) Δ σ(ν_B)| — the scoping measure (ks2 Def 14)."""
+    return word_atom_count((a_sig | b_sig) & ~(a_sig & b_sig))
+
+
 def geometric_decay(hops: int, delta: float = DEFAULT_DELTA) -> float:
     """δ^hops — the canonical decay: one knob, edges the unit."""
     if hops < 0:
