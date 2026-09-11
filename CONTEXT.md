@@ -25,7 +25,7 @@ The measure of the gap between two klines A and B — Kalvin's formalisation of 
 - **S4** — shares nothing: no connection can be drawn. _I do not understand this at all._
   _Avoid_: confidence, score, weight, grounded
 
-The graded distance is fixed, not free: the Jaccard overlap of the two contents, discounted by the mean witness depth at which A's content is held (`γ = J · δ^D̄`).
+The graded distance is fixed, not free: the Jaccard overlap of the two contents, discounted by two depths — the mean resolution depth at which A's content is held, and the mean acquisition depth of the unratified correspondence edges crossed to win it (`γ = J · δ^(D̄ + Ĥ)`). Ratified edges cost nothing: hard-won until it consolidates.
 
 **Terminal**:
 A kline whose structure carries no further decomposition — a leaf that stops traversal. Two shapes: **Unknown** and **Identity**.
@@ -102,7 +102,7 @@ _Avoid_: persistent store, knowledge base
 The model's mechanism for realising significance: if a signature is grounded, all of its nodes are grounded. Frame-grounded klines are available to cogitation; LTM grounding is a frame promotion Kalvin deems important enough to remember.
 
 **KValue**:
-The unit of exchange between participants — a KLine paired with a significance (the sender's assessment).
+The unit of exchange between participants — a KLine paired with a significance (the sender's assessment). The kline carries its acquisition record; the significance is computed against it.
 
 ## KScript
 
