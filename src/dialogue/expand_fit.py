@@ -200,13 +200,22 @@ class ExpandFit:
             yield KValue(candidate, significance)
 
     def _candidates(self, entry: KLine) -> list[KLine]:
+        """Held klines selectable for the entry — Def 16: occurrence.
+
+        A candidate is selectable when its signature occurs in one of the
+        entry's nodes (containment in bit space — a compound node references
+        what the candidate is). Content overlap is not selection: it routes
+        the band inside expand.
+        """
         signifier = self._state.signifier
         conns: list[KLine] = []
 
         for sig in self._state.where(
             lambda k: entry.signature != k.signature
             and not is_identity(k)
-            and signifier.signifies(entry.signature, k.signature)
+            and any(
+                signifier.node_in(k.signature, n) for n in entry.nodes
+            )
         ):
             conns.append(sig)
         return conns
