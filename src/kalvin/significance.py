@@ -329,6 +329,86 @@ def mean_compose(slot_values: Sequence[float]) -> float:
     return sum(slot_values) / n
 
 
+# ── Canonical γ (ks2.md §11) ─────────────────────────────────────────
+#
+# γ = J · δ^(mean depth): the accounted fraction over the content union,
+# discounted once by the atom-weighted mean hop depth. The aggregation form
+# is fixed, not free — atom-weighted (granularity-invariance), union
+# denominator (band-consistency: full A-inside-B coverage still grades below
+# 1), decay of the mean, geometric, one knob (δ ∈ (0,1), edges the unit).
+
+#: The word word — the atom space of the algebra (the BPE half never weighs;
+#: mirrors ``signifier.NLPSignifier._TYPE_MASK``).
+WORD_BITS: int = 0xFFFF_FFFF_0000_0000
+
+#: The strategy's knob, the only one. 0.5: each hop halves.
+DEFAULT_DELTA: float = 0.5
+
+#: A slot's contribution to γ: (atom weight, hop depth). ``None`` — unaccounted.
+SlotRecord = tuple[int, int | None]
+
+
+def word_atom_count(value: int) -> int:
+    """Atoms (word bits) carried by a value."""
+    return (value & WORD_BITS).bit_count()
+
+
+def geometric_decay(hops: int, delta: float = DEFAULT_DELTA) -> float:
+    """δ^hops — the canonical decay: one knob, edges the unit."""
+    if hops < 0:
+        raise ValueError(f"hops must be non-negative; got {hops}")
+    if not 0.0 < delta < 1.0:
+        raise ValueError(f"delta must be in (0, 1); got {delta}")
+    return delta**hops
+
+
+def gamma_aggregate(
+    slots: Sequence[SlotRecord],
+    a_sig: int,
+    b_sig: int,
+    delta: float = DEFAULT_DELTA,
+) -> float:
+    """γ = J · δ^(mean depth) over the atom space.
+
+    J = accounted atoms / union atoms: a slot counts as accounted when it
+    carries a defined depth (matched, or resolved to the other side); the
+    union denominator weighs the other side's excess. Depth is the
+    atom-weighted mean of slot hop depths; unaccounted slots carry no
+    depth (their cost is already J's). Vacuous — empty union — is 1.0;
+    nothing accounted is 0.0.
+    """
+    union = word_atom_count(a_sig | b_sig)
+    if union == 0:
+        return 1.0
+    accounted = 0
+    depth_weight = 0
+    for atoms, hops in slots:
+        if hops is None:
+            continue
+        accounted += atoms
+        depth_weight += atoms * hops
+    if accounted == 0:
+        return 0.0
+    j = min(accounted, union) / union
+    depth = depth_weight / accounted
+    return j * geometric_decay(depth, delta)
+
+
+def gamma_to_byte(gamma: float) -> int:
+    """Map γ ∈ [0, 1] through the inverted-distance byte.
+
+    Same saturation guards as ``Aggregator.compose_terminal``: 1.0 → 0xFF
+    (exact only), 0.0 → 0x00 (only total non-account), interior open.
+    """
+    frac = max(0.0, min(1.0, gamma))
+    if frac >= 1.0:
+        return SIG8_MAX
+    if frac <= 0.0:
+        return SIG8_MIN
+    interior_distance = 1 + round((1.0 - frac) * (_MAX_INTERIOR_DISTANCE - 1))
+    return distance_to_byte(interior_distance)
+
+
 @dataclass(frozen=True)
 class Aggregator:
     """The compose-on-return policy, bundling layout + the two seams.
