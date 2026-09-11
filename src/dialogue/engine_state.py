@@ -38,10 +38,8 @@ from kalvin.kline import (
     KLine,
     KNode,
     is_canon,
+    is_connotation as connotation_shape,
     is_identity,
-    is_connotation,
-    is_terminal,
-    is_unknown,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -133,8 +131,8 @@ class EngineState:
         return None
 
     def is_countersignable(self, entry: KLine) -> bool:
-        """Is ``entry`` a relationship whose two operands both have canons?"""
-        if not is_connotation(entry):
+        """Is ``entry`` a connotation whose two operands both have canons?"""
+        if not self.is_connotation(entry):
             return False
         return (
             self.canon_nodes(entry.signature) is not None
@@ -142,15 +140,9 @@ class EngineState:
         )
 
     def is_connotation(self, kline: KLine) -> bool:
-        return (
-            len(kline.nodes) == 1
-            and not is_terminal(kline)
-            and not is_identity(kline)
-            # The disjoint relationship: the connotation's operands share
-            # no bits (A:[B]) — the denotation's compound signature
-            # contains its node (AB:[B]).
-            and not self._signifier.node_in(kline.nodes[0], kline.signature)
-        )
+        """Case 4: a 1:1 relationship whose node shares no atom with its
+        signature (uncovered — S3)."""
+        return connotation_shape(kline, self._signifier)
 
 
     # -- work list (attention) ----------------------------------------

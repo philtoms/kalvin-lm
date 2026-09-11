@@ -5,7 +5,7 @@ from itertools import combinations
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-from kalvin.kline import KLine, KNode, KSig, is_identity, is_terminal, is_connotation
+from kalvin.kline import KLine, KNode, KSig, is_identity, is_terminal, is_relationship
 from kalvin.kpath import KPath
 from kalvin.kvalue import KValue
 from kalvin.significance import (
@@ -140,7 +140,7 @@ class Cogitator:
             next_frontier: list[KNode] = []
             for cur in frontier:
                 for kline in state.where(lambda k: signifier.node_in(cur, k.signature)
-                                         and is_connotation(k)):
+                                         and is_relationship(k)):
                     right = signifier.signature_of(kline.nodes)
                     if right != left and right not in visited:
                         visited.add(right)
@@ -292,7 +292,7 @@ class Cogitator:
         for kline in self._state.where(
             lambda k: sig != k.signature
             and not is_identity(k)
-            and not is_connotation(k)
+            and not is_relationship(k)
             and signifier.signifies(sig, k.signature)
         ):
             yield kline

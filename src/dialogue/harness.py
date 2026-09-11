@@ -31,7 +31,9 @@ from kalvin.kline import (
     classify_misfit,
     is_canon,
     is_connotation,
+    is_denotation,
     is_identity,
+    is_relationship,
     is_unknown,
 )
 from kalvin.kvalue import KValue
@@ -604,13 +606,13 @@ def _structure_class(kline: KLine, signifier: NLPSignifier) -> str:
         return "id"
     if is_canon(kline, signifier):
         return "canon"
-    if is_connotation(kline):
-        # The 1:1 relationship shape splits on bit containment, as in
-        # EngineState.is_connotation: the node sits inside its signature
-        # (AB:[B]) — a denotation; the disjoint form is a connotation.
-        if signifier.node_in(kline.nodes[0], kline.signature):
+    if is_relationship(kline):
+        # Case 4 vs case 6 by coverage (overlap); the covered shapes with
+        # excess (A:[AB], AB:[BC]) fall through to the multi-node classes.
+        if is_denotation(kline, signifier):
             return "denotation"
-        return "connotation"
+        if is_connotation(kline, signifier):
+            return "connotation"
     under, over = classify_misfit(kline, signifier)
     if under and not over:
         return "under"

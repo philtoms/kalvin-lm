@@ -285,19 +285,42 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """
     return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
-def is_connotation(kline: KLine) -> bool:
+def is_relationship(kline: KLine) -> bool:
     """Test whether a kline is a 1:1 relationship.
 
-    A relationship is the connote/denote structural shape: a non-terminal
-    misfit with exactly one node (``{A: [B]}``, ``A != B``). The signature
-    associates with a single other value. Distinct from a multi-node misfit
-    (no-fit/underfit/overfit) and from terminals and canons.
+    The connote/denote structural shape: a non-terminal misfit with exactly
+    one node (``{A: [B]}``, ``A != B``). The signature associates with a
+    single other value. Band-agnostic — the band-true species are
+    :func:`is_connotation` (case 4) and :func:`is_denotation` (case 6).
     """
     return (
         len(kline.nodes) == 1
         and not is_terminal(kline)
         and not is_identity(kline)
     )
+
+
+def is_connotation(kline: KLine, signifier: KSignifier) -> bool:
+    """Case 4: a 1:1 relationship whose node shares no atom with its signature.
+
+    Uncovered (no word-bit overlap) — S3.
+    """
+    return is_relationship(kline) and not signifier.signifies(
+        kline.nodes[0], kline.signature
+    )
+
+
+def is_denotation(kline: KLine, signifier: KSignifier) -> bool:
+    """Case 6: a 1:1 relationship, covered, gap-only.
+
+    The node overlaps the signature and carries no excess (``AB:[B]``) — S2.
+    """
+    if not is_relationship(kline):
+        return False
+    node = kline.nodes[0]
+    return signifier.signifies(node, kline.signature) and signifier.residual(
+        node, kline.signature
+    ) == 0
 
 def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
