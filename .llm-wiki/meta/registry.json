@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-12T06:43:51.285Z",
+  "last_updated": "2026-09-12T09:50:36.661Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2196,6 +2196,40 @@
       "relevance": "medium",
       "observed_at": "2026-09-12T05:02:19.884Z",
       "source_context": "Simplifying docs/ks2.md for non-mathematical programmers",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul": {
+      "type": "source",
+      "title": "Observation: kalvin-symbolic.md updated in place to ks2 semantics and rules",
+      "tags": [
+        "kalvin-symbolic",
+        "ks2",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul",
+      "relevance": "high",
+      "observed_at": "2026-09-12T07:55:40.548Z",
+      "source_context": "Bringing kalvin-symbolic.md up to date with ks2 semantics",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen": {
+      "type": "source",
+      "title": "Observation: ks2 §14 absorbs KScript syntax; ks2 now sole normative document",
+      "tags": [
+        "ks2",
+        "ks3",
+        "kalvin-symbolic",
+        "docs",
+        "kscript"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen",
+      "relevance": "high",
+      "observed_at": "2026-09-12T09:50:36.613Z",
+      "source_context": "Consolidating normativity into ks2.md",
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },

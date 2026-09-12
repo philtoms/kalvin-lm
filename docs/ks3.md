@@ -1,10 +1,10 @@
-# Kalvin — Symbolic II, in plain terms
+# Kalvin — A Term Algebra and Rewrite System, written for programmers
 
-Status: draft. This is `ks2.md` restated for programmers: same content, same section numbers, less mathematical apparatus, more examples. **Every definition is quoted verbatim from ks2 in a blockquote**; the surrounding prose is framing — what the definition says in programmer terms, and how the pieces behave. ks2.md remains normative: where framing and quote seem to differ, the quote wins. Quoted text keeps ks2's internal cross-references (Def numbers, § numbers), which match this document's structure. `kalvin-symbolic.md` §5 remains normative for KScript surface syntax; CONTEXT.md for role names.
+Status: draft. This is `ks2.md` restated for programmers: same content, same section numbers, less mathematical apparatus, more examples. **Every definition is quoted verbatim from ks2 in a blockquote**; the surrounding prose is framing — what the definition says in programmer terms, and how the pieces behave. ks2.md remains normative — for the formalisation and the KScript surface syntax (§13) alike: where framing and quote seem to differ, the quote wins. Quoted text keeps ks2's internal cross-references (Def numbers, § numbers), which match this document's structure. CONTEXT.md for role names.
 
-**The whole system in six sentences.** Kalvin's memory is a set of records — *klines* — each claiming that its head value is the composition of its node list. Composition is just set-union, so many different lists evaluate to the same head; *which list you chose* is the memory. A pure function grades any (head, list) pair into one of nine shapes, grouped into four bands from "exact" to "no connection". Thinking — *cogitation* — is a rewrite loop over one node list, using held klines as the rewrite rules, each step either re-expressing the same content more or less granularly, or moving it strictly closer to a goal kline's content; a run ends **done** when the contents match or **stuck** when nothing held connects them. A score γ — overlap, discounted by granularity and by unratified promises — grades every step, and its rate of change steers the loop. Strategy chooses what to derive next; measurement decides what it was worth.
+**The whole system in six sentences.** Kalvin's memory is a set of records — _klines_ — each claiming that its head value is the composition of its node list. Composition is just set-union, so many different lists evaluate to the same head; _which list you chose_ is the memory. A pure function grades any (head, list) pair into one of nine shapes, grouped into four bands from "exact" to "no connection". Thinking — _cogitation_ — is a rewrite loop over one node list, using held klines as the rewrite rules, each step either re-expressing the same content more or less granularly, or moving it strictly closer to a goal kline's content; a run ends **done** when the contents match or **stuck** when nothing held connects them. A score γ — overlap, discounted by granularity and by unratified promises — grades every step, and its rate of change steers the loop. Strategy chooses what to derive next; measurement decides what it was worth.
 
-Four tracts, as in ks2: **what exists** (§1–5), **what may happen** (§6–9), **what chooses** (§10), **what is observed** (§11–12). §13 lists what stays outside.
+Four tracts, as in ks2: **what exists** (§1–5), **what may happen** (§6–9), **what chooses** (§10), **what is observed** (§11–12). §14 lists what stays outside; §13 fixes the KScript surface syntax.
 
 ## 0. Notation cheat sheet
 
@@ -12,47 +12,47 @@ Everything this document writes in symbols, decoded. Values are sets of atoms, a
 
 **Sets and values**
 
-| symbol      | it means                                         | in code           |
-| ----------- | ------------------------------------------------ | ----------------- |
-| `a`, `abc`  | the singleton set `{a}`, the set `{a,b,c}`       | bitmasks          |
-| `v ∨ w`     | union                                            | `v \| w`         |
-| `v ∧ w`     | intersection                                     | `v & w`           |
-| `¬v`        | complement, within the full atom set `A`         | `~v & MASK`       |
-| `∅`         | the empty value                                  | `0`               |
-| `σ(ν)`      | `signature_of(ν)` — the OR-fold of the list (§2) | `fold_or(nu)`     |
-| `x Δ y`     | symmetric difference: in one but not both        | `x ^ y`           |
-| `v ∖ w`     | set difference                                   | `v & ~w`          |
-| `[n₁ … nₖ]` | a list of values, order and duplicates kept      | `[n1, ..., nk]`   |
-| `x ∈ y`, `n ∉ ν` | (non-)membership: x is (not) an element of y | `x in y`      |
-| `M ⊇ M_k`   | superset: M contains everything M_k does         | `M.issuperset(M_k)` |
-| `\|x\|`   | size: how many atoms x has                       | `popcount(x)`     |
+| symbol           | it means                                         | in code             |
+| ---------------- | ------------------------------------------------ | ------------------- |
+| `a`, `abc`       | the singleton set `{a}`, the set `{a,b,c}`       | bitmasks            |
+| `v ∨ w`          | union                                            | `v \| w`            |
+| `v ∧ w`          | intersection                                     | `v & w`             |
+| `¬v`             | complement, within the full atom set `A`         | `~v & MASK`         |
+| `∅`              | the empty value                                  | `0`                 |
+| `σ(ν)`           | `signature_of(ν)` — the OR-fold of the list (§2) | `fold_or(nu)`       |
+| `x Δ y`          | symmetric difference: in one but not both        | `x ^ y`             |
+| `v ∖ w`          | set difference                                   | `v & ~w`            |
+| `[n₁ … nₖ]`      | a list of values, order and duplicates kept      | `[n1, ..., nk]`     |
+| `x ∈ y`, `n ∉ ν` | (non-)membership: x is (not) an element of y     | `x in y`            |
+| `M ⊇ M_k`        | superset: M contains everything M_k does         | `M.issuperset(M_k)` |
+| `\|x\|`          | size: how many atoms x has                       | `popcount(x)`       |
 
 (ks2 additionally writes `V*` for "lists of values" and `2^A` for "all subsets of A" — the set of all bitmasks.)
 
 **Klines and rewriting**
 
-| symbol       | it means |
-| ------------ | --------- |
-| `s:ν`        | the kline with signature `s` and node list `ν` — a `(head, nodes)` record |
+| symbol         | it means                                                                                                                                                                                                                                                                                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `s:ν`          | the kline with signature `s` and node list `ν` — a `(head, nodes)` record                                                                                                                                                                                                                                                                               |
 | `A ⊢_{M,B} A′` | **one derivation step**: kline A rewrites to A′ by a single licensed replace, running against goal B with memory M. The subscript just names the parameters and is dropped when clear (`A ⊢ A′`). Chained `A₀ ⊢ A₁ ⊢ …` is a multi-step run, left to right in time. (The symbol is the "turnstile" of logic texts — here it simply reads "rewrites to") |
-| `n ⇉ ν_K`    | one replace applied to a node: splice `n` out of the node list, splice the witness `ν_K` in — the arrow used in worked examples |
-| `x → y`      | a generic arrow: "x becomes y" — rewrite direction or state change |
-| `s ↦ [s]`    | "maps to": a function's input to its output (here, the trivial inverse of σ) |
-| `A′`         | A-prime: the state after one more step |
-| `C(A,B)`     | the relationship kline of A and B (§5) — ordinary function notation |
-| `fit(s, ν)`  | the nine-shape classifier (§4) — ordinary function notation |
+| `n ⇉ ν_K`      | one replace applied to a node: splice `n` out of the node list, splice the witness `ν_K` in — the arrow used in worked examples                                                                                                                                                                                                                         |
+| `x → y`        | a generic arrow: "x becomes y" — rewrite direction or state change                                                                                                                                                                                                                                                                                      |
+| `s ↦ [s]`      | "maps to": a function's input to its output (here, the trivial inverse of σ)                                                                                                                                                                                                                                                                            |
+| `A′`           | A-prime: the state after one more step                                                                                                                                                                                                                                                                                                                  |
+| `C(A,B)`       | the relationship kline of A and B (§5) — ordinary function notation                                                                                                                                                                                                                                                                                     |
+| `fit(s, ν)`    | the nine-shape classifier (§4) — ordinary function notation                                                                                                                                                                                                                                                                                             |
 
 **Measurement (§11)**
 
-| symbol   | it means |
-| -------- | --------- |
-| `γ(A, B)` | the graded distance — the significance score of A working toward B |
-| `J(x, y)` | Jaccard overlap: shared atoms over combined atoms — in code, `popcount(x & y) / popcount(x \| y)` |
-| `δ`       | the discount knob: a number strictly between 0 and 1 (`δ ∈ (0,1)` is interval notation, not a tuple) |
-| `D̄`, `Ĥ` | mean resolution / acquisition depth — the bar on D and the hat on H both mean "average" (atom-weighted) |
-| `Δ₀`      | the initial misfit mass — a *number*, not an operation; see the reading practice below |
+| symbol    | it means                                                                                                         |
+| --------- | ---------------------------------------------------------------------------------------------------------------- |
+| `γ(A, B)` | the graded distance — the significance score of A working toward B                                               |
+| `J(x, y)` | Jaccard overlap: shared atoms over combined atoms — in code, `popcount(x & y) / popcount(x \| y)`                |
+| `δ`       | the discount knob: a number strictly between 0 and 1 (`δ ∈ (0,1)` is interval notation, not a tuple)             |
+| `D̄`, `Ĥ`  | mean resolution / acquisition depth — the bar on D and the hat on H both mean "average" (atom-weighted)          |
+| `Δ₀`      | the initial misfit mass — a _number_, not an operation; see the reading practice below                           |
 | `α(n)`    | per-slot accountedness: one node's overlap fraction with the goal (appears in the argument for why J is Jaccard) |
-| `·`       | ordinary multiplication, as in `J · δ^(D̄ + Ĥ)` |
+| `·`       | ordinary multiplication, as in `J · δ^(D̄ + Ĥ)`                                                                   |
 
 **Reading conventions.** `iff` = if and only if — equivalence, both directions hold. Subscripts name ownership or time: `ν_A` is kline A's node list, `ν_K` the evidence kline's witness; `A₀` is the state at entry, `Aᵢ` the state at step i; `M_k`, `B_k` are hop k's memory and goal (§10).
 
@@ -75,7 +75,7 @@ No run of targeting replaces from `A₀` can take more than `Δ₀` steps, becau
 
 > **Definition 1 (atoms).** `A = {a₀ … a₃₀}` — a finite parameter set; only its finiteness is load-bearing. In the engine this is the word-bit space: one bit per distinct word. The u64 packing `(word_bit << 32) | bpe_token_id` is not literally a set of atoms; this algebra is a deliberate tidying of that encoding, and the tidying is what the formalisation builds on.
 
-Reading Definition 1: the atom set is a *parameter* — 31 word bits in the engine — and only its finiteness matters to anything that follows. Say the atoms are `a`, `b`, `c` (think: three words). Then the values are all the bitmasks over them:
+Reading Definition 1: the atom set is a _parameter_ — 31 word bits in the engine — and only its finiteness matters to anything that follows. Say the atoms are `a`, `b`, `c` (think: three words). Then the values are all the bitmasks over them:
 
 ```text
 ∅, a, b, c, ab, ac, bc, abc
@@ -89,7 +89,7 @@ Reading Definition 1: the atom set is a *parameter* — 31 word bits in the engi
 >
 > The Boolean laws (commutativity, associativity, idempotence, distribution, `a ∧ b = ∅` for distinct atoms) hold by construction. They are consequences of the set definition, not axioms.
 
-Which is to say: values are bitmasks, the three operations are OR, AND, and complement-within-mask — and you never have to *enforce* the Boolean laws; they fall out of the representation. Example computations:
+Which is to say: values are bitmasks, the three operations are OR, AND, and complement-within-mask — and you never have to _enforce_ the Boolean laws; they fall out of the representation. Example computations:
 
 ```text
 ab ∨ ac = abc        ab ∧ ac = a        ¬a = bc
@@ -125,9 +125,9 @@ def signature_of(nu):        # nu: list of non-empty values
 # signature_of([])        = ∅
 ```
 
-"Identifies precisely" cuts both ways: two lists evaluate to the same value *iff* they contain the same atoms — and any two such lists are folded to the same head.
+"Identifies precisely" cuts both ways: two lists evaluate to the same value _iff_ they contain the same atoms — and any two such lists are folded to the same head.
 
-Like `3 + 4` versus `7`: many expressions, one result. A calculator discards the expression; Kalvin's memory keeps it (§3) — *which* decomposition you hold is the content of memory. Note one extra forgetting the fold does silently: `[abc]` and `[a, b, c]` evaluate identically. The list remembers granularity; the value does not. That distinction becomes the expand/contract moves of §6 and the `D̄` term of §11.
+Like `3 + 4` versus `7`: many expressions, one result. A calculator discards the expression; Kalvin's memory keeps it (§3) — _which_ decomposition you hold is the content of memory. Note one extra forgetting the fold does silently: `[abc]` and `[a, b, c]` evaluate identically. The list remembers granularity; the value does not. That distinction becomes the expand/contract moves of §6 and the `D̄` term of §11.
 
 ## 3. Klines — claims and witnesses
 
@@ -234,7 +234,7 @@ The check order is the point, as the quote's second paragraph explains: an uncov
 
 ## 5. The relationship kline
 
-**In programmer terms:** to compare two klines, line up *what the first one actually holds* against *how the second one is decomposed*, and run the same classifier on that.
+**In programmer terms:** to compare two klines, line up _what the first one actually holds_ against _how the second one is decomposed_, and run the same classifier on that.
 
 > **Definition 11 (pairwise).** For klines `A = s:ν_A` and `B = t:ν_B`, the **relationship kline** is `C(A,B) = signature_of(ν_A) : ν_B`. Its head is not claimed — it is _defined_ as what A's nodes evaluate to — so all of C's misfit-ness comes from B's side. `fit(C(A,B))` is the **structural relationship of A and B**.
 >
@@ -273,11 +273,11 @@ B   the goal kline     — scopes where work remains; checked at done
 K   the evidence kline — a held kline that licenses one replace
 ```
 
-> **Definition 12 (derivation).** A **derivation** rewrites the node sequence of a queued kline `A = s:ν` against one held goal `B = t:ν_B`. The relation is memory-relative: `A ⊢_{M,B} A′`, with the memory `M` (Def 7), the goal `B`, and the queue `A` as parameters. The signature `s` never changes — the claim is fixed; the content is rewritten. States `A₀ ⊢_{M,B} A₁ ⊢_{M,B} …` differ only in `ν`. Nothing in §§6–9 reads `s` — licenses, endings, bounds and grades read only the relationship, whose head `σ(ν_A)` is exact against `ν_A` at every state by construction. Within a hop, then, the derivation is the two sides of `C` — `σ(ν_A):ν_A` against `t:ν_B` — and the queued head rides along inert, mattering only beyond the hop: absorb, reentry (§10), the claim's grounding (§13).
+> **Definition 12 (derivation).** A **derivation** rewrites the node sequence of a queued kline `A = s:ν` against one held goal `B = t:ν_B`. The relation is memory-relative: `A ⊢_{M,B} A′`, with the memory `M` (Def 7), the goal `B`, and the queue `A` as parameters. The signature `s` never changes — the claim is fixed; the content is rewritten. States `A₀ ⊢_{M,B} A₁ ⊢_{M,B} …` differ only in `ν`. Nothing in §§6–9 reads `s` — licenses, endings, bounds and grades read only the relationship, whose head `σ(ν_A)` is exact against `ν_A` at every state by construction. Within a hop, then, the derivation is the two sides of `C` — `σ(ν_A):ν_A` against `t:ν_B` — and the queued head rides along inert, mattering only beyond the hop: absorb, reentry (§10), the claim's grounding (§14).
 >
 > Membership and difference on node sequences are **multiset-wise**; sequence order is used only by contract's contiguity and otherwise retained for witness purposes. No rule reads the _queued_ kline's own fit — scoping reads the relationship `C(A,B)` (Def 11); mode and direction read the _evidence_ kline's own fit (Def 13).
 
-Decode: the derivation's state is `ν_A`; every step is `rewrite(ν_A, K) → ν_A′`; the claim `s` is an immutable field nothing reads until after the hop. "Multiset-wise" means matching treats the list as a bag — except reverse-replace, which needs its witness as a *contiguous* run.
+Decode: the derivation's state is `ν_A`; every step is `rewrite(ν_A, K) → ν_A′`; the claim `s` is an immutable field nothing reads until after the hop. "Multiset-wise" means matching treats the list as a bag — except reverse-replace, which needs its witness as a _contiguous_ run.
 
 > **Definition 13 (one step).** `A = s:ν_A ⊢_{M,B} A′ = s:ν′` — one rule, instantiated by memory:
 >
@@ -289,13 +289,13 @@ Decode: the derivation's state is `ν_A`; every step is `rewrite(ν_A, K) → ν
 >                                    → replaced by [n]
 > ```
 >
-> The terminals are inert as evidence: an Unknown (`n:[]`) has no second side; an Identity (`n:[n]`) replaces a node by itself. Every other held kline is a correspondence. K's own fit fixes the **mode**: a canon exacts granularity — forward is expand, reverse is contract, both σ(ν_A)-preserving; a covered misfit moves content by its gap and excess — forward sheds K's gap and adopts K's excess, reverse the mirror; an uncovered misfit is a traverse — disjoint atoms swap, either direction. **Direction is not a property of the kline**: a correspondence is read forward from its signature, reverse from its witness; only the side the derivation stands on occurs, so arrival orients the licence — the same kline read from the other side is the mirror derivation's licence. An edge is **ratified** or unratified — a tier relation over `M` (§10, §13). No rule of this section reads it; measurement does (§11).
+> The terminals are inert as evidence: an Unknown (`n:[]`) has no second side; an Identity (`n:[n]`) replaces a node by itself. Every other held kline is a correspondence. K's own fit fixes the **mode**: a canon exacts granularity — forward is expand, reverse is contract, both σ(ν_A)-preserving; a covered misfit moves content by its gap and excess — forward sheds K's gap and adopts K's excess, reverse the mirror; an uncovered misfit is a traverse — disjoint atoms swap, either direction. **Direction is not a property of the kline**: a correspondence is read forward from its signature, reverse from its witness; only the side the derivation stands on occurs, so arrival orients the licence — the same kline read from the other side is the mirror derivation's licence. An edge is **ratified** or unratified — a tier relation over `M` (§10, §14). No rule of this section reads it; measurement does (§11).
 >
 > Canon evidence must be well-founded (`n ∉ ν_K`). The clause is exactly strong enough: a canon's nodes are atom-subsets of its head (`σ(ν_K) = n`), so an expansion cycle forces atom-equality at every step — a canon containing its own signature. Short of that, licensed expansion terminates and depth is well-defined (§11). Identities and self-containing canons are the two inert witness classes.
 >
 > A replace may be _exhibited_ as an interleaving of removals and insertions — a presentational device with no algebraic status: the licence is the correspondence, never the band alone. The interleaving never empties `ν_A` — both sides of a correspondence carry content. Node order and insertion position are retained for witness purposes and for later contract contiguity — strategy degrees of freedom, like ordering generally (Def 12).
 
-The quote's mode sentence, tabulated — what the replace *does to content*, by the evidence's shape:
+The quote's mode sentence, tabulated — what the replace _does to content_, by the evidence's shape:
 
 | K's own fit           | forward (`n → ν_K`)                    | reverse (`ν_K → [n]`)                |
 | --------------------- | -------------------------------------- | ------------------------------------ |
@@ -303,7 +303,7 @@ The quote's mode sentence, tabulated — what the replace *does to content*, by 
 | covered misfit (S2)   | sheds K's gap, adopts K's excess       | the mirror: adopts gap, sheds excess |
 | uncovered misfit (S3) | **traverse** — disjoint atoms swap     | traverse, the other way              |
 
-Examples. Canon `abc:[a,b,c]`: replacing node `abc` with `[a,b,c]` changes nothing in content — pure granularity. Denotation `dh:[h]` (gap `d`): forward on it, `dh → [h]`, drops exactly the atom `d` — the gap is *what drops*. Connotation `w:[o]` (disjoint): forward swaps `w` out, `o` in. On well-foundedness: expand replaces a node with strictly finer content built from the same atoms, so the only way an expansion chain can fail to terminate is a witness containing its own head — exactly what `n ∉ ν_K` excludes; with it, every expansion bottoms out and "depth" is well-defined (§11).
+Examples. Canon `abc:[a,b,c]`: replacing node `abc` with `[a,b,c]` changes nothing in content — pure granularity. Denotation `dh:[h]` (gap `d`): forward on it, `dh → [h]`, drops exactly the atom `d` — the gap is _what drops_. Connotation `w:[o]` (disjoint): forward swaps `w` out, `o` in. On well-foundedness: expand replaces a node with strictly finer content built from the same atoms, so the only way an expansion chain can fail to terminate is a witness containing its own head — exactly what `n ∉ ν_K` excludes; with it, every expansion bottoms out and "depth" is well-defined (§11).
 
 > **Definition 14 (licensing).** The relationship scopes; the evidence licenses. The band says where work remains; only a correspondence kline (Def 13) says what may move:
 >
@@ -314,7 +314,7 @@ Examples. Canon `abc:[a,b,c]`: replacing node `abc` with `[a,b,c]` changes nothi
 > | S3 — Connotation, No-fit | replace — every node sits wholly in the misfit |
 > | Unknown — S4             | none — stuck                                   |
 >
-> **Scoping clause.** A replace is targeting-licensed iff it strictly decreases the misfit mass `|σ(ν_A) Δ σ(ν_B)|` — the node replaced carries a gap atom, or the witness carries excess atoms, or both. Band-blind alignment is thereby unlicensable: a replace that touches only shared content, or grows the misfit, is not a targeting move however well evidenced. Canon-mode replaces (expand, contract) are witnessed moves — σ(ν_A)-preserving, band-preserving, licensed by `M` alone, needing nothing from this table. At S3 no node is covered, so replaces there move whole content and the route to overlap runs through the progressive path (§10). The S4 row is entered through A, not B: with no goal there is nothing to scope against — the ask at entry; with a goal and no licensed replace, the misfit _asks_ — nothing in `M` connects it (§8).
+> **Scoping clause.** A replace is targeting-licensed iff it strictly decreases the misfit mass `|σ(ν_A) Δ σ(ν_B)|` — the node replaced carries a gap atom, or the witness carries excess atoms, or both. Band-blind alignment is thereby unlicensable: a replace that touches only shared content, or grows the misfit, is not a targeting move however well evidenced. Canon-mode replaces (expand, contract) are witnessed moves — σ(ν*A)-preserving, band-preserving, licensed by `M` alone, needing nothing from this table. At S3 no node is covered, so replaces there move whole content and the route to overlap runs through the progressive path (§10). The S4 row is entered through A, not B: with no goal there is nothing to scope against — the ask at entry; with a goal and no licensed replace, the misfit \_asks* — nothing in `M` connects it (§8).
 
 Decode: misfit mass is the number of atoms on exactly one side (§0's reading practice). The scoping clause turns "progress" into a strictly-decreasing counter that only targeting moves may decrement — which is precisely what T1's bound (§8) counts down.
 
@@ -325,7 +325,7 @@ Decode: misfit mass is the number of atoms on exactly one side (§0's reading pr
 Framed as the two licences:
 
 - **Witnessed** (canon-mode: expand/contract). Preserves `σ(ν_A)` exactly — granularity changes at constant content, band unchanged. Licensed by `M` alone; blind to any goal.
-- **Evidenced targeting** (denotation/connotation-mode). Moves `σ(ν_A)` toward `σ(ν_B)`. Licensed by a held correspondence *and* scoped by the misfit region (Def 14's clause: strictly decrease the misfit mass).
+- **Evidenced targeting** (denotation/connotation-mode). Moves `σ(ν_A)` toward `σ(ν_B)`. Licensed by a held correspondence _and_ scoped by the misfit region (Def 14's clause: strictly decrease the misfit mass).
 
 Different invariant (content preserved vs content moved), different source (memory alone vs memory + goal).
 
@@ -335,7 +335,7 @@ Different invariant (content preserved vs content moved), different source (memo
 
 > Read model-theoretically: canon evidence generates a congruence on sequences — expand and contract its two directions — and the full evidence set generates a **correspondence graph**: held klines as edges between a signature and its witness, traversable in either direction from wherever the derivation has arrived. A derivation is a path in that graph, relativised to what is held. The path is the semantics: done by blind alignment is unreachable by construction.
 
-Decode of the model-theoretic paragraph: memory is a graph walked in both directions — values are vertices, klines are edges. Canon edges join sequences of *identical* content ("congruence" = expand and contract are inverses, making those sequences interchangeable); misfit edges join *different* content (shed/adopt/traverse). A derivation is a path in this graph, and "done by blind alignment is unreachable by construction" because witnessed edges never change content — no amount of them closes a content gap.
+Decode of the model-theoretic paragraph: memory is a graph walked in both directions — values are vertices, klines are edges. Canon edges join sequences of _identical_ content ("congruence" = expand and contract are inverses, making those sequences interchangeable); misfit edges join _different_ content (shed/adopt/traverse). A derivation is a path in this graph, and "done by blind alignment is unreachable by construction" because witnessed edges never change content — no amount of them closes a content gap.
 
 > Terminals are **targeting-closed, not rule-closed**: an Identity relationship is done, yet the identity kline's own node may still expand under a held well-founded witness (`s:[s]` → `s:[a,b]`) — the claim made explicit, the identity turned canon. There is no retain move; targeting-closure is the S1 row of the licensing table, not a rule.
 
@@ -347,7 +347,7 @@ Decode of the model-theoretic paragraph: memory is a graph walked in both direct
 > - **Stuck** — not done, and no licensed targeting move. Witnessed moves never end a derivation: they preserve the band and cannot reach done; their only use is granularity exposure, and spending them is strategy (the witnessed-run bound, T2). Stuck has two reachable conditions, both the ask: **no goal** — nothing to scope against, the ask at entry (candidate selection is §10); or **no connection** — a goal is held, the misfit region is non-empty, and no held correspondence licenses a replace into it, nor does any slot walk arrive (Def 17): nothing in `M` connects A's misfit to the goal's content, directly or through the correspondence graph. Relative non-existence (§9), reachable at entry and mid-run alike — the honest outcome when the semantic bridge is missing. Replace cannot strand a derivation: both sides of a correspondence carry content, so `ν_A` never empties mid-run.
 > - **Abandoned** — not an ending the rules produce: strategy halts or re-targets a run mid-derivation (§10), e.g. when graded effort falls (§11).
 >
-> Licences are permissive in one sense: a correspondence may itself be an ungrounded claim — S3 evidence is a promise, not a fact — and the derivation follows it faithfully. Weighing promises is protocol (ratification, §10, §13), not the rule system's.
+> Licences are permissive in one sense: a correspondence may itself be an ungrounded claim — S3 evidence is a promise, not a fact — and the derivation follows it faithfully. Weighing promises is protocol (ratification, §10, §14), not the rule system's.
 
 > **Termination.** Two statements:
 >
@@ -364,13 +364,13 @@ T1's `Δ₀` is decoded in §0's reading practice; T2's cycle example (`bc` ⇄ 
 
 ## 9. What a derivation proves
 
-> Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal to held content, with the final node sequence as the witness — a constructive existence proof **within and through what is held**: every step of the witness was licensed by a correspondence, so the path itself is carried as evidence. The solver reading is §§6–9 restated: each held kline is a constraint, each correspondence an edge, each licensed replace a resolution step along one, S1 a constructive existence proof, and a stuck state relative non-existence — nothing in `M` connects. Done does **not** prove A's own head-claim, nor the truth of the correspondences followed — S3 evidence is a promise; weighing promises is protocol and strategy (§10, §13).
+> Done proves `σ(ν_A) = σ(ν_B)`: the queued claim's content is (value-)equal to held content, with the final node sequence as the witness — a constructive existence proof **within and through what is held**: every step of the witness was licensed by a correspondence, so the path itself is carried as evidence. The solver reading is §§6–9 restated: each held kline is a constraint, each correspondence an edge, each licensed replace a resolution step along one, S1 a constructive existence proof, and a stuck state relative non-existence — nothing in `M` connects. Done does **not** prove A's own head-claim, nor the truth of the correspondences followed — S3 evidence is a promise; weighing promises is protocol and strategy (§10, §14).
 
 > **Feedback.** `fit(C(Aᵢ, B))` is graded at each state and its rate of change tracked over steps — telling Kalvin whether its effort is increasingly or decreasingly significant. These are strategy-level metrics: they steer the derivation; they are not part of the rule set.
 
 ### The worked example: `(what did Mary have) WDMH => MHALL`
 
-*(ks2 §9's worked micro-example, expanded step by step.)* Atoms `w, d, m, h, a, l` (word bits). Role values such as `o` live outside them, disjoint. Held in memory:
+_(ks2 §9's worked micro-example, expanded step by step.)_ Atoms `w, d, m, h, a, l` (word bits). Role values such as `o` live outside them, disjoint. Held in memory:
 
 ```text
 mhall:[m,h,a,l,l]     canon — the rhyme (the answer)
@@ -397,7 +397,7 @@ Two evidenced replaces finish it:
 | 1 — verb   | `dh ⇉ [h]` forward    | denotation `dh:[h]` (shed mode: `d` is its gap)                       | `[w, h, m]`       | `whm`    | 3            |
 | 2 — object | `w ⇉ [a,l,l]` forward | composed correspondence `w:[a,l,l]` (traverse: `{w}` out, `{a,l}` in) | `[h, m, a, l, l]` | `mhall`  | 0 — **done** |
 
-No single held kline connects `w` to `a,l`, so step 2's licence had to be *built* first, by a slot walk (Def 17): a side derivation queued as `w:[w]`, run with no goal, travelling the correspondence graph by occurrence alone:
+No single held kline connects `w` to `a,l`, so step 2's licence had to be _built_ first, by a slot walk (Def 17): a side derivation queued as `w:[w]`, run with no goal, travelling the correspondence graph by occurrence alone:
 
 ```text
 w:[w] ⊢ w:[o]        forward on w:[o]        (traverse)
@@ -407,11 +407,11 @@ w:[w] ⊢ w:[o]        forward on w:[o]        (traverse)
 
 The arrival state `w:[a,l,l]` overlaps the goal's excess `{a,l}` — that is the walk's ending — and it is absorbed as the **composed correspondence**, evidence the main line then consumes. The subject `m` never moved: `m:[m]` is identity, inert; Mary carries over untouched.
 
-End state `wdmh:[h,m,a,l,l]`: relationship Canon — done, in two targeting replaces under a bound of four, every step licensed by held or composed evidence. The witness carries the chain — that is Kalvin *knowing* what Mary had, not copying it.
+End state `wdmh:[h,m,a,l,l]`: relationship Canon — done, in two targeting replaces under a bound of four, every step licensed by held or composed evidence. The witness carries the chain — that is Kalvin _knowing_ what Mary had, not copying it.
 
-**The counterfactuals.** Had the connotations not been held, no replace reaches the object gap: stuck — the misfit *asks*, and ungrounded proposals follow under strategy control. Had `mhall` itself not been held, there is no goal to check done against: the ask from the other side.
+**The counterfactuals.** Had the connotations not been held, no replace reaches the object gap: stuck — the misfit _asks_, and ungrounded proposals follow under strategy control. Had `mhall` itself not been held, there is no goal to check done against: the ask from the other side.
 
-**The price.** The end state's *own* fit is still Under+over (gap `{w,d}`): the claim is answered, not grounded — grounding is protocol (§13), where the traversed pair `w:[o]`, `all:[o]` countersigns into a standing one-hop licence. Priced (§11): the slot walk crossed two unratified edges, and the consuming replace crosses one more, so `a,l,l` enter at acquisition depth 3:
+**The price.** The end state's _own_ fit is still Under+over (gap `{w,d}`): the claim is answered, not grounded — grounding is protocol (§14), where the traversed pair `w:[o]`, `all:[o]` countersigns into a standing one-hop licence. Priced (§11): the slot walk crossed two unratified edges, and the consuming replace crosses one more, so `a,l,l` enter at acquisition depth 3:
 
 ```text
 h, m entered at depth 0 (held material); a, l, l at depth 3 (two
@@ -420,7 +420,7 @@ unratified walk edges + the consuming replace):
 done grade: J = 1, so γ = δ^(9/5) < 1  # known through promises
 ```
 
-The consuming replace *dips* γ — J rises from 1/2 to 1 just as `Ĥ` bites (with δ = ½: γ goes 1/2 → ≈ 0.29): the price signal. After the countersign, a re-derivation through the standing licence crosses only ratified edges, costs nothing, and γ reaches 1: consolidated. Read from the answer side (`MHALL => WDMH`), the same correspondences license the mirror derivation — the klines are direction-free; arrival orients them.
+The consuming replace _dips_ γ — J rises from 1/2 to 1 just as `Ĥ` bites (with δ = ½: γ goes 1/2 → ≈ 0.29): the price signal. After the countersign, a re-derivation through the standing licence crosses only ratified edges, costs nothing, and γ reaches 1: consolidated. Read from the answer side (`MHALL => WDMH`), the same correspondences license the mirror derivation — the klines are direction-free; arrival orients them.
 
 ## 10. Strategy — the cogitation loop
 
@@ -437,13 +437,13 @@ The consuming replace *dips* γ — J rises from 1/2 to 1 just as `Ĥ` bites (wi
 
 Each phase is strategy. The rule system of §§6–9 constrains what any of it may do, never what it must.
 
-> **Definition 16 (selection).** Selection chooses the next hop, never the final goal. A held kline `K = t:ν_K` is **selectable** for queued `A` when `t ∈ ν_A` — K's signature occurs as a node of A: A already references what K is. That clause is the forward half of Def 13's licence: to select K is to be licensed to replace its signature by its witness. The guard compounds into a ratchet: each replace's arrival puts new nodes into `ν_A`, making their klines selectable next — the path is the guard, not the point. The derivation's goal `B` is never selected: it is declared (KScript `=>`, §13) or supplied by reentry, it scopes the misfit region (Def 14), and it is _checked_ at done. S3 connotations are selectable as evidence, and an Unknown has no second side to offer; weighing claims is protocol (§13). The two-overlap caveat stands: **content overlap** `σ(ν_A) ∧ σ(ν_B) ≠ ∅` — exactly what relationship-S2 asserts — and **signature-in-node** `t ∈ ν_A` — the selection clause, which is what lets correspondence propagate into A's nodes — imply neither the other. `A = abc:[a]` against `B = x:[c,a]` stands in an Overfit relationship (S2) while `x` neither occurs in nor overlaps A's nodes; `B = x:[y]` against `A = abc:[x]` occurs in A's nodes yet yields S3. Selection requires the second; the band routes by the first.
+> **Definition 16 (selection).** Selection chooses the next hop, never the final goal. A held kline `K = t:ν_K` is **selectable** for queued `A` when `t ∈ ν_A` — K's signature occurs as a node of A: A already references what K is. That clause is the forward half of Def 13's licence: to select K is to be licensed to replace its signature by its witness. The guard compounds into a ratchet: each replace's arrival puts new nodes into `ν_A`, making their klines selectable next — the path is the guard, not the point. The derivation's goal `B` is never selected: it is declared (KScript `=>`, §13) or supplied by reentry, it scopes the misfit region (Def 14), and it is _checked_ at done. S3 connotations are selectable as evidence, and an Unknown has no second side to offer; weighing claims is protocol (§14). The two-overlap caveat stands: **content overlap** `σ(ν_A) ∧ σ(ν_B) ≠ ∅` — exactly what relationship-S2 asserts — and **signature-in-node** `t ∈ ν_A` — the selection clause, which is what lets correspondence propagate into A's nodes — imply neither the other. `A = abc:[a]` against `B = x:[c,a]` stands in an Overfit relationship (S2) while `x` neither occurs in nor overlaps A's nodes; `B = x:[y]` against `A = abc:[x]` occurs in A's nodes yet yields S3. Selection requires the second; the band routes by the first.
 
-Decode: the selection clause is a guard, not a heuristic — "K's head occurs as a node of A" is the same occurrence Def 13's forward replace matches, so selecting is being licensed. The ratchet: each replace's arrivals become next-selectable nodes, so reachability grows as the run proceeds. Note the two-overlap caveat's punchline in programmer terms: *content overlap* (what relationship-S2 asserts) and *signature-in-node* (the selection clause) are independent conditions — selection requires the second, the band routes by the first.
+Decode: the selection clause is a guard, not a heuristic — "K's head occurs as a node of A" is the same occurrence Def 13's forward replace matches, so selecting is being licensed. The ratchet: each replace's arrivals become next-selectable nodes, so reachability grows as the run proceeds. Note the two-overlap caveat's punchline in programmer terms: _content overlap_ (what relationship-S2 asserts) and _signature-in-node_ (the selection clause) are independent conditions — selection requires the second, the band routes by the first.
 
-> **Definition 17 (slot derivation).** A misfit decomposes per node: each node of `ν_A` carrying a gap atom is a **slot**, seeking the goal's excess `e = σ(ν_B) ∖ σ(ν_A)`. A slot with a licensed replace fires it (Def 13, Def 14). A slot with none — the misfit *asks* at that node — may be **walked**: queue `n:[n]` and derive `⊢_M` with no goal. The walk's licence is occurrence: any held correspondence, either side occurring in the walk's nodes, replaces it (Def 16's clause is the forward half). The scoping clause does not apply — the walk travels the correspondence graph, whose role nodes are orthogonal to both contents. A goal-less derivation has no done; its endings are **arrival** — `σ(ν) ∧ e ≠ ∅`, canon-mode replaces then setting granularity freely — or **stuck** — no unvisited correspondence occurs: nothing in `M` bridges the node to the excess, the ask localised to one slot. Each hop writes its output to STM, and the walk's end state is absorbed as the **composed correspondence**: signature `n`, witness the arrival, acquisition depth the edges crossed (§11). The main line replaces `n ⇉ ν_arrived` on it — evidence by Def 13, targeting-licensed because the arrival's content is excess and the misfit mass strictly decreases. The walk is how a missing licence is built: no single kline connects `w` to `a,l`, two connotations through `o` do, and the absorbed `w:[a,l,l]` is that connection, earned.
+> **Definition 17 (slot derivation).** A misfit decomposes per node: each node of `ν_A` carrying a gap atom is a **slot**, seeking the goal's excess `e = σ(ν_B) ∖ σ(ν_A)`. A slot with a licensed replace fires it (Def 13, Def 14). A slot with none — the misfit _asks_ at that node — may be **walked**: queue `n:[n]` and derive `⊢_M` with no goal. The walk's licence is occurrence: any held correspondence, either side occurring in the walk's nodes, replaces it (Def 16's clause is the forward half). The scoping clause does not apply — the walk travels the correspondence graph, whose role nodes are orthogonal to both contents. A goal-less derivation has no done; its endings are **arrival** — `σ(ν) ∧ e ≠ ∅`, canon-mode replaces then setting granularity freely — or **stuck** — no unvisited correspondence occurs: nothing in `M` bridges the node to the excess, the ask localised to one slot. Each hop writes its output to STM, and the walk's end state is absorbed as the **composed correspondence**: signature `n`, witness the arrival, acquisition depth the edges crossed (§11). The main line replaces `n ⇉ ν_arrived` on it — evidence by Def 13, targeting-licensed because the arrival's content is excess and the misfit mass strictly decreases. The walk is how a missing licence is built: no single kline connects `w` to `a,l`, two connotations through `o` do, and the absorbed `w:[a,l,l]` is that connection, earned.
 
-Decode: a walk is a goal-less side derivation whose only licence is occurrence — any held kline whose either side occurs in the walk's nodes can fire. It ends at *arrival* (content touching the goal's excess — the `w:[w] ⊢ … ⊢ w:[a,l,l]` chain in §9's worked example) or *stuck*, and its arrival is absorbed as the composed correspondence the main line consumes.
+Decode: a walk is a goal-less side derivation whose only licence is occurrence — any held kline whose either side occurs in the walk's nodes can fire. It ends at _arrival_ (content touching the goal's excess — the `w:[w] ⊢ … ⊢ w:[a,l,l]` chain in §9's worked example) or _stuck_, and its arrival is absorbed as the composed correspondence the main line consumes.
 
 > **Progressive path.** Def 17's walk is the evidence-builder: each hop's output is written to STM — inserted nodes as single-node misfits, connotation witnesses — and the absorbed end state is the composed correspondence the main line consumes (the worked example, §9). Evidence is literally the work undertaken by the progressive path; hops matter because `M` grows between them. When the relationship reaches S2, ordinary evidenced targeting takes over.
 
@@ -480,9 +480,9 @@ Decode: `D̄` is how expanded A's content is — `[abc]` → depth 0, `[a,b,c]` 
 > - **Band-consistency.** `γ` is 0 exactly at content-disjointness and maximal only at value-equality. Both ends are `J`'s; the depths only scale down.
 > - **Granularity-invariance.** Witnessed moves move `γ` only through `D̄`, never through recomposition: atom-weighted composition is blind to how A's content is sliced into slots. An unweighted per-slot mean violates this — expansion alone can raise it at constant content and constant depth.
 > - **Granularity-monotonicity.** Expand strictly increases `D̄`, so strictly decreases `γ`; contract strictly decreases `D̄`, so increases `γ`. This is what makes gratuitous expansion detectable.
-> - **Provenance-monotonicity.** Unratified acquisition strictly increases `Ĥ`; nothing in a derivation lowers it — only ratification (protocol, §13) or re-derivation through ratified licences does. This is what makes promise-stacking detectable, the provenance counterpart of gratuitous expansion. Consuming unratified evidence can lower `γ` even as `J` rises — the step that wins the answer dips — the price signal steering strategy toward ratified standing licences.
+> - **Provenance-monotonicity.** Unratified acquisition strictly increases `Ĥ`; nothing in a derivation lowers it — only ratification (protocol, §14) or re-derivation through ratified licences does. This is what makes promise-stacking detectable, the provenance counterpart of gratuitous expansion. Consuming unratified evidence can lower `γ` even as `J` rises — the step that wins the answer dips — the price signal steering strategy toward ratified standing licences.
 
-The last clause in numbers (§9's worked example, δ = ½): J rises 1/2 → 1 while γ falls 1/2 → ≈ 0.29 — the answer is won and the score *drops*: the price signal.
+The last clause in numbers (§9's worked example, δ = ½): J rises 1/2 → 1 while γ falls 1/2 → ≈ 0.29 — the answer is won and the score _drops_: the price signal.
 
 > Both monotonicities are strategy invariants, not theorems about arbitrary derivations (T2): a mixed derivation may wander against the gradient, and the strategy declines to.
 
@@ -494,9 +494,37 @@ The last clause in numbers (§9's worked example, δ = ½): J rises 1/2 → 1 wh
 
 > _Significance_ is the value; _rationalisation_ is the process that produces and consumes it. (Not: "significance is the value Kalvin directly equates to rationalisation".) Understanding, informally, is high significance attained and held.
 
-## 13. What this document does not cover
+## 13. KScript surface syntax
+
+**In programmer terms:** KScript is the input language — each scripted line compiles to a kline (or a pair). The table is the grammar; the classifier of §4 then decides what the build actually _is_.
+
+> The written tokens and the structure each produces. Absorbed from `kalvin-symbolic.md` §5, which this supersedes. Surface syntax is presentation; it does not appear in the formal tables of §§1–12.
+>
+> | Token            | Structure produced          | Band claim once solved |
+> | ---------------- | --------------------------- | ---------------------- |
+> | `a => b c d`     | canon candidate             | S1 (canon) / open S2   |
+> | `a == b`         | reciprocal connotation pair | S1 on ratification     |
+> | `a > b`, `a < b` | connotation (`a:[b]`)       | S3                     |
+> | `a = b`          | denotation (`ab:[b]`)       | S2                     |
+> | `a` (bare)       | unknown (`a:[]`)            | S4 — the ask           |
+> | `a = a`, `a > a` | identity (`a:[a]`)          | S1                     |
+> | ask-annotated    | any signature, ask-marked   | S4                     |
+>
+> A token declares an _intent_; the fit classification of the produced kline may or may not satisfy the declared intent (`=>` declares composition and supplies the goal for the done-check — it is not a licence; licences are correspondence klines, Def 13; the result is a Canon only if Def 10 case 3 fires; a bare signature is the ask — stuck at S4). The ask is structural (§4): the Unknown shape is the ask's shape, and no atom, mark, or decree is involved — an ask annotation is surface presentation of it, not an algebraic object.
+
+Decode, row by row (each build run through §4's classifier):
+
+- `a => b c d` → builds `a:[b,c,d]` — head `a`, nodes `[b,c,d]`. "Canon candidate" because the script cannot know the values: Def 10 decides — Canon (case 3) if the head is exactly what the nodes compose to; Underfit/Overfit/Under+over (S2) otherwise. `=>` also supplies the goal for the done-check (§9's `WDMH => MHALL`).
+- `a == b` → builds both `a:[b]` and `b:[a]` — a reciprocal connotation pair, S3 each, until ratification promotes them to a standing one-hop licence (§14).
+- `a > b` → builds `a:[b]` — single uncovered node → Connotation (case 4). `a < b` is the same shape with the identifier reversed: builds `b:[a]`.
+- `a = b` → builds `ab:[b]` — note the _compound head_: the signature is the union of both operands. Covered node, gap `a` → Denotation (case 6, single-node Underfit).
+- bare `a` → builds `a:[]` — nothing held: Unknown (case 1), the ask.
+- `a = a`, `a > a` → self-forms collapse to `a:[a]` — Identity (case 2).
+- ask-annotated → any signature can be marked the ask at the surface; S4. The mark is presentation only — structurally the ask is the Unknown shape, no algebraic atom involved.
+
+## 14. What this document does not cover
 
 > - **Tier mechanics** — what writes STM, what promotes LTM, how Frame attention shifts: relations over `M` defined in CONTEXT.md and consumed by selection (Def 16).
 > - **The multi-agent loop** — trainer, trainee, supervisor; escalation when cogitation yields no reply. Protocol above the system.
-> - **KScript tokens** — surface syntax declaring intent; `fit` may or may not satisfy the declared intent (`=>` declares composition and supplies the goal for the done-check — it is not a licence; licences are correspondence klines, Def 13; the result is a Canon only if Def 10 case 3 fires; a bare signature is the ask — stuck at S4). See `kalvin-symbolic.md` §5.
+> - **KScript compilation mechanics** — MTS expansion, word binding, annotations: CONTEXT.md's. The tokens themselves, and the intent principle, are §13.
 > - **Countersigning** — a protocol commitment (reciprocal connotation pairs held as ratified); the algebra provides the shape, the protocol the commitment. Ratifying a traversed pair promotes it to a standing one-hop licence — memory compounds its evidence.

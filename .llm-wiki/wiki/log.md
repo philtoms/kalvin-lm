@@ -2,6 +2,8 @@
 
 ## 2026-09-12
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen","title":"ks2 §14 absorbs KScript syntax; ks2 now sole normative document"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul","title":"kalvin-symbolic.md updated in place to ks2 semantics and rules"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide","title":"ks3 verbatim-definitions restructure reproduced after accidental reset"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks","title":"docs/ks3.md written as programmer-friendly restatement of ks2"}
 

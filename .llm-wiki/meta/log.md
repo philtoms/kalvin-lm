@@ -359,3 +359,9 @@
 ## [2026-09-12T06:43:51.234Z] observe
 - slug: "obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide", title: "ks3 verbatim-definitions restructure reproduced after accidental reset", relevance: "medium"
 
+## [2026-09-12T07:55:40.550Z] observe
+- slug: "obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul", title: "kalvin-symbolic.md updated in place to ks2 semantics and rules", relevance: "high"
+
+## [2026-09-12T09:50:36.616Z] observe
+- slug: "obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen", title: "ks2 §14 absorbs KScript syntax; ks2 now sole normative document", relevance: "high"
+

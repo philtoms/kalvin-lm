@@ -107,6 +107,8 @@
 - [Observation: γ resolved: acquisition depth Ĥ added, ratified edges free, one knob](obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno.md)
 - [Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed](obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose.md)
 - [Observation: docs/ks3.md written as programmer-friendly restatement of ks2](obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks.md)
+- [Observation: kalvin-symbolic.md updated in place to ks2 semantics and rules](obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul.md)
+- [Observation: ks2 §14 absorbs KScript syntax; ks2 now sole normative document](obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen.md)
 - [Observation: ks3 verbatim-definitions restructure reproduced after accidental reset](obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)
