@@ -376,8 +376,8 @@ def sig_level(kline: KLine, signifier: KSignifier) -> str:
     compiled the shape:
 
     - S1 — the signature covers its nodes exactly (canon, identity).
-    - S2 — at least one node is covered by the signature (underfit,
-      overfit, under+over, denotation).
+    - S2 — at least one node is covered by the signature (shares a word
+      bit — Def 8 overlap, not containment).
     - S3 — no node is covered (connotation, misfit).
     - S4 — no nodes (unknown).
     """
@@ -386,7 +386,7 @@ def sig_level(kline: KLine, signifier: KSignifier) -> str:
         return "S4"
     if kline.signature == signifier.signature_of(nodes):
         return "S1"
-    return "S2" if any(signifier.node_in(n, kline.signature) for n in nodes) else "S3"
+    return "S2" if any(signifier.signifies(n, kline.signature) for n in nodes) else "S3"
 
 
 def kline_display(kline: KLine, tokenizer: KTokenizer, signifier: KSignifier) -> str:
