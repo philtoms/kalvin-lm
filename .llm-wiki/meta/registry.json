@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-12T05:02:19.942Z",
+  "last_updated": "2026-09-12T06:43:51.285Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2196,6 +2196,22 @@
       "relevance": "medium",
       "observed_at": "2026-09-12T05:02:19.884Z",
       "source_context": "Simplifying docs/ks2.md for non-mathematical programmers",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide": {
+      "type": "source",
+      "title": "Observation: ks3 verbatim-definitions restructure reproduced after accidental reset",
+      "tags": [
+        "ks2",
+        "ks3",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide",
+      "relevance": "medium",
+      "observed_at": "2026-09-12T06:43:51.231Z",
+      "source_context": "Reproducing lost ks3 restructure before commit",
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },

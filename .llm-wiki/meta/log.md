@@ -356,3 +356,6 @@
 ## [2026-09-12T05:02:19.887Z] observe
 - slug: "obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks", title: "docs/ks3.md written as programmer-friendly restatement of ks2", relevance: "medium"
 
+## [2026-09-12T06:43:51.234Z] observe
+- slug: "obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide", title: "ks3 verbatim-definitions restructure reproduced after accidental reset", relevance: "medium"
+

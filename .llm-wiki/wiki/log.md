@@ -2,6 +2,7 @@
 
 ## 2026-09-12
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide","title":"ks3 verbatim-definitions restructure reproduced after accidental reset"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks","title":"docs/ks3.md written as programmer-friendly restatement of ks2"}
 
 ## 2026-09-11
