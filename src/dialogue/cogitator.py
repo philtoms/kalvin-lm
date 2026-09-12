@@ -49,7 +49,7 @@ class Cogitator:
         # the same structural rule, no mark read.
         query = self.state.find_canon(entry.signature) or entry
         q_set = self.reduce(query)
-        for candidate in self._candidates(entry.signature):
+        for candidate in self._selectable(entry):
             c_set = self.reduce(candidate)
             underfit = list(q_set - c_set)
             overfit = list(c_set - q_set)
@@ -310,7 +310,21 @@ class Cogitator:
                 break
         return paths
 
+    def _selectable(self, entry: KLine) -> Iterator[KLine]:
+        """Held non-terminal klines whose signature occurs as a node of
+        ``entry`` — Def 16: selection is occurrence, not content overlap;
+        terminals (unknowns, identities) offer no second side."""
+        for kline in self._state.where(
+            lambda k: k.signature != entry.signature
+            and not is_terminal(k)
+            and k.signature in entry.nodes
+        ):
+            yield kline
+
     def _candidates(self, sig: KSig) -> Iterator[KLine]:
+        """Held klines whose signature overlaps ``sig`` — the search index
+        for a reverse-occurrence licence (reduce's contraction); the exact
+        licence is witness membership, checked at the use site."""
         signifier = self._state.signifier
 
         for kline in self._state.where(
