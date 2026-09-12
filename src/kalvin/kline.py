@@ -277,13 +277,24 @@ def is_identity(kline: KLine) -> bool:
     return kline.nodes == [kline.signature]
 
 
+def is_exact(kline: KLine, signifier: KSignifier) -> bool:
+    """s = signature_of(ν) over the atom space (ks2 Def 6) — equivalent
+    to gap = ∅ and excess = ∅ (Def 9). BPE packing bits are not atoms."""
+    nodes_sig = signifier.signature_of(kline.nodes)
+    return (
+        signifier.residual(kline.signature, nodes_sig) == 0
+        and signifier.residual(nodes_sig, kline.signature) == 0
+    )
+
+
 def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a canon.
 
     A kline is a canon when it is a non-terminal whose signature equals
-    ``signature_of(nodes)``. A terminal is never a canon.
+    ``signature_of(nodes)`` over the atom space. A terminal is never a
+    canon.
     """
-    return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
+    return not is_terminal(kline) and is_exact(kline, signifier)
 
 
 def is_canon_evidence(kline: KLine, signifier: KSignifier) -> bool:
@@ -391,7 +402,7 @@ def sig_level(kline: KLine, signifier: KSignifier) -> str:
     nodes = kline.nodes
     if not nodes:
         return "S4"
-    if kline.signature == signifier.signature_of(nodes):
+    if is_exact(kline, signifier):
         return "S1"
     return "S2" if any(signifier.signifies(n, kline.signature) for n in nodes) else "S3"
 
