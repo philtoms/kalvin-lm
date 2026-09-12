@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-12T10:38:07.786Z",
+  "last_updated": "2026-09-12T10:49:50.385Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -591,6 +591,15 @@
       "slug": "identity-priming-and-knowledge-restatement",
       "created": "2026-08-27",
       "updated": "2026-08-27"
+    },
+    "sources/ks2-conformance-series-landing": {
+      "type": "source",
+      "title": "ks2 conformance series: 6 commits to the engine entry path",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "ks2-conformance-series-landing",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
     },
     "sources/ks2-third-pass-seven-gap-resolutions": {
       "type": "source",
@@ -2214,6 +2223,24 @@
       "relevance": "high",
       "observed_at": "2026-09-12T10:15:19.444Z",
       "source_context": "Refining the ask-bit deviation from the ks2 conformance review",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative": {
+      "type": "source",
+      "title": "Observation: Doc review verdict: ks3 clearest for agents, ks2 authoritative",
+      "tags": [
+        "docs",
+        "formalisation",
+        "ks2",
+        "ks3",
+        "review"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative",
+      "relevance": "medium",
+      "observed_at": "2026-09-12T10:42:32.852Z",
+      "source_context": "Reviewing the three formal documents in docs/ for agentic clarity",
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },

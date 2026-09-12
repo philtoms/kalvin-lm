@@ -2,6 +2,8 @@
 
 ## 2026-09-12
 
+- **retro**: {"category":"architecture","slug":"ks2-conformance-series-landing","title":"ks2 conformance series: 6 commits to the engine entry path"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative","title":"Doc review verdict: ks3 clearest for agents, ks2 authoritative"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal","title":"Engine ask-atom branching removed; structural routing + refusal guard landed"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng","title":"Ask atom settled: ordinary atom, externally allocated; only engine branching deviates"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-","title":"Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap"}

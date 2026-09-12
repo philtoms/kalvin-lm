@@ -88,6 +88,7 @@
 - [[sources/coverage-primary-fit-taxonomy]] — Coverage-primary split for fit classifiers over set-algebra values *(created: 2026-09-10)*
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
+- [[sources/ks2-conformance-series-landing]] — ks2 conformance series: 6 commits to the engine entry path *(created: 2026-09-12)*
 - [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
 - [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
@@ -183,6 +184,7 @@
 - [[sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose]] — Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed *(created: 2026-09-11)*
 - [[sources/obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng]] — Observation: Ask atom settled: ordinary atom, externally allocated; only engine branching deviates *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-]] — Observation: Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative]] — Observation: Doc review verdict: ks3 clearest for agents, ks2 authoritative *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks]] — Observation: docs/ks3.md written as programmer-friendly restatement of ks2 *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal]] — Observation: Engine ask-atom branching removed; structural routing + refusal guard landed *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul]] — Observation: kalvin-symbolic.md updated in place to ks2 semantics and rules *(created: 2026-09-12)*
@@ -197,4 +199,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-12T10:38:07.786Z* | *Total pages: 185*
+*Last updated: 2026-09-12T10:49:50.385Z* | *Total pages: 187*

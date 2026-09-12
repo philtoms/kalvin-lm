@@ -377,3 +377,9 @@
 ## [2026-09-12T10:38:07.727Z] observe
 - slug: "obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal", title: "Engine ask-atom branching removed; structural routing + refusal guard landed", relevance: "high"
 
+## [2026-09-12T10:42:32.856Z] observe
+- slug: "obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative", title: "Doc review verdict: ks3 clearest for agents, ks2 authoritative", relevance: "medium"
+
+## [2026-09-12T10:49:50.333Z] retro
+- slug: "ks2-conformance-series-landing", title: "ks2 conformance series: 6 commits to the engine entry path", category: "architecture"
+
