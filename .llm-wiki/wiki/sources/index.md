@@ -109,6 +109,7 @@
 - [Observation: Ask atom settled: ordinary atom, externally allocated; only engine branching deviates](obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng.md)
 - [Observation: Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap](obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-.md)
 - [Observation: docs/ks3.md written as programmer-friendly restatement of ks2](obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks.md)
+- [Observation: Engine ask-atom branching removed; structural routing + refusal guard landed](obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal.md)
 - [Observation: kalvin-symbolic.md updated in place to ks2 semantics and rules](obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul.md)
 - [Observation: ks2 §14 absorbs KScript syntax; ks2 now sole normative document](obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen.md)
 - [Observation: ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant](obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful.md)

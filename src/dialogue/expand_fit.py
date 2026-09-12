@@ -61,7 +61,7 @@ class ExpandFit:
 
     def propose(self, entry: KLine) -> Iterator[KValue]:
         candidates = self._candidates(entry)
-        queries = [entry] if self.signifier.is_ask(entry.signature) else self.state.findCanons(entry.signature)
+        queries = [self.state.find_canon(entry.signature) or entry]
         for query in queries:
             for candidate in candidates:
                 yield from self.expand(query, candidate, _visited=set())

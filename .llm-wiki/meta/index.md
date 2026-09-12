@@ -184,6 +184,7 @@
 - [[sources/obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng]] — Observation: Ask atom settled: ordinary atom, externally allocated; only engine branching deviates *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-]] — Observation: Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks]] — Observation: docs/ks3.md written as programmer-friendly restatement of ks2 *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal]] — Observation: Engine ask-atom branching removed; structural routing + refusal guard landed *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul]] — Observation: kalvin-symbolic.md updated in place to ks2 semantics and rules *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen]] — Observation: ks2 §14 absorbs KScript syntax; ks2 now sole normative document *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful]] — Observation: ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant *(created: 2026-09-12)*
@@ -196,4 +197,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-12T10:28:43.975Z* | *Total pages: 184*
+*Last updated: 2026-09-12T10:38:07.786Z* | *Total pages: 185*

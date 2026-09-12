@@ -2,6 +2,7 @@
 
 ## 2026-09-12
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal","title":"Engine ask-atom branching removed; structural routing + refusal guard landed"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng","title":"Ask atom settled: ordinary atom, externally allocated; only engine branching deviates"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-","title":"Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful","title":"ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant"}

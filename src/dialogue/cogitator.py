@@ -38,18 +38,23 @@ class Cogitator:
 
 
     def cogitate(self, entry: KLine) -> Iterator[KValue]:
-        query = entry if self.signifier.is_ask(entry.signature) else self.state.find_canon(entry.signature)
-        if query is not None:
-            q_set = self.reduce(query)
-            for candidate in self._candidates(entry.signature):
-                c_set = self.reduce(candidate)
-                underfit = list(q_set - c_set)
-                overfit = list(c_set - q_set)
-                fit = list(q_set & c_set)
+        # The held canon under the signature is the known decomposition;
+        # without one, the entry's own nodes are the only decomposition in
+        # hand. An ask-marked signature finds no canon under its key (the
+        # atom is part of the value), so asks fall to their own nodes —
+        # the same structural rule, no mark read.
+        query = self.state.find_canon(entry.signature) or entry
+        q_set = self.reduce(query)
+        for candidate in self._candidates(entry.signature):
+            c_set = self.reduce(candidate)
+            underfit = list(q_set - c_set)
+            overfit = list(c_set - q_set)
+            fit = list(q_set & c_set)
 
-                proposal, distance = self.expand(underfit, overfit, fit)
-                yield KValue(KLine(entry.signature, proposal), distance)
-        return
+            proposal, distance = self.expand(underfit, overfit, fit)
+            kline = KLine(entry.signature, proposal)
+            if not self._state.is_refused(kline):
+                yield KValue(kline, distance)
 
     def reduce(self, entry: KLine) -> set[KNode]:
         reduced: list[KNode] = []

@@ -117,8 +117,7 @@ class Engine:
     def cogitate(self) -> list[KValue]:
         """One oldest-first pass over the work list: ask, propose, or ground.
 
-        Per entry, in priority order: an unknown becomes an S4 ask; an
-        unasked, denoted, groundable entry grounds; a misfit or asked
+        Per entry, in priority order: a groundable entry grounds; a misfit
         entry draws proposals from the strategy; a grounded entry leaves
         attention. Entries that match no path persist for a later turn.
         The pass repeats until stable — grounding can unblock further
@@ -140,7 +139,7 @@ class Engine:
             if self._state.is_groundable(kline):
                 self._ground(kline)
 
-            if self.signifier.is_ask(kline.signature) or is_misfit(kline, self._state.signifier):
+            if is_misfit(kline, self._state.signifier):
                 proposals = list(self._misfit.cogitate(kline))
                 if proposals:
                     batch.extend(proposals)

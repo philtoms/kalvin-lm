@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-12T10:28:43.975Z",
+  "last_updated": "2026-09-12T10:38:07.786Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2230,6 +2230,23 @@
       "relevance": "medium",
       "observed_at": "2026-09-12T05:02:19.884Z",
       "source_context": "Simplifying docs/ks2.md for non-mathematical programmers",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal": {
+      "type": "source",
+      "title": "Observation: Engine ask-atom branching removed; structural routing + refusal guard landed",
+      "tags": [
+        "ask",
+        "engine",
+        "ks2",
+        "cogitator"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:38:07.724Z",
+      "source_context": "Removing engine branching on the ask atom per settled ks2 position",
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },

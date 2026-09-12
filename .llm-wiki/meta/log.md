@@ -374,3 +374,6 @@
 ## [2026-09-12T10:28:43.921Z] observe
 - slug: "obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng", title: "Ask atom settled: ordinary atom, externally allocated; only engine branching deviates", relevance: "high"
 
+## [2026-09-12T10:38:07.727Z] observe
+- slug: "obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal", title: "Engine ask-atom branching removed; structural routing + refusal guard landed", relevance: "high"
+
