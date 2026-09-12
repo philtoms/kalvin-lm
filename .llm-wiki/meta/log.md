@@ -365,3 +365,12 @@
 ## [2026-09-12T09:50:36.616Z] observe
 - slug: "obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen", title: "ks2 §14 absorbs KScript syntax; ks2 now sole normative document", relevance: "high"
 
+## [2026-09-12T10:08:35.812Z] observe
+- slug: "obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful", title: "ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant", relevance: "high"
+
+## [2026-09-12T10:15:19.446Z] observe
+- slug: "obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-", title: "Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap", relevance: "high"
+
+## [2026-09-12T10:28:43.921Z] observe
+- slug: "obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng", title: "Ask atom settled: ordinary atom, externally allocated; only engine branching deviates", relevance: "high"
+

@@ -181,9 +181,12 @@
 - [[sources/obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation]] — Observation: Remove's over-permissive licence: done-by-claim-amputation *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno]] — Observation: γ resolved: acquisition depth Ĥ added, ratified edges free, one knob *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose]] — Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed *(created: 2026-09-11)*
+- [[sources/obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng]] — Observation: Ask atom settled: ordinary atom, externally allocated; only engine branching deviates *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-]] — Observation: Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks]] — Observation: docs/ks3.md written as programmer-friendly restatement of ks2 *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul]] — Observation: kalvin-symbolic.md updated in place to ks2 semantics and rules *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen]] — Observation: ks2 §14 absorbs KScript syntax; ks2 now sole normative document *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful]] — Observation: ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide]] — Observation: ks3 verbatim-definitions restructure reproduced after accidental reset *(created: 2026-09-12)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -193,4 +196,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-12T09:50:36.661Z* | *Total pages: 181*
+*Last updated: 2026-09-12T10:28:43.975Z* | *Total pages: 184*

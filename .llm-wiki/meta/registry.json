@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-12T09:50:36.661Z",
+  "last_updated": "2026-09-12T10:28:43.975Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2183,6 +2183,40 @@
       "created": "2026-09-11",
       "updated": "2026-09-11"
     },
+    "sources/obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng": {
+      "type": "source",
+      "title": "Observation: Ask atom settled: ordinary atom, externally allocated; only engine branching deviates",
+      "tags": [
+        "ask",
+        "formalisation",
+        "ks2",
+        "packing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:28:43.917Z",
+      "source_context": "Correcting the ask-bit analysis after user clarification",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-": {
+      "type": "source",
+      "title": "Observation: Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap",
+      "tags": [
+        "ask",
+        "formalisation",
+        "ks2",
+        "packing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:15:19.444Z",
+      "source_context": "Refining the ask-bit deviation from the ks2 conformance review",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
     "sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks": {
       "type": "source",
       "title": "Observation: docs/ks3.md written as programmer-friendly restatement of ks2",
@@ -2230,6 +2264,25 @@
       "relevance": "high",
       "observed_at": "2026-09-12T09:50:36.613Z",
       "source_context": "Consolidating normativity into ks2.md",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful": {
+      "type": "source",
+      "title": "Observation: ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant",
+      "tags": [
+        "ks2",
+        "conformance",
+        "review",
+        "dialogue",
+        "harness",
+        "formalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:08:35.808Z",
+      "source_context": "Deviation review of ks2.md normative spec vs source code via the harness entry app",
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },

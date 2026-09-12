@@ -2,6 +2,9 @@
 
 ## 2026-09-12
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng","title":"Ask atom settled: ordinary atom, externally allocated; only engine branching deviates"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-","title":"Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful","title":"ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen","title":"ks2 §14 absorbs KScript syntax; ks2 now sole normative document"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul","title":"kalvin-symbolic.md updated in place to ks2 semantics and rules"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide","title":"ks3 verbatim-definitions restructure reproduced after accidental reset"}
