@@ -10,6 +10,10 @@ from kalvin.kpath import KPath
 from kalvin.kvalue import KValue
 from kalvin.significance import (
     PROPOSAL_AGGREGATOR,
+    SlotRecord,
+    gamma_aggregate,
+    gamma_to_byte,
+    word_atom_count,
 )
 
 if TYPE_CHECKING:
@@ -51,10 +55,15 @@ class Cogitator:
             overfit = list(c_set - q_set)
             fit = list(q_set & c_set)
 
-            proposal, distance = self.expand(underfit, overfit, fit)
+            proposal, slots = self.expand(underfit, overfit, fit)
             kline = KLine(entry.signature, proposal)
             if not self._state.is_refused(kline):
-                yield KValue(kline, distance)
+                gamma = gamma_aggregate(
+                    slots,
+                    self.signifier.signature_of(query.nodes),
+                    self.signifier.signature_of(candidate.nodes),
+                )
+                yield KValue(kline, gamma_to_byte(gamma))
 
     def reduce(self, entry: KLine) -> set[KNode]:
         reduced: list[KNode] = []
@@ -73,15 +82,23 @@ class Cogitator:
         reduced.extend(remaining)
         return set(reduced)
 
-    def expand(self,
+    def expand(
+            self,
             underfit: list[KNode],
             overfit: list[KNode],
             fit: list[KNode],
-    ) -> tuple[list[KNode], int]:
+    ) -> tuple[list[KNode], list[SlotRecord]]:
+        """The bridging fill and its per-slot depth records (ks2 §11).
+
+        Each proposal atom is priced by the edges crossed to arrive: a fit
+        node is free (depth 0), a bridged node carries its hop count, a
+        crossover carries both directions' hops. A slot with no bridge
+        empties the proposal — the misfit asks.
+        """
         proposal: list[KNode] = []
         remainder: list[KNode] = []
         rev_paths: dict[KSig, KPath] = {}
-        distance = 0
+        slots: list[SlotRecord] = []
 
         while len(underfit) > 0:
             n=underfit.pop(0)
@@ -90,9 +107,9 @@ class Cogitator:
                 right, hops = fwd_path.right, fwd_path.hops
                 for m_nodes in [overfit, fit]:
                     if right in m_nodes:
-                        distance += hops
                         m_nodes.remove(right)
                         proposal.append(right)
+                        slots.append((word_atom_count(right), hops))
                         preserve = False
                         break
 
@@ -112,26 +129,28 @@ class Cogitator:
                     right, hops = fwd_path.right, fwd_path.hops
                     if right in rev_paths:
                         rev = rev_paths[right]
-                        distance += hops + rev.hops
                         if rev.left in underfit:
                             underfit.remove(rev.left)
                             proposal.append(n)
+                            slots.append((word_atom_count(n), hops + rev.hops))
                         elif rev.left in fit:
                             fit.remove(rev.left)
                             proposal.append(n)
+                            slots.append((word_atom_count(n), hops + rev.hops))
                     else:
                         for m_nodes in [underfit, fit]:
                             if right in m_nodes:
-                                distance += hops
                                 m_nodes.remove(right)
                                 proposal.append(n)
+                                slots.append((word_atom_count(n), hops))
                                 break
 
         if underfit or overfit:
-            return [], 0
+            return [], []
 
         proposal.extend(fit)
-        return proposal, distance
+        slots.extend((word_atom_count(n), 0) for n in fit)
+        return proposal, slots
 
 
     def connotateY(self, left: KNode, depth: int = MAX_HOP) -> Iterator[KPath]:
