@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-11T21:28:35.430Z",
+  "last_updated": "2026-09-12T05:02:19.942Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2182,6 +2182,22 @@
       "source_context": "Deriving the WDMH=>MHALL worked example against ks2.md",
       "created": "2026-09-11",
       "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks": {
+      "type": "source",
+      "title": "Observation: docs/ks3.md written as programmer-friendly restatement of ks2",
+      "tags": [
+        "ks2",
+        "ks3",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks",
+      "relevance": "medium",
+      "observed_at": "2026-09-12T05:02:19.884Z",
+      "source_context": "Simplifying docs/ks2.md for non-mathematical programmers",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

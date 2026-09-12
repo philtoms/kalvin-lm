@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-09-12
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks","title":"docs/ks3.md written as programmer-friendly restatement of ks2"}
+
 ## 2026-09-11
 
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-","title":"Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine"}

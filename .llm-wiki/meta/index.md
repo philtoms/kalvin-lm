@@ -181,6 +181,7 @@
 - [[sources/obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation]] — Observation: Remove's over-permissive licence: done-by-claim-amputation *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno]] — Observation: γ resolved: acquisition depth Ĥ added, ratified edges free, one knob *(created: 2026-09-11)*
 - [[sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose]] — Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed *(created: 2026-09-11)*
+- [[sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks]] — Observation: docs/ks3.md written as programmer-friendly restatement of ks2 *(created: 2026-09-12)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -189,4 +190,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-11T21:28:35.430Z* | *Total pages: 177*
+*Last updated: 2026-09-12T05:02:19.942Z* | *Total pages: 178*

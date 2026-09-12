@@ -353,3 +353,6 @@
 ## [2026-09-11T21:28:35.368Z] observe
 - slug: "obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-", title: "Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine", relevance: "critical"
 
+## [2026-09-12T05:02:19.887Z] observe
+- slug: "obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks", title: "docs/ks3.md written as programmer-friendly restatement of ks2", relevance: "medium"
+
