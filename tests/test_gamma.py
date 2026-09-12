@@ -1,6 +1,6 @@
 """Canonical γ tests — significance.gamma_* and the expand terminal byte.
 
-The aggregation form is fixed (ks2.md §11): atom-weighted (granularity-
+The aggregation form is fixed (kalvin-algebra.md §11): atom-weighted (granularity-
 invariance), union denominator (band-consistency), decay of the mean,
 geometric, one knob.
 """

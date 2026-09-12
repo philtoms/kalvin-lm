@@ -88,7 +88,7 @@ class Cogitator:
             overfit: list[KNode],
             fit: list[KNode],
     ) -> tuple[list[KNode], list[SlotRecord]]:
-        """The bridging fill and its per-slot depth records (ks2 §11).
+        """The bridging fill and its per-slot depth records (kalvin-algebra §11).
 
         Each proposal atom is priced by the edges crossed to arrive: a fit
         node is free (depth 0), a bridged node carries its hop count, a

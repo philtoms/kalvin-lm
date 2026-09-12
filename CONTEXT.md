@@ -48,7 +48,7 @@ A non-terminal whose signature does not equal `signature_of(nodes)`. Claims S2 w
 _Avoid_: fabrication, conjecture
 
 **Relationship**:
-The nine structures, the band each claims, and the replace licence each doubles as (ks2.md Def 13 — mode by shape, direction by arrival):
+The nine structures, the band each claims, and the replace licence each doubles as (kalvin-algebra.md Def 13 — mode by shape, direction by arrival):
 
 | Structure   | Shape         | Band | Replace mode        | Scripted form  |
 | ----------- | ------------- | ---- | ------------------- | -------------- |

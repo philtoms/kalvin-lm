@@ -2,6 +2,8 @@
 
 ## 2026-09-12
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy","title":"Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks","title":"User wants 2-doc structure; citation graph already favours ks2 as authority"}
 - **retro**: {"category":"architecture","slug":"ks2-conformance-series-landing","title":"ks2 conformance series: 6 commits to the engine entry path"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative","title":"Doc review verdict: ks3 clearest for agents, ks2 authoritative"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal","title":"Engine ask-atom branching removed; structural routing + refusal guard landed"}

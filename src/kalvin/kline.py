@@ -163,7 +163,7 @@ class KLine:
         nodes: list of uint64 node values (always a list, never None).
         dbg: optional debug info (not spec'd).
         acq_depth: acquisition depth — the unratified correspondence edges
-            crossed to win this kline's content (ks2.md §11). 0 for given
+            crossed to win this kline's content (kalvin-algebra.md §11). 0 for given
             content; flattened by grounding. Identity ignores it: two klines
             with the same signature and nodes are the same kline whatever
             they cost.
@@ -278,7 +278,7 @@ def is_identity(kline: KLine) -> bool:
 
 
 def is_exact(kline: KLine, signifier: KSignifier) -> bool:
-    """s = signature_of(ν) over the atom space (ks2 Def 6) — equivalent
+    """s = signature_of(ν) over the atom space (kalvin-algebra Def 6) — equivalent
     to gap = ∅ and excess = ∅ (Def 9). BPE packing bits are not atoms."""
     nodes_sig = signifier.signature_of(kline.nodes)
     return (
@@ -298,7 +298,7 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
 
 
 def is_canon_evidence(kline: KLine, signifier: KSignifier) -> bool:
-    """A canon usable as replace evidence: exact and well-founded (ks2
+    """A canon usable as replace evidence: exact and well-founded (kalvin-algebra
     Def 13 — the signature does not occur in its own witness). A
     self-containing canon is an inert witness class, like an identity."""
     return is_canon(kline, signifier) and kline.signature not in kline.nodes

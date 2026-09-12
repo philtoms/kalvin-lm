@@ -329,7 +329,7 @@ def mean_compose(slot_values: Sequence[float]) -> float:
     return sum(slot_values) / n
 
 
-# ── Canonical γ (ks2.md §11) ─────────────────────────────────────────
+# ── Canonical γ (kalvin-algebra.md §11) ─────────────────────────────────────────
 #
 # γ = J · δ^(mean depth): the accounted fraction over the content union,
 # discounted once by the atom-weighted mean hop depth. The aggregation form
@@ -354,7 +354,7 @@ def word_atom_count(value: int) -> int:
 
 
 def misfit_mass(a_sig: int, b_sig: int) -> int:
-    """The misfit mass |σ(ν_A) Δ σ(ν_B)| — the scoping measure (ks2 Def 14)."""
+    """The misfit mass |σ(ν_A) Δ σ(ν_B)| — the scoping measure (kalvin-algebra Def 14)."""
     return word_atom_count((a_sig | b_sig) & ~(a_sig & b_sig))
 
 

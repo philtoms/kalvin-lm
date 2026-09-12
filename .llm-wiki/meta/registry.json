@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-12T10:49:50.385Z",
+  "last_updated": "2026-09-12T11:03:19.430Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2244,6 +2244,24 @@
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },
+    "sources/obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy": {
+      "type": "source",
+      "title": "Observation: Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted",
+      "tags": [
+        "docs",
+        "rename",
+        "kalvin-algebra",
+        "kalvin-for-agents",
+        "consolidation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy",
+      "relevance": "critical",
+      "observed_at": "2026-09-12T11:03:19.372Z",
+      "source_context": "Consolidating the formal docs to the 2-doc structure",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
     "sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks": {
       "type": "source",
       "title": "Observation: docs/ks3.md written as programmer-friendly restatement of ks2",
@@ -2343,6 +2361,25 @@
       "relevance": "medium",
       "observed_at": "2026-09-12T06:43:51.231Z",
       "source_context": "Reproducing lost ks3 restructure before commit",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks": {
+      "type": "source",
+      "title": "Observation: User wants 2-doc structure; citation graph already favours ks2 as authority",
+      "tags": [
+        "docs",
+        "formalisation",
+        "ks2",
+        "ks3",
+        "kalvin-symbolic",
+        "authority"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:55:34.618Z",
+      "source_context": "Deciding the authoritative/accessible split across the three formal docs",
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },

@@ -1,4 +1,4 @@
-"""The 1:1 relationship split — shape vs band-true species (ks2.md §4).
+"""The 1:1 relationship split — shape vs band-true species (kalvin-algebra.md §4).
 
 is_relationship is the band-agnostic shape; is_connotation is case 4
 (uncovered, S3); is_denotation is case 6 (covered, gap-only, S2).

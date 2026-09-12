@@ -1,6 +1,6 @@
 # Kalvin — A Term Algebra and Rewrite System
 
-Status: draft. Fourth pass at the formalisation of `kalvin-symbolic.md` §§1–4, with its KScript surface syntax (§5 there) absorbed as §13 — the normative document for both. CONTEXT.md remains normative for role names.
+Status: draft. Fourth pass at the formalisation of `kalvin-symbolic.md` §§1–4 (that first pass is deleted), with its KScript surface syntax (§5 there) absorbed as §13 — the normative document for both. CONTEXT.md remains normative for role names.
 
 Four tracts: **what exists** — the algebra (§1–5); **what may happen** — the rewrite system (§6–9); **what chooses** — strategy (§10); **what is observed** — measurement (§11–12). The first two are the formal system proper; the last two are dynamics over it. §12 fixes terminology; §14 lists what stays outside; §13 fixes the KScript surface syntax.
 
@@ -138,7 +138,7 @@ A replace may be _exhibited_ as an interleaving of removals and insertions — a
 | S3 — Connotation, No-fit | replace — every node sits wholly in the misfit |
 | Unknown — S4             | none — stuck                                   |
 
-**Scoping clause.** A replace is targeting-licensed iff it strictly decreases the misfit mass `|σ(ν_A) Δ σ(ν_B)|` — the node replaced carries a gap atom, or the witness carries excess atoms, or both. Band-blind alignment is thereby unlicensable: a replace that touches only shared content, or grows the misfit, is not a targeting move however well evidenced. Canon-mode replaces (expand, contract) are witnessed moves — σ(ν*A)-preserving, band-preserving, licensed by `M` alone, needing nothing from this table. At S3 no node is covered, so replaces there move whole content and the route to overlap runs through the progressive path (§10). The S4 row is entered through A, not B: with no goal there is nothing to scope against — the ask at entry; with a goal and no licensed replace, the misfit \_asks* — nothing in `M` connects it (§8).
+**Scoping clause.** A replace is targeting-licensed iff it strictly decreases the misfit mass `|σ(ν_A) Δ σ(ν_B)|` — the node replaced carries a gap atom, or the witness carries excess atoms, or both. Band-blind alignment is thereby unlicensable: a replace that touches only shared content, or grows the misfit, is not a targeting move however well evidenced. Canon-mode replaces (expand, contract) are witnessed moves — σ(ν_A)-preserving, band-preserving, licensed by `M` alone, needing nothing from this table. At S3 no node is covered, so replaces there move whole content and the route to overlap runs through the progressive path (§10). The S4 row is entered through A, not B: with no goal there is nothing to scope against — the ask at entry; with a goal and no licensed replace, the misfit _asks_ — nothing in `M` connects it (§8).
 
 ## 7. One rule, two licences
 

@@ -383,3 +383,9 @@
 ## [2026-09-12T10:49:50.333Z] retro
 - slug: "ks2-conformance-series-landing", title: "ks2 conformance series: 6 commits to the engine entry path", category: "architecture"
 
+## [2026-09-12T10:55:34.620Z] observe
+- slug: "obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks", title: "User wants 2-doc structure; citation graph already favours ks2 as authority", relevance: "high"
+
+## [2026-09-12T11:03:19.375Z] observe
+- slug: "obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy", title: "Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted", relevance: "critical"
+

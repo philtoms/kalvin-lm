@@ -1,10 +1,10 @@
-# Kalvin — A Term Algebra and Rewrite System, written for programmers
+# Kalvin — A Term Algebra and Rewrite System, written for agents
 
-Status: draft. This is `ks2.md` restated for programmers: same content, same section numbers, less mathematical apparatus, more examples. **Every definition is quoted verbatim from ks2 in a blockquote**; the surrounding prose is framing — what the definition says in programmer terms, and how the pieces behave. ks2.md remains normative — for the formalisation and the KScript surface syntax (§13) alike: where framing and quote seem to differ, the quote wins. Quoted text keeps ks2's internal cross-references (Def numbers, § numbers), which match this document's structure. CONTEXT.md for role names.
+Status: draft. This is `kalvin-algebra.md` restated for agents: same content, same section numbers, less mathematical apparatus, more examples. **Every definition is quoted verbatim from kalvin-algebra in a blockquote**; the surrounding prose is framing — what the definition says in programmer terms, and how the pieces behave. kalvin-algebra.md remains normative — for the formalisation and the KScript surface syntax (§13) alike: where framing and quote seem to differ, the quote wins. Quoted text keeps kalvin-algebra's internal cross-references (Def numbers, § numbers), which match this document's structure. CONTEXT.md for role names.
 
 **The whole system in six sentences.** Kalvin's memory is a set of records — _klines_ — each claiming that its head value is the composition of its node list. Composition is just set-union, so many different lists evaluate to the same head; _which list you chose_ is the memory. A pure function grades any (head, list) pair into one of nine shapes, grouped into four bands from "exact" to "no connection". Thinking — _cogitation_ — is a rewrite loop over one node list, using held klines as the rewrite rules, each step either re-expressing the same content more or less granularly, or moving it strictly closer to a goal kline's content; a run ends **done** when the contents match or **stuck** when nothing held connects them. A score γ — overlap, discounted by granularity and by unratified promises — grades every step, and its rate of change steers the loop. Strategy chooses what to derive next; measurement decides what it was worth.
 
-Four tracts, as in ks2: **what exists** (§1–5), **what may happen** (§6–9), **what chooses** (§10), **what is observed** (§11–12). §14 lists what stays outside; §13 fixes the KScript surface syntax.
+Four tracts, as in kalvin-algebra: **what exists** (§1–5), **what may happen** (§6–9), **what chooses** (§10), **what is observed** (§11–12). §14 lists what stays outside; §13 fixes the KScript surface syntax.
 
 ## 0. Notation cheat sheet
 
@@ -27,7 +27,7 @@ Everything this document writes in symbols, decoded. Values are sets of atoms, a
 | `M ⊇ M_k`        | superset: M contains everything M_k does         | `M.issuperset(M_k)` |
 | `\|x\|`          | size: how many atoms x has                       | `popcount(x)`       |
 
-(ks2 additionally writes `V*` for "lists of values" and `2^A` for "all subsets of A" — the set of all bitmasks.)
+(kalvin-algebra additionally writes `V*` for "lists of values" and `2^A` for "all subsets of A" — the set of all bitmasks.)
 
 **Klines and rewriting**
 
@@ -314,7 +314,7 @@ Examples. Canon `abc:[a,b,c]`: replacing node `abc` with `[a,b,c]` changes nothi
 > | S3 — Connotation, No-fit | replace — every node sits wholly in the misfit |
 > | Unknown — S4             | none — stuck                                   |
 >
-> **Scoping clause.** A replace is targeting-licensed iff it strictly decreases the misfit mass `|σ(ν_A) Δ σ(ν_B)|` — the node replaced carries a gap atom, or the witness carries excess atoms, or both. Band-blind alignment is thereby unlicensable: a replace that touches only shared content, or grows the misfit, is not a targeting move however well evidenced. Canon-mode replaces (expand, contract) are witnessed moves — σ(ν*A)-preserving, band-preserving, licensed by `M` alone, needing nothing from this table. At S3 no node is covered, so replaces there move whole content and the route to overlap runs through the progressive path (§10). The S4 row is entered through A, not B: with no goal there is nothing to scope against — the ask at entry; with a goal and no licensed replace, the misfit \_asks* — nothing in `M` connects it (§8).
+> **Scoping clause.** A replace is targeting-licensed iff it strictly decreases the misfit mass `|σ(ν_A) Δ σ(ν_B)|` — the node replaced carries a gap atom, or the witness carries excess atoms, or both. Band-blind alignment is thereby unlicensable: a replace that touches only shared content, or grows the misfit, is not a targeting move however well evidenced. Canon-mode replaces (expand, contract) are witnessed moves — σ(ν_A)-preserving, band-preserving, licensed by `M` alone, needing nothing from this table. At S3 no node is covered, so replaces there move whole content and the route to overlap runs through the progressive path (§10). The S4 row is entered through A, not B: with no goal there is nothing to scope against — the ask at entry; with a goal and no licensed replace, the misfit _asks_ — nothing in `M` connects it (§8).
 
 Decode: misfit mass is the number of atoms on exactly one side (§0's reading practice). The scoping clause turns "progress" into a strictly-decreasing counter that only targeting moves may decrement — which is precisely what T1's bound (§8) counts down.
 
@@ -370,7 +370,7 @@ T1's `Δ₀` is decoded in §0's reading practice; T2's cycle example (`bc` ⇄ 
 
 ### The worked example: `(what did Mary have) WDMH => MHALL`
 
-_(ks2 §9's worked micro-example, expanded step by step.)_ Atoms `w, d, m, h, a, l` (word bits). Role values such as `o` live outside them, disjoint. Held in memory:
+_(kalvin-algebra §9's worked micro-example, expanded step by step.)_ Atoms `w, d, m, h, a, l` (word bits). Role values such as `o` live outside them, disjoint. Held in memory:
 
 ```text
 mhall:[m,h,a,l,l]     canon — the rhyme (the answer)
