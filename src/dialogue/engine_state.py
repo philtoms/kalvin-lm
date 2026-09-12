@@ -38,6 +38,7 @@ from kalvin.kline import (
     KLine,
     KNode,
     is_canon,
+    is_canon_evidence,
     is_connotation as connotation_shape,
     is_identity,
 )
@@ -103,7 +104,7 @@ class EngineState:
 
     def find_canon(self, signature: KNode) -> KLine | None:
         for item in self.find_sig(signature):
-            if is_canon(item, self.signifier):
+            if is_canon_evidence(item, self.signifier):
                 return item
 
     def where(self, predicate: Callable[[KLine], bool]) -> list[KLine]:
@@ -126,7 +127,7 @@ class EngineState:
         """The nodes of ``signature``'s canon, searching work list, Frame, then LTM."""
         signifier = self._signifier
         for kline in self.find_sig(signature):
-            if is_canon(kline, signifier):
+            if is_canon_evidence(kline, signifier):
                 return list(kline.nodes)
         return None
 

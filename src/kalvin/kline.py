@@ -285,6 +285,13 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """
     return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
 
+
+def is_canon_evidence(kline: KLine, signifier: KSignifier) -> bool:
+    """A canon usable as replace evidence: exact and well-founded (ks2
+    Def 13 — the signature does not occur in its own witness). A
+    self-containing canon is an inert witness class, like an identity."""
+    return is_canon(kline, signifier) and kline.signature not in kline.nodes
+
 def is_relationship(kline: KLine) -> bool:
     """Test whether a kline is a 1:1 relationship.
 
