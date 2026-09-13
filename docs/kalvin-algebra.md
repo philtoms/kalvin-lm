@@ -231,11 +231,11 @@ Both monotonicities are strategy invariants, not theorems about arbitrary deriva
 
 ## 12. Terminology
 
-_Significance_ is the value; _rationalisation_ is the process that produces and consumes it. (Not: "significance is the value Kalvin directly equates to rationalisation".) Understanding, informally, is high significance attained and held.
+_Significance_ is the value; _rationalisation_ is the process that produces and consumes it. Understanding, informally, is high significance attained and held.
 
 ## 13. KScript surface syntax
 
-The written tokens and the structure each produces. Absorbed from `kalvin-symbolic.md` §5, which this supersedes. Surface syntax is presentation; it does not appear in the formal tables of §§1–12.
+The written tokens and the structure each produces. Surface syntax is presentation; it does not appear in the formal tables of §§1–12.
 
 | Token            | Structure produced          | Band claim once solved |
 | ---------------- | --------------------------- | ---------------------- |

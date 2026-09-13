@@ -121,7 +121,7 @@ The only rule: a held **correspondence** kline's two sides swap at a multiset-wi
 _Avoid_: rewrite rule, mutation
 
 **Canonicalisation**:
-The reverse replace engaged position-free: survey the unordered configurations of a node sequence against held witnesses and contract the correctly witnessed ones — the nodes covering the candidate compound from below (coverage), a held canon counter-witnessing exactly them from above. Held witnesses propose the configurations; nothing unwitnessed contracts. Not a second rule (Def 13).
+The Canon instance of the mirror clause — the reverse replace engaged position-free: survey the unordered configurations of a node sequence against held witnesses and contract the correctly witnessed ones — the nodes covering the candidate compound from below (coverage), a held canon counter-witnessing exactly them from above. Held witnesses propose the configurations; nothing unwitnessed contracts. Not a second rule (Def 13).
 _Avoid_: gather, reordering (no arrangement work exists — occurrence is multiset-wise)
 
 **Correspondence**:

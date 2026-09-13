@@ -497,13 +497,13 @@ The last clause in numbers (§9's worked example, δ = ½): J rises 2/5 → 1 wh
 
 ## 12. Terminology
 
-> _Significance_ is the value; _rationalisation_ is the process that produces and consumes it. (Not: "significance is the value Kalvin directly equates to rationalisation".) Understanding, informally, is high significance attained and held.
+> _Significance_ is the value; _rationalisation_ is the process that produces and consumes it. Understanding, informally, is high significance attained and held.
 
 ## 13. KScript surface syntax
 
 **In programmer terms:** KScript is the input language — each scripted line compiles to a kline (or a pair). The table is the grammar; the classifier of §4 then decides what the build actually _is_.
 
-> The written tokens and the structure each produces. Absorbed from `kalvin-symbolic.md` §5, which this supersedes. Surface syntax is presentation; it does not appear in the formal tables of §§1–12.
+> The written tokens and the structure each produces. Surface syntax is presentation; it does not appear in the formal tables of §§1–12.
 >
 > | Token            | Structure produced          | Band claim once solved |
 > | ---------------- | --------------------------- | ---------------------- |
