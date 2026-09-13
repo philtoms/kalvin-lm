@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-12T12:58:43.219Z",
+  "last_updated": "2026-09-13T16:20:48.660Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2235,7 +2235,7 @@
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },
-    "sources/obs-2026-09-12-canonicalisation-by-witness-replaces-contiguity-reverse-occurren": {
+    "sources/obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren": {
       "type": "source",
       "title": "Observation: Canonicalisation by witness replaces contiguity: reverse occurrence is multiset-wise",
       "tags": [
@@ -2442,6 +2442,59 @@
       "source_context": "Correcting the worked example in docs/kalvin-algebra.md",
       "created": "2026-09-12",
       "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de": {
+      "type": "source",
+      "title": "Observation: Def 13 restructured: mirror clause headed, canonicalisation demoted to Canon instance",
+      "tags": [
+        "docs",
+        "kalvin",
+        "mirror-clause",
+        "canonicalisation",
+        "def13"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de",
+      "relevance": "medium",
+      "observed_at": "2026-09-13T16:20:48.585Z",
+      "source_context": "Disentangling the mirror clause from canonicalisation in kalvin-simplified.md Def 13",
+      "created": "2026-09-13",
+      "updated": "2026-09-13"
+    },
+    "sources/obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu": {
+      "type": "source",
+      "title": "Observation: kalvin-simplified.md rewritten as sole normative Kalvin document",
+      "tags": [
+        "docs",
+        "normative",
+        "consolidation",
+        "kalvin-simplified"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu",
+      "relevance": "high",
+      "observed_at": "2026-09-13T08:53:24.684Z",
+      "source_context": "Making kalvin-simplified.md the sole normative Kalvin doc",
+      "created": "2026-09-13",
+      "updated": "2026-09-13"
+    },
+    "sources/obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al": {
+      "type": "source",
+      "title": "Observation: Step 3 Mary example: o→all hop licensed by reverse read of all:[o]",
+      "tags": [
+        "docs",
+        "kalvin",
+        "slot-walk",
+        "connotation",
+        "reverse-replace"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al",
+      "relevance": "high",
+      "observed_at": "2026-09-13T16:07:57.071Z",
+      "source_context": "Fixing the Step 3 slot-walk demonstration in kalvin-simplified.md",
+      "created": "2026-09-13",
+      "updated": "2026-09-13"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

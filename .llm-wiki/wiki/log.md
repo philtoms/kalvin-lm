@@ -1,5 +1,11 @@
 # Wiki Update Log
 
+## 2026-09-13
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de","title":"Def 13 restructured: mirror clause headed, canonicalisation demoted to Canon instance"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al","title":"Step 3 Mary example: o→all hop licensed by reverse read of all:[o]"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu","title":"kalvin-simplified.md rewritten as sole normative Kalvin document"}
+
 ## 2026-09-12
 
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-canonicalisation-by-witness-replaces-contiguity-reverse-occurren","title":"Canonicalisation by witness replaces contiguity: reverse occurrence is multiset-wise"}
@@ -42,7 +48,7 @@
 - **retro**: {"category":"design","slug":"coverage-fractions-peak-at-containment","title":"One-directional coverage fractions peak at containment, not equality"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord","title":"Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core"}
 - **retro**: {"category":"design","slug":"content-preserving-vs-content-aligning-moves","title":"Split rewrite moves by preserved invariant to get termination for free"}
-- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t","title":"ks2.md Layer 2 written: ⊢\_{M,B}, witnessed/targeting families, T1/T2 termination"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t","title":"ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation","title":"Layer 2 review: termination claims inverted, one-step relation undefined"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla","title":"ks2.md created: Layer 1 second pass with coverage-primary classifier"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap","title":"Layer-1 algebra review: sound core, taxonomy and reference gaps"}
@@ -167,8 +173,8 @@
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-work-list-renamed-to-stm-duplicate-stm-index-removed","title":"work_list renamed to stm; duplicate STM index removed"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-08-17-grounding-broadened-to-all-significance-levels-glossary-is-n","title":"Grounding broadened to all significance levels; glossary is normative"}
 - **observe**: {"relevance":"high","slug":"obs-2026-08-17-model-memory-definitions-settled-tiers-are-relations-not-sto","title":"Model/Memory definitions settled: tiers are relations, not storage"}
-- **ensure_page**: {"page_type":"concept","path":"concepts/memory","title":"Memory"}
-- **ensure_page**: {"page_type":"concept","path":"concepts/model","title":"Model"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/memory","title":"Memory"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/model","title":"Model"}
 
 ## 2026-08-11
 
