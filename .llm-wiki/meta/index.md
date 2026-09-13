@@ -88,6 +88,7 @@
 - [[sources/coverage-primary-fit-taxonomy]] — Coverage-primary split for fit classifiers over set-algebra values *(created: 2026-09-10)*
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
+- [[sources/kalvin-doc-normative-split]] — Kalvin doc normative split: algebra vs CONTEXT.md *(created: 2026-09-12)*
 - [[sources/ks2-conformance-series-landing]] — ks2 conformance series: 6 commits to the engine entry path *(created: 2026-09-12)*
 - [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
 - [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
@@ -184,6 +185,8 @@
 - [[sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose]] — Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed *(created: 2026-09-11)*
 - [[sources/obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng]] — Observation: Ask atom settled: ordinary atom, externally allocated; only engine branching deviates *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-]] — Observation: Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren]] — Observation: Canonisation by witness replaces contiguity: reverse occurrence is multiset-wise *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology]] — Observation: CONTEXT.md aligned with kalvin-algebra.md terminology *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative]] — Observation: Doc review verdict: ks3 clearest for agents, ks2 authoritative *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy]] — Observation: Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks]] — Observation: docs/ks3.md written as programmer-friendly restatement of ks2 *(created: 2026-09-12)*
@@ -193,6 +196,7 @@
 - [[sources/obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful]] — Observation: ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide]] — Observation: ks3 verbatim-definitions restructure reproduced after accidental reset *(created: 2026-09-12)*
 - [[sources/obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks]] — Observation: User wants 2-doc structure; citation graph already favours ks2 as authority *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m]] — Observation: Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m] *(created: 2026-09-12)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -201,4 +205,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-12T11:03:19.430Z* | *Total pages: 189*
+*Last updated: 2026-09-12T12:58:43.219Z* | *Total pages: 193*

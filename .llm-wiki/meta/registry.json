@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-12T11:03:19.430Z",
+  "last_updated": "2026-09-12T12:58:43.219Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -591,6 +591,15 @@
       "slug": "identity-priming-and-knowledge-restatement",
       "created": "2026-08-27",
       "updated": "2026-08-27"
+    },
+    "sources/kalvin-doc-normative-split": {
+      "type": "source",
+      "title": "Kalvin doc normative split: algebra vs CONTEXT.md",
+      "category": "domain-modeling",
+      "status": "insight",
+      "slug": "kalvin-doc-normative-split",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
     },
     "sources/ks2-conformance-series-landing": {
       "type": "source",
@@ -2226,6 +2235,40 @@
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },
+    "sources/obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren": {
+      "type": "source",
+      "title": "Observation: Canonisation by witness replaces contiguity: reverse occurrence is multiset-wise",
+      "tags": [
+        "kalvin-algebra",
+        "canonisation",
+        "replace-rule",
+        "design-decision"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren",
+      "relevance": "high",
+      "observed_at": "2026-09-12T12:58:43.167Z",
+      "source_context": "Redesigning replace occurrence semantics: contiguity → multiset-wise canonisation",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md aligned with kalvin-algebra.md terminology",
+      "tags": [
+        "docs",
+        "domain-modeling",
+        "glossary",
+        "kalvin-algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology",
+      "relevance": "high",
+      "observed_at": "2026-09-12T12:28:20.096Z",
+      "source_context": "Aligning CONTEXT.md glossary with kalvin-algebra.md terminology",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
     "sources/obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative": {
       "type": "source",
       "title": "Observation: Doc review verdict: ks3 clearest for agents, ks2 authoritative",
@@ -2380,6 +2423,23 @@
       "relevance": "high",
       "observed_at": "2026-09-12T10:55:34.618Z",
       "source_context": "Deciding the authoritative/accessible split across the three formal docs",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m": {
+      "type": "source",
+      "title": "Observation: Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m]",
+      "tags": [
+        "kalvin-algebra",
+        "worked-example",
+        "docs",
+        "correction"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m",
+      "relevance": "high",
+      "observed_at": "2026-09-12T12:32:54.334Z",
+      "source_context": "Correcting the worked example in docs/kalvin-algebra.md",
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },

@@ -275,9 +275,9 @@ K   the evidence kline — a held kline that licenses one replace
 
 > **Definition 12 (derivation).** A **derivation** rewrites the node sequence of a queued kline `A = s:ν` against one held goal `B = t:ν_B`. The relation is memory-relative: `A ⊢_{M,B} A′`, with the memory `M` (Def 7), the goal `B`, and the queue `A` as parameters. The signature `s` never changes — the claim is fixed; the content is rewritten. States `A₀ ⊢_{M,B} A₁ ⊢_{M,B} …` differ only in `ν`. Nothing in §§6–9 reads `s` — licenses, endings, bounds and grades read only the relationship, whose head `σ(ν_A)` is exact against `ν_A` at every state by construction. Within a hop, then, the derivation is the two sides of `C` — `σ(ν_A):ν_A` against `t:ν_B` — and the queued head rides along inert, mattering only beyond the hop: absorb, reentry (§10), the claim's grounding (§14).
 >
-> Membership and difference on node sequences are **multiset-wise**; sequence order is used only by contract's contiguity and otherwise retained for witness purposes. No rule reads the _queued_ kline's own fit — scoping reads the relationship `C(A,B)` (Def 11); mode and direction read the _evidence_ kline's own fit (Def 13).
+> Membership, difference, and occurrence on node sequences are **multiset-wise**; no rule reads sequence order — arrangement is witness structure, retained for witness purposes alone. No rule reads the _queued_ kline's own fit — scoping reads the relationship `C(A,B)` (Def 11); mode and direction read the _evidence_ kline's own fit (Def 13).
 
-Decode: the derivation's state is `ν_A`; every step is `rewrite(ν_A, K) → ν_A′`; the claim `s` is an immutable field nothing reads until after the hop. "Multiset-wise" means matching treats the list as a bag — except reverse-replace, which needs its witness as a _contiguous_ run.
+Decode: the derivation's state is `ν_A`; every step is `rewrite(ν_A, K) → ν_A′`; the claim `s` is an immutable field nothing reads until after the hop. "Multiset-wise" means matching treats the list as a bag, for both directions of the replace: a node occurs wherever it occurs, and a witness occurs wherever its nodes occur, in any arrangement.
 
 > **Definition 13 (one step).** `A = s:ν_A ⊢_{M,B} A′ = s:ν′` — one rule, instantiated by memory:
 >
@@ -285,15 +285,15 @@ Decode: the derivation's state is `ν_A`; every step is `rewrite(ν_A, K) → ν
 > replace:   a held correspondence kline K = n:ν_K ∈ M and an occurrence in ν_A
 >            matching one of K's two sides:
 >   forward:   an occurrence of n  → replaced by ν_K
->   reverse:   an occurrence of ν_K (a contiguous block where K is a canon)
->                                    → replaced by [n]
+>   reverse:   an occurrence of ν_K, multiset-wise — an unordered
+>              configuration of ν_A's nodes → replaced by [n]
 > ```
 >
 > The terminals are inert as evidence: an Unknown (`n:[]`) has no second side; an Identity (`n:[n]`) replaces a node by itself. Every other held kline is a correspondence. K's own fit fixes the **mode**: a canon exacts granularity — forward is expand, reverse is contract, both σ(ν_A)-preserving; a covered misfit moves content by its gap and excess — forward sheds K's gap and adopts K's excess, reverse the mirror; an uncovered misfit is a traverse — disjoint atoms swap, either direction. **Direction is not a property of the kline**: a correspondence is read forward from its signature, reverse from its witness; only the side the derivation stands on occurs, so arrival orients the licence — the same kline read from the other side is the mirror derivation's licence. An edge is **ratified** or unratified — a tier relation over `M` (§10, §14). No rule of this section reads it; measurement does (§11).
 >
 > Canon evidence must be well-founded (`n ∉ ν_K`). The clause is exactly strong enough: a canon's nodes are atom-subsets of its head (`σ(ν_K) = n`), so an expansion cycle forces atom-equality at every step — a canon containing its own signature. Short of that, licensed expansion terminates and depth is well-defined (§11). Identities and self-containing canons are the two inert witness classes.
 >
-> A replace may be _exhibited_ as an interleaving of removals and insertions — a presentational device with no algebraic status: the licence is the correspondence, never the band alone. The interleaving never empties `ν_A` — both sides of a correspondence carry content. Node order and insertion position are retained for witness purposes and for later contract contiguity — strategy degrees of freedom, like ordering generally (Def 12).
+> A replace may be _exhibited_ as an interleaving of removals and insertions — a presentational device with no algebraic status: the licence is the correspondence, never the band alone. The interleaving never empties `ν_A` — both sides of a correspondence carry content. Node order and insertion position are retained for witness purposes alone — strategy degrees of freedom over the arrangement, which no rule reads (Def 12).
 
 The quote's mode sentence, tabulated — what the replace _does to content_, by the evidence's shape:
 
@@ -304,6 +304,8 @@ The quote's mode sentence, tabulated — what the replace _does to content_, by 
 | uncovered misfit (S3) | **traverse** — disjoint atoms swap     | traverse, the other way              |
 
 Examples. Canon `abc:[a,b,c]`: replacing node `abc` with `[a,b,c]` changes nothing in content — pure granularity. Denotation `dh:[h]` (gap `d`): forward on it, `dh → [h]`, drops exactly the atom `d` — the gap is _what drops_. Connotation `w:[o]` (disjoint): forward swaps `w` out, `o` in. On well-foundedness: expand replaces a node with strictly finer content built from the same atoms, so the only way an expansion chain can fail to terminate is a witness containing its own head — exactly what `n ∉ ν_K` excludes; with it, every expansion bottoms out and "depth" is well-defined (§11).
+
+**Canonisation** — the cognitive name for reverse occurrence. Because occurrence is multiset-wise, a derivation can canonise its nodes: survey their unordered configurations against held witnesses and contract the correctly witnessed ones — the nodes covering the candidate compound from below (Def 8), a held canon counter-witnessing exactly them from above. Held witnesses propose the configurations; nothing unwitnessed contracts; no new rule is involved. A phrase's discontinuity in the sequence is invisible to the licence: `{d,h}` contracts out of `[w,d,m,h]` as freely as out of `[d,h,w,m]`.
 
 > **Definition 14 (licensing).** The relationship scopes; the evidence licenses. The band says where work remains; only a correspondence kline (Def 13) says what may move:
 >
@@ -382,22 +384,25 @@ all:[o]               connotation — the object phrase claims the object role
 m:[m]                 identity
 ```
 
-Queue `A₀ = wdmh:[w, dh, m]` — the question, itself a canon. Declared goal `B = mhall` (the KScript `WDMH => MHALL`). The relationship:
+Queue `A₀ = wdmh:[w, d, m, h]` — the question as it enters: four bare word-bit nodes, the verb phrase not yet composed; itself a canon. Declared goal `B = mhall` (the KScript `WDMH => MHALL`). The relationship:
 
 ```text
-C = wdmh:[m,h,a,l,l]          # head = σ([w,dh,m]) = {w,d,h,m}; nodes = B's
+C = wdmh:[m,h,a,l,l]          # head = σ([w,d,m,h]) = {w,d,h,m}; nodes = B's
 gap {w,d}, excess {a,l}       # Under+over; misfit mass Δ₀ = 4
 ```
 
-Two evidenced replaces finish it:
+One canonisation and two evidenced replaces finish it:
 
-| step       | move                  | licensed by                                                           | state of `ν_A`    | `σ(ν_A)` | misfit mass  |
-| ---------- | --------------------- | --------------------------------------------------------------------- | ----------------- | -------- | ------------ |
-| entry      | —                     | —                                                                     | `[w, dh, m]`      | `wdhm`   | 4            |
-| 1 — verb   | `dh ⇉ [h]` forward    | denotation `dh:[h]` (shed mode: `d` is its gap)                       | `[w, h, m]`       | `whm`    | 3            |
-| 2 — object | `w ⇉ [a,l,l]` forward | composed correspondence `w:[a,l,l]` (traverse: `{w}` out, `{a,l}` in) | `[h, m, a, l, l]` | `mhall`  | 0 — **done** |
+| step          | move                  | licensed by                                                                                                | state of `ν_A`    | `σ(ν_A)` | misfit mass  |
+| ------------- | --------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------- | -------- | ------------ |
+| entry         | —                     | —                                                                                                          | `[w, d, m, h]`    | `wdhm`   | 4            |
+| 1 — canonise  | `[d,h] ⇉ [dh]` reverse | canon `dh:[d,h]` (multiset occurrence: nodes witness `dh`, `dh` counter-witnesses them — witnessed, granularity exposure) | `[w, dh, m]` | `wdhm` | 4    |
+| 2 — verb shed | `dh ⇉ [h]` forward    | denotation `dh:[h]` (shed mode: `d` is its gap)                                                            | `[w, h, m]`       | `whm`    | 3            |
+| 3 — object    | `w ⇉ [a,l,l]` forward | composed correspondence `w:[a,l,l]` (traverse: `{w}` out, `{a,l}` in)                                      | `[h, m, a, l, l]` | `mhall`  | 0 — **done** |
 
-No single held kline connects `w` to `a,l`, so step 2's licence had to be _built_ first, by a slot walk (Def 17): a side derivation queued as `w:[w]`, run with no goal, travelling the correspondence graph by occurrence alone:
+Step 1 is the price of honest entry, paid by canonisation. The question arrives as bare word bits — `did` and `have` discontinuous around `m` — while the denotation `dh:[h]` licenses a replace only at the composed granularity, on a `dh` node that does not yet exist, and no held kline has signature `d` to shed it directly. So the derivation surveys the unordered configurations of its nodes against held witnesses: `{d,h}` is correctly witnessed — `d` and `h` each cover `dh` (recognition from below), and the canon `dh:[d,h]` counter-witnesses exactly them (the composition claim from above) — and it contracts, position-free. Every other configuration (`{w,d}`, `{m,h}`, `{w,m,h}`, …) answers nothing held: the survey is memory-bounded — held witnesses propose — and here it proposes exactly one composition. The contract is a witnessed move, licensed by the canon alone, `σ(ν_A)`-preserving and band-preserving, spending no targeting budget (T1 counts only mass-decreasing replaces). Granularity exposure is witnessed moves' only use (§8), and here it is load-bearing: without it, no evidenced replace can touch the verb.
+
+No single held kline connects `w` to `a,l`, so step 3's licence had to be _built_ first, by a slot walk (Def 17): a side derivation queued as `w:[w]`, run with no goal, travelling the correspondence graph by occurrence alone:
 
 ```text
 w:[w] ⊢ w:[o]        forward on w:[o]        (traverse)
@@ -405,9 +410,9 @@ w:[w] ⊢ w:[o]        forward on w:[o]        (traverse)
       ⊢ w:[a,l,l]    forward on all:[a,l,l]  (expand — granularity set freely at arrival)
 ```
 
-The arrival state `w:[a,l,l]` overlaps the goal's excess `{a,l}` — that is the walk's ending — and it is absorbed as the **composed correspondence**, evidence the main line then consumes. The subject `m` never moved: `m:[m]` is identity, inert; Mary carries over untouched.
+The arrival state `w:[a,l,l]` overlaps the goal's excess `{a,l}` — that is the walk's ending — and it is absorbed as the **composed correspondence**, evidence the main line then consumes. The subject `m` is never replaced: `m:[m]` is identity, inert; Mary carries over untouched — canonisation never even moves her.
 
-End state `wdmh:[h,m,a,l,l]`: relationship Canon — done, in two targeting replaces under a bound of four, every step licensed by held or composed evidence. The witness carries the chain — that is Kalvin _knowing_ what Mary had, not copying it.
+End state `wdmh:[h,m,a,l,l]`: relationship Canon — done, in two targeting replaces under a bound of four (the canonisation is witnessed and spends none of it), every replace licensed by held or composed evidence. The witness carries the chain — that is Kalvin _knowing_ what Mary had, not copying it.
 
 **The counterfactuals.** Had the connotations not been held, no replace reaches the object gap: stuck — the misfit _asks_, and ungrounded proposals follow under strategy control. Had `mhall` itself not been held, there is no goal to check done against: the ask from the other side.
 
@@ -420,7 +425,7 @@ unratified walk edges + the consuming replace):
 done grade: J = 1, so γ = δ^(9/5) < 1  # known through promises
 ```
 
-The consuming replace _dips_ γ — J rises from 1/2 to 1 just as `Ĥ` bites (with δ = ½: γ goes 1/2 → ≈ 0.29): the price signal. After the countersign, a re-derivation through the standing licence crosses only ratified edges, costs nothing, and γ reaches 1: consolidated. Read from the answer side (`MHALL => WDMH`), the same correspondences license the mirror derivation — the klines are direction-free; arrival orients them.
+The consuming replace _dips_ γ — J rises from 2/5 to 1 just as `Ĥ` bites (with δ = ½: γ goes 0.4 → ≈ 0.29): the price signal. After the countersign, a re-derivation through the standing licence crosses only ratified edges, costs nothing, and γ reaches 1: consolidated. Read from the answer side (`MHALL => WDMH`), the same correspondences license the mirror derivation — the klines are direction-free; arrival orients them.
 
 ## 10. Strategy — the cogitation loop
 
@@ -482,7 +487,7 @@ Decode: `D̄` is how expanded A's content is — `[abc]` → depth 0, `[a,b,c]` 
 > - **Granularity-monotonicity.** Expand strictly increases `D̄`, so strictly decreases `γ`; contract strictly decreases `D̄`, so increases `γ`. This is what makes gratuitous expansion detectable.
 > - **Provenance-monotonicity.** Unratified acquisition strictly increases `Ĥ`; nothing in a derivation lowers it — only ratification (protocol, §14) or re-derivation through ratified licences does. This is what makes promise-stacking detectable, the provenance counterpart of gratuitous expansion. Consuming unratified evidence can lower `γ` even as `J` rises — the step that wins the answer dips — the price signal steering strategy toward ratified standing licences.
 
-The last clause in numbers (§9's worked example, δ = ½): J rises 1/2 → 1 while γ falls 1/2 → ≈ 0.29 — the answer is won and the score _drops_: the price signal.
+The last clause in numbers (§9's worked example, δ = ½): J rises 2/5 → 1 while γ falls 0.4 → ≈ 0.29 — the answer is won and the score _drops_: the price signal.
 
 > Both monotonicities are strategy invariants, not theorems about arbitrary derivations (T2): a mixed derivation may wander against the gradient, and the strategy declines to.
 

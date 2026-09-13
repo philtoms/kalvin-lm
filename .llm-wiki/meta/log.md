@@ -389,3 +389,15 @@
 ## [2026-09-12T11:03:19.375Z] observe
 - slug: "obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy", title: "Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted", relevance: "critical"
 
+## [2026-09-12T12:28:20.098Z] observe
+- slug: "obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology", title: "CONTEXT.md aligned with kalvin-algebra.md terminology", relevance: "high"
+
+## [2026-09-12T12:28:20.099Z] retro
+- slug: "kalvin-doc-normative-split", title: "Kalvin doc normative split: algebra vs CONTEXT.md", category: "domain-modeling"
+
+## [2026-09-12T12:32:54.338Z] observe
+- slug: "obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m", title: "Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m]", relevance: "high"
+
+## [2026-09-12T12:58:43.169Z] observe
+- slug: "obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren", title: "Canonisation by witness replaces contiguity: reverse occurrence is multiset-wise", relevance: "high"
+

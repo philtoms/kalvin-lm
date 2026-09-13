@@ -2,6 +2,10 @@
 
 ## 2026-09-12
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren","title":"Canonisation by witness replaces contiguity: reverse occurrence is multiset-wise"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m","title":"Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m]"}
+- **retro**: {"category":"domain-modeling","slug":"kalvin-doc-normative-split","title":"Kalvin doc normative split: algebra vs CONTEXT.md"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology","title":"CONTEXT.md aligned with kalvin-algebra.md terminology"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy","title":"Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks","title":"User wants 2-doc structure; citation graph already favours ks2 as authority"}
 - **retro**: {"category":"architecture","slug":"ks2-conformance-series-landing","title":"ks2 conformance series: 6 commits to the engine entry path"}
