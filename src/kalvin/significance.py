@@ -113,7 +113,7 @@ LEVEL_TO_SIG: dict[str, int] = {
 # unknown ops default to SIG_S4.
 _OP_TO_SIG: dict[str, int] = {
     "COUNTERSIGNS": SIG_S2,
-    "CANONIZES": SIG_S2,
+    "CANONICALZES": SIG_S2,
     "CONNOTES": SIG_S3,
     "DENOTES": SIG_S2,
     "IDENTITY": SIG_S1,

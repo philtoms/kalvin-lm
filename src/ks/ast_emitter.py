@@ -15,13 +15,13 @@ SymbolicEntry tuples to encoded uint64 values.
   - DENOTES (=):         {sig+nodes: [nodes]}  — compound signature
   - CONNOTES (>):        {sig: [nodes]}        — forward association
   - RCONNOTES (<):       {nodes: [sig]}        — reversed association
-  - CANONIZES (=>):       {sig: [all_nodes]}  — aggregated single entry
+  - CANONICALZES (=>):       {sig: [all_nodes]}  — aggregated single entry
 
   Self-identity (A = A) collapses to UNKNOWN with empty nodes.
 
 **MTS expansion:**
   Multi-character all-uppercase identifiers (compounds: MHALL, SVO, ALL)
-  trigger emission of exactly one CANONIZES entry mapping the compound to
+  trigger emission of exactly one CANONICALZES entry mapping the compound to
   its resolved constituent characters. MTS emits only the canon — the
   characters are values inside the canon, not headed klines of their own.
   An author who wants a headed kline for a character writes it as a bare
@@ -35,7 +35,7 @@ SymbolicEntry tuples to encoded uint64 values.
   rule.
 
 **MTS deduplication:**
-  CANONIZES entries are deduplicated on (sig, nodes).
+  CANONICALZES entries are deduplicated on (sig, nodes).
 
 **Word binding integration:**
   When a BindingScope is provided, single-character identifiers are resolved
@@ -43,11 +43,11 @@ SymbolicEntry tuples to encoded uint64 values.
 
   1. Inline annotation first (Rule B4): S(ubject) → "Subject", immediate
      binding that bypasses the occurrence counter and retroactively patches
-     the parent scope's MTS CANONIZES entry.
+     the parent scope's MTS CANONICALZES entry.
   2. BindingScope fallback (Rule B3): scope.resolve(char) walks the scope
      stack innermost-first with first-letter matching and occurrence counter.
 
-  CANONIZES scope boundaries trigger push_scope/pop_scope on the BindingScope.
+  CANONICALZES scope boundaries trigger push_scope/pop_scope on the BindingScope.
   Parent kline tracking is saved/restored for Rule B4 override patching.
 
   When scope is None, all binding logic is skipped.
@@ -56,7 +56,7 @@ SymbolicEntry tuples to encoded uint64 values.
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
   - No UNKNOWN op written — self-denote (A = A) emits UNKNOWN with empty nodes.
-  - No general deduplication beyond CANONIZES dedup.
+  - No general deduplication beyond CANONICALZES dedup.
 """
 
 from __future__ import annotations
@@ -82,9 +82,9 @@ class SymbolicEntry(NamedTuple):
     Attributes:
         sig:  The signature identifier string (possibly a resolved word).
         nodes: Always a list — empty for UNKNOWN, single-item for per-item
-               operators, multi-item for CANONIZES aggregation.  Never None,
+               operators, multi-item for CANONICALZES aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
-        op:   One of "COUNTERSIGNS", "CANONIZES", "CONNOTES", "RCONNOTES",
+        op:   One of "COUNTERSIGNS", "CANONICALZES", "CONNOTES", "RCONNOTES",
                "DENOTES",
                "UNKNOWN".
         component_labels: Resolved words per signature character (for word
@@ -93,7 +93,7 @@ class SymbolicEntry(NamedTuple):
 
     sig: str
     nodes: list[str]
-    op: str  # COUNTERSIGNS | CANONIZES | CONNOTES | DENOTES | IDENTITY | UNKNOWN
+    op: str  # COUNTERSIGNS | CANONICALZES | CONNOTES | DENOTES | IDENTITY | UNKNOWN
     component_labels: list[str] | None = None
     is_mts: bool = False  # True for MTS-produced entries (component
                           # identity + MTS canonization). The TokenEncoder
@@ -133,7 +133,7 @@ class ASTEmitter:
         self._dev = dev
 
         # MTS dedup tracking.
-        self._mts_canonize_seen: dict[tuple[str, tuple[str, ...]], tuple[int, bool]] = {}
+        self._mts_canonicalise_seen: dict[tuple[str, tuple[str, ...]], tuple[int, bool]] = {}
         # Cached resolved components per identifier so the
         # BindingScope occurrence counter never re-advances for one.
         self._resolution_cache: dict[str, list[str]] = {}
@@ -146,12 +146,12 @@ class ASTEmitter:
 
         # Rule B4 parent kline tracking (saved/restored on scope entry/exit).
         self._parent_kline_chars: str | None = None
-        self._parent_kline_canonize_idx: int | None = None
+        self._parent_kline_canonicalise_idx: int | None = None
 
-        # Set inside a single-char CANONIZES scope with recursive content
-        # (subscript block); multi-char CANONIZES sigs trigger MTS (the
+        # Set inside a single-char CANONICALZES scope with recursive content
+        # (subscript block); multi-char CANONICALZES sigs trigger MTS (the
         # canon kline), so subscript identity filling is suppressed for them.
-        self._in_canonize_subscript: bool = False
+        self._in_canonicalise_subscript: bool = False
 
         # Scope/annotation tracking for KDbg.annotation and KDbg.scope.
         self._scope_annotation: str = ""
@@ -252,7 +252,7 @@ class ASTEmitter:
 
         if op == "UNKNOWN":
             # For multi-char sigs _emit_mts already introduced the compound
-            # via CANONIZES (mts_idx is not None) — a compound can't form an
+            # via CANONICALZES (mts_idx is not None) — a compound can't form an
             # identity. Single-char sigs refine by Word Binding:
             # word-bound → self-referential IDENTITY {S:[S]} (S1); unbound →
             # empty UNKNOWN {S:[]} (S4). Binding is the sole discriminator.
@@ -279,7 +279,7 @@ class ASTEmitter:
                     annotation=self._scope_annotation,
                 )
                 if mts_created:
-                    self._mts_canonize_seen.pop((canon.sig, tuple(canon.nodes)), None)
+                    self._mts_canonicalise_seen.pop((canon.sig, tuple(canon.nodes)), None)
                     self.entries[mts_idx] = ask
                 else:
                     self.entries.append(ask)
@@ -287,7 +287,7 @@ class ASTEmitter:
 
         node_ids = self._collect_node_ids(scope)
 
-        # A CANONIZES scope introduces a subscript scope: push it BEFORE
+        # A CANONICALZES scope introduces a subscript scope: push it BEFORE
         # expanding node MTS and resolving operands, so a node-compound's
         # chars (e.g. SVO's S,V,O) resolve against the subscript's bindings
         # (S->Subject, V->Verb, O->Object) rather than the outer scope where
@@ -295,9 +295,9 @@ class ASTEmitter:
         # so duplicate chars (the two Ls in ALL => A=L L=L against 'Mary had
         # a Little Lamb') resolve to their distinct words. _compile_children
         # pops this scope after walking the block.
-        is_canonize = op == "CANONIZES"
+        is_canonicalise = op == "CANONICALZES"
         pushed_scope = False
-        if is_canonize and self._scope is not None:
+        if is_canonicalise and self._scope is not None:
             self._scope.push_scope()
             pushed_scope = True
 
@@ -305,7 +305,7 @@ class ASTEmitter:
             if len(nid) > 1:
                 self._emit_mts(nid)
 
-        # A CANONIZES scope's nodes are its declared block operands — always.
+        # A CANONICALZES scope's nodes are its declared block operands — always.
         # The signature's MTS character-expansion is a separate decoding-aid
         # kline (emitted by _emit_mts above); it coexists with the block canon
         # and is never the canon's node-list. The two share a signature but are
@@ -314,16 +314,16 @@ class ASTEmitter:
         #
         # Rule B4 parent-kline tracking must be active DURING _resolve_nodes,
         # because inline annotations on the block operands (e.g. S(ubject) in
-        # `SVO => S(ubject) = M`) fire _patch_parent_canonize here, and the
-        # MTS CANONIZES entry they must patch is the compound's own (kept
+        # `SVO => S(ubject) = M`) fire _patch_parent_canonicalise here, and the
+        # MTS CANONICALZES entry they must patch is the compound's own (kept
         # intact under the two-entry scheme). Setting it here (before
         # _resolve_nodes and _compile_children) and restoring after ensures
         # both operand resolution and the child walk see the correct parent.
         saved_chars = self._parent_kline_chars
-        saved_idx = self._parent_kline_canonize_idx
-        if is_canonize and mts_idx is not None:
+        saved_idx = self._parent_kline_canonicalise_idx
+        if is_canonicalise and mts_idx is not None:
             self._parent_kline_chars = scope.sig.id
-            self._parent_kline_canonize_idx = mts_idx
+            self._parent_kline_canonicalise_idx = mts_idx
 
         resolved_nodes = self._resolve_nodes(node_ids, scope)
 
@@ -338,7 +338,7 @@ class ASTEmitter:
         self._compile_children(scope, op, mts_idx, pushed_scope=pushed_scope)
 
         self._parent_kline_chars = saved_chars
-        self._parent_kline_canonize_idx = saved_idx
+        self._parent_kline_canonicalise_idx = saved_idx
         self._node_res_q = saved_q
 
     # Operator emission (Step 2)
@@ -396,17 +396,17 @@ class ASTEmitter:
                 else:
                     self._emit_entry("".join(nodes), [sig], "CONNOTES")
 
-        elif op == "CANONIZES":
-            # A compound-headed CANONIZES scope produces TWO distinct
+        elif op == "CANONICALZES":
+            # A compound-headed CANONICALZES scope produces TWO distinct
             # relationships that share one signature:
-            #   1. MTS CANONIZES  — compound → its declared character
+            #   1. MTS CANONICALZES  — compound → its declared character
             #      components (the decoding aid; already emitted by
             #      _emit_mts when the sig was expanded). This entry DEFINES
             #      the compound's signature: the encoder computes it as
             #      signature_of over these character components.
             #   2. Block canon    — compound → the block's resolved operands
             #      (the script's declared signature↔nodes relationship).
-            # The block canon is emitted here as a SEPARATE CANONIZES entry
+            # The block canon is emitted here as a SEPARATE CANONICALZES entry
             # that reuses the compound's signature (a reference, not a
             # re-definition).
             #
@@ -421,14 +421,14 @@ class ASTEmitter:
             #
             # When the block operands equal the character components (the
             # common case, e.g. `SVO => S V O`), both entries share the same
-            # (sig, nodes) and CANONIZES dedup collapses them to one —
+            # (sig, nodes) and CANONICALZES dedup collapses them to one —
             # preserving the prior single-entry behaviour.
             #
             # Rule B4 inline-override patching is unaffected: it patches the
-            # MTS entry directly via _parent_kline_canonize_idx, which the
+            # MTS entry directly via _parent_kline_canonicalise_idx, which the
             # MTS entry retains (it is not replaced here).
             if nodes:
-                self._emit_entry(sig, list(nodes), "CANONIZES")
+                self._emit_entry(sig, list(nodes), "CANONICALZES")
 
     # Node collection (Step 2)
 
@@ -472,18 +472,18 @@ class ASTEmitter:
     def _emit_mts(self, sig: str) -> int | None:
         """Emit the MTS canon entry for a multi-character identifier.
 
-        MTS emits exactly one CANONIZES entry mapping the compound to its
+        MTS emits exactly one CANONICALZES entry mapping the compound to its
         resolved constituent characters (one node per character, preserving
         repeats). MTS emits no per-character component entries: the characters
         are values inside the canon, not headed klines. An author who wants a
         headed kline for a character writes it as a bare singleton.
 
-        CANONIZES deduplication: the same (sig, nodes) pair is silently
+        CANONICALZES deduplication: the same (sig, nodes) pair is silently
         skipped.
 
         A compound signature is the OR-reduction of multiple token IDs.
 
-        Returns the index of the CANONIZES entry (for Rule B4), or None
+        Returns the index of the CANONICALZES entry (for Rule B4), or None
         if no MTS was emitted (single-char or non-uppercase identifier).
         """
         # MTS character-decomposition applies only to all-uppercase
@@ -515,10 +515,10 @@ class ASTEmitter:
             self._resolution_cache[sig] = list(chars)
 
         key = (sig, tuple(chars))
-        hit = self._mts_canonize_seen.get(key)
+        hit = self._mts_canonicalise_seen.get(key)
         if hit is not None:
             return hit[0]  # already emitted
-        self._emit_entry(sig, list(chars), "CANONIZES", is_mts=True)
+        self._emit_entry(sig, list(chars), "CANONICALZES", is_mts=True)
         idx = len(self.entries) - 1
         # A word-bound token is the script's own word: emit its identity
         # (X:[X]) alongside the canon. Unbound raw chars stay unheaded —
@@ -534,13 +534,13 @@ class ASTEmitter:
             self._emit_entry(word, [word], "IDENTITY", is_mts=True)
         return idx
 
-    # Entry emission with CANONIZES dedup
+    # Entry emission with CANONICALZES dedup
 
     def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, is_ask: bool = False, concat: list[str] | None = None) -> None:
         """Emit a SymbolicEntry.
 
-        CANONIZES dedup applies only to MTS expansion (one decoding aid per
-        compound): authored CANONIZES entries always emit — a repeated
+        CANONICALZES dedup applies only to MTS expansion (one decoding aid per
+        compound): authored CANONICALZES entries always emit — a repeated
         authored canon is a temporally distinct encounter (a second ask),
         identical in content. Bucket order is the temporal axis; K does not
         utilise it yet.
@@ -548,20 +548,20 @@ class ASTEmitter:
         ``is_mts`` marks entries produced by MTS expansion (component
         identity + MTS canonization) so the TokenEncoder can push them
         after compiled source in the final output.  Operator-produced
-        entries, subscript identities, and single-char CANONIZES scopes
+        entries, subscript identities, and single-char CANONICALZES scopes
         carry the default (source).
         """
-        if op == "CANONIZES":
+        if op == "CANONICALZES":
             # Temporal distinctness: authored authored repeats both emit (a
             # second ask). Skip only when either side is MTS — an authored
             # subscript canon and its MTS twin are one compile artifact.
             key = (sig, tuple(nodes))
-            hit = self._mts_canonize_seen.get(key)
+            hit = self._mts_canonicalise_seen.get(key)
             if hit is not None and (is_mts or hit[1]):
                 if is_mts:
                     return
                 return
-            self._mts_canonize_seen[key] = (len(self.entries), is_mts)
+            self._mts_canonicalise_seen[key] = (len(self.entries), is_mts)
 
         self.entries.append(SymbolicEntry(
             sig=sig, nodes=nodes, op=op, is_mts=is_mts, is_ask=is_ask,
@@ -570,29 +570,29 @@ class ASTEmitter:
             scope=1 if is_mts else 0,
         ))
 
-    # Identity emission for CANONIZES subscript blocks
+    # Identity emission for CANONICALZES subscript blocks
 
     def _emit_identity_if_needed(self, raw_id: str) -> None:
         """Emit a component entry for ``raw_id`` if none exists.
 
-        Used in CANONIZES subscript blocks to ensure every identifier appears
+        Used in CANONICALZES subscript blocks to ensure every identifier appears
         as the signature of at least one emitted entry. Applies the binding-
         aware rule: word-bound → self-referential IDENTITY {w:[w]};
         unbound → empty UNKNOWN {w:[]}.
 
         Dedup checks (in order):
-          1. Existing CANONIZES entry — sig is a compound already introduced
-             by its CANONIZES entry from MTS.
+          1. Existing CANONICALZES entry — sig is a compound already introduced
+             by its CANONICALZES entry from MTS.
           2. Existing IDENTITY or UNKNOWN entries — sig already has one.
 
         This prevents duplicate entries when the identifier already appears
-        as the signature of an IDENTITY/UNKNOWN entry.  The CANONIZES check
+        as the signature of an IDENTITY/UNKNOWN entry.  The CANONICALZES check
         blocks compounds (which cannot form an identity) without affecting
         single-char sigs that have only DENOTES entries.
         """
         resolved = self._resolve_char(raw_id)
-        if any(e.sig == resolved and e.op == "CANONIZES" for e in self.entries):
-            return  # compound already introduced by its CANONIZES entry
+        if any(e.sig == resolved and e.op == "CANONICALZES" for e in self.entries):
+            return  # compound already introduced by its CANONICALZES entry
         if any(e.sig == resolved and e.op in ("IDENTITY", "UNKNOWN") for e in self.entries):
             return
         if resolved != raw_id:
@@ -612,45 +612,45 @@ class ASTEmitter:
     ) -> None:
         """After emitting operator entries, recursively process children.
 
-        CANONIZES scopes push/pop the BindingScope and save/restore parent
+        CANONICALZES scopes push/pop the BindingScope and save/restore parent
         kline tracking (Rule B4). Bare OperatorScope nodes (op=None) in a
-        non-CANONIZES child_block are skipped — already collected as node
-        identifiers by _collect_node_ids; under CANONIZES they still emit
+        non-CANONICALZES child_block are skipped — already collected as node
+        identifiers by _collect_node_ids; under CANONICALZES they still emit
         their own UNKNOWN (independent subscript identity).
 
-        **CANONIZES subscript identity:**
+        **CANONICALZES subscript identity:**
 
-        A CANONIZES scope with recursive content forms a "subscript block"
+        A CANONICALZES scope with recursive content forms a "subscript block"
         where every identifier must appear as the signature of at least
         one emitted entry; identity UNKNOWN fills any gap. Activated only
-        when the CANONIZES sig did NOT trigger MTS (mts_idx is None) —
+        when the CANONICALZES sig did NOT trigger MTS (mts_idx is None) —
         multi-char sigs trigger MTS (the canon kline), so subscript identity
         is suppressed for them.
 
         _emit_identity_if_needed is applied to leaf Signature items (no
-        operator entry). Not needed for CANONIZES/COUNTERSIGNS/CONNOTES/
+        operator entry). Not needed for CANONICALZES/COUNTERSIGNS/CONNOTES/
         DENOTES scope sigs (all produce entries with the scope's sig)
-        nor bare op=None scopes (emit UNKNOWN in _process_scope). The flag does not propagate between CANONIZES scopes.
+        nor bare op=None scopes (emit UNKNOWN in _process_scope). The flag does not propagate between CANONICALZES scopes.
         """
-        is_canonize = op == "CANONIZES"
+        is_canonicalise = op == "CANONICALZES"
 
         # Parent-kline tracking (Rule B4) is now set in _process_scope so it
         # is active during operand resolution; this method only walks children
-        # and pops the subscript scope. _in_canonize_subscript still needs
+        # and pops the subscript scope. _in_canonicalise_subscript still needs
         # save/restore (it is subscript-local and does not propagate).
-        saved_in_canonize = self._in_canonize_subscript
+        saved_in_canonicalise = self._in_canonicalise_subscript
 
         # The subscript scope was pushed in _process_scope (before operand
         # resolution); this method only walks children and pops it.
 
-        # Activate subscript identity for a single-char CANONIZES sig
+        # Activate subscript identity for a single-char CANONICALZES sig
         # (mts_idx is None) with recursive content.
-        if is_canonize:
+        if is_canonicalise:
             has_recursive_content = scope.child_block is not None or any(
                 isinstance(item, OperatorScope) for item in scope.items
             )
             if has_recursive_content and mts_idx is None:
-                self._in_canonize_subscript = True
+                self._in_canonicalise_subscript = True
 
         for item in scope.items:
             if isinstance(item, OperatorScope):
@@ -660,7 +660,7 @@ class ASTEmitter:
             # Bare Signature items in subscript blocks need identity
             # (they produce no operator entry).
             elif isinstance(item, Signature):
-                if self._in_canonize_subscript:
+                if self._in_canonicalise_subscript:
                     self._emit_identity_if_needed(item.id)
 
         if scope.child_block is not None:
@@ -668,9 +668,9 @@ class ASTEmitter:
                 if (
                     isinstance(construct, OperatorScope)
                     and construct.op is None
-                    and not is_canonize
+                    and not is_canonicalise
                 ):
-                    # Bare node in non-CANONIZES child_block — already
+                    # Bare node in non-CANONICALZES child_block — already
                     # collected by _collect_node_ids; skip to avoid a
                     # spurious UNKNOWN.
                     continue
@@ -680,7 +680,7 @@ class ASTEmitter:
         if pushed_scope and self._scope is not None:
             self._scope.pop_scope()
 
-        self._in_canonize_subscript = saved_in_canonize
+        self._in_canonicalise_subscript = saved_in_canonicalise
 
     # Binding integration
 
@@ -719,7 +719,7 @@ class ASTEmitter:
             existing = self._scope.resolve(sig) if self._scope is not None else None
             if existing is None:
                 word = self._extract_inline_word(sig, inline_annotation)
-                self._patch_parent_canonize(sig, word)
+                self._patch_parent_canonicalise(sig, word)
                 # Register the inline binding so it overrides any looser
                 # word-list binding for this char everywhere it is resolved
                 # (MTS char expansion, identity emission — not only here).
@@ -755,7 +755,7 @@ class ASTEmitter:
             ann = inline_by_pos[i] if i < len(inline_by_pos) else None
             if ann is not None:
                 word = self._extract_inline_word(nid, ann)
-                self._patch_parent_canonize(nid, word)
+                self._patch_parent_canonicalise(nid, word)
                 # Register the inline binding (see _resolve_inline_or_scope):
                 # the inline word overrides any looser binding for this char
                 # everywhere, so MTS/identity emission sees the same token.
@@ -865,36 +865,36 @@ class ASTEmitter:
 
     # Rule B4 override patching
 
-    def _patch_parent_canonize(self, char: str, word: str) -> None:
-        """Rule B4 — inline override: patch parent MTS CANONIZES entry.
+    def _patch_parent_canonicalise(self, char: str, word: str) -> None:
+        """Rule B4 — inline override: patch parent MTS CANONICALZES entry.
 
         When an inline binding fires for char C with resolved word W inside
         a subscript, retroactively patch the matching character in the already-
-        emitted MTS CANONIZES entry for the parent kline.
+        emitted MTS CANONICALZES entry for the parent kline.
 
         Example:
             Source: SVO => Block([S(ubject) = M])
-            Before: CANONIZES("SVO", ["S","V","O"]) at parent_kline_canonize_idx
-            After:  CANONIZES("SVO", ["Subject","V","O"]) — S patched at index 0
+            Before: CANONICALZES("SVO", ["S","V","O"]) at parent_kline_canonicalise_idx
+            After:  CANONICALZES("SVO", ["Subject","V","O"]) — S patched at index 0
 
         Only patches the immediate parent — no propagation beyond one level.
         If char is not found in parent kline chars, this is a safe no-op.
         """
-        if self._parent_kline_chars is None or self._parent_kline_canonize_idx is None:
+        if self._parent_kline_chars is None or self._parent_kline_canonicalise_idx is None:
             return
         idx = self._parent_kline_chars.find(char)
         if idx < 0:
             return  # no-op — char not in parent kline
-        entry = self.entries[self._parent_kline_canonize_idx]
-        if entry.op != "CANONIZES":
+        entry = self.entries[self._parent_kline_canonicalise_idx]
+        if entry.op != "CANONICALZES":
             return
         if isinstance(entry.nodes, list) and idx < len(entry.nodes):
             new_nodes = list(entry.nodes)
             new_nodes[idx] = word
-            self.entries[self._parent_kline_canonize_idx] = entry._replace(
+            self.entries[self._parent_kline_canonicalise_idx] = entry._replace(
                 nodes=new_nodes,
             )
-            # Re-key the CANONIZES dedup registry: the patched entry's
+            # Re-key the CANONICALZES dedup registry: the patched entry's
             # (sig, nodes) changed, so the stale key under which it was
             # registered no longer matches. Without this, a block-canon entry
             # whose operands equal the PATCHED component list (the common case,
@@ -903,9 +903,9 @@ class ASTEmitter:
             # new one, pointing at the same entry index.
             if entry.is_mts:
                 old_key = (entry.sig, tuple(entry.nodes))
-                self._mts_canonize_seen.pop(old_key, None)
-                self._mts_canonize_seen[(entry.sig, tuple(new_nodes))] = (
-                    self._parent_kline_canonize_idx, True
+                self._mts_canonicalise_seen.pop(old_key, None)
+                self._mts_canonicalise_seen[(entry.sig, tuple(new_nodes))] = (
+                    self._parent_kline_canonicalise_idx, True
                 )
 
     # Helpers
@@ -917,7 +917,7 @@ class ASTEmitter:
             return "UNKNOWN"
         _map = {
             TokenType.COUNTERSIGNS: "COUNTERSIGNS",
-            TokenType.CANONIZES: "CANONIZES",
+            TokenType.CANONICALZES: "CANONICALZES",
             TokenType.CONNOTES: "CONNOTES",
             TokenType.RCONNOTES: "RCONNOTES",
             TokenType.DENOTES: "DENOTES",

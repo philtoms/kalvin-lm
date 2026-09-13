@@ -120,7 +120,7 @@ The rewrite of a queued kline's node sequence against one held goal: `A ⊢_{M,B
 The only rule: a held **correspondence** kline's two sides swap at a multiset-wise occurrence in the node sequence — forward (signature → witness) or reverse (witness → signature). The evidence kline's own fit fixes the **mode**: canon — expand/contract, granularity at constant content; covered misfit — shed/adopt, its gap out and its excess in; uncovered misfit — traverse, disjoint atoms swap. Direction is not a property of the kline: arrival orients the licence (Def 13).
 _Avoid_: rewrite rule, mutation
 
-**Canonisation**:
+**Canonicalisation**:
 The reverse replace engaged position-free: survey the unordered configurations of a node sequence against held witnesses and contract the correctly witnessed ones — the nodes covering the candidate compound from below (coverage), a held canon counter-witnessing exactly them from above. Held witnesses propose the configurations; nothing unwitnessed contracts. Not a second rule (Def 13).
 _Avoid_: gather, reordering (no arrangement work exists — occurrence is multiset-wise)
 
@@ -195,7 +195,7 @@ A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word h
 The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
 
 - `==` **COUNTERSIGNS** — reciprocal pair `{A:[B]}`, `{B:[A]}`
-- `=>` **CANONIZES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
+- `=>` **CANONICALZES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
 - `>` / `<` **CONNOTES** — `{A:[B]}`; `A < B` ⇒ `B:[A]` (the identifier reverses to match the reading direction). Self-reference collapses to Identity
 - `=` **DENOTES** — the compound-signature shape `A = B` ⇒ `{AB:[B]}`: the signature is the compound of both operands, the node the denoted value. Self-denote collapses to Identity
 - none **UNKNOWN** — a bare signature: unbound compiles to `{A:[]}` (the ask); word-bound to Identity `{A:[A]}`

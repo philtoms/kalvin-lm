@@ -28,13 +28,13 @@
 - [MTS (Multi-Token Signature)](mts-multi-token-signature.md) — A KScript compiler device that expands a multi-character signature identifier into its constituent character identities plus one MTS relationship.
 - [Node](node.md) — A structural slot in a kline's nodes list — either a Token Id or the signature of another kline.
 - [Non-judging harness](non-judging-harness.md) — Harness principle — it compiles, feeds, retrieves, and presents with no verdict and no band-matching. Judgement belongs to the trainer (a pi agent outside the loop).
-- [Per-turn scoping](per-turn-scoping.md) — observations and _incoming reset to fresh lists at the top of every rationalise() call — each turn's emissions are independent of prior turns'.
+- [Per-turn scoping](per-turn-scoping.md) — observations and \_incoming reset to fresh lists at the top of every rationalise() call — each turn's emissions are independent of prior turns'.
 - [Priming](priming.md) — Presenting a kline to Kalvin to shape the context for what follows — preparing the model's state so subsequent rationalisation lands differently.
 - [Proposal](proposal.md) — A KLine emitted by an agent during rationalisation — offered for ratification by the other agent.
 - [Querying](querying.md) — Kalvin issuing an S4 (Unknown) kline to ask another agent for an identity ratification — the structural form of a question.
 - [Ratify](ratify.md) — The action of countersigning a selected proposal; usually performed by the Trainer during curriculum execution. Ratification promotes a proposal to S1 and records provenance.
 - [Rational Significance](rational-significance.md) — A participant's measurement of whether a kline's structural claim holds against what Kalvin holds — refined through model traversal and learned preferences, classified S1–S4.
-- [Relational Tokens](relational-tokens.md) — The closed set of KScript tokens (==, =>, >, =, none) declaring how a kline is produced and its provenance — COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, UNKNOWN.
+- [Relational Tokens](relational-tokens.md) — The closed set of KScript tokens (==, =>, >, =, none) declaring how a kline is produced and its provenance — COUNTERSIGNS, CANONICALZES, CONNOTES, DENOTES, UNKNOWN.
 - [Relationship](relationship.md) — The single-node misfit — a non-terminal whose signature associates with exactly one other value (`{A: [B]}`, A != B), named as a distinct routing class.
 - [S2 Expansion](s2-expansion.md) — How the engine reshapes an S2 misfit into proposals — Kalvin does not invent, it reshapes what is already there and offers the result. The agent decides what to keep.
 - [Scaffolding](scaffolding.md) — KScript entries that provide grounding context for other entries — structurally identical whether pre-compiled or reactive.

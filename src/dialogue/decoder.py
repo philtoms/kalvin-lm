@@ -30,7 +30,7 @@ BAND_TO_SIG: dict[str, int] = {
 Role = Literal["T", "K"]  # trainer (T) or trainee (K)
 OnDivergence = Literal["fail", "accept"]
 DIALOGUE_OPS = frozenset(
-    {"COUNTERSIGNS", "CANONIZES", "CONNOTES", "DENOTES", "IDENTITY", "UNKNOWN"}
+    {"COUNTERSIGNS", "CANONICALZES", "CONNOTES", "DENOTES", "IDENTITY", "UNKNOWN"}
 )
 
 
@@ -138,8 +138,8 @@ def _resolve_script(
                 "— dev compile invariant broken"
             )
         # Canon-by-label: populated for any compiled canon (COUNTERSIGNS or
-        # CANONIZES with nodes) so node/signature resolution can prefer it.
-        if d.op in ("CANONIZES", "COUNTERSIGNS") and kl.nodes and d.label:
+        # CANONICALZES with nodes) so node/signature resolution can prefer it.
+        if d.op in ("CANONICALZES", "COUNTERSIGNS") and kl.nodes and d.label:
             resolved.canon_by_label.setdefault(d.label, kl)
         if d.op in ("COUNTERSIGNS", "CONNOTES", "DENOTES") and d.label:
             resolved.relation_by_label.setdefault(d.label, kl)
@@ -160,7 +160,7 @@ def _resolve_node_signatures(
     op: str,
 ) -> list[int]:
     """Resolve each node label to its canonical signature (canon-preferred,
-    atom fallback). Shared by the CANONIZES and constructed-relation branches."""
+    atom fallback). Shared by the CANONICALZES and constructed-relation branches."""
     node_sigs: list[int] = []
     for n in nodes:
         ncanon = resolved.canon_by_label.get(n)
@@ -184,12 +184,12 @@ def _resolve_kline(
 ) -> KLine:
     """Build the kline the turn declares — a resolver, not a gatekeeper (an
     author may declare a deliberate misfit)."""
-    if op == "CANONIZES":
-        node_sigs = _resolve_node_signatures(nodes, resolved, op="CANONIZES")
+    if op == "CANONICALZES":
+        node_sigs = _resolve_node_signatures(nodes, resolved, op="CANONICALZES")
         sig_kl = resolved.canon_by_label.get(signature) or resolved.labels.get(signature)
         if sig_kl is None:
             raise DecodeError(
-                f"CANONIZES signature {signature!r}: label not found in compiled source"
+                f"CANONICALZES signature {signature!r}: label not found in compiled source"
             )
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 

@@ -29,7 +29,7 @@ MHALL_SOURCE = (
 MHALL_TURNS = [
     {"nodes": ["SVO"], "op": "COUNTERSIGNS", "role": "T", "signature": "MHALL", "significance": "S2"},
     {"nodes": [], "op": "UNKNOWN", "role": "K", "signature": "MHALL", "significance": "S4"},
-    {"nodes": ["Mary", "had", "a", "little", "lamb"], "op": "CANONIZES", "role": "T", "signature": "MHALL", "significance": "S2"},
+    {"nodes": ["Mary", "had", "a", "little", "lamb"], "op": "CANONICALZES", "role": "T", "signature": "MHALL", "significance": "S2"},
     {"nodes": [], "op": "UNKNOWN", "role": "K", "signature": "Mary", "significance": "S4"},
     {"nodes": [], "op": "IDENTITY", "role": "T", "signature": "Mary", "significance": "S1"},
     {"nodes": [], "op": "UNKNOWN", "role": "K", "signature": "had", "significance": "S4"},
@@ -43,7 +43,7 @@ MHALL_TURNS = [
     {"nodes": [], "op": "UNKNOWN", "role": "K", "signature": "lamb", "significance": "S4"},
     {"nodes": [], "op": "IDENTITY", "role": "T", "signature": "lamb", "significance": "S1"},
     {"nodes": [], "op": "UNKNOWN", "role": "K", "signature": "SVO", "significance": "S4"},
-    {"nodes": ["Subject", "Verb", "Object"], "op": "CANONIZES", "role": "T", "signature": "SVO", "significance": "S2"},
+    {"nodes": ["Subject", "Verb", "Object"], "op": "CANONICALZES", "role": "T", "signature": "SVO", "significance": "S2"},
     {"nodes": [], "op": "UNKNOWN", "role": "K", "signature": "Subject", "significance": "S4"},
     {"nodes": [], "op": "IDENTITY", "role": "T", "signature": "Subject", "significance": "S1"},
     {"nodes": [], "op": "UNKNOWN", "role": "K", "signature": "Verb", "significance": "S4"},

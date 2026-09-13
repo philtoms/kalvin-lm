@@ -227,7 +227,7 @@
     "concepts/relational-tokens": {
       "type": "concept",
       "title": "Relational Tokens",
-      "description": "The closed set of KScript tokens (==, =>, >, =, none) declaring how a kline is produced and its provenance — COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, UNKNOWN.",
+      "description": "The closed set of KScript tokens (==, =>, >, =, none) declaring how a kline is produced and its provenance — COUNTERSIGNS, CANONICALZES, CONNOTES, DENOTES, UNKNOWN.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
@@ -2235,20 +2235,20 @@
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },
-    "sources/obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren": {
+    "sources/obs-2026-09-12-canonicalisation-by-witness-replaces-contiguity-reverse-occurren": {
       "type": "source",
-      "title": "Observation: Canonisation by witness replaces contiguity: reverse occurrence is multiset-wise",
+      "title": "Observation: Canonicalisation by witness replaces contiguity: reverse occurrence is multiset-wise",
       "tags": [
         "kalvin-algebra",
-        "canonisation",
+        "canonicalisation",
         "replace-rule",
         "design-decision"
       ],
       "status": "observation",
-      "slug": "obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren",
+      "slug": "obs-2026-09-12-canonicalisation-by-witness-replaces-contiguity-reverse-occurren",
       "relevance": "high",
       "observed_at": "2026-09-12T12:58:43.167Z",
-      "source_context": "Redesigning replace occurrence semantics: contiguity → multiset-wise canonisation",
+      "source_context": "Redesigning replace occurrence semantics: contiguity → multiset-wise canonicalisation",
       "created": "2026-09-12",
       "updated": "2026-09-12"
     },

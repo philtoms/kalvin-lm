@@ -139,7 +139,7 @@ KScript syntax overview:
 - Identity: `NAME`  (uppercase identifiers, e.g. M, H, MH)
 - Relationship: `NAME > N1 N2`  (nodes listed after >)
 - Countersign: `SIG == N1 N2`  (bidirectional mapping)
-- Canonize: `SIG => N1 N2`  (unidirectional mapping)
+- Canonicalise: `SIG => N1 N2`  (unidirectional mapping)
 - Denote: `SIG = N1 N2`  (objective mapping — SIG is an N1, an N2)
 - Connote: `SIG > N1 N2`  (subjective mapping — SIG is a kind of each node)
 
@@ -147,7 +147,7 @@ All identifiers are UPPERCASE LETTERS ONLY (A–Z). Never use hex literals \
 (0x...) or numbers — KScript only accepts uppercase names. Each line \
 defines one construct. Comments use parenthesised syntax: (this is a comment).
 
-The only valid operators are: == (countersign), => (canonize), \
+The only valid operators are: == (countersign), => (canonicalise), \
 = (denote), and > (connote). Do not use ~>, <-, ->, or any \
 other operators.
 

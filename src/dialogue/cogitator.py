@@ -173,7 +173,7 @@ class Cogitator:
             frontier = next_frontier
 
 
-    def canonise(
+    def canonicalise(
         self,
         underfit: list[KNode],
         overfit: list[KNode],

@@ -130,4 +130,4 @@
 {"slug":"obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology","title":"CONTEXT.md aligned with kalvin-algebra.md terminology","relevance":"high","timestamp":"2026-09-12T12:28:20.098Z","kind":"observe"}
 {"slug":"kalvin-doc-normative-split","title":"Kalvin doc normative split: algebra vs CONTEXT.md","category":"domain-modeling","timestamp":"2026-09-12T12:28:20.099Z","kind":"retro"}
 {"slug":"obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m","title":"Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m]","relevance":"high","timestamp":"2026-09-12T12:32:54.338Z","kind":"observe"}
-{"slug":"obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren","title":"Canonisation by witness replaces contiguity: reverse occurrence is multiset-wise","relevance":"high","timestamp":"2026-09-12T12:58:43.169Z","kind":"observe"}
+{"slug":"obs-2026-09-12-canonicalisation-by-witness-replaces-contiguity-reverse-occurren","title":"Canonicalisation by witness replaces contiguity: reverse occurrence is multiset-wise","relevance":"high","timestamp":"2026-09-12T12:58:43.169Z","kind":"observe"}

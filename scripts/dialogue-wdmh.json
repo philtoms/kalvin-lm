@@ -11,7 +11,7 @@
       "role_turn": 17
     },
     {
-      "op": "CANONIZES",
+      "op": "CANONICALZES",
       "signature": "WDMH",
       "nodes": [
         "Mary",
@@ -35,7 +35,7 @@
       "role_turn": 19
     },
     {
-      "op": "CANONIZES",
+      "op": "CANONICALZES",
       "signature": "WDMH",
       "nodes": [
         "what",
@@ -81,7 +81,7 @@
       "role_turn": 20
     },
     {
-      "op": "CANONIZES",
+      "op": "CANONICALZES",
       "signature": "DH",
       "nodes": [
         "did",
@@ -141,7 +141,7 @@
       "role_turn": 23
     },
     {
-      "op": "CANONIZES",
+      "op": "CANONICALZES",
       "signature": "had",
       "nodes": [
         "did",
@@ -160,7 +160,7 @@
       "role_turn": 24
     },
     {
-      "op": "CANONIZES",
+      "op": "CANONICALZES",
       "signature": "WDMH",
       "nodes": [
         "Mary",
@@ -178,7 +178,7 @@
   ],
   "events": [
     {
-      "op": "CANONIZES",
+      "op": "CANONICALZES",
       "signature": "WDMH",
       "nodes": [
         "Mary",

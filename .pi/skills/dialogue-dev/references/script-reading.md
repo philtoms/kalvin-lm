@@ -28,7 +28,7 @@ Significance, Relational Tokens, MTS, Word Binding, Annotation).
 | Token  | Name         | Emits                   | Structural meaning                                     |
 | ------ | ------------ | ----------------------- | ------------------------------------------------------ |
 | `==`   | COUNTERSIGNS | `{A:[B]}` + `{B:[A]}`   | connotes+denotes shorthand; two traversable structures |
-| `=>`   | CANONIZES    | `{A: [B, C, D]}`        | A canonizes its block operands into a single kline     |
+| `=>`   | CANONICALZES | `{A: [B, C, D]}`        | A canonicalises its block operands into a single kline |
 | `>`    | CONNOTES     | `{AB: [B]}`             | A connotes B. Becomes IDENTITY when same token.        |
 | `=`    | DENOTES      | `{B: [A]}`              | A denotes B (note the reversed emission)               |
 | (none) | UNKNOWN      | `{A: []}` or `{A: [A]}` | ask, unless word-bound → identity                      |

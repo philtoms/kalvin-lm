@@ -116,7 +116,7 @@ class KDbg:
 
     Attributes:
         op: Structural relationship (COUNTERSIGNS, DENOTES, CONNOTES,
-            CANONIZES, UNKNOWN).
+            CANONICALZES, UNKNOWN).
         label: Origin word or operator context.
         decoded: Tokenizer decode of the signature (actual subword text).
         type_info: Short debug summary of the node's type-dictionary entry
@@ -381,7 +381,7 @@ _OP_SYMBOLS = {
     "COUNTERSIGNS": "==",
     "DENOTES": "=",
     "CONNOTES": ">",
-    "CANONIZES": "=>",
+    "CANONICALZES": "=>",
     "UNKNOWN": None,
 }
 
@@ -515,7 +515,7 @@ def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:
         return ""
     nodes_sig = signifier.signature_of(kline.nodes)
     if kline.signature == nodes_sig:
-        return "=>"  # perfect fit → canonize
+        return "=>"  # perfect fit → canonicalise
     return ">"  # default: connote
 
 
