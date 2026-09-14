@@ -12,16 +12,15 @@ assemble signifier, state, and engine live in :mod:`dialogue.harness`.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Sequence, Iterator
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-from dialogue.expand_fit import ExpandFit
-from dialogue.reentry import Reentry
-from dialogue.cogitator import Cogitator
+from dialogue.derivation import Derivation, DerivationResult
 from kalvin.kline import (
     KLine,
     is_canon,
+    is_terminal,
     is_misfit,
     sig_level,
     using_resolver,
@@ -29,6 +28,7 @@ from kalvin.kline import (
 from kalvin.kvalue import KValue
 from kalvin.significance import (
     BandLayout,
+    gamma_to_byte,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -51,10 +51,7 @@ class Engine:
 
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
-        # self._misfit = PivotFill(state)
-        # self._misfit = ExpandFit(state)
-        self._misfit = Cogitator(state)
-        # self._misfit = Reentry(state)
+        self._misfit = Derivation(state)
 
     @property
     def state(self) -> EngineState:
@@ -139,10 +136,15 @@ class Engine:
             if self._state.is_groundable(kline):
                 self._ground(kline)
 
-            if is_misfit(kline, self._state.signifier):
-                proposals = list(self._misfit.cogitate(kline))
-                if proposals:
-                    batch.extend(proposals)
+            for candidate in self._select(kline):
+                result = self._misfit.derive(kline, candidate)
+                if result.ending != "done" or len(result.trace) < 2:
+                    # Stuck and abandoned ask; done at entry is the ground
+                    # path's, not a proposal.
+                    continue
+                proposal = KLine(kline.signature, result.trace[-1])
+                if not self._state.is_refused(proposal):
+                    batch.append(KValue(proposal, gamma_to_byte(result.gamma)))
 
             if self._state.is_grounded(kline):
                 self._state.remove_work_at(idx)
@@ -171,3 +173,14 @@ class Engine:
                     if self._state.ground(entry):
                         sweep = True
                         break
+
+    def _select(self, entry: KLine) -> Iterator[KLine]:
+        """Held non-terminal klines whose signature occurs as a node of
+        ``entry`` — Def 16: selection is occurrence, not content overlap;
+        terminals (unknowns, identities) offer no second side."""
+        for kline in self._state.where(
+            lambda k: k.signature != entry.signature
+            and not is_terminal(k)
+            and k.signature in entry.nodes
+        ):
+            yield kline

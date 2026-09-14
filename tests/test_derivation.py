@@ -119,6 +119,26 @@ def test_overfit_stuck_at_entry_without_b_walks():
     assert len(r.trace) == 1
 
 
+def test_b_walk_arrival_without_resolution_does_not_ground():
+    """Arrival on content overlap at a node ν_A does not hold, with no
+    canon contracting it, writes no bridge and ends stuck (Def 17 anchor
+    refinement; the pre-fix loop grounded duplicates to the bound)."""
+    X = bit(7)
+    MX = M | X
+    memory = [
+        KLine(MHALL, [M, H, ALL]),
+        KLine(ALL, [O]),
+        KLine(O, [MX]),  # connotation — arrives at a compound sharing M
+        KLine(M, [M]),
+    ]
+    r = Derivation(
+        memory, KLine(M | H, [M, H]), KLine(MHALL, [M, H, ALL]), SIG
+    ).run()
+    assert r.ending == "stuck"
+    assert r.composed == []
+    assert len(r.trace) == 1
+
+
 def test_two_ended_guard_licenses_adoption():
     memory = [
         KLine(MHALL, [M, H, ALL]),

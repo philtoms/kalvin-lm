@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-14T15:51:12.737Z",
+  "last_updated": "2026-09-14T17:43:57.080Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2680,6 +2680,25 @@
       "relevance": "high",
       "observed_at": "2026-09-14T15:19:40.232Z",
       "source_context": "Committing the Def 17 restatement after simplification pass",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed": {
+      "type": "source",
+      "title": "Observation: Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores",
+      "tags": [
+        "derivation",
+        "engine",
+        "def17",
+        "anchor",
+        "wedge",
+        "bugfix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed",
+      "relevance": "high",
+      "observed_at": "2026-09-14T17:43:57.001Z",
+      "source_context": "Reviewing user's Derivation port into src/dialogue/engine.py",
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },

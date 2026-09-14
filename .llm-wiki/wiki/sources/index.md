@@ -134,6 +134,7 @@
 - [Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named](obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod.md)
 - [Observation: Def 17 restated: two-party slots, anchor, refinement; earlier work committed](obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo.md)
 - [Observation: Def 17 two-party slots committed (726e2a0); tree clean](obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean.md)
+- [Observation: Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores](obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed.md)
 - [Observation: Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green](obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43.md)
 - [Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary](obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl.md)
 - [Observation: Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra](obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-.md)

@@ -19,13 +19,14 @@ from dataclasses import dataclass, field
 from itertools import combinations
 
 from kalvin.abstract import KSignifier
-from kalvin.kline import KLine, is_canon, is_terminal, sig_level
+from kalvin.kline import KLine, KNode, KSig, is_canon, is_terminal, sig_level
 from kalvin.significance import (
     DEFAULT_DELTA,
     WORD_BITS,
     misfit_mass,
     word_atom_count,
 )
+from dialogue.engine_state import EngineState
 
 #: T2-class strategy bound: total rewrites per run.
 MAX_STEPS = 32
@@ -60,45 +61,36 @@ class Derivation:
 
     def __init__(
         self,
-        memory: Sequence[KLine],
-        queued: KLine,
-        goal: KLine,
-        signifier: KSignifier,
+        memory: EngineState,
         *,
         max_steps: int = MAX_STEPS,
         max_walk_edges: int = MAX_WALK_EDGES,
         delta: float = DEFAULT_DELTA,
         b_walks: bool = True,
     ) -> None:
-        self.memory = list(memory)
-        self.queued = queued
-        self.goal = goal
-        self.signifier = signifier
+        self.memory = memory
+        self.signifier = memory.signifier
         self.max_steps = max_steps
         self.max_walk_edges = max_walk_edges
         self.delta = delta
         self.b_walks = b_walks
-        self._composed_keys: set[tuple[int, tuple[int, ...]]] = set()
-        self.nodes: list[int] = list(queued.nodes)
-        self.composed: list[KLine] = []
-        self.acq: dict[int, int] = {}  # atom bit -> acquisition depth (§11)
 
     # ── state reads ────────────────────────────────────────────────────────
 
-    def content(self) -> int:
+    def content(self) -> KNode:
         """σ(ν_A)."""
-        return int(self.signifier.signature_of(self.nodes))
+        return self.signifier.signature_of(self.nodes)
 
-    def goal_content(self) -> int:
-        return int(self.signifier.signature_of(self.goal.nodes))
+    def goal_content(self) -> KNode:
+        return self.signifier.signature_of(self.goal.nodes)
 
-    def gap(self) -> int:
+    def gap(self) -> KSig:
         """A's atoms beyond the goal — what must be shed (Def 9)."""
-        return int(self.signifier.residual(self.content(), self.goal_content()))
+        return self.signifier.residual(self.content(), self.goal_content())
 
-    def excess(self) -> int:
+    def excess(self) -> KSig:
         """The goal's atoms beyond A — what must be adopted (Def 9)."""
-        return int(self.signifier.residual(self.goal_content(), self.content()))
+        return self.signifier.residual(self.goal_content(), self.content())
 
     def mismatch(self) -> int:
         """|σ(ν_A) Δ σ(ν_B)| (Def 14)."""
@@ -129,23 +121,23 @@ class Derivation:
         return k.signature in nodes
 
     @staticmethod
-    def occurs_rev(k: KLine, nodes: list[int]) -> bool:
-        want = Counter(int(n) for n in k.nodes)
-        have = Counter(int(n) for n in nodes)
+    def occurs_rev(k: KLine, nodes: list[KNode]) -> bool:
+        want = Counter(n for n in k.nodes)
+        have = Counter(n for n in nodes)
         return all(have.get(n, 0) >= c for n, c in want.items())
 
     @staticmethod
-    def replace_fwd(k: KLine, nodes: list[int]) -> list[int]:
+    def replace_fwd(k: KLine, nodes: list[KNode]) -> list[KNode]:
         i = nodes.index(k.signature)
         return nodes[:i] + list(k.nodes) + nodes[i + 1 :]
 
     @staticmethod
-    def replace_rev(k: KLine, nodes: list[int]) -> list[int]:
-        want = Counter(int(n) for n in k.nodes)
-        out: list[int] = []
+    def replace_rev(k: KLine, nodes: list[KNode]) -> list[KNode]:
+        want = Counter(n for n in k.nodes)
+        out: list[KNode] = []
         placed = False
         for n in nodes:
-            key = int(n)
+            key = n
             if want.get(key, 0) > 0:
                 want[key] -= 1
                 if not placed:
@@ -157,23 +149,21 @@ class Derivation:
 
     # ── licensed-option enumeration ────────────────────────────────────────
 
-    def canonicalisations(self) -> Iterator[tuple[KLine, tuple[int, ...], list[int]]]:
+    def canonicalisations(self) -> Iterator[tuple[KLine, tuple[KNode, ...], list[KNode]]]:
         """Exactly-witnessed proper groups contractable under a held canon,
         smallest group first (Def 13, canonicalisation)."""
         n = len(self.nodes)
         for size in range(2, n):
             for idxs in combinations(range(n), size):
-                group = tuple(int(self.nodes[i]) for i in idxs)
-                for k in self.memory:
-                    if not is_canon(k, self.signifier):
-                        continue
-                    if Counter(int(x) for x in k.nodes) != Counter(group):
+                group = tuple(KNode(self.nodes[i]) for i in idxs)
+                for k in self.memory.where(lambda k: is_canon(k, self.signifier)):
+                    if Counter(KNode(x) for x in k.nodes) != Counter(group):
                         continue
                     new = [x for i, x in enumerate(self.nodes) if i not in idxs]
                     new.insert(idxs[0], k.signature)
                     yield k, group, new
 
-    def targetings(self) -> Iterator[tuple[KLine, str, list[int], int, int]]:
+    def targetings(self) -> Iterator[tuple[KLine, str, list[KNode], int, int]]:
         """Licensed targeting replaces with strictly falling misfit mass
         (Def 14). In an S2 region the restriction reads on both ends of
         the move: forward departs the gap or adopts the excess; reverse
@@ -184,39 +174,38 @@ class Derivation:
         gap = self.gap()
         excess = self.excess()
         s2 = self.relationship_band() == "S2"
-        for k in self.memory + self.composed:
-            if not self.usable(k):
-                continue
-            if k.signature in self.nodes:
-                if s2 and not (
-                    self.signifier.signifies(k.signature, gap)
-                    or self.signifier.signifies(
-                        int(self.signifier.signature_of(k.nodes)), excess
+        for m in [self.memory.where(lambda k: self.usable(k)), self.composed]:
+            for k in m:
+                if k.signature in self.nodes:
+                    if s2 and not (
+                        self.signifier.signifies(k.signature, gap)
+                        or self.signifier.signifies(
+                            self.signifier.signature_of(k.nodes), excess
+                        )
+                    ):
+                        continue
+                    new = self.replace_fwd(k, self.nodes)
+                    d1 = misfit_mass(
+                        int(self.signifier.signature_of(new)), self.goal_content()
                     )
-                ):
-                    continue
-                new = self.replace_fwd(k, self.nodes)
-                d1 = misfit_mass(
-                    int(self.signifier.signature_of(new)), self.goal_content()
-                )
-                if d1 < d0:
-                    yield k, "forward", new, d0, d1
-            if self.occurs_rev(k, self.nodes):
-                if s2 and not (
-                    all(self.signifier.signifies(n, gap) for n in k.nodes)
-                    or self.signifier.signifies(k.signature, excess)
-                ):
-                    continue
-                new = self.replace_rev(k, self.nodes)
-                d1 = misfit_mass(
-                    int(self.signifier.signature_of(new)), self.goal_content()
-                )
-                if d1 < d0:
-                    yield k, "reverse", new, d0, d1
+                    if d1 < d0:
+                        yield k, "forward", new, d0, d1
+                if self.occurs_rev(k, self.nodes):
+                    if s2 and not (
+                        all(self.signifier.signifies(n, gap) for n in k.nodes)
+                        or self.signifier.signifies(k.signature, excess)
+                    ):
+                        continue
+                    new = self.replace_rev(k, self.nodes)
+                    d1 = misfit_mass(
+                        self.signifier.signature_of(new), self.goal_content()
+                    )
+                    if d1 < d0:
+                        yield k, "reverse", new, d0, d1
 
     def slot_walk(
-        self, slot: int, end_mask: int | None = None
-    ) -> tuple[list[int], int, list[tuple[str, KLine]]] | None:
+        self, slot: int, end_mask: KSig | None = None
+    ) -> tuple[list[KNode], int, list[tuple[str, KLine]]] | None:
         """Goal-less walk from the slot identity, licensed by occurrence on
         either side (Def 17), ending at arrival in end_mask — the excess
         for a ν_A slot, σ(ν_A) for a ν_B slot. T2 no-revisit keys on
@@ -229,15 +218,13 @@ class Derivation:
         while queue:
             nodes, used, edges, path = queue.popleft()
             if edges and self.signifier.signifies(
-                int(self.signifier.signature_of(nodes)), end_mask
+                self.signifier.signature_of(nodes), end_mask
             ):
                 return nodes, edges, path
             if edges >= self.max_walk_edges:
                 continue
-            for k in self.memory:
-                if not self.usable(k):
-                    continue
-                key = (int(k.signature), tuple(int(n) for n in k.nodes))
+            for k in self.memory.where(lambda k: self.usable(k)):
+                key = (k.signature, tuple(n for n in k.nodes))
                 if key in used:
                     continue
                 moves = []
@@ -248,7 +235,7 @@ class Derivation:
                 if self.occurs_rev(k, nodes):
                     moves.append(("reverse", self.replace_rev(k, nodes)))
                 for direction, new in moves:
-                    t = tuple(sorted(int(x) for x in new))
+                    t = tuple(sorted(x for x in new))
                     if t in seen:
                         continue
                     seen.add(t)
@@ -256,8 +243,8 @@ class Derivation:
         return None
 
     def refine(
-        self, nodes: list[int], edges: int, path: list[tuple[str, KLine]]
-    ) -> tuple[list[int], int, list[tuple[str, KLine]]]:
+        self, nodes: list[KNode], edges: int, path: list[tuple[str, KLine]]
+    ) -> tuple[list[KNode], int, list[tuple[str, KLine]]]:
         """Write granularity (Def 17): expand the walk's nodes covering the
         excess toward the goal's witness resolution, under held
         well-founded canons. Each expansion is an edge."""
@@ -267,10 +254,9 @@ class Derivation:
                 kanon = next(
                     (
                         k
-                        for k in self.memory
-                        if k.signature == n
+                        for k in self.memory.where(lambda k: k.signature == n
                         and is_canon(k, self.signifier)
-                        and self.wellfounded(k)
+                        and self.wellfounded(k))
                     ),
                     None,
                 )
@@ -285,9 +271,19 @@ class Derivation:
 
     # ── the run (policy A) ─────────────────────────────────────────────────
 
-    def run(self) -> DerivationResult:
+    def derive(
+        self,
+        queued: KLine,
+        goal: KLine,
+) -> DerivationResult:
         """Policy A (§9): canonicalise, then target, then walk slots.
         Done, stuck, or abandoned at the step bound (Def 15, T2)."""
+        self.queued = queued
+        self.goal = goal
+        self.nodes: list[KNode] = list(queued.nodes)
+        self.composed: list[KLine] = []
+        self.acq: dict[int, int] = {}  # atom bit -> acquisition depth (§11)
+        self._composed_keys: set[tuple[int, tuple[int, ...]]] = set()
         result = DerivationResult(ending="abandoned", trace=[list(self.nodes)])
         result.j0 = self._jaccard()
         for _ in range(self.max_steps):
@@ -345,8 +341,9 @@ class Derivation:
     def _walk_b(self) -> bool:
         """ν_B walk (Def 17): depart an overfit slot of the goal's
         witness, arrive at σ(ν_A) — the anchor — and write the bridge
-        head-ward: head = the anchor, witness = the arrived nodes shared
-        with the goal plus the departed node covering the excess."""
+        head-ward: head = the anchor at ν_A's node resolution, witness =
+        the arrived nodes shared with the goal plus the departed node
+        covering the excess."""
         a_content = self.content()
         goal_content = self.goal_content()
         excess = self.excess()
@@ -380,10 +377,11 @@ class Derivation:
             kanon = next(
                 (
                     k
-                    for k in self.memory
-                    if is_canon(k, self.signifier)
-                    and k.nodes == [n]
-                    and k.signature in self.nodes
+                    for k in self.memory.where(
+                        lambda k: is_canon(k, self.signifier)
+                        and k.nodes == [n]
+                        and k.signature in self.nodes
+                    )
                 ),
                 None,
             )
@@ -395,29 +393,27 @@ class Derivation:
         return out, edges
 
     def _ground_composed(self, composed: KLine) -> bool:
-        """Write a composed correspondence once per run: a repeated
+        """Ground a composed correspondence once per run: a repeated
         bridge is not progress, and re-deriving it wedges the loop."""
         key = (int(composed.signature), tuple(int(n) for n in composed.nodes))
         if key in self._composed_keys:
             return False
         self._composed_keys.add(key)
-        self.memory.append(composed)
+        self.memory.ground(composed)
         return True
 
-    def _exposes(self, new_nodes: list[int]) -> bool:
+    def _exposes(self, new_nodes: list[KNode]) -> bool:
         return any(
-            self.usable(k)
-            and not is_canon(k, self.signifier)
-            and (k.signature in new_nodes or self.occurs_rev(k, new_nodes))
-            for k in self.memory
+            self.memory.where(lambda k: self.usable(k)and not is_canon(k, self.signifier)
+                        and (k.signature in new_nodes or self.occurs_rev(k, new_nodes)))
         )
 
-    def _record_arrival(self, new_nodes: list[int], k: KLine) -> None:
+    def _record_arrival(self, new_nodes: list[KNode], k: KLine) -> None:
         """§11: arriving atoms record their cost — the composed depth, 0 for
         S1 evidence, 1 for unratified evidence."""
         arriving = int(
             self.signifier.residual(
-                int(self.signifier.signature_of(new_nodes)), self.content()
+                self.signifier.signature_of(new_nodes), self.content()
             )
         )
         cost = (

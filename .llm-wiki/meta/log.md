@@ -473,3 +473,6 @@
 ## [2026-09-14T15:51:12.682Z] observe
 - slug: "obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43", title: "Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green", relevance: "high"
 
+## [2026-09-14T17:43:57.009Z] observe
+- slug: "obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed", title: "Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores", relevance: "high"
+
