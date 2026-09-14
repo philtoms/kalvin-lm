@@ -103,7 +103,7 @@ class Cogitator:
         while len(underfit) > 0:
             n=underfit.pop(0)
             preserve=True
-            for fwd_path in self.connotateY(n):
+            for fwd_path in self.connotate(n):
                 right, hops = fwd_path.right, fwd_path.hops
                 for m_nodes in [overfit, fit]:
                     if right in m_nodes:
@@ -125,7 +125,7 @@ class Cogitator:
             underfit = remainder
             while len(overfit) > 0:
                 n=overfit.pop(0)
-                for fwd_path in self.connotateY(n):
+                for fwd_path in self.connotate(n):
                     right, hops = fwd_path.right, fwd_path.hops
                     if right in rev_paths:
                         rev = rev_paths[right]
@@ -153,7 +153,7 @@ class Cogitator:
         return proposal, slots
 
 
-    def connotateY(self, left: KNode, depth: int = MAX_HOP) -> Iterator[KPath]:
+    def connotate(self, left: KNode, depth: int = MAX_HOP) -> Iterator[KPath]:
         state = self._state
         signifier = self._state.signifier
         frontier: list[KNode] = [left]
@@ -172,143 +172,6 @@ class Cogitator:
                         next_frontier.append(right)
             frontier = next_frontier
 
-
-    def canonicalise(
-        self,
-        underfit: list[KNode],
-        overfit: list[KNode],
-        proposal: list[KNode],
-    ) -> Iterator[KValue]:
-        """Bridge the gap with connotation crossovers, one proposal per encoding.
-
-        Every underfit connotation path may cross an overfit path where two
-        elements signify each other; the klines under those elements are the
-        bricks. A proposal is the shared ``proposal`` nodes prepended to a
-        unique set of bricks whose signatures completely encode
-        ``proposal_sig`` — every gap bit sits inside their OR-reduction.
-        Brick sets are enumerated smallest-first and the search stops at the
-        first size that encodes, so the leanest encodings come out first.
-        Each slot (gap node) is graded by the hop depth of the nearest brick
-        sharing its bits, through the proposal aggregator.
-        """
-        state = self._state
-        signifier = self.signifier
-        aggregator = PROPOSAL_AGGREGATOR
-        decay = aggregator.decay
-
-        proposal_sig = signifier.signature_of(underfit + overfit)
-        if not proposal_sig or not underfit or not overfit:
-            return  # a crossover needs both sides and something to encode
-
-        # Every path element tagged with its hop depth; roots at depth 0.
-        u_elements = [
-            (e, hops)
-            for paths in (self.connotate(n) for n in underfit)
-            for path in paths
-            for hops, e in enumerate(path)
-        ]
-        o_elements = [
-            (e, hops)
-            for paths in (self.connotate(n) for n in overfit)
-            for path in paths
-            for hops, e in enumerate(path)
-        ]
-
-        # Crossovers: (u, o) pairs whose type-words overlap. Each element
-        # accumulates its root, so a pair encodes at least u_root | o_root.
-        crossovers: list[tuple[KNode, int, KNode, int]] = [
-            (u, u_hops, o, o_hops)
-            for u, u_hops in u_elements
-            for o, o_hops in o_elements
-            if signifier.signifies(u, o)
-        ]
-        crossovers = list(dict.fromkeys(crossovers))
-        if not crossovers:
-            return
-
-        slots = underfit + overfit
-        seen: set[frozenset[KNode]] = set()
-        for size in range(1, len(crossovers) + 1):
-            produced = False
-            for combo in combinations(crossovers, size):
-                # Min hop depth per distinct element across the combo.
-                hop_of: dict[KNode, int] = {}
-                for u, u_hops, o, o_hops in combo:
-                    for e, h in ((u, u_hops), (o, o_hops)):
-                        if e not in hop_of or h < hop_of[e]:
-                            hop_of[e] = h
-                # Bricks: the klines heading the crossed elements. Elements
-                # with no kline (bare roots) contribute nothing.
-                brick_hops: dict[KNode, int] = {}
-                for e, h in hop_of.items():
-                    kline = state.find(e)
-                    if kline is None:
-                        continue
-                    s = kline.signature
-                    if s not in brick_hops or h < brick_hops[s]:
-                        brick_hops[s] = h
-                if not brick_hops:
-                    continue
-                brick_sigs = frozenset(brick_hops)
-                if (
-                    brick_sigs in seen
-                    or not signifier.node_in(
-                        proposal_sig, signifier.signature_of(list(brick_sigs))
-                    )
-                ):
-                    continue
-                seen.add(brick_sigs)
-                produced = True
-                slot_values = [
-                    decay(min(h for s, h in brick_hops.items() if s & n != 0))
-                    if any(s & n != 0 for s in brick_hops)
-                    else 0.0
-                    for n in slots
-                ]
-                proposal_kline = KLine(proposal_sig, list(proposal) + list(brick_hops))
-                yield KValue(proposal_kline, aggregator.compose_terminal(slot_values))
-            if produced:
-                break  # leanest encodings only — stop at the first size that works
-
-
-    def connotate(self, sig: KNode, depth: int = MAX_HOP) -> list[list[KNode]]:
-        """Root-to-leaf connotation paths from *sig*, to *depth* hops.
-
-        Breadth-first over non-terminal, non-identity resolution edges.
-        Each path is a chain of OR-accumulated signatures starting at *sig*;
-        a node reached by an earlier hop appears in only that path prefix,
-        so paths are loop-free. A path ends at a leaf: no further edges, or
-        the *depth* bound.
-        """
-        state = self._state
-        signifier = self._state.signifier
-        paths: list[list[KNode]] = [[sig]]
-        visited: set[KNode] = {sig}
-        for _ in range(depth):
-            next_paths: list[list[KNode]] = []
-            extended: set[KNode] = set()
-            for path in paths:
-                cur = path[-1]
-                branched = False
-                for kline in state.find_sig(cur):
-                    if (
-                        kline is None
-                        or is_terminal(kline)
-                        or is_identity(kline)
-                    ):
-                        continue
-                    reached = cur.merge(signifier.signature_of(kline.nodes))
-                    if reached in visited:
-                        continue
-                    branched = True
-                    visited.add(reached)
-                    next_paths.append(path + [reached])
-                if not branched:
-                    extended.add(cur)
-            paths = next_paths + [p for p in paths if p[-1] in extended]
-            if not next_paths:
-                break
-        return paths
 
     def _selectable(self, entry: KLine) -> Iterator[KLine]:
         """Held non-terminal klines whose signature occurs as a node of

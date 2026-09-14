@@ -21,7 +21,7 @@ def expand_c(self, underfit, overfit, fit):
         while len(m1) > 0:
             n = m1.pop(0)
             reserve = True if m1 is underfit else False
-            for kl, hops in self.connotateY(n):
+            for kl, hops in self.connotate(n):
                 covers = n in kl.nodes or self.signifier.bit_in(n, kl.signature)
                 if covers:
                     reserve = False

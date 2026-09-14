@@ -33,7 +33,7 @@ print("pair WDMH:", [n.label for n in w[0].nodes], "vs MHALL:", [n.label for n i
 
 what = [n for n in u if n.label == "what"][0]
 print("== connotateY('what') yields ==")
-for kl, hops in cog.connotateY(what):
+for kl, hops in cog.connotate(what):
     print(f"  hops={hops} sig={kl.signature.label!r} nodes={[n.label for n in kl.nodes]}")
     for name, m_nodes in (("overfit", o[:]), ("fit", f[:])):
         if kl.signature in m_nodes:

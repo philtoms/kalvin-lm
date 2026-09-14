@@ -25,7 +25,7 @@ wdmh_k = [k for k in by_label("WDMH") if k.nodes and not is_terminal(k)]
 for w in wdmh_k:
     print("WDMH non-terminal kline:", [str(n) for n in w.nodes])
     print("  connotateY:")
-    for kl, hops in cog.connotateY(w.signature):
+    for kl, hops in cog.connotate(w.signature):
         print(f"    hops={hops} sig={kl.signature} nodes={[str(n) for n in kl.nodes]}")
     for m in by_label("MHALL"):
         q_set, c_set = set(w.nodes), set(m.nodes)

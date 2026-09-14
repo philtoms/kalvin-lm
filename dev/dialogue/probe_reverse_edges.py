@@ -42,7 +42,7 @@ def connotateR(self, start, depth=6):
         frontier = nxt
 
 
-Cogitator.connotateY = connotateR
+Cogitator.connotate = connotateR
 cog = Cogitator(state)
 
 def by_label(label):
