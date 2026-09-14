@@ -110,7 +110,7 @@ How a participant tests a kline's structural claim against what Kalvin actually 
 The process that produces and consumes significance (§12).
 
 **Cogitation**:
-The slow path of rationalisation — the strategy loop over derivations: **select** a hop, **derive** to an ending, **absorb** the result into memory, **reenter** with the output as the next queue's input (§10). Each phase is strategy: the rule system constrains what any of it may do, never what it must. The fit is graded at each state and its rate of change feeds back, telling Kalvin whether its effort is increasingly or decreasingly significant.
+The slow path of rationalisation — the strategy loop over derivations: **select** a hop, **derive** to an ending, **add** the result to memory, **reenter** with the output as the next queue's input (§10). Each phase is strategy: the rule system constrains what any of it may do, never what it must. The fit is graded at each state and its rate of change feeds back, telling Kalvin whether its effort is increasingly or decreasingly significant.
 _Avoid_: thinking, background thread, the cogitator
 
 **Derivation**:
@@ -150,11 +150,11 @@ The structural halt condition — no atom, mark, or decree involved. The Unknown
 The held correspondences selectable for a derivation. A candidate is selectable when its signature occurs as a node of A — that occurrence is the replace licence's forward side, and each replace's arrival makes new candidates selectable: the path is the guard, not the point. The goal is never selected: declared (`=>`) or supplied by reentry, it scopes the misfit region and is checked at done (Def 16). Content overlap and signature-in-node imply neither the other — selection requires the second; the band routes by the first.
 
 **Slot**:
-The per-node decomposition of a misfit: each node of A carrying a gap atom is a slot, seeking the goal's excess. A slot with a licensed replace fires it; a slot without is **walked** — a goal-less derivation over the correspondence graph, licensed by occurrence alone (either side of a held kline occurring in the walk's nodes), ending at **arrival** in the excess or stuck at the ask. The absorbed end state is the **composed correspondence** the main line consumes (Def 17).
+The per-node decomposition of a misfit: each node of A carrying a gap atom is a slot, seeking the goal's excess. A slot with a licensed replace fires it; a slot without is **walked** — a goal-less derivation over the correspondence graph, licensed by occurrence alone (either side of a held kline occurring in the walk's nodes), ending at **arrival** in the excess or stuck at the ask. The end state written into memory is the **composed correspondence** the main line consumes — expanded toward the goal's witness resolution of the excess, each expansion an edge of its acquisition depth (Def 17).
 _Avoid_: subgoal, subroutine, task
 
 **Progressive Path**:
-The evidence-building route from S3 to S2: each hop writes its output to STM, and the absorbed end states are the composed correspondences the main line consumes — hops matter because memory grows between them (§10).
+The evidence-building route from S3 to S2: each hop writes its output to STM, and the written end states are the composed correspondences the main line consumes — hops matter because memory grows between them (§10).
 
 **Reentry**:
 Derivations compose: hop k's end state queues as hop k+1's input, and memory may grow between hops — successive hops are not derivations of one fixed system. The reentry arm proposes from a proposal, one hop further out, bounded by the **hop ceiling**. Hop order is the only time the system has (§10).

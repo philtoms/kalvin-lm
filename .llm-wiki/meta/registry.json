@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-13T16:20:48.660Z",
+  "last_updated": "2026-09-14T07:36:51.325Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2495,6 +2495,101 @@
       "source_context": "Fixing the Step 3 slot-walk demonstration in kalvin-simplified.md",
       "created": "2026-09-13",
       "updated": "2026-09-13"
+    },
+    "sources/obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-": {
+      "type": "source",
+      "title": "Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what",
+      "tags": [
+        "algebra",
+        "derivation",
+        "probe",
+        "acid-test",
+        "mirror-clause",
+        "slot-walk"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-",
+      "relevance": "high",
+      "observed_at": "2026-09-14T05:30:03.096Z",
+      "source_context": "Acid-testing the §9 worked example through implemented code",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi": {
+      "type": "source",
+      "title": "Observation: Def 17 absorption refinement + T2 correspondence-identity keying applied",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def17",
+        "t2",
+        "refinement",
+        "amendment"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi",
+      "relevance": "high",
+      "observed_at": "2026-09-14T06:32:55.540Z",
+      "source_context": "Applying the Def 17 refinement + T2 keying amendments",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod": {
+      "type": "source",
+      "title": "Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def17",
+        "writing",
+        "node-opacity"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T07:36:51.279Z",
+      "source_context": "Tightening the Def 17 absorption clause per Phil's compactness critique",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi": {
+      "type": "source",
+      "title": "Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged",
+      "tags": [
+        "algebra",
+        "verification",
+        "probe",
+        "worked-example",
+        "def17",
+        "refine-gap",
+        "t2-keying"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi",
+      "relevance": "high",
+      "observed_at": "2026-09-14T06:19:43.905Z",
+      "source_context": "Verifying the §9 worked example against pure algebra code",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal": {
+      "type": "source",
+      "title": "Observation: Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion",
+      "tags": [
+        "algebra",
+        "def17",
+        "refinement",
+        "policy",
+        "granularity",
+        "acquisition-depth"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal",
+      "relevance": "high",
+      "observed_at": "2026-09-14T06:29:23.777Z",
+      "source_context": "Designing the Def 17 refinement amendment for kalvin-simplified.md",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",
