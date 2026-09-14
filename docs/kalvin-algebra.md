@@ -602,6 +602,8 @@ The relationship C(A,B) determines the region in which targeting may occur. The 
 | S3                | replacement permitted; all nodes are in the misfit |
 | S4                | none; the derivation is stuck                      |
 
+The restriction reads on both ends of the move: forward, the departed node carries underfit content or the arriving witness adopts overfit content; reverse, the consumed nodes carry the underfit or the arriving head lands in the overfit. An empty underfit therefore bars nothing — an overfit relationship is worked by adoption, on the arrival clause alone.
+
 A targeting replacement is licensed only when it strictly decreases:
 
 ```text
@@ -1270,3 +1272,98 @@ Token expansion, word binding, and annotations belong to the implementation and 
 The algebra defines the relevant kline shapes. Ratification is a protocol operation that changes how those klines are treated.
 
 In particular, reciprocal Connotation pairs may be countersigned to create a standing one-hop correspondence. The correspondence then becomes reusable without the acquisition penalty associated with an unratified traversal.
+
+---
+
+# Appendix — Worked example: “Mary had”
+
+The §9 example works an under+over relationship: the question holds content the answer lacks (w, d) and lacks content the answer holds (a, l). This example works the pure overfit relationship — the fragment — where the underfit is empty and the ν_B walk of Definition 17 is the only bridge.
+
+Suppose memory contains:
+
+```text
+mhall:[m,h,all]       Canon
+all:[o]               Connotation
+all:[a,l,l]           Canon
+o:[m]                 Connotation
+m:[m]                 Identity
+```
+
+The queued kline is:
+
+```text
+A₀ = mh:[m,h]
+```
+
+and the goal is:
+
+```text
+B = mhall.
+```
+
+The initial relationship is:
+
+```text
+C(A₀,B) = mh:[m,h,all]
+```
+
+with:
+
+```text
+underfit = ∅
+overfit  = {a,l}
+Δ₀       = 2.
+```
+
+No node of ν_A carries an underfit atom: the per-party decomposition yields no A-side slot. No held correspondence adopts the overfit at any node of ν_A — `o:[m]` read reverse swaps m for o and worsens the mismatch, `all:[o]` and `all:[a,l,l]` occur nowhere in ν_A, and no exactly-witnessed group contracts. Targeting alone is stuck, and under a one-party slot definition the misfit would ask — falsely: `o:[m]` connects the parties.
+
+### Step 1 — Walk from the overfit slot
+
+The overfit lives in nodes of ν_B; the overfit slot is the goal's node all. The walk starts at the slot identity:
+
+```text
+all:[all]
+```
+
+and crosses two correspondences:
+
+| Hop               | Correspondence   | Direction | Occurring side             |
+| ----------------- | ---------------- | --------- | -------------------------- |
+| all:[all] → all:[o] | all:[o] Connotation | forward | head all occurs as a node |
+| all:[o] → all:[m] | o:[m] Connotation | forward   | head o occurs as a node    |
+
+The second hop arrives: content m overlaps σ(ν_A) — the anchor, discovered on arrival. Neither end refines — the anchor is already a node of ν_A, and the departed end is a node of ν_B, at the goal's own witness resolution. The terminal is the arrival state, two edges crossed.
+
+It is written head-ward as the composed correspondence:
+
+```text
+m:[m,all]
+```
+
+an Overfit kline with acquisition depth 2: the head is the anchor, whose atoms shared with the goal are m itself; the witness holds those shared atoms together with the B-side end's node covering the overfit.
+
+### Step 2 — Adopt
+
+The composed correspondence is selectable — its signature m occurs in ν_A — and its forward replacement adopts the overfit:
+
+```text
+m ⇉ [m,all]
+```
+
+giving:
+
+```text
+[m,all,h]
+```
+
+whose value is:
+
+```text
+mhall.
+```
+
+The relationship is Canon, so the derivation is done.
+
+The goal was never rewritten: ν_B holds the same three nodes at done as at entry. The overfit content remains sealed in the compound node all — nothing in this memory consumes bare a or l, so the anchor walk's granularity is already the goal's own, and the measurement reads Ĥ = 2/3, γ = 2^(-2/3) ≈ 0.63.
+
+The important point is the mirror of §9's: the system reaches the answer through held correspondences, and which end of the misfit the derivation departs from is a fact about the relationship, not a restriction on the mechanism. The ask is reserved for the case where no route exists from either party.

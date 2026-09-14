@@ -461,3 +461,9 @@
 ## [2026-09-14T15:24:40.053Z] observe
 - slug: "obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-", title: "Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links", relevance: "medium"
 
+## [2026-09-14T15:33:24.967Z] observe
+- slug: "obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry", title: "ν_B-walk probe built: 7/7 PASS, control stuck at entry", relevance: "high"
+
+## [2026-09-14T15:37:01.038Z] observe
+- slug: "obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr", title: "Def 14 two-ended reading + \"Mary had\" appendix worked example drafted", relevance: "high"
+

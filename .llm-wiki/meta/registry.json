@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-14T15:24:40.094Z",
+  "last_updated": "2026-09-14T15:37:01.094Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2553,6 +2553,43 @@
       "relevance": "high",
       "observed_at": "2026-09-14T05:30:03.096Z",
       "source_context": "Acid-testing the §9 worked example through implemented code",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry": {
+      "type": "source",
+      "title": "Observation: ν_B-walk probe built: 7/7 PASS, control stuck at entry",
+      "tags": [
+        "kalvin-algebra",
+        "def17",
+        "probe",
+        "overfit",
+        "anchor",
+        "verification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry",
+      "relevance": "high",
+      "observed_at": "2026-09-14T15:33:24.964Z",
+      "source_context": "Building the pure-algebra probe for the Def 17 ν_B walk",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr": {
+      "type": "source",
+      "title": "Observation: Def 14 two-ended reading + \"Mary had\" appendix worked example drafted",
+      "tags": [
+        "kalvin-algebra",
+        "def14",
+        "appendix",
+        "worked-example",
+        "overfit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr",
+      "relevance": "high",
+      "observed_at": "2026-09-14T15:37:01.036Z",
+      "source_context": "Updating Def 14 wording and documenting the ν_B walk as appendix worked example",
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },

@@ -151,3 +151,5 @@
 {"page_type":"concept","title":"Grilling","path":"concepts/grilling","timestamp":"2026-09-14T15:23:52.227Z","kind":"ensure_page"}
 {"page_type":"concept","title":"KScript Operator","path":"concepts/kscript-operator","timestamp":"2026-09-14T15:23:52.228Z","kind":"ensure_page"}
 {"slug":"obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-","title":"Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links","relevance":"medium","timestamp":"2026-09-14T15:24:40.053Z","kind":"observe"}
+{"slug":"obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry","title":"ν_B-walk probe built: 7/7 PASS, control stuck at entry","relevance":"high","timestamp":"2026-09-14T15:33:24.967Z","kind":"observe"}
+{"slug":"obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr","title":"Def 14 two-ended reading + \"Mary had\" appendix worked example drafted","relevance":"high","timestamp":"2026-09-14T15:37:01.038Z","kind":"observe"}

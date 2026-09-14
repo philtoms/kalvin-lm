@@ -2,6 +2,8 @@
 
 ## 2026-09-14
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr","title":"Def 14 two-ended reading + \"Mary had\" appendix worked example drafted"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry","title":"ν_B-walk probe built: 7/7 PASS, control stuck at entry"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-","title":"Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links"}
 - **ensure\_page**: {"page_type":"concept","path":"concepts/kscript-operator","title":"KScript Operator"}
 - **ensure\_page**: {"page_type":"concept","path":"concepts/grilling","title":"Grilling"}

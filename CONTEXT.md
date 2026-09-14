@@ -123,7 +123,7 @@ A held kline usable as evidence — every held kline except the two terminals (D
 _Avoid_: rule (in prose; a kline is not a rule), candidate (a candidate is a correspondence selected for use)
 
 **Licence**:
-What permits a replace — two kinds on one rule (§7): **witnessed** (canon-mode: expand/contract, licensed by memory alone, blind to any goal) and **evidenced targeting** (licensed by a correspondence and scoped to the misfit region — targeting-licensed iff it strictly decreases the misfit mass, Def 14).
+What permits a replace — two kinds on one rule (§7): **witnessed** (canon-mode: expand/contract, licensed by memory alone, blind to any goal) and **evidenced targeting** (licensed by a correspondence and scoped to the misfit region — read on both ends of the move: forward departs the underfit or adopts the overfit, reverse consumes the underfit or lands in the overfit, so an empty underfit bars nothing; targeting-licensed iff it strictly decreases the misfit mass, Def 14).
 
 **Misfit Mass**:
 `|signature_of(A.nodes) Δ signature_of(B.nodes)|` — the atoms the two contents disagree on. The unit of progress: every licensed targeting replace strictly decreases it, and a run from entry is bounded by its initial value (Def 14, T1).

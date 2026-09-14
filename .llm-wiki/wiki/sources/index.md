@@ -127,6 +127,8 @@
 - [Observation: Step 3 Mary example: o→all hop licensed by reverse read of all:\[o\]](obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al.md)
 - [Observation: "Absorption" swept: doc now writes/adds to memory — the doc's own plain vocabulary](obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own.md)
 - [Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what](obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-.md)
+- [Observation: ν_B-walk probe built: 7/7 PASS, control stuck at entry](obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry.md)
+- [Observation: Def 14 two-ended reading + "Mary had" appendix worked example drafted](obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr.md)
 - [Observation: Def 17 absorption refinement + T2 correspondence-identity keying applied](obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi.md)
 - [Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named](obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod.md)
 - [Observation: Def 17 restated: two-party slots, anchor, refinement; earlier work committed](obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo.md)
