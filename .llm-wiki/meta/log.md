@@ -425,3 +425,9 @@
 ## [2026-09-14T07:36:51.281Z] observe
 - slug: "obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod", title: "Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named", relevance: "medium"
 
+## [2026-09-14T08:04:44.497Z] observe
+- slug: "obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own", title: "\"Absorption\" swept: doc now writes/adds to memory — the doc's own plain vocabulary", relevance: "medium"
+
+## [2026-09-14T08:18:19.327Z] observe
+- slug: "obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-", title: "Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra", relevance: "high"
+

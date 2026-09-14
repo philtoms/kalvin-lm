@@ -2,6 +2,8 @@
 
 ## 2026-09-14
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-","title":"Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own","title":"\"Absorption\" swept: doc now writes/adds to memory — the doc's own plain vocabulary"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod","title":"Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi","title":"Def 17 absorption refinement + T2 correspondence-identity keying applied"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal","title":"Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion"}

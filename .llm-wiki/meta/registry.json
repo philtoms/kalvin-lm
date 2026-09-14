@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-14T07:36:51.325Z",
+  "last_updated": "2026-09-14T08:18:19.371Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2496,6 +2496,23 @@
       "created": "2026-09-13",
       "updated": "2026-09-13"
     },
+    "sources/obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own": {
+      "type": "source",
+      "title": "Observation: \"Absorption\" swept: doc now writes/adds to memory — the doc's own plain vocabulary",
+      "tags": [
+        "docs",
+        "kalvin",
+        "terminology",
+        "writing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T08:04:44.494Z",
+      "source_context": "Removing \"absorption\" terminology from kalvin-simplified.md per Phil's jargon critique",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
     "sources/obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-": {
       "type": "source",
       "title": "Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what",
@@ -2549,6 +2566,23 @@
       "relevance": "medium",
       "observed_at": "2026-09-14T07:36:51.279Z",
       "source_context": "Tightening the Def 17 absorption clause per Phil's compactness critique",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-": {
+      "type": "source",
+      "title": "Observation: Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra",
+      "tags": [
+        "docs",
+        "consolidation",
+        "commit",
+        "kalvin-algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-",
+      "relevance": "high",
+      "observed_at": "2026-09-14T08:18:19.325Z",
+      "source_context": "Committing the doc consolidation and probe relocation",
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },
