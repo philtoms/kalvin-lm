@@ -2,6 +2,8 @@
 
 ## 2026-09-14
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43","title":"Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f","title":"Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr","title":"Def 14 two-ended reading + \"Mary had\" appendix worked example drafted"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry","title":"ν_B-walk probe built: 7/7 PASS, control stuck at entry"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-","title":"Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links"}

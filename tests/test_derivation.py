@@ -80,3 +80,53 @@ def test_stuck_at_entry_without_a_bridge():
     ).run()
     assert r.ending == "stuck"
     assert len(r.trace) == 1
+
+
+def _overfit_memory() -> list[KLine]:
+    return [
+        KLine(MHALL, [M, H, ALL]),  # B — held canon, overfit sealed in [all]
+        KLine(ALL, [O]),  # connotation
+        KLine(ALL, [A, L, L]),  # canon
+        KLine(O, [M]),  # connotation — the bridge edge
+        KLine(M, [M]),  # identity — inert
+    ]
+
+
+def _overfit_run(**kwargs) -> object:
+    return Derivation(
+        _overfit_memory(),
+        KLine(M | H, [M, H]),
+        KLine(MHALL, [M, H, ALL]),
+        SIG,
+        **kwargs,
+    ).run()
+
+
+def test_overfit_walk_anchors_and_adopts():
+    r = _overfit_run()
+    assert r.ending == "done"
+    # pure overfit: no A-side slot exists; the walk departs the goal's node
+    assert len(r.composed) == 1
+    assert int(r.composed[0].signature) == int(M)  # head = the anchor
+    assert r.composed[0].nodes == [M, ALL]
+    assert r.composed[0].acq_depth == 2
+    assert Counter(map(int, r.trace[-1])) == Counter(map(int, [M, ALL, H]))
+
+
+def test_overfit_stuck_at_entry_without_b_walks():
+    r = _overfit_run(b_walks=False)
+    assert r.ending == "stuck"
+    assert len(r.trace) == 1
+
+
+def test_two_ended_guard_licenses_adoption():
+    memory = [
+        KLine(MHALL, [M, H, ALL]),
+        KLine(M, [M, ALL]),  # overfit — adopt fwd at shared content
+    ]
+    r = Derivation(
+        memory, KLine(M | H, [M, H]), KLine(MHALL, [M, H, ALL]), SIG
+    ).run()
+    assert r.ending == "done"
+    assert r.composed == []
+    assert Counter(map(int, r.trace[-1])) == Counter(map(int, [M, ALL, H]))

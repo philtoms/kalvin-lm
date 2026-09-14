@@ -207,11 +207,13 @@
 - [[sources/obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own]] — Observation: "Absorption" swept: doc now writes/adds to memory — the doc's own plain vocabulary *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-]] — Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry]] — Observation: ν_B-walk probe built: 7/7 PASS, control stuck at entry *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f]] — Observation: Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr]] — Observation: Def 14 two-ended reading + "Mary had" appendix worked example drafted *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi]] — Observation: Def 17 absorption refinement + T2 correspondence-identity keying applied *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod]] — Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo]] — Observation: Def 17 restated: two-party slots, anchor, refinement; earlier work committed *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean]] — Observation: Def 17 two-party slots committed (726e2a0); tree clean *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43]] — Observation: Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl]] — Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-]] — Observation: Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi]] — Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged *(created: 2026-09-14)*
@@ -226,4 +228,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-14T15:37:01.094Z* | *Total pages: 214*
+*Last updated: 2026-09-14T15:51:12.737Z* | *Total pages: 216*

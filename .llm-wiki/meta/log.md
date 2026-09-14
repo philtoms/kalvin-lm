@@ -467,3 +467,9 @@
 ## [2026-09-14T15:37:01.038Z] observe
 - slug: "obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr", title: "Def 14 two-ended reading + \"Mary had\" appendix worked example drafted", relevance: "high"
 
+## [2026-09-14T15:47:46.546Z] observe
+- slug: "obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f", title: "Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged", relevance: "medium"
+
+## [2026-09-14T15:51:12.682Z] observe
+- slug: "obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43", title: "Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green", relevance: "high"
+

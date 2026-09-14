@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-14T15:37:01.094Z",
+  "last_updated": "2026-09-14T15:51:12.737Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2575,6 +2575,24 @@
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },
+    "sources/obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f": {
+      "type": "source",
+      "title": "Observation: Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged",
+      "tags": [
+        "kalvin-algebra",
+        "def14",
+        "appendix",
+        "probe",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T15:47:46.544Z",
+      "source_context": "Committing Def 14 wording, appendix worked example, and ν_B-walk probe",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
     "sources/obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr": {
       "type": "source",
       "title": "Observation: Def 14 two-ended reading + \"Mary had\" appendix worked example drafted",
@@ -2662,6 +2680,26 @@
       "relevance": "high",
       "observed_at": "2026-09-14T15:19:40.232Z",
       "source_context": "Committing the Def 17 restatement after simplification pass",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43": {
+      "type": "source",
+      "title": "Observation: Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green",
+      "tags": [
+        "kalvin",
+        "derivation",
+        "engine",
+        "def17",
+        "def14",
+        "port",
+        "tests"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43",
+      "relevance": "high",
+      "observed_at": "2026-09-14T15:51:12.681Z",
+      "source_context": "Porting two-party Def 17 + Def 14 into the engine core",
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },

@@ -2,13 +2,13 @@
 
 A Derivation rewrites the node sequence of a queued kline under held
 correspondences, relative to a goal kline (Def 12). The queued head rides
-inert; only the nodes change. Memory grows as slot walks write composed
+inert; only the nodes change. Memory grows as slot walks from either party write composed
 correspondences (Def 17, progressive path).
 
 The run loop implements policy A — the §9 documented order
-(canonicalisation → targeting → slot walk). The enumerators are the
-mechanism/policy boundary: they yield licensed options in deterministic
-order; the loop chooses.
+(canonicalisation → targeting → slot walk, ν_A slots before ν_B slots).
+The enumerators are the mechanism/policy boundary: they yield licensed
+options in deterministic order; the loop chooses.
 """
 
 from __future__ import annotations
@@ -68,6 +68,7 @@ class Derivation:
         max_steps: int = MAX_STEPS,
         max_walk_edges: int = MAX_WALK_EDGES,
         delta: float = DEFAULT_DELTA,
+        b_walks: bool = True,
     ) -> None:
         self.memory = list(memory)
         self.queued = queued
@@ -76,6 +77,7 @@ class Derivation:
         self.max_steps = max_steps
         self.max_walk_edges = max_walk_edges
         self.delta = delta
+        self.b_walks = b_walks
         self.nodes: list[int] = list(queued.nodes)
         self.composed: list[KLine] = []
         self.acq: dict[int, int] = {}  # atom bit -> acquisition depth (§11)
@@ -172,17 +174,25 @@ class Derivation:
 
     def targetings(self) -> Iterator[tuple[KLine, str, list[int], int, int]]:
         """Licensed targeting replaces with strictly falling misfit mass
-        (Def 14). In an S2 region the departure is restricted to the misfit
-        region. Order: memory then composed, forward before reverse."""
+        (Def 14). In an S2 region the restriction reads on both ends of
+        the move: forward departs the gap or adopts the excess; reverse
+        consumes the gap or lands in the excess. Order: memory then
+        composed, forward before reverse."""
         cur = self.content()
         d0 = self.mismatch()
         gap = self.gap()
+        excess = self.excess()
         s2 = self.relationship_band() == "S2"
         for k in self.memory + self.composed:
             if not self.usable(k):
                 continue
             if k.signature in self.nodes:
-                if s2 and not self.signifier.signifies(k.signature, gap):
+                if s2 and not (
+                    self.signifier.signifies(k.signature, gap)
+                    or self.signifier.signifies(
+                        int(self.signifier.signature_of(k.nodes)), excess
+                    )
+                ):
                     continue
                 new = self.replace_fwd(k, self.nodes)
                 d1 = misfit_mass(
@@ -191,7 +201,10 @@ class Derivation:
                 if d1 < d0:
                     yield k, "forward", new, d0, d1
             if self.occurs_rev(k, self.nodes):
-                if s2 and not all(self.signifier.signifies(n, gap) for n in k.nodes):
+                if s2 and not (
+                    all(self.signifier.signifies(n, gap) for n in k.nodes)
+                    or self.signifier.signifies(k.signature, excess)
+                ):
                     continue
                 new = self.replace_rev(k, self.nodes)
                 d1 = misfit_mass(
@@ -201,18 +214,21 @@ class Derivation:
                     yield k, "reverse", new, d0, d1
 
     def slot_walk(
-        self, slot: int
+        self, slot: int, end_mask: int | None = None
     ) -> tuple[list[int], int, list[tuple[str, KLine]]] | None:
         """Goal-less walk from the slot identity, licensed by occurrence on
-        either side (Def 17). T2 no-revisit keys on correspondence identity
-        — signature together with witness, not signature alone."""
-        excess = self.excess()
+        either side (Def 17), ending at arrival in end_mask — the excess
+        for a ν_A slot, σ(ν_A) for a ν_B slot. T2 no-revisit keys on
+        correspondence identity — signature together with witness, not
+        signature alone."""
+        if end_mask is None:
+            end_mask = self.excess()
         queue: deque = deque([([slot], frozenset(), 0, [])])
         seen = {(int(slot),)}
         while queue:
             nodes, used, edges, path = queue.popleft()
             if edges and self.signifier.signifies(
-                int(self.signifier.signature_of(nodes)), excess
+                int(self.signifier.signature_of(nodes)), end_mask
             ):
                 return nodes, edges, path
             if edges >= self.max_walk_edges:
@@ -306,6 +322,11 @@ class Derivation:
         return True
 
     def _walk(self) -> bool:
+        if self._walk_a():
+            return True
+        return self.b_walks and self._walk_b()
+
+    def _walk_a(self) -> bool:
         for slot in self.nodes:
             if not self.signifier.signifies(slot, self.gap()):
                 continue
@@ -315,6 +336,31 @@ class Derivation:
             end, edges, path = walk
             end, edges, _ = self.refine(end, edges, path)
             composed = KLine(slot, end, acq_depth=edges)
+            self.memory.append(composed)
+            self.composed.append(composed)
+            return True
+        return False
+
+    def _walk_b(self) -> bool:
+        """ν_B walk (Def 17): depart an overfit slot of the goal's
+        witness, arrive at σ(ν_A) — the anchor — and write the bridge
+        head-ward: head = the anchor, witness = the arrived nodes shared
+        with the goal plus the departed node covering the excess."""
+        a_content = self.content()
+        goal_content = self.goal_content()
+        excess = self.excess()
+        for slot in self.goal.nodes:
+            if not self.signifier.signifies(slot, excess):
+                continue
+            walk = self.slot_walk(slot, end_mask=a_content)
+            if walk is None:
+                continue
+            end, edges, _ = walk
+            anchors = [n for n in end if self.signifier.signifies(n, a_content)]
+            if not anchors:
+                continue
+            witness = [n for n in end if self.signifier.signifies(n, goal_content)]
+            composed = KLine(anchors[0], witness + [slot], acq_depth=edges)
             self.memory.append(composed)
             self.composed.append(composed)
             return True
