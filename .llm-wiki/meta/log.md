@@ -431,3 +431,6 @@
 ## [2026-09-14T08:18:19.327Z] observe
 - slug: "obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-", title: "Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra", relevance: "high"
 
+## [2026-09-14T12:20:00.121Z] observe
+- slug: "obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl", title: "gap/excess renamed to underfit/overfit in algebra doc and glossary", relevance: "high"
+

@@ -31,7 +31,7 @@ A value in a kline's node sequence — either a **Token ID** or the signature of
 _Avoid_: child, element
 
 **Exact**:
-A kline is exact when its signature equals `signature_of(nodes)` — the claim is kept. Gap and excess are both empty exactly then (Def 6).
+A kline is exact when its signature equals `signature_of(nodes)` — the claim is kept. Underfit and overfit are both empty exactly then (Def 6).
 
 **Witness**:
 An exact, non-empty kline — a chosen decomposition of its signature. The Identity is the trivial witness; every other witness is a real choice, and which choice was made is a fact the algebra forgets and memory carries (Def 6).
@@ -59,17 +59,11 @@ _Avoid_: fabrication, conjecture
 **Coverage**:
 A node is covered by a value when they share at least one atom — overlap, not containment: a covered node may carry atoms outside the value (Def 8). The classifier's primary split: covered misfits are S2, uncovered are S3.
 
-**Gap**:
-The atoms a signature claims beyond its nodes: `s ∧ ¬signature_of(ν)`. In a denotation read forward, the gap is exactly what drops (Def 9).
-
-**Excess**:
-The atoms the nodes carry beyond the signature: `signature_of(ν) ∧ ¬s` (Def 9).
-
 **Fit**:
 The total classifier `fit : V × V* → Shape` — one function, two readings: a kline's own fit (the claim it makes standing alone) and the relationship fit `fit(C(A,B))` (what a pair establishes). Nine shapes, four bands; every pair matches exactly one (Def 10, §11).
 
 **Shape**:
-One of the nine fit cases — Canon, Identity, Underfit, Overfit, Under+over, Denotation, Connotation, No-fit, Unknown. Denotation (single-node Underfit) and Connotation (uncovered single-node) are names of convenience for KScript; algebraically they are single-node instances of cases 6 and 4 (Def 10).
+One of the nine fit cases — Canon, Identity, Underfit, Overfit, Under+over, Denotation, Connotation, No-fit, Unknown. Underfit and Overfit also name the misfit quantities (Def 9): the atoms the signature claims beyond its nodes, and the atoms the nodes carry beyond the signature. Denotation (single-node Underfit) and Connotation (uncovered single-node) are names of convenience for KScript; algebraically they are single-node instances of cases 6 and 4 (Def 10).
 
 **Band**:
 The structural form of significance — the fit's tier, ordered S1 > S2 > S3 > S4, shapes within a band unordered:
@@ -117,7 +111,7 @@ _Avoid_: thinking, background thread, the cogitator
 The rewrite of a queued kline's node sequence against one held goal: `A ⊢_{M,B} A′`. The signature — the claim — never changes; states differ only in nodes (Def 12).
 
 **Replace**:
-The only rule: a held **correspondence** kline's two sides swap at a multiset-wise occurrence in the node sequence — forward (signature → witness) or reverse (witness → signature). The evidence kline's own fit fixes the **mode**: canon — expand/contract, granularity at constant content; covered misfit — shed/adopt, its gap out and its excess in; uncovered misfit — traverse, disjoint atoms swap. Direction is not a property of the kline: arrival orients the licence (Def 13).
+The only rule: a held **correspondence** kline's two sides swap at a multiset-wise occurrence in the node sequence — forward (signature → witness) or reverse (witness → signature). The evidence kline's own fit fixes the **mode**: canon — expand/contract, granularity at constant content; covered misfit — shed/adopt, its underfit out and its overfit in; uncovered misfit — traverse, disjoint atoms swap. Direction is not a property of the kline: arrival orients the licence (Def 13).
 _Avoid_: rewrite rule, mutation
 
 **Canonicalisation**:
@@ -150,7 +144,7 @@ The structural halt condition — no atom, mark, or decree involved. The Unknown
 The held correspondences selectable for a derivation. A candidate is selectable when its signature occurs as a node of A — that occurrence is the replace licence's forward side, and each replace's arrival makes new candidates selectable: the path is the guard, not the point. The goal is never selected: declared (`=>`) or supplied by reentry, it scopes the misfit region and is checked at done (Def 16). Content overlap and signature-in-node imply neither the other — selection requires the second; the band routes by the first.
 
 **Slot**:
-The per-node decomposition of a misfit: each node of A carrying a gap atom is a slot, seeking the goal's excess. A slot with a licensed replace fires it; a slot without is **walked** — a goal-less derivation over the correspondence graph, licensed by occurrence alone (either side of a held kline occurring in the walk's nodes), ending at **arrival** in the excess or stuck at the ask. The end state written into memory is the **composed correspondence** the main line consumes — expanded toward the goal's witness resolution of the excess, each expansion an edge of its acquisition depth (Def 17).
+The per-node decomposition of a misfit: each node of A carrying an underfit atom is a slot, seeking the goal's overfit. A slot with a licensed replace fires it; a slot without is **walked** — a goal-less derivation over the correspondence graph, licensed by occurrence alone (either side of a held kline occurring in the walk's nodes), ending at **arrival** in the overfit or stuck at the ask. The end state written into memory is the **composed correspondence** the main line consumes — expanded toward the goal's witness resolution of the overfit, each expansion an edge of its acquisition depth (Def 17).
 _Avoid_: subgoal, subroutine, task
 
 **Progressive Path**:

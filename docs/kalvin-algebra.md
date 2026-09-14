@@ -315,23 +315,23 @@ n ∧ s ≠ ∅.
 
 Coverage means that the node shares at least one atom with the value. It does not require the node to be a subset of the value.
 
-## Definition 9 — Gap and excess
+## Definition 9 — Underfit and overfit
 
 For a pair (s, ν), let:
 
 ```text
-g = s ∧ ¬σ(ν)
-e = σ(ν) ∧ ¬s.
+u = s ∧ ¬σ(ν)
+o = σ(ν) ∧ ¬s.
 ```
 
-The **gap** g contains atoms claimed by the head but not supplied by the nodes.
+The **underfit** u contains atoms claimed by the head but not supplied by the nodes.
 
-The **excess** e contains atoms supplied by the nodes but not claimed by the head.
+The **overfit** o contains atoms supplied by the nodes but not claimed by the head.
 
 Therefore:
 
 ```text
-g = ∅ and e = ∅  iff  s = σ(ν).
+u = ∅ and o = ∅  iff  s = σ(ν).
 ```
 
 For example:
@@ -340,7 +340,7 @@ For example:
 abc:[b,c,d]
 ```
 
-has gap a and excess d.
+has underfit a and overfit d.
 
 ## Definition 10 — Fit
 
@@ -359,9 +359,9 @@ assigns exactly one shape to every pair. Cases are evaluated in the following or
 |    3 | s = σ(ν)               | Canon       | S1   |
 |    4 | not covered, \|ν\| = 1 | Connotation | S3   |
 |    5 | not covered, \|ν\| > 1 | No-fit      | S3   |
-|    6 | covered, g ≠ ∅, e = ∅  | Underfit    | S2   |
-|    7 | covered, g = ∅, e ≠ ∅  | Overfit     | S2   |
-|    8 | covered, g ≠ ∅, e ≠ ∅  | Under+over  | S2   |
+|    6 | covered, u ≠ ∅, o = ∅  | Underfit    | S2   |
+|    7 | covered, u = ∅, o ≠ ∅  | Overfit     | S2   |
+|    8 | covered, u ≠ ∅, o ≠ ∅  | Under+over  | S2   |
 
 The cases are disjoint because exactness is tested before the misfit cases, and coverage is tested before the S2 cases.
 
@@ -382,17 +382,17 @@ def fit(s, nu):
     if s == sigma:
         return Canon
 
-    gap = s & ~sigma
-    excess = sigma & ~s
+    underfit = s & ~sigma
+    overfit = sigma & ~s
     covered = any(n & s != ∅ for n in nu)
 
     if not covered:
         return Connotation if len(nu) == 1 else NoFit
 
-    if gap and not excess:
+    if underfit and not overfit:
         return Underfit
 
-    if excess and not gap:
+    if overfit and not underfit:
         return Overfit
 
     return UnderAndOver
@@ -406,12 +406,12 @@ Duplication can affect the result when it changes node count. For example, `a:[a
 
 Two of the nine shapes have names of convenience:
 
-- **Denotation** is the single-node Underfit: `ab:[b]`, one covered node with a gap only.
+- **Denotation** is the single-node Underfit: `ab:[b]`, one covered node with an underfit only.
 - **Connotation** is case 4: `a:[b]`.
 
 These names are used by the KScript surface syntax (§13); algebraically they are single-node instances of cases 6 and 4.
 
-Two single-node shapes are unnamed: the single-node Overfit `a:[ab]`, and the single-node Under+over `ab:[bc]` (covered on b, gap a, excess c).
+Two single-node shapes are unnamed: the single-node Overfit `a:[ab]`, and the single-node Under+over `ab:[bc]` (covered on b, underfit a, overfit c).
 
 ### Bands
 
@@ -532,7 +532,7 @@ An occurrence of ν_K, treated as an unordered multiset of nodes, is replaced by
 The fit of K determines the interpretation of the replacement:
 
 - **Canon:** change granularity without changing content.
-- **Covered S2:** move content according to the gap and excess.
+- **Covered S2:** move content according to the underfit and overfit.
 - **Uncovered S3:** traverse between otherwise disconnected contents.
 
 Unknown has no witness and therefore cannot license a replacement. Identity is inert because replacing its head with its witness leaves the sequence unchanged.
@@ -558,7 +558,7 @@ Both preserve σ(ν_A).
 
 A covered misfit changes content:
 
-- forward sheds the evidence's gap and adopts its excess;
+- forward sheds the evidence's underfit and adopts its overfit;
 - reverse performs the inverse operation.
 
 ### Uncovered replacements
@@ -646,7 +646,7 @@ A derivation may reach the S1 relationship before its node sequence exactly matc
 
 Read model-theoretically, held klines are edges between a signature and its witness, traversable in either direction from wherever the derivation has arrived. Canon edges join different decompositions of the same content: expand and contract are the two directions of one congruence. Misfit edges join different content.
 
-A derivation is a path in this graph, relativised to what is held. The path is the semantics: witnessed edges never change content, so no amount of granularity change can close a content gap. Done by alignment alone is unreachable by construction.
+A derivation is a path in this graph, relativised to what is held. The path is the semantics: witnessed edges never change content, so no amount of granularity change can reduce a content mismatch. Done by alignment alone is unreachable by construction.
 
 ### Terminals
 
@@ -796,9 +796,9 @@ C(A₀,B) = wdmh:[m,h,a,l,l]
 with:
 
 ```text
-gap    = {w,d}
-excess = {a,l}
-Δ₀     = 4.
+underfit = {w,d}
+overfit  = {a,l}
+Δ₀       = 4.
 ```
 
 ### Step 1 — Canonicalise the verb
@@ -861,7 +861,7 @@ The second hop is the crossover. Nothing held maps w to the object content direc
 
 Two details do real work here. Occurrence is read on either side — the mirror clause (Definition 13) and the slot-walk licence (Definition 17): read forward-only, the walk would be stuck at w:[o], since no held kline is headed o. And the no-revisit policy (T2) forbids consuming w:[o] a second time, so the reverse occurrence at [o] cannot bounce the walk back to w — only all:[o] remains, and the walk is forced through the crossover.
 
-The final state overlaps the goal's excess and is written into memory as the composed correspondence:
+The final state overlaps the goal's overfit and is written into memory as the composed correspondence:
 
 ```text
 w:[a,l,l]
@@ -891,7 +891,7 @@ The relationship is now Canon, so the derivation is done.
 
 The subject m is never replaced: `m:[m]` is Identity, inert.
 
-Had the Connotations not been held, no replace would reach the object gap: the derivation would be stuck, and the misfit would ask. Had mhall itself not been held, there would be no goal to check done against.
+Had the Connotations not been held, no replace would reach the object underfit: the derivation would be stuck, and the misfit would ask. Had mhall itself not been held, there would be no goal to check done against.
 
 Read from the answer side, the same correspondences license the mirror derivation; the klines are direction-free, and arrival orients them.
 
@@ -943,7 +943,7 @@ Content overlap between A and B is not sufficient for selection. Conversely, occ
 
 A targeting relationship can be decomposed into slots.
 
-A node of ν_A is a **slot** when it contains an atom from the current gap.
+A node of ν_A is a **slot** when it contains an atom from the current underfit.
 
 For each such slot, strategy first looks for a licensed replacement.
 
@@ -957,12 +957,12 @@ A slot walk is licensed by occurrence of a correspondence — either side of a h
 
 A slot walk ends when:
 
-- it reaches content overlapping the goal's excess; or
+- it reaches content overlapping the goal's overfit; or
 - no unvisited correspondence is available.
 
 The terminal state is written into memory as a composed correspondence, with acquisition depth equal to the edges crossed, which the main derivation may then consume.
 
-The composed correspondence delivers the excess at the goal's own resolution. A compound node is opaque to licensing — occurrence reads nodes, never the atoms within them — so a lump in a written witness is inert to everything held at finer resolution. The written kline therefore holds the terminal's nodes covering the excess expanded to the resolution the goal's witness holds that content at, and no further, by Definition 13's Canon expand under its well-foundedness condition. Each expansion is an edge crossed.
+The composed correspondence delivers the overfit at the goal's own resolution. A compound node is opaque to licensing — occurrence reads nodes, never the atoms within them — so a lump in a written witness is inert to everything held at finer resolution. The written kline therefore holds the terminal's nodes covering the overfit expanded to the resolution the goal's witness holds that content at, and no further, by Definition 13's Canon expand under its well-foundedness condition. Each expansion is an edge crossed.
 
 The slot walk is therefore an evidence-construction mechanism: it discovers a route through memory and turns that route into a new reusable correspondence.
 
@@ -1058,7 +1058,7 @@ Jaccard is forced rather than chosen. Score each node by its accountedness with 
 α(n) = |n ∧ σ(ν_B)| / |n|,
 ```
 
-and compose atom-weighted: the result is A's coverage fraction, |σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A)|. That fraction reads 1 whenever A's content sits wholly inside B's — an Underfit, still S2. A measure that scores perfect on a misfit is band-inconsistent. Weighing B's excess as well yields the symmetric form, which is Jaccard.
+and compose atom-weighted: the result is A's coverage fraction, |σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A)|. That fraction reads 1 whenever A's content sits wholly inside B's — an Underfit, still S2. A measure that scores perfect on a misfit is band-inconsistent. Weighing B's overfit as well yields the symmetric form, which is Jaccard.
 
 ### Resolution depth
 

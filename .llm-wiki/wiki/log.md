@@ -2,6 +2,7 @@
 
 ## 2026-09-14
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl","title":"gap/excess renamed to underfit/overfit in algebra doc and glossary"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-","title":"Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own","title":"\"Absorption\" swept: doc now writes/adds to memory — the doc's own plain vocabulary"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod","title":"Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named"}

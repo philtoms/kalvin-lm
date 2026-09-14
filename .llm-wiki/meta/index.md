@@ -204,6 +204,7 @@
 - [[sources/obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-]] — Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi]] — Observation: Def 17 absorption refinement + T2 correspondence-identity keying applied *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod]] — Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl]] — Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-]] — Observation: Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi]] — Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal]] — Observation: Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion *(created: 2026-09-14)*
@@ -215,4 +216,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-14T08:18:19.371Z* | *Total pages: 203*
+*Last updated: 2026-09-14T12:20:00.188Z* | *Total pages: 204*

@@ -129,6 +129,7 @@
 - [Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what](obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-.md)
 - [Observation: Def 17 absorption refinement + T2 correspondence-identity keying applied](obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi.md)
 - [Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named](obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod.md)
+- [Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary](obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl.md)
 - [Observation: Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra](obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-.md)
 - [Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged](obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi.md)
 - [Observation: Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion](obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal.md)
