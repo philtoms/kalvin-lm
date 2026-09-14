@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-14T12:20:00.188Z",
+  "last_updated": "2026-09-14T15:19:40.285Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2569,6 +2569,41 @@
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },
+    "sources/obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo": {
+      "type": "source",
+      "title": "Observation: Def 17 restated: two-party slots, anchor, refinement; earlier work committed",
+      "tags": [
+        "kalvin-algebra",
+        "def17",
+        "slot-derivation",
+        "reverse-derivation",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo",
+      "relevance": "high",
+      "observed_at": "2026-09-14T14:55:19.523Z",
+      "source_context": "Committing earlier work and drafting Def 17 symmetric slot derivation",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean": {
+      "type": "source",
+      "title": "Observation: Def 17 two-party slots committed (726e2a0); tree clean",
+      "tags": [
+        "kalvin-algebra",
+        "def17",
+        "commit",
+        "slot-derivation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean",
+      "relevance": "high",
+      "observed_at": "2026-09-14T15:19:40.232Z",
+      "source_context": "Committing the Def 17 restatement after simplification pass",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
     "sources/obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl": {
       "type": "source",
       "title": "Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary",
@@ -2639,6 +2674,23 @@
       "relevance": "high",
       "observed_at": "2026-09-14T06:29:23.777Z",
       "source_context": "Designing the Def 17 refinement amendment for kalvin-simplified.md",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots": {
+      "type": "source",
+      "title": "Observation: Slot derivation gap: overfit relationships have no slots",
+      "tags": [
+        "kalvin-algebra",
+        "slot-derivation",
+        "overfit",
+        "design"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots",
+      "relevance": "high",
+      "observed_at": "2026-09-14T14:40:29.452Z",
+      "source_context": "Design discussion of slot derivation overfit gap in kalvin-algebra.md",
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },

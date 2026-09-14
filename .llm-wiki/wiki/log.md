@@ -2,6 +2,10 @@
 
 ## 2026-09-14
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean","title":"Def 17 two-party slots committed (726e2a0); tree clean"}
+- **lint**: {"auto_fix":true,"contradictions":0,"legacy_pages_repaired":0,"missing_pages":12,"orphans":125}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo","title":"Def 17 restated: two-party slots, anchor, refinement; earlier work committed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots","title":"Slot derivation gap: overfit relationships have no slots"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl","title":"gap/excess renamed to underfit/overfit in algebra doc and glossary"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-","title":"Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own","title":"\"Absorption\" swept: doc now writes/adds to memory — the doc's own plain vocabulary"}

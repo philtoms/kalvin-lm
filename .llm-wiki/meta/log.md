@@ -434,3 +434,15 @@
 ## [2026-09-14T12:20:00.121Z] observe
 - slug: "obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl", title: "gap/excess renamed to underfit/overfit in algebra doc and glossary", relevance: "high"
 
+## [2026-09-14T14:40:29.455Z] observe
+- slug: "obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots", title: "Slot derivation gap: overfit relationships have no slots", relevance: "high"
+
+## [2026-09-14T14:55:19.527Z] observe
+- slug: "obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo", title: "Def 17 restated: two-party slots, anchor, refinement; earlier work committed", relevance: "high"
+
+## [2026-09-14T15:18:15.286Z] lint
+- orphans: 125, missing_pages: 12, contradictions: 0, auto_fix: true, legacy_pages_repaired: 0
+
+## [2026-09-14T15:19:40.235Z] observe
+- slug: "obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean", title: "Def 17 two-party slots committed (726e2a0); tree clean", relevance: "high"
+

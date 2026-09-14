@@ -681,7 +681,7 @@ The derivation is not done and no licensed targeting replacement exists.
 This includes:
 
 1. no goal is present; or
-2. a goal is present but the current misfit cannot be reduced by any available correspondence, directly or through a slot walk (§10): nothing in M connects the misfit to the goal's content.
+2. a goal is present but the current misfit cannot be reduced by any available correspondence, directly or through a slot walk from either party (§10): nothing in M connects either misfit location to the other party's content.
 
 A stuck derivation therefore represents the absence of a currently available semantic bridge in memory. Relative non-existence is an honest outcome, reachable at entry and mid-run alike.
 
@@ -867,7 +867,7 @@ The final state overlaps the goal's overfit and is written into memory as the co
 w:[a,l,l]
 ```
 
-with acquisition depth 3, the three edges crossed; the third is the absorption expansion (Definition 17).
+with acquisition depth 3, the three edges crossed; the third is the refinement edge (Definition 17).
 
 The main derivation can then apply:
 
@@ -935,7 +935,7 @@ That is, the signature of the candidate correspondence must occur as a node in t
 
 Selection therefore exposes only correspondences that the current derivation can apply immediately. The clause compounds into a ratchet: each replacement's arrival puts new nodes into ν_A, making their klines selectable next. Reachability grows as the run proceeds; the path is the guard.
 
-The goal B is not selected. It is declared separately, scopes targeting, and determines when the derivation is done.
+The goal B is not selected for replacement. It is declared separately, scopes targeting, and determines when the derivation is done. Its nodes may seed slot walks (Definition 17); they are never rewritten.
 
 Content overlap between A and B is not sufficient for selection. Conversely, occurrence of a signature in A does not guarantee that the relationship is S2. The two conditions are independent. For example, A = abc:[a] against B = x:[c,a] stands in an Overfit relationship while x neither occurs in nor overlaps A's nodes; B = x:[y] against A = abc:[x] occurs in A's nodes yet yields S3. Selection requires the second condition; the band routes by the first.
 
@@ -943,11 +943,9 @@ Content overlap between A and B is not sufficient for selection. Conversely, occ
 
 A targeting relationship can be decomposed into slots.
 
-A node of ν_A is a **slot** when it contains an atom from the current underfit.
+The misfit is carried on both parties: the underfit by nodes of ν_A, the overfit by nodes of ν_B. A node is a **slot** when it carries a misfit atom — an underfit slot of ν_A, an overfit slot of ν_B. The notion is one, read on the two parties: an overfit slot of C(A,B) is an underfit slot of C(B,A).
 
-For each such slot, strategy first looks for a licensed replacement.
-
-If none exists, the slot may be explored by a goal-less derivation beginning with:
+For an underfit slot, strategy first looks for a licensed replacement at the slot. For the overfit, an adoptive replacement is sought by selection, at any node of ν_A. If none exists, either slot may be explored by a goal-less derivation beginning with:
 
 ```text
 n:[n].
@@ -957,14 +955,19 @@ A slot walk is licensed by occurrence of a correspondence — either side of a h
 
 A slot walk ends when:
 
-- it reaches content overlapping the goal's overfit; or
+- from an underfit slot, it reaches content overlapping the overfit;
+- from an overfit slot, it reaches content overlapping σ(ν_A), the **anchor**; or
 - no unvisited correspondence is available.
 
-The terminal state is written into memory as a composed correspondence, with acquisition depth equal to the edges crossed, which the main derivation may then consume.
+The goal is never rewritten. A walk from an overfit slot departs from a node of ν_B and writes only a correspondence; ν_B itself never changes.
 
-The composed correspondence delivers the overfit at the goal's own resolution. A compound node is opaque to licensing — occurrence reads nodes, never the atoms within them — so a lump in a written witness is inert to everything held at finer resolution. The written kline therefore holds the terminal's nodes covering the overfit expanded to the resolution the goal's witness holds that content at, and no further, by Definition 13's Canon expand under its well-foundedness condition. Each expansion is an edge crossed.
+Arrival is not absorption. The walk continues under held Canons alone, refining its discovered end to the arrival party's resolution — the overfit content to the goal's witness, the anchor to ν_A's nodes. The departed end already sits at its own party's. The refined state is the terminal.
 
-The slot walk is therefore an evidence-construction mechanism: it discovers a route through memory and turns that route into a new reusable correspondence.
+The terminal is written into memory as a composed correspondence spanning the walk's two ends, with acquisition depth equal to the edges crossed, which the main derivation may then consume. The head is the A-side end: the departed slot or the discovered anchor. The witness holds the head's atoms shared with the goal, together with the B-side end's nodes covering the overfit. A compound node is opaque to licensing — occurrence reads nodes, never the atoms within them — so refinement goes exactly to the consuming resolution and no further: expansion by Definition 13's well-foundedness, contraction by its exact witnessing.
+
+A walk from ν_B that arrives at an underfit slot composes the same correspondence a walk from that slot would; only the direction of discovery differs.
+
+The slot walk is therefore an evidence-construction mechanism: seeded at either misfit location, it discovers a route through memory and turns that route into a new reusable correspondence.
 
 ### Progressive path
 

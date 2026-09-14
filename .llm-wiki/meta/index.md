@@ -204,10 +204,13 @@
 - [[sources/obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-]] — Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi]] — Observation: Def 17 absorption refinement + T2 correspondence-identity keying applied *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod]] — Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo]] — Observation: Def 17 restated: two-party slots, anchor, refinement; earlier work committed *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean]] — Observation: Def 17 two-party slots committed (726e2a0); tree clean *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl]] — Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-]] — Observation: Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi]] — Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal]] — Observation: Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots]] — Observation: Slot derivation gap: overfit relationships have no slots *(created: 2026-09-14)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -216,4 +219,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-14T12:20:00.188Z* | *Total pages: 204*
+*Last updated: 2026-09-14T15:19:40.285Z* | *Total pages: 207*
