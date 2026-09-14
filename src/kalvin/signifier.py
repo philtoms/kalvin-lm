@@ -36,7 +36,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from kalvin.abstract import KSignifier
-from kalvin.kline import KNode
+from kalvin.kline import KNode, KSig
 
 # ASK is a word-word flag, not a token: bit 31 of the word word (words
 # occupy bits 0-30). OR-ed into a kline signature, it
@@ -61,7 +61,7 @@ class NLPSignifier(KSignifier):
     - :meth:`residual` is ``(a & ~b) & _TYPE_MASK``.
     """
 
-    def signature_of(self, nodes: Sequence[KNode]) -> KNode:
+    def signature_of(self, nodes: Sequence[KNode]) -> KSig:
         """Produce a signature by OR-reducing the full node values.
 
         Every node contributes its entire 64-bit value; the result
@@ -78,10 +78,10 @@ class NLPSignifier(KSignifier):
         if len(labels) == 1:
             label = labels[0]
         else:
-            label = "".join(l[:1].upper() for l in labels)
-        return KNode(sig, label)
+            label = "".join(l for l in labels)
+        return KSig(sig, label)
 
-    def signifies(self, a: KNode, b: KNode) -> bool:
+    def signifies(self, a: KSig, b: KSig) -> bool:
         """Test whether two values share a word-word bit.
 
         The lower 32 bits (BPE token IDs) are masked off; only the upper 32
@@ -90,7 +90,7 @@ class NLPSignifier(KSignifier):
         s = (a & b & _TYPE_MASK) != 0
         return s
 
-    def residual(self, a: KNode, b: KNode) -> KNode:
+    def residual(self, a: KSig, b: KSig) -> KSig:
         """Return the masked word-word bits of *a* not in *b*.
 
         ``(a & ~b) & _TYPE_MASK`` — consistent with :meth:`signifies`,
@@ -100,12 +100,12 @@ class NLPSignifier(KSignifier):
         """
         mask = (a & ~b) & _TYPE_MASK
         label = f"{getattr(a, 'label', '')} & ~{getattr(b, 'label', '')}"
-        return KNode(mask, label)
+        return KSig(mask, label)
 
-    def bit_in(self, node: KNode, signature: KNode) -> bool:
+    def node_in(self, node: KNode, signature: KSig) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         return (node & signature) == node
 
-    def is_ask(self, signature: KNode) -> bool:
+    def is_ask(self, signature: KSig) -> bool:
         """Does ``signature`` carry the ASK_BPE_TOKEN flag?"""
         return (signature & ASK_BPE_TOKEN) != 0

@@ -1,168 +1,254 @@
 # Domain Glossary
 
-Kalvin is a rationalising system whose entire world is built from klines. This glossary defines the precise meaning of terms used across the code.
+Kalvin is a rationalising system whose entire world is built from klines. This glossary defines the precise meaning of terms used across the code. [docs/kalvin-algebra.md](docs/kalvin-algebra.md) fixes the formal definitions and the terminology (its §12); this glossary restates them as domain terms and remains normative for role names, tier mechanics, and the training protocol.
 
 ## Structure
 
-The objective shape of a kline — its signature and nodes — and the significance that shape _claims_ on its own, with no model and no observer. Structure is the ground truth every participant measures against; it is independent of who is looking.
+The objective shape of a kline and the significance that shape claims on its own — no model, no observer.
+
+**Atom**:
+The indivisible unit of the value space — one element of a finite set, only its finiteness load-bearing. In the engine, the word-bit space: one bit per distinct word (Def 1).
+_Avoid_: token, subword (a Token ID or BPE token is an encoding, not an atom)
+
+**Value**:
+A set of atoms — what signatures and nodes are made of. Operations: composition `v ∨ w` (union — the whole is the sum of its parts), overlap `v ∧ w` (intersection — what two values share), complement `¬v`. The Boolean laws hold by construction, not as axioms (Def 2).
+
+**Node Sequence**:
+A kline's nodes with order and multiplicity retained, no empty nodes (Def 3). Membership, difference, and occurrence are multiset-wise; no rule reads order — arrangement is witness structure alone (Def 12).
+
+**Evaluation (`signature_of`)**:
+The map from a node sequence to the value its nodes compose: `signature_of([n₁ … nₖ]) = n₁ ∨ … ∨ nₖ`. Forgets exactly order and multiplicity — nothing else. Node sequences are the terms; values are what they evaluate to (Def 4).
 
 **KLine**:
-The fundamental unit of Kalvin's memory, and the unit Kalvin rationalises. A structure containing a **signature** (its head node) and a **nodes** list, between which holds a relationship Kalvin rationalises as a **Structural Significance**.
+The fundamental unit of Kalvin's memory and the unit Kalvin rationalises: a nonzero **signature** paired with a **node sequence**. A kline claims its signature as the composition of its nodes (Def 5).
 
 **Signature**:
-The value occupying a kline's head position — the head value a kline's nodes compose against (see **Structural Significance**). Also a value other klines hold as nodes to evaluate **Rational Significance**.
+The value in a kline's head position — the claim its nodes compose to, and what other klines hold as a node.
+_Avoid_: head (positional name for the same thing)
 
 **Node**:
-A structural slot: a value occupying a position in a kline's nodes list. A node is either a **Token Id** or the **signature** of another kline. At runtime a node may carry an optional label (the authored word it was encoded from).
-_Avoid_: child, element (the structural slot is specifically a node)
+A value in a kline's node sequence — either a **Token ID** or the signature of another kline; nesting is by reference, and the reference graph may cycle (Def 5, Def 7).
+_Avoid_: child, element
 
-**Structural Significance**:
-The significance a kline's structure **claims** — an S-level (the same **S1**–**S4** as **Rational Significance**) derived from the signature–nodes relationship alone, without model traversal. Each structure makes its claim: **Unknown** claims **S4** (nothing held for this signature), **Identity** and **Canon** claim **S1** (a known value; a signature that stands for its nodes), **Misfit** claims **S2** (diverges). A claim that **Cogitation** measures against what Kalvin actually holds.
+**Exact**:
+A kline is exact when its signature equals `signature_of(nodes)` — the claim is kept. Underfit and overfit are both empty exactly then (Def 6).
+
+**Witness**:
+An exact, non-empty kline — a chosen decomposition of its signature. The Identity is the trivial witness; every other witness is a real choice, and which choice was made is a fact the algebra forgets and memory carries (Def 6).
 
 **Terminal**:
-A kline whose structure carries no further decomposition — a leaf that tells Kalvin to stop traversing. Two shapes are terminal: empty nodes and self-referential nodes. _Avoid_: leaf node (a terminal is a kline, not a node), base case (implementation term), atomic (overloaded)
+A kline inert as evidence: an **Unknown** has no second side; an **Identity** replaces a node by itself. Targeting-closed, not rule-closed — an Identity's node may still expand under a held well-founded witness (Def 13, §7).
+_Avoid_: leaf node, base case, atomic
 
 **Unknown**:
-A kline **structure**: a **Terminal** with empty nodes (`{S: []}`). Claims **S4** — _"I don't know this"_ (nothing held for this signature). The structural form of an ask: an S4 proposal that requests an **Identity** ratification.
-_Avoid_: empty kline (describes syntax, not the meaning), bare signature (describes syntax, not the structure), identity (the empty form is _not_ an identity — it is the opposite: unknown, not known)
+`{S: []}` — nothing held for this signature; the structural form of the **ask**. Claims S4: the halt signal under which strategy generates ungrounded proposals (§4).
+_Avoid_: empty kline, bare signature, identity
 
 **Identity**:
-A kline **structure**: a **Terminal** that is directly decodable — a known value that translates to something in the outside world. Claims **S1** — _"I know this."_ One structural shape:
-
-- self-referential (`{S: [S]}`)
-  _Avoid_: unsigned (implementation term), bare signature (describes syntax, not the structure), treating the empty kline as an Identity (it is an **Unknown**)
+`{S: [S]}` — the trivial witness; a directly decodable known value. Claims S1 (Def 10, case 2).
+_Avoid_: unsigned, treating the empty kline as an Identity
 
 **Canon**:
-A kline **structure**: the signature equals `signature_of(nodes)`. Claims **S1** — the signature stands for its nodes, so it is safe to use the signature in place of them. The signature carries no information beyond what its nodes already express. Structural shape: `{AB: [A, B]}` where `AB` represents a combination of two or more nodes.
-_Avoid_: canonical (ambiguous with Relational Tokens), treating `=>` (CANONIZES) as synonymous with being a Canon (the token declares an intent to compose; a CANONIZES statement need not construct a Canon), MTS (an example, not the concept)
+An exact kline whose witness carries decomposition content: the signature stands for its nodes and is safe to use in their place. Claims S1. As evidence a canon must be well-founded — identities and self-containing canons are the two inert witness classes (Def 13).
+_Avoid_: canonical; treating `=>` as synonymous (the token declares intent to compose; the result need not be a Canon); MTS (an example, not the concept)
 
 **Misfit**:
-A kline **structure**: the signature does not equal `signature_of(nodes)`. Structural shapes:
+A non-terminal kline that is not exact. Claims S2 when at least one node is covered by the signature, S3 when none is (Def 10, cases 4–8).
+_Avoid_: fabrication, conjecture
 
-- no-fit (`{AB: [C, D]}`): signature attracts kline substitution. Claims **S2**
-- underfit (`{AB: [A]}`): signature attracts kline expansion. Claims **S2**
-- overfit (`{A: [A, B]}`): signature attracts kline contraction. Claims **S2**
-- connote/denote (`{A: [B]}` / `{AB: [B]}`): signature attracts association. Claims **S3**
-  _Avoid_: fabrication (informal), conjecture/hypothesis (a misfit is a structure, not a distinct emission kind)
+**Coverage**:
+A node is covered by a value when they share at least one atom — overlap, not containment: a covered node may carry atoms outside the value (Def 8). The classifier's primary split: covered misfits are S2, uncovered are S3.
+
+**Fit**:
+The total classifier `fit : V × V* → Shape` — one function, two readings: a kline's own fit (the claim it makes standing alone) and the relationship fit `fit(C(A,B))` (what a pair establishes). Nine shapes, four bands; every pair matches exactly one (Def 10, §11).
+
+**Shape**:
+One of the nine fit cases — Canon, Identity, Underfit, Overfit, Under+over, Denotation, Connotation, No-fit, Unknown. Underfit and Overfit also name the misfit quantities (Def 9): the atoms the signature claims beyond its nodes, and the atoms the nodes carry beyond the signature. Denotation (single-node Underfit) and Connotation (uncovered single-node) are names of convenience for KScript; algebraically they are single-node instances of cases 6 and 4 (Def 10).
+
+**Band**:
+The structural form of significance — the fit's tier, ordered S1 > S2 > S3 > S4, shapes within a band unordered:
+
+- **S1** — exact: the claim is kept. _I know that I know this._
+- **S2** — covered misfit. _I infer this, but it does not yet fit._
+- **S3** — uncovered misfit. _I recognise aspects of this, indirectly._
+- **S4** — Unknown. _I do not understand this at all._
+
+Observer-independent — given the same held memory, every agent classifies alike — so a band is never exchanged; it is recomputable from structure (§11).
+
+**Significance**:
+The value rationalisation produces and consumes; understanding, informally, is high significance attained and held (§12). Two forms: **structural** — the band of a fit, derived by forming the relationship kline and classifying its shape; **graded** — the distance `γ = J · δ^(D̄ + Ĥ)`: the Jaccard overlap of the two contents, discounted by two depths — the mean **resolution depth** at which A's content is held (granularity), and the mean **acquisition depth** of the unratified correspondence edges crossed to win it (provenance). Ratified edges cost nothing: hard-won until it consolidates.
+_Avoid_: confidence, score, weight, grounded
 
 **Relationship**:
-A kline **structure**: the single-node misfit — a non-terminal whose signature associates with exactly one other value (`{A: [B]}` or `{AB: [B]}`, sig ≠ node). The connote/denote shape, named in its own right because the engine treats it as a distinct routing class (a candidate for reciprocal grounding / countersignature) separate from multi-node misfits (no-fit/underfit/overfit, which propose rather than associate). A relationship is a kind of **Misfit**; it is not a synonym for "any non-identity" (a canon is also a non-identity, and a multi-node misfit is too).
-_Avoid_: link (too vague), association (overloaded with the connote action), any-non-identity (a canon and a multi-node misfit are also non-identities)
+The construction that grades two klines against each other: `C(A,B) = signature_of(A.nodes) : B.nodes` — the head is defined, not claimed, so all misfit comes from B's side. `fit(C(A,B))` is the structural relationship of A and B; Canon iff the two klines hold the same value, differently decomposed (Def 11).
+
+The nine structures, the band each claims, and the replace licence each doubles as (Def 13 — mode by the evidence's own shape, direction by arrival):
+
+| Structure   | Shape         | Band | Replace mode        | Scripted form  |
+| ----------- | ------------- | ---- | ------------------- | -------------- |
+| Canon       | `ABC:[A,B,C]` | S1   | expand / contract   | `ABC => A B C` |
+| Identity    | `A:[A]`       | S1   | inert — terminal    | `A = A`        |
+| Underfit    | `ABC:[A,C]`   | S2   | shed fwd, adopt rev | `ABC => A C`   |
+| Overfit     | `AB:[A,B,C]`  | S2   | adopt fwd, shed rev | `AB => A B C`  |
+| Under+over  | `ABC:[B,C,D]` | S2   | shed and adopt      | `ABC => B C D` |
+| Denotation  | `AB:[B]`      | S2   | shed                | `A = B`        |
+| Connotation | `A:[B]`       | S3   | traverse            | `A > B`        |
+| No-fit      | `AB:[C,D]`    | S3   | traverse            | `AB => C D`    |
+| Unknown     | `A:[]`        | S4   | inert — the ask     | `A`            |
 
 ## Rationalisation
 
-How a participant tests a kline's structural claim against what Kalvin actually holds — the slow, model-traversing path that arrives at a participant's own significance for a kline. Distinct from Structure (the claim) and from KScript's Target Significance (the authored intent): rationalisation is a participant's private derivation; whether it made sense of the encounter is judged outside the loop.
+How a participant tests a kline's structural claim against what Kalvin actually holds.
 
-**Significance (Rational)**:
-The measurement of whether a kline's structural claim holds against what Kalvin holds — refined through model traversal and learned preferences. Classified into four levels of understanding:
-
-- **S1** Fully accounted for — by its own structure (an **Identity** or a **Canon**) or by ratification. _I know that I know this._
-- **S2** Relates but diverges: an unratified misfit, an active mismatch. _I infer this, but it does not yet fit._
-- **S3** Connects only indirectly, through intermediaries. _I recognise aspects of this, indirectly._
-- **S4** Shares nothing with what is held; no connection can be drawn. _I do not understand this at all._
-  Every agent assesses independently. How Kalvin computes its own significance is a model concern (see **Grounding**); the levels themselves are independent of that computation.
-  _Avoid_: confidence, score, weight, grounded (grounding is the model's implementation of S1, not a synonym for any level)
+**Rationalisation**:
+The process that produces and consumes significance (§12).
 
 **Cogitation**:
-The slow path of rationalisation — model traversal that tests a kline's structural **claim** against what Kalvin holds. Where **Structural Significance** is derived from the signature–nodes relationship alone, Cogitation expands the kline through the model: retracing paths, discovering connections, classifying each against the **Rational Significance** levels. It drains a backlog of unresolved (S2/S3) klines, emitting **proposals** for ratification; it is the work whose result is a Rationally Significant KLine - A kline that Kalvin understands.
-_Avoid_: thinking (informal), background thread (implementation), the cogitator (the implementation class)
+The slow path of rationalisation — the strategy loop over derivations: **select** a hop, **derive** to an ending, **add** the result to memory, **reenter** with the output as the next queue's input (§10). Each phase is strategy: the rule system constrains what any of it may do, never what it must. The fit is graded at each state and its rate of change feeds back, telling Kalvin whether its effort is increasingly or decreasingly significant.
+_Avoid_: thinking, background thread, the cogitator
+
+**Derivation**:
+The rewrite of a queued kline's node sequence against one held goal: `A ⊢_{M,B} A′`. The signature — the claim — never changes; states differ only in nodes (Def 12).
+
+**Replace**:
+The only rule: a held **correspondence** kline's two sides swap at a multiset-wise occurrence in the node sequence — forward (signature → witness) or reverse (witness → signature). The evidence kline's own fit fixes the **mode**: canon — expand/contract, granularity at constant content; covered misfit — shed/adopt, its underfit out and its overfit in; uncovered misfit — traverse, disjoint atoms swap. Direction is not a property of the kline: arrival orients the licence (Def 13).
+_Avoid_: rewrite rule, mutation
+
+**Canonicalisation**:
+The Canon instance of the mirror clause — the reverse replace engaged position-free: survey the unordered configurations of a node sequence against held witnesses and contract the correctly witnessed ones — the nodes covering the candidate compound from below (coverage), a held canon counter-witnessing exactly them from above. Held witnesses propose the configurations; nothing unwitnessed contracts. Not a second rule (Def 13).
+_Avoid_: gather, reordering (no arrangement work exists — occurrence is multiset-wise)
+
+**Correspondence**:
+A held kline usable as evidence — every held kline except the two terminals (Def 13). Held klines are edges between a signature and its witness; the whole set is the **correspondence graph**, and a derivation is a path in it (§7).
+_Avoid_: rule (in prose; a kline is not a rule), candidate (a candidate is a correspondence selected for use)
+
+**Licence**:
+What permits a replace — two kinds on one rule (§7): **witnessed** (canon-mode: expand/contract, licensed by memory alone, blind to any goal) and **evidenced targeting** (licensed by a correspondence and scoped to the misfit region — read on both ends of the move: forward departs the underfit or adopts the overfit, reverse consumes the underfit or lands in the overfit, so an empty underfit bars nothing; targeting-licensed iff it strictly decreases the misfit mass, Def 14).
+
+**Misfit Mass**:
+`|signature_of(A.nodes) Δ signature_of(B.nodes)|` — the atoms the two contents disagree on. The unit of progress: every licensed targeting replace strictly decreases it, and a run from entry is bounded by its initial value (Def 14, T1).
+
+**Done**:
+The ending where the relationship reaches S1: **value-equality**, `signature_of(A.nodes) = signature_of(B.nodes)` — not node-equality. Done may arrive early; pending nodes are witness structure. A constructive existence proof within what is held: every step of the witness was licensed by a correspondence (Def 15, §9).
+
+**Stuck**:
+The ending where no licensed targeting move remains — not done, and nothing in memory connects. Two conditions, both the **ask**: no goal held, or no connection across the correspondence graph. Relative non-existence — the honest outcome when the bridge is missing (Def 15, §9).
+
+**Abandoned**:
+Not an ending the rules produce: strategy halts or re-targets a run mid-derivation, e.g. when graded effort falls (Def 15).
+
+**Ask**:
+The structural halt condition — no atom, mark, or decree involved. The Unknown shape (`S:[]` — nothing held) is the ask's shape, and a misfit region no held correspondence reaches asks. The event under which ungrounded proposals are generated (§4, §8).
+
+**Candidates**:
+The held correspondences selectable for a derivation. A candidate is selectable when its signature occurs as a node of A — that occurrence is the replace licence's forward side, and each replace's arrival makes new candidates selectable: the path is the guard, not the point. The goal is never selected for replacement: declared (`=>`) or supplied by reentry, it scopes the misfit region, is checked at done (Def 16), and may seed slot walks without being rewritten (Def 17). Content overlap and signature-in-node imply neither the other — selection requires the second; the band routes by the first.
+
+**Slot**:
+The per-node decomposition of a misfit, carried on both parties: a node of A bearing an underfit atom, and a node of B bearing an overfit atom, are each a slot — one notion read on the two parties (an overfit slot of C(A,B) is an underfit slot of C(B,A)). A slot with a licensed replace fires it; a slot without is **walked** — a goal-less derivation over the correspondence graph, licensed by occurrence alone (either side of a held kline occurring in the walk's nodes). A walk from A ends at **arrival** in the overfit; a walk from B ends at arrival in A's content, the **anchor**; either may end stuck at the ask. Arrival is not absorption — the walk refines to the consuming resolution (the goal's witness for the overfit, A's nodes for the anchor), each refinement edge counted. The terminal is written into memory as the **composed correspondence** the main line consumes: headed at the A-side end (slot or anchor), its witness holding that end's atoms shared with the goal plus the overfit at the goal's witness resolution (Def 17). The goal is read, never rewritten.
+_Avoid_: subgoal, subroutine, task
+
+**Progressive Path**:
+The evidence-building route from S3 to S2: each hop writes its output to STM, and the written end states are the composed correspondences the main line consumes — hops matter because memory grows between them (§10).
+
+**Reentry**:
+Derivations compose: hop k's end state queues as hop k+1's input, and memory may grow between hops — successive hops are not derivations of one fixed system. The reentry arm proposes from a proposal, one hop further out, bounded by the **hop ceiling**. Hop order is the only time the system has (§10).
 
 **Model**:
-The whole of what Kalvin holds and how it holds it: the klines, their signature/node references, the memory tiers as relations of attention and commitment, and the signifier's compositional interpretation that makes the whole traversable. Cogitation traverses the model through the tiers — conscious of what it just thought (**STM**), of where its focus lies and is shifting (**Frame**), and of what it counts as grounded (**Frame** and **LTM**).
-_Avoid_: the learned function (Kalvin has no weights; understanding is traversal over held klines), using model and memory interchangeably (memory is the tiered structure inside the model)
+The whole of what Kalvin holds and how it holds it: the klines, their signature/node references, the memory tiers as relations of attention and commitment, and the signifier's compositional interpretation that makes the whole traversable.
+_Avoid_: the learned function; using model and memory interchangeably
 
 **Memory**:
-The tiered structure inside the **Model** — not a substrate beneath it. The tiers are modes of relation to held klines, not storage locations: **STM** is recent attention, **Frame** is current focus and its shift, **LTM** is held knowledge. A tier change (promotion, framing, eviction) is a change in how Kalvin relates to a kline, so tier changes belong to rationalisation, not storage bookkeeping. Untiered klines in a file are a serialisation; they become memory only when loaded into a model that can attend to them.
+The tiered structure inside the **Model** — formally a finite set of klines (Def 7); the tiers are relations over it. Tiers are modes of relation to held klines, not storage locations; a tier change is a change in how Kalvin relates to a kline, so tier changes belong to rationalisation.
 
-**STM (Short-Term Memory)**:
-What Kalvin was just thinking about — the recency-of-attention relation to held klines. Written by attention: whatever cogitation touches hits STM. This is how traversal is temporally situated and how Kalvin can notice it is revisiting something. Empty at session start.
-_Avoid_: STM caching (too vague), working memory (too vague), context window (implies a passive buffer), an index (an implementation detail of the attention relation, not the concept)
+**STM**:
+What Kalvin was just thinking about — the recency-of-attention relation, written by whatever cogitation touches. How traversal is temporally situated. Empty at session start.
+_Avoid_: working memory, context window, cache
 
 **Frame**:
-Kalvin's focus of attention and how it is shifting. The active kline in **Cogitation** is held in Frame, and the S1-grounded klines and proposals with their S4 disposition that focused attention produces are registered there. Monotonic and signature-keyed: a signature accumulates a set of klines, so S4 rejection is additive (`Mary:[identity, canon]` → S4 → `Mary:[identity, canon, unknown]`).
-_Avoid_: session log (Frame is not a log), session, a bucket of working context (Frame is a relation — where Kalvin's attention currently is — not a location)
+Where Kalvin's focus lies and how it is shifting — the active kline, the S1-grounded klines and proposals, and their S4 dispositions. Monotonic and signature-keyed: rejection is additive.
+_Avoid_: session log, a bucket of working context
 
-**LTM (Long-Term Memory)**:
-What Kalvin holds as grounded knowledge. Structurally identical to Frame; the distinction is the relation — LTM is what is counted on, Frame is what is in focus. A kline residing in LTM is **grounded** (see Grounding).
-_Avoid_: persistent store (too vague), knowledge base, LTM frame
+**LTM**:
+What Kalvin counts on — held, grounded knowledge. Structurally identical to Frame; the distinction is the relation.
+_Avoid_: persistent store, knowledge base
 
 **Grounding**:
-The model's mechanism for realising significance. If a signature is grounded, then Kalvin knows that all of its nodes are grounded also. KLines grounded in a **Frame** are available for cogitation. KLines grounded in _LTM_ are frame promotions that Kalvin deems important enough to remember.
+The model's mechanism for realising significance: if a signature is grounded, all of its nodes are grounded. Frame-grounded klines are available to cogitation; LTM grounding is a frame promotion Kalvin deems important enough to remember.
 
 **KValue**:
-The unit of exchange between participants — a **KLine** (objective structure) paired with a **significance** (the sender's assessment of it).
+The unit of exchange between participants — a KLine paired with a significance (the sender's assessment). The kline carries its acquisition record; the significance is computed against it.
 
 ## KScript
 
-The language that authors training material. A script is an encounter, authored in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step — priming before questioning, asks awaiting answers.
+The language that authors training material. A script is an encounter in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step.
 
 **Token ID**:
-A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The **word word** (upper 32 bits) carries one bit per distinct word — assigned on a first-encountered basis at bits 0–30 (the word size is 31; a 32nd distinct word is a system error), with bit 31 reserved for **ASK_BPE_TOKEN**. A multi-subword word (one the BPE tokenizer splits) is still one word and one bit; its subword token ids OR into the lower half. A compound signature (e.g. MTS) composes no bit of its own — it is the OR-reduction of its component words' values.
-_Avoid_: type word (the NLP POS/DEP type dictionary is retired)
+A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word half (upper 32 bits) carries one bit per distinct word — the atoms' engine realisation — assigned first-encountered at bits 0–30, bit 31 reserved for ASK. A multi-subword word is one word and one bit; a compound (MTS signature, DENOTES concatenation) composes no bit of its own — it is the OR-reduction of its component words' values.
 
 **Relational Tokens**:
-The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONIZES), `>` (CONNOTES), `<` (CONNOTES, reversed), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONIZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
+The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
 
-- **COUNTERSIGNS** (`==`) — 1:1 emits a reciprocal pair `{A: [B]}`, `{B: [A]}`. The signature countersigns each other's nodes.
-- **CANONIZES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonizes its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
-- **CONNOTES** (`>` / `<`) — 1:1 with a compound signature. `A > B` ⇒ `{AB: [B]}` (the signature connotes each node; subjectively, _A is a kind of B_); `A < B` ⇒ `{AB: [A]}` — the same connotation written from the other side (_B is a kind of A_). Self-reference (`A > A`) collapses to IDENTITY `{A: [A]}`.
-- **DENOTES** (`=`) — 1:1 `{A: [B]}`. The signature denotes each node (`A = B` ⇒ objectively, _A is a B_; the node denotes the signature). Self-denote (`A = A`) collapses to IDENTITY.
-- **UNKNOWN** — a bare, unbound signature. See **Unknown**. A bare signature with no **Word Binding** compiles to the empty Unknown `{A: []}` — the structural form of an ask. A bare signature that is word-bound compiles instead to an **Identity** `{A: [A]}` (see Identity): the binding gives it a decodable value, so the script labels it a known identity rather than an ask.
-- **ASK** — a bare compound (a signature block with no operation) or a sigless annotation (one not consumed by a following scope). Compiles to `sig|ASK_BPE_TOKEN:[nodes]` (S4): the kline keeps its original canonical signature — the compound itself, or the annotation's word initials (`(a big cat)` → `ABC|ASK_BPE_TOKEN:[a big cat]`) — with the **ASK_BPE_TOKEN** word-word bit (bit 31 of the word word) marking it as an ask, so any signature can be an ask. Nodes are the compound's resolved characters (canon + identities as MTS would emit) or the annotation's words.
-  _Avoid_: structural relationship (collides with Structural Significance), relational operator (the token declares provenance, not an operation)
+- `==` **COUNTERSIGNS** — reciprocal pair `{A:[B]}`, `{B:[A]}`
+- `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
+- `>` / `<` **CONNOTES** — `{A:[B]}`; `A < B` ⇒ `B:[A]` (the identifier reverses to match the reading direction). Self-reference collapses to Identity
+- `=` **DENOTES** — the compound-signature shape `A = B` ⇒ `{AB:[B]}`: the signature is the compound of both operands, the node the denoted value. Self-denote collapses to Identity
+- none **UNKNOWN** — a bare signature: unbound compiles to `{A:[]}` (the ask); word-bound to Identity `{A:[A]}`
+- **ASK** — a bare compound or sigless annotation: keeps its original signature with the ASK bit marking it, so any signature can be an ask. S4
 
 **Comment**:
-A leading `#` — the rest of the line is dropped by the lexer. Purely lexical: a comment never reaches binding, compilation, or klines.
+A leading `#` — the rest of the line is dropped by the lexer and never reaches binding or klines.
 
 **Annotation**:
-The semantic layer of a KScript: parenthetical prose that instructs the agent running the session, in high-level language, what the surrounding structure means — aligning an easily-understood concept with an otherwise opaque structural label. Also resolves **Word Binding**. Annotations exist for the agent, not the trainee: the trainee never sees them and their words are not encoded into klines. A script is valid without annotations; their absence or mismatch with a signature is a missed opportunity for the agent, never a compilation error.
-_Avoid_: comment (an annotation is load-bearing for binding and interpretation), trainer rationale (it is instruction for the reading agent)
+The semantic layer of KScript: parenthetical prose instructing the agent running the session what the surrounding structure means, and resolving **Word Binding**. Exists for the agent, not the trainee; absence is a missed opportunity, never a compilation error.
+_Avoid_: comment
 
 **MTS (Multi-Token Signature)**:
-A KScript device for representing a multi-token signature on the LHS in a simpler syntax than would otherwise be required. A compound signature built from more than one Token ID by composition; the compiler expands a multi-character KScript identifier into one MTS canon relationship (compound → its resolved characters) plus a self-identity (`X:[X]`) for each word-bound token. The identifier may be omitted entirely: a single-line annotation followed directly by an operator (`(did Fred pet a sheep) =>`) synthesizes the MTS signature from the annotation words' initials (`DFPAS`), compiling identically to the explicit form — the capability large texts are chunked through.
-_Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS expands a signature into characters)
+A device for representing a multi-token signature on the LHS: the compiler expands a multi-character identifier into one MTS canon relationship plus a self-identity per word-bound token. An omitted identifier is synthesized from the preceding annotation's word initials — the capability large texts are chunked through.
+_Avoid_: decomposition (a Canon decomposes into nodes; an MTS expands a signature into characters)
 
 **Word Binding**:
-The association of a single-character KScript signature with a word, resolved through annotations in the source. Uppercase letters bind to the nearest annotation or resolved binding, in three tiers: a **top-level annotation** (prefix, often on its own line) binds by scope — a prefix annotation at an inner scope binds before one at an outer scope; an **inline annotation** (on an item) is the nearest binding and overrides all others, and additionally binds uppercase letters in its immediate parent scope (the enclosing scope, not beyond) so it outlives scope exit without reaching unrelated outer scopes; finally, a **resolved binding** — the char→word memory of any earlier successful resolution — binds after all annotations, so a character unannotated in a later script still binds to its established word. Within a tier, a character resolves to the most recent matching word in its scope. Each identity occurrence is bound exactly once by the most specific annotation that applies to it, so one character never acquires two competing tokens.
-_Avoid_: comment mapping (the binding is a specific compiler artefact, not a general comment feature), rebind (an inline annotation always overrides — use the specific kind)
+The association of a single-character signature with a word, resolved through annotations. Precedence: inline annotation (nearest, overrides all others, also binds its immediate parent scope), then top-level annotations by scope, then resolved bindings (the char→word memory of earlier resolutions). Within a tier, the most recent match wins; each identity occurrence binds exactly once.
+_Avoid_: comment mapping, rebind
 
 ## Training and Runtime
 
-The multi-agent loop in which an authored encounter becomes understanding. A trainer presents the script's klines — the encounter, in dialogue form; a trainee rationalises them and assigns its own significance, proposing, asking, grounding; a supervisor resolves what rationalisation alone cannot. The runtime is where Structure, Rationalisation, and KScript's authored material finally meet, and where the agent reading the session judges whether the trainee is making sense of the encounter.
+The multi-agent loop in which an authored encounter becomes understanding: a trainer presents the script's klines; a trainee rationalises them and assigns its own significance; a supervisor resolves what rationalisation alone cannot.
 
 **Harness**:
-The multi-agent runtime that loads agents as participants and runs a dialogue loop between them. A message broker — agents send role-addressed messages through the harness and it routes them to all subscribers of that role. Participants never communicate directly.
+The multi-agent runtime that loads participants and routes role-addressed messages between them. A message broker — participants never communicate directly.
 
 **Message**:
-A unit of inter-participant communication routed by the harness — addressed to a role with an action interpreted by the recipient.
+A unit of inter-participant communication — addressed to a role with an action interpreted by the recipient.
 
 **Dialogue**:
-The alternating exchange between participants in the harness loop. No participant is aware it is in a training loop — each simply receives and responds.
+The alternating exchange between participants in the harness loop. No participant is aware it is in a training loop.
 
 **Trainee**:
-The participant under instruction — the rationalising system being trained, and the subject of a training session. Registered on the harness bus with role `trainee`.
+The participant under instruction — the rationalising system being trained. Role `trainee`.
 
 **Trainer**:
-A rationaliser — the trainer-side peer of the trainee, sharing the same rationalising engine and differing only in the significance bands it keeps (S1 ratifications and S2 proposals). Cogitates over incoming proposals and emits its own; escalates to the supervisor only when its cogitation yields no reply. Registered on the harness bus with role `trainer`.
-_Avoid_: auto-agent, training bot, the deterministic ratifier of the earlier path (it now rationalises; see `src/dialogue/`)
+A rationaliser — the trainer-side peer of the trainee, sharing the same rationalising engine and differing only in the significance bands it keeps (S1 ratifications, S2 proposals). Cogitates over incoming proposals and emits its own; escalates when cogitation yields no reply. Role `trainer`.
+_Avoid_: auto-agent, training bot
 
 **Supervisor**:
-An Agent that resolves the proposals the Trainer escalates — deciding ratify, scaffold, or continue. Independent of medium — TUI, Slack, CLI, or an LLMSupervisor all share the same capabilities; a judgement may be a human decision or an LLM's internal assessment. Registered on the harness bus with role `supervisor`.
-_Avoid_: UI (too narrow), human (a supervisor may be an LLMSupervisor)
+An agent that resolves what the Trainer escalates — deciding ratify, scaffold, or continue. Independent of medium (TUI, Slack, CLI, LLM). Role `supervisor`.
+_Avoid_: UI, human
 
 **Scaffolding**:
-KScript entries that provide grounding context for other entries. Structurally identical regardless of origin; the difference is only when they are created — **pre-compiled** (written into the original script by its author) or **reactive** (written by the supervisor when Kalvin's S2/S3 proposals mismatch expectations).
-Delivery is a harness mode (`--scaffolding batch|on-demand`): **batch** feeds all compiled scaffolding before the group's opening entry (priming K so the entry rationalises against grounded ground); **on-demand** feeds only the opener and releases scaffolding as K asks for it.
+KScript entries that provide grounding context for other entries — structurally identical regardless of origin (pre-compiled by the author, or reactive from the supervisor). Delivery is a harness mode: batch (all before the group's opening entry) or on-demand (released as the trainee asks).
 
 **Proposal**:
-A KLine emitted by a trainee during rationalisation.
+A KLine emitted by a trainee during rationalisation. Ungrounded when generated under the ask — S3 evidence is a promise, not a fact; weighing promises is protocol.
 
 **Ratify**:
-The action of countersigning a selected proposal. Usually performed by the Trainer while running a script.
+The action of countersigning a selected proposal — usually performed by the Trainer while running a script. Its effect is a tier relation over memory: a ratified correspondence edge costs nothing in acquisition depth, and ratifying a traversed pair promotes it to a standing one-hop licence (§10, §11, §14).
 
 **Escalation**:
-The rationalising trainer deferring a proposal to the supervisor when its cogitation yields no reply. The boundary between what the Trainer resolves by rationalising and what the supervisor resolves.
-_Avoid_: auto-ratify failure (the earlier path's trigger — the trainer now escalates on cogitation-empty, not on a failed deterministic countersign)
+The Trainer deferring a proposal to the supervisor when its cogitation yields no reply.
+_Avoid_: auto-ratify failure
 
 **Semantic Evidence**:
-The undeclared backbone of a KScript: the canon index (which signatures canonise to what), countersign pairs, and denotation/connotation edges that the entries hold collectively but no single kline declares. Emitted by compilation as derived structure (distinct from each entry's own **Structural Significance**), it carries the script's _intended_ significance — what the klines prove when every declaration is held.
+The correspondences a KScript's entries hold collectively but no single kline declares: the canon index, countersign pairs, and denotation/connotation edges. Emitted by compilation as derived structure, it carries the script's intended significance.
+
+**Target Significance**:
+The band a KScript production op declares — the answer key a trainee must learn to derive, not a measurement of any one kline.

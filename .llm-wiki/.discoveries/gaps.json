@@ -1,4 +1,72 @@
 {
-  "gaps": [],
-  "generated": "2026-08-11T16:35:44.459Z"
+  "gaps": [
+    {
+      "topic": "CONTEXT.md",
+      "mentionedBy": [
+        "sources/model-state-graph-layer-rendering"
+      ]
+    },
+    {
+      "topic": "Domain Glossary",
+      "mentionedBy": [
+        "sources/kalvin-doc-normative-split"
+      ]
+    },
+    {
+      "topic": "concepts/grilling",
+      "mentionedBy": [
+        "sources/ks2-third-pass-seven-gap-resolutions"
+      ]
+    },
+    {
+      "topic": "concepts/kscript-operator",
+      "mentionedBy": [
+        "sources/connotation-compound-relocation-encoder-design"
+      ]
+    },
+    {
+      "topic": "connote-denote-structure-swap-compound-sig-denotation",
+      "mentionedBy": [
+        "sources/structural-significance-coverage-semantics"
+      ]
+    },
+    {
+      "topic": "dialogue-dev",
+      "mentionedBy": [
+        "sources/model-state-graph-layer-rendering"
+      ]
+    },
+    {
+      "topic": "docs/ks2.md",
+      "mentionedBy": [
+        "sources/ks2-third-pass-seven-gap-resolutions"
+      ]
+    },
+    {
+      "topic": "sources/obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t2",
+      "mentionedBy": [
+        "sources/content-preserving-vs-content-aligning-moves"
+      ]
+    },
+    {
+      "topic": "sources/obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-or",
+      "mentionedBy": [
+        "sources/coverage-fractions-peak-at-containment"
+      ]
+    },
+    {
+      "topic": "src/dialogue/engine.py",
+      "mentionedBy": [
+        "sources/identity-priming-and-knowledge-restatement"
+      ]
+    },
+    {
+      "topic": "src/dialogue/expand_fit.py",
+      "mentionedBy": [
+        "sources/identity-klines-never-proposals",
+        "sources/identity-priming-and-knowledge-restatement"
+      ]
+    }
+  ],
+  "generated": "2026-09-14T15:18:15.285Z"
 }

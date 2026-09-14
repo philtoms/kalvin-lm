@@ -30,10 +30,12 @@ from typing import TYPE_CHECKING
 from kalvin.kline import KLine, is_canon, is_terminal
 from kalvin.kvalue import KValue
 from kalvin.significance import (
-    DEFAULT_AGGREGATOR,
-    SIG_S4,
-    Aggregator,
-    is_s1,
+    DEFAULT_DELTA,
+    SlotRecord,
+    gamma_aggregate,
+    gamma_to_byte,
+    geometric_decay,
+    word_atom_count,
 )
 
 if TYPE_CHECKING:
@@ -66,11 +68,6 @@ def edge_hops(model: Model, sig: int, signifier: KSignifier) -> Iterator[tuple[i
         sig = signifier.signature_of(kline.nodes)
         yield hop_count, sig
 
-# Structural Grounding re-export
-#
-# is_s1 / is_countersigned live in kalvin.significance; sig_level in kalvin.kline.
-# expand() calls is_s1 directly; the others are imported by callers from there.
-
 
 # Graph Expansion
 
@@ -81,32 +78,30 @@ def expand(
     candidate: KLine,
     signifier: KSignifier,
     *,
-    aggregator: Aggregator | None = None,
+    delta: float = DEFAULT_DELTA,
     _visited: set[tuple[int, int]] | None = None,
 ) -> Iterator[KValue]:
     """Expand a query-candidate pair, yielding connotations and terminal byte.
 
-    Compose-on-return aggregation: topology is captured on descent (per-node
-    accountedness retained as a float), and composition is applied on the
-    return phase.
+    Compose-on-return aggregation: topology is captured on descent (per-slot
+    records retained), and γ is applied on the return phase.
 
-    Per-node accountedness:
-      matched & grounded       -> 1.0
-      matched but ungrounded   -> decay(1)   (one hop of doubt)
-      resolvable in h hops      -> decay(h)
-      unresolvable              -> 0.0
+    Per-slot records — (atom weight, hop depth):
+      matched & grounded       -> (|n|, 0)
+      matched but ungrounded   -> (|n|, 1)   (one hop of doubt)
+      resolvable in h hops      -> (|n|, h)
+      unresolvable              -> (|n|, None)
+
+    The terminal byte is γ = J · δ^(mean depth)
+    (:func:`kalvin.significance.gamma_aggregate`).
 
     Yield asymmetry: exact opposing matches and S3 connotation bridges
     recurse; signifies matches emit a side-candidate and do not recurse.
     The final yield is always the terminal KValue for the original
     pair.
 
-    ``aggregator`` bundles the layout (S2_S3_BOUNDARY) and the two pluggable
-    seams (DecayFunction, ComposeFunction); defaults to
-    :data:`DEFAULT_AGGREGATOR`.
+    ``delta`` ∈ (0, 1) is the strategy's knob, the only one.
     """
-    if aggregator is None:
-        aggregator = DEFAULT_AGGREGATOR
     if _visited is None:
         _visited = set()
 
@@ -123,86 +118,84 @@ def expand(
 
     s3_connotations: dict[int, int] = {}  # sig -> min hops from any query node
 
-    # Per-node accountedness, in slot order. One float per slot.
-    slot_values: list[float] = []
-
-    decay = aggregator.decay
+    # Per-slot records, in slot order: (atom weight, hop depth | None).
+    slots: list[SlotRecord] = []
 
     for n in mismatched_q:
-        accounted = 0.0  # unresolvable default (case F)
+        slot_hops: int | None = None  # unresolvable default (case F)
         q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n, signifier):
                 if match_sig in mismatched_c:
                     # case C: exact opposing match (S2 direct) -> recurse.
-                    accounted = decay(hops)
+                    slot_hops = hops
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
                             model, q_kline, c_kline, signifier,
-                            aggregator=aggregator, _visited=_visited,
+                            delta=delta, _visited=_visited,
                         )
                     break
                 elif signifier.signifies(n, match_sig):
                     # case D: signifies (S2 loose) -> side-candidate, no recurse.
-                    accounted = decay(hops)
+                    slot_hops = hops
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
-                        sig_byte = aggregator.compose_terminal([decay(hops)])
+                        sig_byte = gamma_to_byte(geometric_decay(hops, delta))
                         yield KValue(c_kline, sig_byte)
                     break
                 elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
                     s3_connotations[match_sig] = hops
-        slot_values.append(accounted)
+        slots.append((word_atom_count(n), slot_hops))
 
     for n in mismatched_c:
-        accounted = 0.0
+        slot_hops = None
         q_kline = model.find(n)
         if q_kline is not None:
             for hops, match_sig in edge_hops(model, n, signifier):
                 if match_sig in mismatched_q:
                     # case C: exact opposing match (S2 direct) -> recurse.
-                    accounted = decay(hops)
+                    slot_hops = hops
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
                             model, q_kline, c_kline, signifier,
-                            aggregator=aggregator, _visited=_visited,
+                            delta=delta, _visited=_visited,
                         )
                     break
                 elif signifier.signifies(n, match_sig):
                     # case D: signifies (S2 loose) -> side-candidate, no recurse.
-                    accounted = decay(hops)
+                    slot_hops = hops
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
-                        sig_byte = aggregator.compose_terminal([decay(hops)])
+                        sig_byte = gamma_to_byte(geometric_decay(hops, delta))
                         yield KValue(c_kline, sig_byte)
                     break
                 elif match_sig in s3_connotations:
                     # case E: S3 connotation bridge -> recurse (no side-candidate).
                     s3_hop = s3_connotations[match_sig] + hops
-                    accounted = decay(s3_hop)
+                    slot_hops = s3_hop
                     c_kline = model.find(match_sig)
                     if c_kline is not None:
                         yield from expand(
                             model, q_kline, c_kline, signifier,
-                            aggregator=aggregator, _visited=_visited,
+                            delta=delta, _visited=_visited,
                         )
                     break
-        slot_values.append(accounted)
+        slots.append((word_atom_count(n), slot_hops))
 
-    # Matched nodes: grounded -> 1.0; matched-ungrounded -> decay(1).
+    # Matched nodes: grounded -> depth 0 (ratification flattens the record);
+    # ungrounded -> the carried acquisition depth, or one hop of doubt.
     for n in matched:
         kl = model.find(n)
-        if kl is not None and is_s1(model, kl, signifier):
-            slot_values.append(1.0)
+        if kl is not None and model.grounded(kl):
+            slots.append((word_atom_count(n), 0))
+        elif kl is not None and kl.acq_depth > 0:
+            slots.append((word_atom_count(n), kl.acq_depth))
         else:
-            # Ungrounded match OR not in model: one hop of doubt.
-            slot_values.append(decay(1))
+            slots.append((word_atom_count(n), 1))
 
-    if not slot_values:
-        # Both klines node-less: vacuously fully accounted.
-        slot_values = [1.0]
-
-    significance = aggregator.compose_terminal(slot_values)
+    a_sig = signifier.signature_of(query.nodes)
+    b_sig = signifier.signature_of(candidate.nodes)
+    significance = gamma_to_byte(gamma_aggregate(slots, a_sig, b_sig, delta))
     yield KValue(candidate, significance)

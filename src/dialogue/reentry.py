@@ -105,8 +105,8 @@ class Reentry:
 
         nodes = list(entry.nodes)
         sig_nodes = self._nodes_of(entry.signature)
-        fit = [n for n in nodes if self.signifier.bit_in(n, entry.signature)]
-        overfit = [n for n in nodes if not self.signifier.bit_in(n, entry.signature)]
+        fit = [n for n in nodes if self.signifier.sig_in(n, entry.signature)]
+        overfit = [n for n in nodes if not self.signifier.sig_in(n, entry.signature)]
         underfit = [n for n in sig_nodes if n not in nodes]
         # underfit = self._underfit(entry, fit)
 
@@ -175,7 +175,7 @@ class Reentry:
         grounded identity delivers itself.
         """
         state = self._state
-        target = KLine(u, [n for n in fit if self.signifier.bit_in(n, u)], entry.dbg)
+        target = KLine(u, [n for n in fit if self.signifier.sig_in(n, u)], entry.dbg)
         delivered = [
             list(kv.kline.nodes)
             for kv in self.propose(
@@ -213,7 +213,7 @@ class Reentry:
         """Held nodes whose bit pattern sits inside ``signature``."""
         out: list[KNode] = []
         for kline in self._state.where(
-            lambda k: self.signifier.bit_in(k.signature, signature) and is_identity(k)
+            lambda k: self.signifier.sig_in(k.signature, signature) and is_identity(k)
         ):
             out.append(kline.signature)
         return out

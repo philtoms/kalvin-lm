@@ -76,7 +76,7 @@ class KSignifier(ABC):
     """
 
     @abstractmethod
-    def signature_of(self, nodes: Sequence[KNode]) -> KNode:
+    def signature_of(self, nodes: Sequence[KNode]) -> KSig:
         """Produce the signature value for a node sequence.
 
         The returned value occupies a kline's head position; the system
@@ -95,7 +95,7 @@ class KSignifier(ABC):
         ...
 
     @abstractmethod
-    def residual(self, a: KNode, b: KNode) -> KNode:
+    def residual(self, a: KSig, b: KSig) -> KSig:
         """Return the residual of signature *a* over signature *b*.
 
         A derived value representing what *a* carries that *b* does not. Used
@@ -107,11 +107,11 @@ class KSignifier(ABC):
         ...
 
     @abstractmethod
-    def bit_in(self, node: KNode, signature: KNode) -> bool:
+    def node_in(self, node: KNode, signature: KSig) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         ...
 
     @abstractmethod
-    def is_ask(self, signature: KNode) -> bool:
+    def is_ask(self, signature: KSig) -> bool:
         """Does ``signature`` carry the ASK_BPE_TOKEN flag?"""
         ...

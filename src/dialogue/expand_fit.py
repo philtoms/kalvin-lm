@@ -61,7 +61,7 @@ class ExpandFit:
 
     def propose(self, entry: KLine) -> Iterator[KValue]:
         candidates = self._candidates(entry)
-        queries = [entry] if self.signifier.is_ask(entry.signature) else self.state.findCanons(entry.signature)
+        queries = [self.state.find_canon(entry.signature) or entry]
         for query in queries:
             for candidate in candidates:
                 yield from self.expand(query, candidate, _visited=set())
@@ -154,7 +154,7 @@ class ExpandFit:
                     if c_kline is None:
                         continue
                     underfit_sig = signifier.signature_of(list(underfit))
-                    if signifier.bit_in(hop_sig, underfit_sig):
+                    if signifier.sig_in(hop_sig, underfit_sig):
                         accounted = decay(hops)
                         s2_target.append(n)
                         break
@@ -200,13 +200,22 @@ class ExpandFit:
             yield KValue(candidate, significance)
 
     def _candidates(self, entry: KLine) -> list[KLine]:
+        """Held klines selectable for the entry — Def 16: occurrence.
+
+        A candidate is selectable when its signature occurs in one of the
+        entry's nodes (containment in bit space — a compound node references
+        what the candidate is). Content overlap is not selection: it routes
+        the band inside expand.
+        """
         signifier = self._state.signifier
         conns: list[KLine] = []
 
         for sig in self._state.where(
             lambda k: entry.signature != k.signature
             and not is_identity(k)
-            and signifier.signifies(entry.signature, k.signature)
+            and any(
+                signifier.node_in(k.signature, n) for n in entry.nodes
+            )
         ):
             conns.append(sig)
         return conns
@@ -241,7 +250,7 @@ class ExpandFit:
         out: list[KNode] = []
         signifier = self.signifier
         for kline in self._state.where(
-            lambda k: signifier.bit_in(k.signature, signature) and is_identity(k)
+            lambda k: signifier.sig_in(k.signature, signature) and is_identity(k)
         ):
             out.append(kline.signature)
         return out

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-03T10:53:47.462Z",
+  "last_updated": "2026-09-14T22:34:09.137Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8,6 +8,12 @@
       "description": "A participant that forms its own significance on a kline — a subjective grading. Three roles determine rationalising strategies: Trainee, Trainer, Supervisor.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "concepts/ask": {
+      "type": "concept",
+      "title": "Ask",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
     },
     "concepts/canon": {
       "type": "concept",
@@ -93,6 +99,12 @@
       "created": "2026-08-11",
       "updated": "2026-08-14"
     },
+    "concepts/grilling": {
+      "type": "concept",
+      "title": "Grilling",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
     "concepts/grounding": {
       "type": "concept",
       "title": "Grounding",
@@ -120,6 +132,12 @@
       "description": "The fundamental unit of Kalvin's memory — a structure containing a signature (head) and a nodes list, between which holds a relationship Kalvin rationalises as Structural Significance.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "concepts/kscript-operator": {
+      "type": "concept",
+      "title": "KScript Operator",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
     },
     "concepts/kvalue": {
       "type": "concept",
@@ -227,7 +245,7 @@
     "concepts/relational-tokens": {
       "type": "concept",
       "title": "Relational Tokens",
-      "description": "The closed set of KScript tokens (==, =>, >, =, none) declaring how a kline is produced and its provenance — COUNTERSIGNS, CANONIZES, CONNOTES, DENOTES, UNKNOWN.",
+      "description": "The closed set of KScript tokens (==, =>, >, =, none) declaring how a kline is produced and its provenance — COUNTERSIGNS, CANONICALISES, CONNOTES, DENOTES, UNKNOWN.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
     },
@@ -335,6 +353,12 @@
       "description": "A rationaliser — the trainer-side peer of the trainee, sharing the same engine but keeping S1 ratifications and S2 proposals. Cogitates and escalates.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "concepts/underfit-and-overfit": {
+      "type": "concept",
+      "title": "Underfit and Overfit",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
     },
     "concepts/unknown": {
       "type": "concept",
@@ -529,6 +553,51 @@
       "created": "2026-08-27",
       "updated": "2026-08-27"
     },
+    "sources/connotation-compound-relocation-encoder-design": {
+      "type": "source",
+      "title": "Relocating a compound across the sig/node boundary requires component plumbing",
+      "category": "compiler",
+      "status": "insight",
+      "slug": "connotation-compound-relocation-encoder-design",
+      "created": "2026-09-08",
+      "updated": "2026-09-08"
+    },
+    "sources/connote-denote-structure-swap-compound-sig-denotation": {
+      "type": "source",
+      "title": "CONNOTE/DENOTE structures swapped — denotation is compound-signature S2",
+      "category": "kscript",
+      "status": "insight",
+      "slug": "connote-denote-structure-swap-compound-sig-denotation",
+      "created": "2026-09-09",
+      "updated": "2026-09-09"
+    },
+    "sources/content-preserving-vs-content-aligning-moves": {
+      "type": "source",
+      "title": "Split rewrite moves by preserved invariant to get termination for free",
+      "category": "design",
+      "status": "insight",
+      "slug": "content-preserving-vs-content-aligning-moves",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/coverage-fractions-peak-at-containment": {
+      "type": "source",
+      "title": "One-directional coverage fractions peak at containment, not equality",
+      "category": "design",
+      "status": "insight",
+      "slug": "coverage-fractions-peak-at-containment",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/coverage-primary-fit-taxonomy": {
+      "type": "source",
+      "title": "Coverage-primary split for fit classifiers over set-algebra values",
+      "category": "design",
+      "status": "insight",
+      "slug": "coverage-primary-fit-taxonomy",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
     "sources/identity-klines-never-proposals": {
       "type": "source",
       "title": "Identity klines are never proposals",
@@ -546,6 +615,42 @@
       "slug": "identity-priming-and-knowledge-restatement",
       "created": "2026-08-27",
       "updated": "2026-08-27"
+    },
+    "sources/kalvin-doc-normative-split": {
+      "type": "source",
+      "title": "Kalvin doc normative split: algebra vs CONTEXT.md",
+      "category": "domain-modeling",
+      "status": "insight",
+      "slug": "kalvin-doc-normative-split",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/ks2-conformance-series-landing": {
+      "type": "source",
+      "title": "ks2 conformance series: 6 commits to the engine entry path",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "ks2-conformance-series-landing",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/ks2-third-pass-seven-gap-resolutions": {
+      "type": "source",
+      "title": "ks2 third pass: seven gap resolutions fixing the formal algebra",
+      "category": "formalisation",
+      "status": "insight",
+      "slug": "ks2-third-pass-seven-gap-resolutions",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/model-state-graph-layer-rendering": {
+      "type": "source",
+      "title": "Model-state graph design: klines deduped with layer glyphs, strongest-layer styling",
+      "category": "design",
+      "status": "insight",
+      "slug": "model-state-graph-layer-rendering",
+      "created": "2026-09-08",
+      "updated": "2026-09-08"
     },
     "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": {
       "type": "source",
@@ -1526,6 +1631,1221 @@
       "created": "2026-09-03",
       "updated": "2026-09-03"
     },
+    "sources/obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram": {
+      "type": "source",
+      "title": "Observation: Engine observations channel removed; harness diffs state; frame in summary",
+      "tags": [
+        "dialogue",
+        "engine",
+        "harness",
+        "refactoring"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram",
+      "relevance": "high",
+      "observed_at": "2026-09-03T16:34:47.730Z",
+      "source_context": "Simplifying the engine↔harness observation channel in the dialogue harness",
+      "created": "2026-09-03",
+      "updated": "2026-09-03"
+    },
+    "sources/obs-2026-09-03-enginestate-stm-renamed-back-to-work-list": {
+      "type": "source",
+      "title": "Observation: EngineState.stm renamed back to work_list",
+      "tags": [
+        "dialogue",
+        "engine-state",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-03-enginestate-stm-renamed-back-to-work-list",
+      "relevance": "high",
+      "observed_at": "2026-09-03T11:28:02.817Z",
+      "source_context": "Renaming EngineState.stm to work_list to make room for kalvin.stm import",
+      "created": "2026-09-03",
+      "updated": "2026-09-03"
+    },
+    "sources/obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded": {
+      "type": "source",
+      "title": "Observation: Cogitator.expand dead: connotateY frontier never seeded",
+      "tags": [
+        "dialogue",
+        "cogitator",
+        "engine",
+        "bugfix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded",
+      "relevance": "high",
+      "observed_at": "2026-09-04T09:18:40.570Z",
+      "source_context": "Dialogue-dev tuning: WDMH underfit proposal investigation",
+      "created": "2026-09-04",
+      "updated": "2026-09-04"
+    },
+    "sources/obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall": {
+      "type": "source",
+      "title": "Observation: connotateY reverse edges bridge WDMH to MHALL",
+      "tags": [
+        "dialogue",
+        "cogitator",
+        "engine",
+        "feat"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall",
+      "relevance": "high",
+      "observed_at": "2026-09-04T09:22:30.325Z",
+      "source_context": "Dialogue-dev: reverse-edge design for connotateY",
+      "created": "2026-09-04",
+      "updated": "2026-09-04"
+    },
+    "sources/obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked": {
+      "type": "source",
+      "title": "Observation: Query-kline hub exclusion committed; legit path still blocked",
+      "tags": [
+        "dialogue",
+        "cogitator",
+        "engine",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked",
+      "relevance": "high",
+      "observed_at": "2026-09-04T10:13:35.605Z",
+      "source_context": "Dialogue-dev: hub exclusion commit and re-add check",
+      "created": "2026-09-04",
+      "updated": "2026-09-04"
+    },
+    "sources/obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab": {
+      "type": "source",
+      "title": "Observation: CONNOTES semantics inverted to compound-in-slot (A:[AB])",
+      "tags": [
+        "kscript",
+        "compiler",
+        "connotation",
+        "semantics",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab",
+      "relevance": "high",
+      "observed_at": "2026-09-08T09:38:28.284Z",
+      "created": "2026-09-08",
+      "updated": "2026-09-08"
+    },
+    "sources/obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers": {
+      "type": "source",
+      "title": "Observation: Harness --graph flag renders model state across all layers",
+      "tags": [
+        "dialogue",
+        "harness",
+        "visualization",
+        "graph",
+        "engine-state"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers",
+      "relevance": "medium",
+      "observed_at": "2026-09-08T09:40:12.029Z",
+      "source_context": "Extending the dialogue harness presentation with a model-state graph",
+      "created": "2026-09-08",
+      "updated": "2026-09-08"
+    },
+    "sources/obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s": {
+      "type": "source",
+      "title": "Observation: Harness -p writes companion .dot/.mmd graph beside state JSON; save-path bug fixed",
+      "tags": [
+        "dialogue",
+        "harness",
+        "persistence",
+        "vscode",
+        "graphviz",
+        "mermaid"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s",
+      "relevance": "low",
+      "observed_at": "2026-09-08T10:01:50.864Z",
+      "source_context": "VSCode preview support for persisted dialogue state",
+      "created": "2026-09-08",
+      "updated": "2026-09-08"
+    },
+    "sources/obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-": {
+      "type": "source",
+      "title": "Observation: Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key",
+      "tags": [
+        "dialogue",
+        "harness",
+        "graph",
+        "colour",
+        "ansi",
+        "render"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-",
+      "relevance": "low",
+      "observed_at": "2026-09-08T13:20:24.212Z",
+      "source_context": "Graph render switch from glyph indicators to colour",
+      "created": "2026-09-08",
+      "updated": "2026-09-08"
+    },
+    "sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla": {
+      "type": "source",
+      "title": "Observation: Model graph: sig→compound→identity-members construction replaces node fan-out",
+      "tags": [
+        "dialogue",
+        "harness",
+        "graph",
+        "compound",
+        "canon",
+        "identity",
+        "mts"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla",
+      "relevance": "medium",
+      "observed_at": "2026-09-08T12:59:16.698Z",
+      "source_context": "Compound-based model graph rendering",
+      "created": "2026-09-08",
+      "updated": "2026-09-08"
+    },
+    "sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh": {
+      "type": "source",
+      "title": "Observation: Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node)",
+      "tags": [
+        "dialogue",
+        "harness",
+        "graph",
+        "connotation",
+        "denotation",
+        "node_in"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh",
+      "relevance": "medium",
+      "observed_at": "2026-09-08T10:24:48.285Z",
+      "source_context": "Refining the model-graph relationship labels",
+      "created": "2026-09-08",
+      "updated": "2026-09-08"
+    },
+    "sources/obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st": {
+      "type": "source",
+      "title": "Observation: ASK_BPE_TOKEN to be removed; ks2 drops the ask atom — ask is structural S4 only",
+      "tags": [
+        "ask",
+        "formalisation",
+        "ks2",
+        "engine"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st",
+      "relevance": "high",
+      "observed_at": "2026-09-10T15:52:04.812Z",
+      "source_context": "ks2 third pass G5 — ask atom removal",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi": {
+      "type": "source",
+      "title": "Observation: Connote/denote swap + coverage-based significance levels committed (0f8b56a)",
+      "tags": [
+        "kscript",
+        "compiler",
+        "significance",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi",
+      "relevance": "high",
+      "observed_at": "2026-09-10T08:31:59.240Z",
+      "source_context": "Committing the connote/denote structure swap and significance-level redefinition",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md glossary rewritten to notes.md's semantic refinement",
+      "tags": [
+        "docs",
+        "glossary",
+        "domain-model"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem",
+      "relevance": "high",
+      "observed_at": "2026-09-10T08:39:05.527Z",
+      "source_context": "Aligning CONTEXT.md glossary with semantic refinement notes",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla": {
+      "type": "source",
+      "title": "Observation: ks2.md created: Layer 1 second pass with coverage-primary classifier",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "ks2",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla",
+      "relevance": "medium",
+      "observed_at": "2026-09-10T12:33:29.315Z",
+      "source_context": "Applying the Layer 1 review as docs/ks2.md",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t": {
+      "type": "source",
+      "title": "Observation: ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination",
+      "tags": [
+        "formalisation",
+        "rewrite-system",
+        "ks2",
+        "derivations",
+        "termination"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t",
+      "relevance": "medium",
+      "observed_at": "2026-09-10T13:32:40.413Z",
+      "source_context": "Writing Layer 2 (rewrite system) into docs/ks2.md per the review",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe": {
+      "type": "source",
+      "title": "Observation: ks2.md layer talk replaced by tract orientation + section references",
+      "tags": [
+        "ks2",
+        "docs",
+        "structure",
+        "terminology"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe",
+      "relevance": "low",
+      "observed_at": "2026-09-10T14:21:07.604Z",
+      "source_context": "Fixing inconsistent layer references in docs/ks2.md",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in": {
+      "type": "source",
+      "title": "Observation: ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "ks2",
+        "review"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in",
+      "relevance": "high",
+      "observed_at": "2026-09-10T14:30:10.304Z",
+      "source_context": "Reviewing docs/ks2.md formal algebra draft for sense, gaps, and implementability",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap": {
+      "type": "source",
+      "title": "Observation: Layer-1 algebra review: sound core, taxonomy and reference gaps",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "docs",
+        "review"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap",
+      "relevance": "high",
+      "observed_at": "2026-09-10T12:29:17.738Z",
+      "source_context": "Reviewing layer 1 (the algebra) of docs/kalvin-symbolic.md",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-": {
+      "type": "source",
+      "title": "Observation: Layer 1 review: Def 5 misfit partition not disjoint; coverage must be primary split",
+      "tags": [
+        "formalisation",
+        "algebra",
+        "review",
+        "partition",
+        "coverage"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-",
+      "relevance": "medium",
+      "observed_at": "2026-09-10T12:24:41.474Z",
+      "source_context": "Reviewing docs/kalvin-symbolic.md Layer 1 (the algebra) for sense, gaps, and vocabulary",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg": {
+      "type": "source",
+      "title": "Observation: Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation",
+      "tags": [
+        "formalisation",
+        "vocabulary",
+        "algebra",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg",
+      "relevance": "medium",
+      "observed_at": "2026-09-10T12:24:41.477Z",
+      "source_context": "Reviewing docs/kalvin-symbolic.md Layer 1 for a simpler vocabulary retaining purpose and intent",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation": {
+      "type": "source",
+      "title": "Observation: Layer 2 review: termination claims inverted, one-step relation undefined",
+      "tags": [
+        "formalisation",
+        "rewrite-system",
+        "termination",
+        "derivation",
+        "review"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation",
+      "relevance": "high",
+      "observed_at": "2026-09-10T13:16:24.194Z",
+      "source_context": "Reviewing kalvin-symbolic.md §2 (rewrite system) for sense, gaps, and vocabulary",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord": {
+      "type": "source",
+      "title": "Observation: Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core",
+      "tags": [
+        "formalisation",
+        "strategy",
+        "measurement",
+        "selection",
+        "graded-distance",
+        "ks2"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord",
+      "relevance": "medium",
+      "observed_at": "2026-09-10T14:04:29.799Z",
+      "source_context": "Reviewing and rewriting kalvin-symbolic.md §§3–4 (strategy, measurement) into ks2.md",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
+    },
+    "sources/obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro": {
+      "type": "source",
+      "title": "Observation: D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state",
+      "tags": [
+        "engine",
+        "gamma",
+        "reconciliation",
+        "significance",
+        "expand",
+        "d2",
+        "d3"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T18:17:35.180Z",
+      "source_context": "Implementing D2+D3 engine reconciliation after the ks2 fourth pass",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move": {
+      "type": "source",
+      "title": "Observation: Def 14 redesign: evidenced replace as the only targeting move",
+      "tags": [
+        "ks2",
+        "def14",
+        "replace",
+        "evidence",
+        "progressive-path",
+        "design-decision"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T13:16:06.737Z",
+      "source_context": "Redesigning ks2.md Def 14 licensing after semantically-vacuous derivation finding",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence": {
+      "type": "source",
+      "title": "Observation: Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival",
+      "tags": [
+        "ks2",
+        "def17",
+        "slot-derivation",
+        "progressive-path",
+        "formalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T15:09:27.067Z",
+      "source_context": "Formalising slot sub-hops in ks2.md after the γ acquisition-depth commit",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-": {
+      "type": "source",
+      "title": "Observation: Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine",
+      "tags": [
+        "engine",
+        "reconciliation",
+        "d4",
+        "d5",
+        "d6",
+        "d7",
+        "pivot-fill",
+        "selection",
+        "acq-depth"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T21:28:35.366Z",
+      "source_context": "Completing D4-D7 engine reconciliation with commits between tasks",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim": {
+      "type": "source",
+      "title": "Observation: ks2 claim-blindness critique: γ and done never see the claim",
+      "tags": [
+        "ks2",
+        "model",
+        "critique",
+        "significance",
+        "grounding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim",
+      "relevance": "high",
+      "observed_at": "2026-09-11T06:32:01.979Z",
+      "source_context": "Reviewing docs/ks2.md derivation/licensing model after explaining the emptying-ν_A Unknown clause",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence": {
+      "type": "source",
+      "title": "Observation: ks2 fourth pass drafted: replace-only targeting with evidence",
+      "tags": [
+        "ks2",
+        "def13",
+        "def14",
+        "replace",
+        "evidence",
+        "fourth-pass",
+        "context-md"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T13:33:21.287Z",
+      "source_context": "Drafting the evidenced-replace amendment into ks2.md and CONTEXT.md",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t": {
+      "type": "source",
+      "title": "Observation: ks2: queued head s is unread within a hop — derivation is C's two sides",
+      "tags": [
+        "ks2",
+        "formalisation",
+        "derivation",
+        "signature-inertness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t",
+      "relevance": "high",
+      "observed_at": "2026-09-11T10:26:02.388Z",
+      "source_context": "Reviewing Def 16 (selection) example in docs/ks2.md; user proposed invariant \"A is always a full canon\"",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation": {
+      "type": "source",
+      "title": "Observation: Remove's over-permissive licence: done-by-claim-amputation",
+      "tags": [
+        "ks2",
+        "model",
+        "derivations",
+        "replace",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation",
+      "relevance": "high",
+      "observed_at": "2026-09-11T08:18:28.957Z",
+      "source_context": "Reviewing ks2.md derivation licensing after the emptying-ν_A discussion",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno": {
+      "type": "source",
+      "title": "Observation: γ resolved: acquisition depth Ĥ added, ratified edges free, one knob",
+      "tags": [
+        "ks2",
+        "gamma",
+        "acquisition-depth",
+        "provenance",
+        "measurement",
+        "engine-reconciliation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno",
+      "relevance": "critical",
+      "observed_at": "2026-09-11T15:05:42.403Z",
+      "source_context": "Resolving the γ composed-evidence depth open item after user rulings",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose": {
+      "type": "source",
+      "title": "Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed",
+      "tags": [
+        "ks2",
+        "formalisation",
+        "wdmh",
+        "mhall",
+        "derivation",
+        "selection"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose",
+      "relevance": "high",
+      "observed_at": "2026-09-11T13:16:06.730Z",
+      "source_context": "Deriving the WDMH=>MHALL worked example against ks2.md",
+      "created": "2026-09-11",
+      "updated": "2026-09-11"
+    },
+    "sources/obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng": {
+      "type": "source",
+      "title": "Observation: Ask atom settled: ordinary atom, externally allocated; only engine branching deviates",
+      "tags": [
+        "ask",
+        "formalisation",
+        "ks2",
+        "packing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:28:43.917Z",
+      "source_context": "Correcting the ask-bit analysis after user clarification",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-": {
+      "type": "source",
+      "title": "Observation: Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap",
+      "tags": [
+        "ask",
+        "formalisation",
+        "ks2",
+        "packing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:15:19.444Z",
+      "source_context": "Refining the ask-bit deviation from the ks2 conformance review",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren": {
+      "type": "source",
+      "title": "Observation: Canonicalisation by witness replaces contiguity: reverse occurrence is multiset-wise",
+      "tags": [
+        "kalvin-algebra",
+        "canonicalisation",
+        "replace-rule",
+        "design-decision"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-canonicalisation-by-witness-replaces-contiguity-reverse-occurren",
+      "relevance": "high",
+      "observed_at": "2026-09-12T12:58:43.167Z",
+      "source_context": "Redesigning replace occurrence semantics: contiguity → multiset-wise canonicalisation",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md aligned with kalvin-algebra.md terminology",
+      "tags": [
+        "docs",
+        "domain-modeling",
+        "glossary",
+        "kalvin-algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology",
+      "relevance": "high",
+      "observed_at": "2026-09-12T12:28:20.096Z",
+      "source_context": "Aligning CONTEXT.md glossary with kalvin-algebra.md terminology",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative": {
+      "type": "source",
+      "title": "Observation: Doc review verdict: ks3 clearest for agents, ks2 authoritative",
+      "tags": [
+        "docs",
+        "formalisation",
+        "ks2",
+        "ks3",
+        "review"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative",
+      "relevance": "medium",
+      "observed_at": "2026-09-12T10:42:32.852Z",
+      "source_context": "Reviewing the three formal documents in docs/ for agentic clarity",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy": {
+      "type": "source",
+      "title": "Observation: Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted",
+      "tags": [
+        "docs",
+        "rename",
+        "kalvin-algebra",
+        "kalvin-for-agents",
+        "consolidation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy",
+      "relevance": "critical",
+      "observed_at": "2026-09-12T11:03:19.372Z",
+      "source_context": "Consolidating the formal docs to the 2-doc structure",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks": {
+      "type": "source",
+      "title": "Observation: docs/ks3.md written as programmer-friendly restatement of ks2",
+      "tags": [
+        "ks2",
+        "ks3",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks",
+      "relevance": "medium",
+      "observed_at": "2026-09-12T05:02:19.884Z",
+      "source_context": "Simplifying docs/ks2.md for non-mathematical programmers",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal": {
+      "type": "source",
+      "title": "Observation: Engine ask-atom branching removed; structural routing + refusal guard landed",
+      "tags": [
+        "ask",
+        "engine",
+        "ks2",
+        "cogitator"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:38:07.724Z",
+      "source_context": "Removing engine branching on the ask atom per settled ks2 position",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul": {
+      "type": "source",
+      "title": "Observation: kalvin-symbolic.md updated in place to ks2 semantics and rules",
+      "tags": [
+        "kalvin-symbolic",
+        "ks2",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul",
+      "relevance": "high",
+      "observed_at": "2026-09-12T07:55:40.548Z",
+      "source_context": "Bringing kalvin-symbolic.md up to date with ks2 semantics",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen": {
+      "type": "source",
+      "title": "Observation: ks2 §14 absorbs KScript syntax; ks2 now sole normative document",
+      "tags": [
+        "ks2",
+        "ks3",
+        "kalvin-symbolic",
+        "docs",
+        "kscript"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen",
+      "relevance": "high",
+      "observed_at": "2026-09-12T09:50:36.613Z",
+      "source_context": "Consolidating normativity into ks2.md",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful": {
+      "type": "source",
+      "title": "Observation: ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant",
+      "tags": [
+        "ks2",
+        "conformance",
+        "review",
+        "dialogue",
+        "harness",
+        "formalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:08:35.808Z",
+      "source_context": "Deviation review of ks2.md normative spec vs source code via the harness entry app",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide": {
+      "type": "source",
+      "title": "Observation: ks3 verbatim-definitions restructure reproduced after accidental reset",
+      "tags": [
+        "ks2",
+        "ks3",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide",
+      "relevance": "medium",
+      "observed_at": "2026-09-12T06:43:51.231Z",
+      "source_context": "Reproducing lost ks3 restructure before commit",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks": {
+      "type": "source",
+      "title": "Observation: User wants 2-doc structure; citation graph already favours ks2 as authority",
+      "tags": [
+        "docs",
+        "formalisation",
+        "ks2",
+        "ks3",
+        "kalvin-symbolic",
+        "authority"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks",
+      "relevance": "high",
+      "observed_at": "2026-09-12T10:55:34.618Z",
+      "source_context": "Deciding the authoritative/accessible split across the three formal docs",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m": {
+      "type": "source",
+      "title": "Observation: Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m]",
+      "tags": [
+        "kalvin-algebra",
+        "worked-example",
+        "docs",
+        "correction"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m",
+      "relevance": "high",
+      "observed_at": "2026-09-12T12:32:54.334Z",
+      "source_context": "Correcting the worked example in docs/kalvin-algebra.md",
+      "created": "2026-09-12",
+      "updated": "2026-09-12"
+    },
+    "sources/obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de": {
+      "type": "source",
+      "title": "Observation: Def 13 restructured: mirror clause headed, canonicalisation demoted to Canon instance",
+      "tags": [
+        "docs",
+        "kalvin",
+        "mirror-clause",
+        "canonicalisation",
+        "def13"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de",
+      "relevance": "medium",
+      "observed_at": "2026-09-13T16:20:48.585Z",
+      "source_context": "Disentangling the mirror clause from canonicalisation in kalvin-simplified.md Def 13",
+      "created": "2026-09-13",
+      "updated": "2026-09-13"
+    },
+    "sources/obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu": {
+      "type": "source",
+      "title": "Observation: kalvin-simplified.md rewritten as sole normative Kalvin document",
+      "tags": [
+        "docs",
+        "normative",
+        "consolidation",
+        "kalvin-simplified"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu",
+      "relevance": "high",
+      "observed_at": "2026-09-13T08:53:24.684Z",
+      "source_context": "Making kalvin-simplified.md the sole normative Kalvin doc",
+      "created": "2026-09-13",
+      "updated": "2026-09-13"
+    },
+    "sources/obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al": {
+      "type": "source",
+      "title": "Observation: Step 3 Mary example: o→all hop licensed by reverse read of all:[o]",
+      "tags": [
+        "docs",
+        "kalvin",
+        "slot-walk",
+        "connotation",
+        "reverse-replace"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al",
+      "relevance": "high",
+      "observed_at": "2026-09-13T16:07:57.071Z",
+      "source_context": "Fixing the Step 3 slot-walk demonstration in kalvin-simplified.md",
+      "created": "2026-09-13",
+      "updated": "2026-09-13"
+    },
+    "sources/obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own": {
+      "type": "source",
+      "title": "Observation: \"Absorption\" swept: doc now writes/adds to memory — the doc's own plain vocabulary",
+      "tags": [
+        "docs",
+        "kalvin",
+        "terminology",
+        "writing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T08:04:44.494Z",
+      "source_context": "Removing \"absorption\" terminology from kalvin-simplified.md per Phil's jargon critique",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-": {
+      "type": "source",
+      "title": "Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what",
+      "tags": [
+        "algebra",
+        "derivation",
+        "probe",
+        "acid-test",
+        "mirror-clause",
+        "slot-walk"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-",
+      "relevance": "high",
+      "observed_at": "2026-09-14T05:30:03.096Z",
+      "source_context": "Acid-testing the §9 worked example through implemented code",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry": {
+      "type": "source",
+      "title": "Observation: ν_B-walk probe built: 7/7 PASS, control stuck at entry",
+      "tags": [
+        "kalvin-algebra",
+        "def17",
+        "probe",
+        "overfit",
+        "anchor",
+        "verification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry",
+      "relevance": "high",
+      "observed_at": "2026-09-14T15:33:24.964Z",
+      "source_context": "Building the pure-algebra probe for the Def 17 ν_B walk",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f": {
+      "type": "source",
+      "title": "Observation: Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged",
+      "tags": [
+        "kalvin-algebra",
+        "def14",
+        "appendix",
+        "probe",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T15:47:46.544Z",
+      "source_context": "Committing Def 14 wording, appendix worked example, and ν_B-walk probe",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr": {
+      "type": "source",
+      "title": "Observation: Def 14 two-ended reading + \"Mary had\" appendix worked example drafted",
+      "tags": [
+        "kalvin-algebra",
+        "def14",
+        "appendix",
+        "worked-example",
+        "overfit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr",
+      "relevance": "high",
+      "observed_at": "2026-09-14T15:37:01.036Z",
+      "source_context": "Updating Def 14 wording and documenting the ν_B walk as appendix worked example",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi": {
+      "type": "source",
+      "title": "Observation: Def 17 absorption refinement + T2 correspondence-identity keying applied",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def17",
+        "t2",
+        "refinement",
+        "amendment"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi",
+      "relevance": "high",
+      "observed_at": "2026-09-14T06:32:55.540Z",
+      "source_context": "Applying the Def 17 refinement + T2 keying amendments",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod": {
+      "type": "source",
+      "title": "Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def17",
+        "writing",
+        "node-opacity"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T07:36:51.279Z",
+      "source_context": "Tightening the Def 17 absorption clause per Phil's compactness critique",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo": {
+      "type": "source",
+      "title": "Observation: Def 17 restated: two-party slots, anchor, refinement; earlier work committed",
+      "tags": [
+        "kalvin-algebra",
+        "def17",
+        "slot-derivation",
+        "reverse-derivation",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo",
+      "relevance": "high",
+      "observed_at": "2026-09-14T14:55:19.523Z",
+      "source_context": "Committing earlier work and drafting Def 17 symmetric slot derivation",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean": {
+      "type": "source",
+      "title": "Observation: Def 17 two-party slots committed (726e2a0); tree clean",
+      "tags": [
+        "kalvin-algebra",
+        "def17",
+        "commit",
+        "slot-derivation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean",
+      "relevance": "high",
+      "observed_at": "2026-09-14T15:19:40.232Z",
+      "source_context": "Committing the Def 17 restatement after simplification pass",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-derivation-engine-port-committed-73e4eba": {
+      "type": "source",
+      "title": "Observation: Derivation engine port committed (73e4eba)",
+      "tags": [
+        "derivation",
+        "engine",
+        "commit",
+        "def17"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-derivation-engine-port-committed-73e4eba",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T22:34:09.051Z",
+      "source_context": "Committing the derivation engine port with review fixes",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed": {
+      "type": "source",
+      "title": "Observation: Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores",
+      "tags": [
+        "derivation",
+        "engine",
+        "def17",
+        "anchor",
+        "wedge",
+        "bugfix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed",
+      "relevance": "high",
+      "observed_at": "2026-09-14T17:43:57.001Z",
+      "source_context": "Reviewing user's Derivation port into src/dialogue/engine.py",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43": {
+      "type": "source",
+      "title": "Observation: Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green",
+      "tags": [
+        "kalvin",
+        "derivation",
+        "engine",
+        "def17",
+        "def14",
+        "port",
+        "tests"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43",
+      "relevance": "high",
+      "observed_at": "2026-09-14T15:51:12.681Z",
+      "source_context": "Porting two-party Def 17 + Def 14 into the engine core",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl": {
+      "type": "source",
+      "title": "Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary",
+      "tags": [
+        "terminology",
+        "kalvin-algebra",
+        "glossary",
+        "context"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl",
+      "relevance": "high",
+      "observed_at": "2026-09-14T12:20:00.112Z",
+      "source_context": "Terminology rename in the normative algebra doc and domain glossary",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-": {
+      "type": "source",
+      "title": "Observation: Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra",
+      "tags": [
+        "docs",
+        "consolidation",
+        "commit",
+        "kalvin-algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-",
+      "relevance": "high",
+      "observed_at": "2026-09-14T08:18:19.325Z",
+      "source_context": "Committing the doc consolidation and probe relocation",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi": {
+      "type": "source",
+      "title": "Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged",
+      "tags": [
+        "algebra",
+        "verification",
+        "probe",
+        "worked-example",
+        "def17",
+        "refine-gap",
+        "t2-keying"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi",
+      "relevance": "high",
+      "observed_at": "2026-09-14T06:19:43.905Z",
+      "source_context": "Verifying the §9 worked example against pure algebra code",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal": {
+      "type": "source",
+      "title": "Observation: Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion",
+      "tags": [
+        "algebra",
+        "def17",
+        "refinement",
+        "policy",
+        "granularity",
+        "acquisition-depth"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal",
+      "relevance": "high",
+      "observed_at": "2026-09-14T06:29:23.777Z",
+      "source_context": "Designing the Def 17 refinement amendment for kalvin-simplified.md",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots": {
+      "type": "source",
+      "title": "Observation: Slot derivation gap: overfit relationships have no slots",
+      "tags": [
+        "kalvin-algebra",
+        "slot-derivation",
+        "overfit",
+        "design"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots",
+      "relevance": "high",
+      "observed_at": "2026-09-14T14:40:29.452Z",
+      "source_context": "Design discussion of slot derivation overfit gap in kalvin-algebra.md",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-": {
+      "type": "source",
+      "title": "Observation: Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links",
+      "tags": [
+        "wiki",
+        "maintenance",
+        "lint",
+        "gaps"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T15:24:40.051Z",
+      "source_context": "Wiki lint remediation after /wiki-lint --fix",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",
       "title": "STM cascade removals must be orphan-checked",
@@ -1534,6 +2854,15 @@
       "slug": "stm-cascade-removals-orphan-check",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "sources/structural-significance-coverage-semantics": {
+      "type": "source",
+      "title": "Structural significance is coverage-based — S2 has ≥1 covered node, S3 none",
+      "category": "kscript",
+      "status": "insight",
+      "slug": "structural-significance-coverage-semantics",
+      "created": "2026-09-10",
+      "updated": "2026-09-10"
     },
     "sources/wiki-duplicate-consolidation": {
       "type": "source",

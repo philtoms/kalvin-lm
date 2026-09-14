@@ -4,7 +4,7 @@ Feeds the first T queries by hand through the dialogue harness's engine and
 prints K's batch + observations, so we can verify the expected behaviour:
   - After `MHALL COUNTERSIGNS SVO` (S2 proposal), K emits identity asks
     for the unrecognised signatures.
-  - After `MHALL CANONIZES [Mary, had, a, little, lamb]` (an S2-stamped
+  - After `MHALL CANONICALISES [Mary, had, a, little, lamb]` (an S2-stamped
     canon), the engine ignores the subjective S2 stamp, treats it as the
     canon it structurally is, and the next batch is a run of identity
     asks for the unrecognised canon nodes.
@@ -89,11 +89,10 @@ def main() -> None:
         print(f"  incoming: {op:12s} {lab!s:20s} nodes={nodes}  "
               f"declared={_LAYOUT.classify(query.significance)}  "
               f"structural={struct}")
-        batch, obs = engine.rationalise([query])
+        batch = engine.rationalise([query])
         _show_batch("K batch", batch, labels)
-        _show_obs(obs, labels)
-        print(f"  stm depth: {len(state.stm)}")
-        for e in state.stm:
+        print(f"  work_list depth: {len(state.work_list)}")
+        for e in state.work_list:
             el = labels.get(e.signature, e.signature.label or e.signature)
             print(f"    - {el!s:16s} nodes={[labels.get(n, n.label or n) for n in e.nodes]}")
         if state.ltm:
@@ -108,14 +107,14 @@ def main() -> None:
     # Drive the full T-query sequence from the script (T turns only).
     t_sequence = [
         ("MHALL COUNTERSIGNS SVO",         "COUNTERSIGNS", "MHALL"),
-        ("MHALL CANONIZES [M had a little lamb]", "CANONIZES",  "MHALL"),
+        ("MHALL CANONICALISES [M had a little lamb]", "CANONICALISES",  "MHALL"),
         ("Mary IDENTITY [M ary]",          "IDENTITY",    "Mary"),
         ("had IDENTITY [h ad]",            "IDENTITY",    "had"),
         ("a CONNOTES [Det]",               "CONNOTES",    "a"),
         ("Det IDENTITY [D et]",            "IDENTITY",    "Det"),
         ("little IDENTITY [l ittle]",      "IDENTITY",    "little"),
         ("lamb IDENTITY [l amb]",          "IDENTITY",    "lamb"),
-        ("SVO CANONIZES [Subject Verb Object]", "CANONIZES", "SVO"),
+        ("SVO CANONICALISES [Subject Verb Object]", "CANONICALISES", "SVO"),
         ("Subject IDENTITY [Sub ject]",    "IDENTITY",    "Subject"),
         ("Verb IDENTITY [V er b]",         "IDENTITY",    "Verb"),
         ("Object IDENTITY [Ob ject]",      "IDENTITY",    "Object"),

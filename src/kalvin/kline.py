@@ -59,7 +59,7 @@ class KNode(int):
 KNodes: TypeAlias = Sequence[int]
 
 # Type alias for Signatures (uint64)
-KSig: TypeAlias = int
+KSig: TypeAlias = KNode
 
 
 # === Decode resolver context ===
@@ -116,7 +116,7 @@ class KDbg:
 
     Attributes:
         op: Structural relationship (COUNTERSIGNS, DENOTES, CONNOTES,
-            CANONIZES, UNKNOWN).
+            CANONICALISES, UNKNOWN).
         label: Origin word or operator context.
         decoded: Tokenizer decode of the signature (actual subword text).
         type_info: Short debug summary of the node's type-dictionary entry
@@ -162,17 +162,24 @@ class KLine:
         signature: uint64 identity key (produced by signature_of).
         nodes: list of uint64 node values (always a list, never None).
         dbg: optional debug info (not spec'd).
+        acq_depth: acquisition depth — the unratified correspondence edges
+            crossed to win this kline's content (kalvin-algebra.md §11). 0 for given
+            content; flattened by grounding. Identity ignores it: two klines
+            with the same signature and nodes are the same kline whatever
+            they cost.
     """
 
-    __slots__ = ("signature", "nodes", "dbg")
+    __slots__ = ("signature", "nodes", "dbg", "acq_depth")
 
     def __init__(
         self,
         signature: KSig,
         nodes: KNodes | KNode | None = None,
         dbg: KDbg | None = None,
+        acq_depth: int = 0,
     ):
         self.signature = signature if isinstance(signature, KNode) else KNode(signature)
+        self.acq_depth = acq_depth
         if not self.signature.label and dbg is not None and dbg.label:
             self.signature = self.signature.with_label(dbg.label)
         self.nodes = _normalize_nodes(nodes)
@@ -270,38 +277,77 @@ def is_identity(kline: KLine) -> bool:
     return kline.nodes == [kline.signature]
 
 
+def is_exact(kline: KLine, signifier: KSignifier) -> bool:
+    """s = signature_of(ν) over the atom space (kalvin-algebra Def 6) — equivalent
+    to gap = ∅ and excess = ∅ (Def 9). BPE packing bits are not atoms."""
+    nodes_sig = signifier.signature_of(kline.nodes)
+    return (
+        signifier.residual(kline.signature, nodes_sig) == 0
+        and signifier.residual(nodes_sig, kline.signature) == 0
+    )
+
+
 def is_canon(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a canon.
 
     A kline is a canon when it is a non-terminal whose signature equals
-    ``signature_of(nodes)``. A terminal is never a canon.
+    ``signature_of(nodes)`` over the atom space. A terminal is never a
+    canon.
     """
-    return not is_terminal(kline) and kline.signature == signifier.signature_of(kline.nodes)
+    return not is_terminal(kline) and is_exact(kline, signifier)
 
-def is_connotation(kline: KLine) -> bool:
+
+def is_canon_evidence(kline: KLine, signifier: KSignifier) -> bool:
+    """A canon usable as replace evidence: exact and well-founded (kalvin-algebra
+    Def 13 — the signature does not occur in its own witness). A
+    self-containing canon is an inert witness class, like an identity."""
+    return is_canon(kline, signifier) and kline.signature not in kline.nodes
+
+def is_relationship(kline: KLine) -> bool:
     """Test whether a kline is a 1:1 relationship.
 
-    A relationship is the connote/denote structural shape: a non-terminal
-    misfit with exactly one node (``{A: [B]}``, ``A != B``). The signature
-    associates with a single other value. Distinct from a multi-node misfit
-    (no-fit/underfit/overfit) and from terminals and canons.
+    The connote/denote structural shape: a non-terminal misfit with exactly
+    one node (``{A: [B]}``, ``A != B``). The signature associates with a
+    single other value. Band-agnostic — the band-true species are
+    :func:`is_connotation` (case 4) and :func:`is_denotation` (case 6).
     """
     return (
-        not is_terminal(kline)
-        and len(kline.nodes) == 1
-        and kline.signature != kline.nodes[0]
+        len(kline.nodes) == 1
+        and not is_terminal(kline)
+        and not is_identity(kline)
     )
 
+
+def is_connotation(kline: KLine, signifier: KSignifier) -> bool:
+    """Case 4: a 1:1 relationship whose node shares no atom with its signature.
+
+    Uncovered (no word-bit overlap) — S3.
+    """
+    return is_relationship(kline) and not signifier.signifies(
+        kline.nodes[0], kline.signature
+    )
+
+
+def is_denotation(kline: KLine, signifier: KSignifier) -> bool:
+    """Case 6: a 1:1 relationship, covered, gap-only.
+
+    The node overlaps the signature and carries no excess (``AB:[B]``) — S2.
+    """
+    if not is_relationship(kline):
+        return False
+    node = kline.nodes[0]
+    return signifier.signifies(node, kline.signature) and signifier.residual(
+        node, kline.signature
+    ) == 0
 
 def is_misfit(kline: KLine, signifier: KSignifier) -> bool:
     """Test whether a kline is a misfit.
 
     A kline is a misfit when it is a non-terminal whose signature does not
     equal ``signature_of(nodes)``. This includes the single-node connote/denote
-    shape ``{A: [B]}``; multi-node and single-node misfits differ in the band
-    they claim (S2 vs S3), not in whether they are misfits. Callers that route
-    only multi-node misfits (the S2 expansion path) gate on node count
-    themselves.
+    shape ``{A: [B]}``; misfits differ in the band they claim (S2 when at
+    least one node is covered by the signature, S3 when none is), not in
+    whether they are misfits.
     """
     return not is_terminal(kline) and not is_canon(kline, signifier)
 
@@ -335,20 +381,30 @@ _OP_SYMBOLS = {
     "COUNTERSIGNS": "==",
     "DENOTES": "=",
     "CONNOTES": ">",
-    "CANONIZES": "=>",
+    "CANONICALISES": "=>",
     "UNKNOWN": None,
 }
 
 
 def sig_level(kline: KLine, signifier: KSignifier) -> str:
     """Return structural significance level (S1–S4) for a KLine.
+
+    The significance level derives from the signature–nodes relationship
+    alone, independent of node count and of the relational token that
+    compiled the shape:
+
+    - S1 — the signature covers its nodes exactly (canon, identity).
+    - S2 — at least one node is covered by the signature (shares a word
+      bit — Def 8 overlap, not containment).
+    - S3 — no node is covered (connotation, misfit).
+    - S4 — no nodes (unknown).
     """
     nodes = kline.nodes
     if not nodes:
         return "S4"
-    if len(nodes) == 1:
-        return "S1" if kline.signature == kline.nodes[0] else "S3"
-    return "S1" if kline.signature == signifier.signature_of(kline.nodes) else "S2"
+    if is_exact(kline, signifier):
+        return "S1"
+    return "S2" if any(signifier.signifies(n, kline.signature) for n in nodes) else "S3"
 
 
 def kline_display(kline: KLine, tokenizer: KTokenizer, signifier: KSignifier) -> str:
@@ -459,7 +515,7 @@ def _infer_op_symbol(kline: KLine, signifier: KSignifier) -> str:
         return ""
     nodes_sig = signifier.signature_of(kline.nodes)
     if kline.signature == nodes_sig:
-        return "=>"  # perfect fit → canonize
+        return "=>"  # perfect fit → canonicalise
     return ">"  # default: connote
 
 

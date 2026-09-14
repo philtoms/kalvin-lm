@@ -25,13 +25,13 @@ Significance, Relational Tokens, MTS, Word Binding, Annotation).
 
 ## The relational tokens
 
-| Token  | Name         | Emits                   | Structural meaning                                     |
-| ------ | ------------ | ----------------------- | ------------------------------------------------------ |
-| `==`   | COUNTERSIGNS | `{A:[B]}` + `{B:[A]}`   | connotes+denotes shorthand; two traversable structures |
-| `=>`   | CANONIZES    | `{A: [B, C, D]}`        | A canonizes its block operands into a single kline     |
-| `>`    | CONNOTES     | `{AB: [B]}`             | A connotes B. Becomes IDENTITY when same token.        |
-| `=`    | DENOTES      | `{B: [A]}`              | A denotes B (note the reversed emission)               |
-| (none) | UNKNOWN      | `{A: []}` or `{A: [A]}` | ask, unless word-bound → identity                      |
+| Token  | Name          | Emits                   | Structural meaning                                     |
+| ------ | ------------- | ----------------------- | ------------------------------------------------------ |
+| `==`   | COUNTERSIGNS  | `{A:[B]}` + `{B:[A]}`   | connotes+denotes shorthand; two traversable structures |
+| `=>`   | CANONICALISES | `{A: [B, C, D]}`        | A canonicalises its block operands into a single kline |
+| `>`    | CONNOTES      | `{AB: [B]}`             | A connotes B. Becomes IDENTITY when same token.        |
+| `=`    | DENOTES       | `{B: [A]}`              | A denotes B (note the reversed emission)               |
+| (none) | UNKNOWN       | `{A: []}` or `{A: [A]}` | ask, unless word-bound → identity                      |
 
 `MHALL == SVO` literally means: there is a structure `MHALL:[SVO]` and
 its counterpart `SVO:[MHALL]`, so The engine can traverse from one concept to the

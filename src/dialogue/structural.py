@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from kalvin.kline import KLine, KNode, is_canon, is_connotation
+from kalvin.kline import KLine, KNode, is_canon, is_relationship
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG8_MAX, SIG_S1, SIG_S2, SIG_S4, BandLayout
 
@@ -114,7 +114,7 @@ class SemanticEvidence:
             return False  # an unknown is an ask, never proof
         if nodes == [kline.signature]:
             return True  # identity
-        if is_connotation(kline) and kline.dbg and kline.dbg.op in (
+        if is_relationship(kline) and kline.dbg and kline.dbg.op in (
             "COUNTERSIGNS", "DENOTES", "CONNOTES"
         ):
             return True  # declared proof

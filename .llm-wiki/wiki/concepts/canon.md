@@ -23,8 +23,8 @@ combination of two or more nodes.
 A canon is one of the two ways a kline self-grounds (see [[concepts/grounding]]);
 the other is an [[concepts/identity]]'s self-reference.
 
-Distinct from the CANONIZES relational token (see [[concepts/relational-tokens]]):
-`=>` declares an _intent_ to compose, and a CANONIZES statement need not
+Distinct from the CANONICALISES relational token (see [[concepts/relational-tokens]]):
+`=>` declares an _intent_ to compose, and a CANONICALISES statement need not
 construct a Canon. Distinct from [[concepts/mts-multi-token-signature]], which is
 an example of a compound signature, not the Canon concept itself.
 
@@ -37,5 +37,5 @@ synonymous with being a Canon; MTS (an example, not the concept).
 - [[concepts/identity]] — the other S1-claiming structure
 - [[concepts/misfit]] — the S2-claiming structure (signature ≠ signature_of(nodes))
 - [[concepts/grounding]] — canons self-ground
-- [[concepts/relational-tokens]] — CANONIZES declares intent, may not produce a Canon
+- [[concepts/relational-tokens]] — CANONICALISES declares intent, may not produce a Canon
 - [[concepts/mts-multi-token-signature]] — compound signature, distinct from Canon

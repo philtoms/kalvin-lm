@@ -4,6 +4,10 @@
     "concepts/trainee",
     "sources/SRC-2026-08-11-001"
   ],
+  "concepts/ask": [
+    "concepts/kscript-operator",
+    "concepts/underfit-and-overfit"
+  ],
   "concepts/canon": [
     "concepts/misfit",
     "concepts/mts-multi-token-signature",
@@ -96,6 +100,7 @@
   "concepts/fit": [
     "concepts/learned-preferences",
     "concepts/significance",
+    "concepts/underfit-and-overfit",
     "entities/kalvin",
     "sources/SRC-2026-08-11-003"
   ],
@@ -108,6 +113,9 @@
     "entities/ltm-long-term-memory",
     "entities/rationalise",
     "sources/SRC-2026-08-11-001"
+  ],
+  "concepts/grilling": [
+    "sources/ks2-third-pass-seven-gap-resolutions"
   ],
   "concepts/grounding": [
     "concepts/canon",
@@ -166,11 +174,17 @@
     "entities/kscript",
     "entities/tokenencoder",
     "sources/SRC-2026-08-11-001",
-    "sources/SRC-2026-08-11-003"
+    "sources/SRC-2026-08-11-003",
+    "sources/connotation-compound-relocation-encoder-design"
+  ],
+  "concepts/kscript-operator": [
+    "sources/connotation-compound-relocation-encoder-design"
   ],
   "concepts/kvalue": [
     "concepts/kline",
-    "sources/SRC-2026-08-11-001"
+    "concepts/kscript-operator",
+    "sources/SRC-2026-08-11-001",
+    "sources/connotation-compound-relocation-encoder-design"
   ],
   "concepts/learned-preferences": [
     "concepts/fit",
@@ -192,6 +206,7 @@
     "concepts/s2-expansion",
     "concepts/structural-significance",
     "concepts/terminal",
+    "concepts/underfit-and-overfit",
     "entities/isgroundable",
     "sources/SRC-2026-08-11-001"
   ],
@@ -213,6 +228,7 @@
   ],
   "concepts/mts-multi-token-signature": [
     "concepts/canon",
+    "concepts/kscript-operator",
     "concepts/signature",
     "entities/kdbg",
     "entities/kscript",
@@ -220,6 +236,7 @@
     "sources/SRC-2026-08-11-001",
     "sources/SRC-2026-08-11-002",
     "sources/compound-word-identity-label-and-dedup",
+    "sources/ks2-conformance-series-landing",
     "sources/wiki-duplicate-consolidation"
   ],
   "concepts/node": [
@@ -250,6 +267,7 @@
     "sources/SRC-2026-08-11-003"
   ],
   "concepts/proposal": [
+    "concepts/ask",
     "concepts/canonical-synthesis",
     "concepts/cogitation",
     "concepts/escalation",
@@ -269,6 +287,7 @@
     "sources/SRC-2026-08-11-003"
   ],
   "concepts/ratify": [
+    "concepts/ask",
     "concepts/cogitation",
     "concepts/distributed-rationality",
     "concepts/escalation",
@@ -322,6 +341,7 @@
     "concepts/cogitation",
     "concepts/misfit",
     "concepts/silent-synthesis",
+    "concepts/underfit-and-overfit",
     "entities/expand",
     "entities/mhall",
     "entities/similarfit",
@@ -402,6 +422,7 @@
     "concepts/significance",
     "concepts/significance-spectrum-s1s4",
     "concepts/target-significance",
+    "concepts/underfit-and-overfit",
     "concepts/unknown",
     "entities/route",
     "sources/SRC-2026-08-11-001",
@@ -452,7 +473,11 @@
     "concepts/trainee",
     "sources/SRC-2026-08-11-001"
   ],
+  "concepts/underfit-and-overfit": [
+    "concepts/ask"
+  ],
   "concepts/unknown": [
+    "concepts/ask",
     "concepts/identity",
     "concepts/querying",
     "concepts/relational-tokens",
@@ -488,6 +513,7 @@
     "sources/SRC-2026-08-11-002"
   ],
   "entities/contextmd": [
+    "concepts/grilling",
     "sources/SRC-2026-08-11-002",
     "sources/SRC-2026-08-11-003"
   ],
@@ -520,6 +546,7 @@
   ],
   "entities/k-engine": [
     "concepts/convergence",
+    "concepts/grilling",
     "concepts/model",
     "concepts/trainee",
     "concepts/trainer",
@@ -538,9 +565,11 @@
     "sources/SRC-2026-08-11-002"
   ],
   "entities/kscript": [
+    "concepts/ask",
     "concepts/curriculum",
     "concepts/engine-first",
     "concepts/expectation",
+    "concepts/kscript-operator",
     "concepts/non-judging-harness",
     "concepts/relational-tokens",
     "concepts/target-significance",
@@ -610,6 +639,7 @@
     "sources/SRC-2026-08-11-001"
   ],
   "entities/tokenencoder": [
+    "concepts/kscript-operator",
     "concepts/word-binding",
     "entities/kdbg",
     "entities/kscript",
@@ -719,8 +749,23 @@
     "entities/marys-world"
   ],
   "sources/compound-word-identity-label-and-dedup": [],
+  "sources/connotation-compound-relocation-encoder-design": [
+    "concepts/kscript-operator"
+  ],
+  "sources/connote-denote-structure-swap-compound-sig-denotation": [
+    "sources/structural-significance-coverage-semantics"
+  ],
+  "sources/content-preserving-vs-content-aligning-moves": [],
+  "sources/coverage-fractions-peak-at-containment": [],
+  "sources/coverage-primary-fit-taxonomy": [],
   "sources/identity-klines-never-proposals": [],
   "sources/identity-priming-and-knowledge-restatement": [],
+  "sources/kalvin-doc-normative-split": [],
+  "sources/ks2-conformance-series-landing": [],
+  "sources/ks2-third-pass-seven-gap-resolutions": [
+    "concepts/grilling"
+  ],
+  "sources/model-state-graph-layer-rendering": [],
   "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": [],
   "sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected": [
     "entities/k-engine",
@@ -783,6 +828,99 @@
   "sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe": [],
   "sources/obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list": [],
   "sources/obs-2026-09-03-compound-words-no-longer-take-word-bits": [],
+  "sources/obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram": [],
+  "sources/obs-2026-09-03-enginestate-stm-renamed-back-to-work-list": [],
+  "sources/obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded": [],
+  "sources/obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall": [],
+  "sources/obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked": [],
+  "sources/obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab": [
+    "sources/connote-denote-structure-swap-compound-sig-denotation"
+  ],
+  "sources/obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers": [],
+  "sources/obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s": [],
+  "sources/obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-": [],
+  "sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla": [],
+  "sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh": [],
+  "sources/obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st": [
+    "sources/ks2-third-pass-seven-gap-resolutions"
+  ],
+  "sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi": [],
+  "sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem": [],
+  "sources/obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla": [],
+  "sources/obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t": [
+    "sources/content-preserving-vs-content-aligning-moves"
+  ],
+  "sources/obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe": [],
+  "sources/obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in": [
+    "sources/ks2-third-pass-seven-gap-resolutions"
+  ],
+  "sources/obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap": [],
+  "sources/obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-": [
+    "sources/coverage-primary-fit-taxonomy"
+  ],
+  "sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg": [
+    "sources/coverage-primary-fit-taxonomy"
+  ],
+  "sources/obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation": [
+    "sources/content-preserving-vs-content-aligning-moves"
+  ],
+  "sources/obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord": [
+    "sources/coverage-fractions-peak-at-containment"
+  ],
+  "sources/obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro": [],
+  "sources/obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move": [],
+  "sources/obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence": [],
+  "sources/obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-": [],
+  "sources/obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim": [],
+  "sources/obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence": [],
+  "sources/obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t": [],
+  "sources/obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation": [],
+  "sources/obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno": [],
+  "sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose": [],
+  "sources/obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng": [
+    "concepts/ask"
+  ],
+  "sources/obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-": [],
+  "sources/obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren": [],
+  "sources/obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology": [],
+  "sources/obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative": [],
+  "sources/obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy": [],
+  "sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks": [],
+  "sources/obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal": [],
+  "sources/obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul": [],
+  "sources/obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen": [],
+  "sources/obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful": [
+    "sources/ks2-conformance-series-landing"
+  ],
+  "sources/obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide": [],
+  "sources/obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks": [],
+  "sources/obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m": [],
+  "sources/obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de": [],
+  "sources/obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu": [],
+  "sources/obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al": [],
+  "sources/obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own": [],
+  "sources/obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-": [],
+  "sources/obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry": [],
+  "sources/obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f": [],
+  "sources/obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr": [],
+  "sources/obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi": [],
+  "sources/obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod": [],
+  "sources/obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo": [],
+  "sources/obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean": [],
+  "sources/obs-2026-09-14-derivation-engine-port-committed-73e4eba": [],
+  "sources/obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed": [],
+  "sources/obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43": [],
+  "sources/obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl": [
+    "concepts/underfit-and-overfit"
+  ],
+  "sources/obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-": [],
+  "sources/obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi": [],
+  "sources/obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal": [],
+  "sources/obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots": [
+    "concepts/underfit-and-overfit"
+  ],
+  "sources/obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-": [],
   "sources/stm-cascade-removals-orphan-check": [],
+  "sources/structural-significance-coverage-semantics": [],
   "sources/wiki-duplicate-consolidation": []
 }

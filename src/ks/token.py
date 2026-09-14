@@ -10,7 +10,7 @@ class TokenType(Enum):
 
     Construct operators (relationship each token declares):
         COUNTERSIGNS: ==  (bidirectional link)
-        CANONIZES:    =>  (aggregation)
+        CANONICALISES:    =>  (aggregation)
         CONNOTES:     >   (connotation)
     RCONNOTES:    <   (connotation, reversed direction)
         DENOTES:      =   (denotation)
@@ -28,7 +28,7 @@ class TokenType(Enum):
 
     # Construct operators (relationship each token declares)
     COUNTERSIGNS = auto()  # ==
-    CANONIZES = auto()  # =>
+    CANONICALISES = auto()  # =>
     CONNOTES = auto()  # >
     RCONNOTES = auto()  # <
     DENOTES = auto()  # =

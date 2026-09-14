@@ -221,3 +221,261 @@
 ## [2026-09-03T10:53:47.413Z] observe
 - slug: "obs-2026-09-03-compound-words-no-longer-take-word-bits", title: "Compound words no longer take word bits", relevance: "high"
 
+## [2026-09-03T11:28:02.821Z] observe
+- slug: "obs-2026-09-03-enginestate-stm-renamed-back-to-work-list", title: "EngineState.stm renamed back to work_list", relevance: "high"
+
+## [2026-09-03T16:34:47.733Z] observe
+- slug: "obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram", title: "Engine observations channel removed; harness diffs state; frame in summary", relevance: "high"
+
+## [2026-09-04T09:18:40.574Z] observe
+- slug: "obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded", title: "Cogitator.expand dead: connotateY frontier never seeded", relevance: "high"
+
+## [2026-09-04T09:22:30.327Z] observe
+- slug: "obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall", title: "connotateY reverse edges bridge WDMH to MHALL", relevance: "high"
+
+## [2026-09-04T10:13:35.609Z] observe
+- slug: "obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked", title: "Query-kline hub exclusion committed; legit path still blocked", relevance: "high"
+
+## [2026-09-08T09:38:28.288Z] observe
+- slug: "obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab", title: "CONNOTES semantics inverted to compound-in-slot (A:[AB])", relevance: "high"
+
+## [2026-09-08T09:38:28.290Z] retro
+- slug: "connotation-compound-relocation-encoder-design", title: "Relocating a compound across the sig/node boundary requires component plumbing", category: "compiler"
+
+## [2026-09-08T09:40:12.036Z] observe
+- slug: "obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers", title: "Harness --graph flag renders model state across all layers", relevance: "medium"
+
+## [2026-09-08T09:40:12.039Z] retro
+- slug: "model-state-graph-layer-rendering", title: "Model-state graph design: klines deduped with layer glyphs, strongest-layer styling", category: "design"
+
+## [2026-09-08T10:01:50.868Z] observe
+- slug: "obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s", title: "Harness -p writes companion .dot/.mmd graph beside state JSON; save-path bug fixed", relevance: "low"
+
+## [2026-09-08T10:24:48.289Z] observe
+- slug: "obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh", title: "Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node)", relevance: "medium"
+
+## [2026-09-08T12:59:16.702Z] observe
+- slug: "obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla", title: "Model graph: sig→compound→identity-members construction replaces node fan-out", relevance: "medium"
+
+## [2026-09-08T13:09:20.137Z] commit
+- commits: ["9773959","2114e10"], tree: "clean", user_request: "commit all"
+
+## [2026-09-08T13:20:24.214Z] observe
+- slug: "obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-", title: "Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key", relevance: "low"
+
+## [2026-09-09T17:32:19.932Z] retro
+- slug: "connote-denote-structure-swap-compound-sig-denotation", title: "CONNOTE/DENOTE structures swapped — denotation is compound-signature S2", category: "kscript"
+
+## [2026-09-09T17:32:19.934Z] decision
+- change: "CONNOTE/DENOTE compiled structures swapped; denotation now compound-signature AB:[B] classified S2", files: ["src/ks/ast_emitter.py","src/ks/token_encoder.py","src/kalvin/kline.py","src/dialogue/engine_state.py","src/dialogue/harness.py","src/training/trainer/curriculum_generator.py","CONTEXT.md"]
+
+## [2026-09-10T08:03:56.290Z] retro
+- slug: "structural-significance-coverage-semantics", title: "Structural significance is coverage-based — S2 has ≥1 covered node, S3 none", category: "kscript"
+
+## [2026-09-10T08:31:59.242Z] observe
+- slug: "obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi", title: "Connote/denote swap + coverage-based significance levels committed (0f8b56a)", relevance: "high"
+
+## [2026-09-10T08:39:05.529Z] observe
+- slug: "obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem", title: "CONTEXT.md glossary rewritten to notes.md's semantic refinement", relevance: "high"
+
+## [2026-09-10T12:24:41.477Z] observe
+- slug: "obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-", title: "Layer 1 review: Def 5 misfit partition not disjoint; coverage must be primary split", relevance: "medium"
+
+## [2026-09-10T12:24:41.478Z] observe
+- slug: "obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg", title: "Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation", relevance: "medium"
+
+## [2026-09-10T12:25:02.258Z] retro
+- slug: "coverage-primary-fit-taxonomy", title: "Coverage-primary split for fit classifiers over set-algebra values", category: "design"
+
+## [2026-09-10T12:29:17.740Z] observe
+- slug: "obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap", title: "Layer-1 algebra review: sound core, taxonomy and reference gaps", relevance: "high"
+
+## [2026-09-10T12:33:29.319Z] observe
+- slug: "obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla", title: "ks2.md created: Layer 1 second pass with coverage-primary classifier", relevance: "medium"
+
+## [2026-09-10T13:16:24.199Z] observe
+- slug: "obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation", title: "Layer 2 review: termination claims inverted, one-step relation undefined", relevance: "high"
+
+## [2026-09-10T13:32:40.416Z] observe
+- slug: "obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t", title: "ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination", relevance: "medium"
+
+## [2026-09-10T13:32:40.418Z] retro
+- slug: "content-preserving-vs-content-aligning-moves", title: "Split rewrite moves by preserved invariant to get termination for free", category: "design"
+
+## [2026-09-10T14:04:29.802Z] observe
+- slug: "obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord", title: "Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core", relevance: "medium"
+
+## [2026-09-10T14:04:29.804Z] retro
+- slug: "coverage-fractions-peak-at-containment", title: "One-directional coverage fractions peak at containment, not equality", category: "design"
+
+## [2026-09-10T14:21:07.606Z] observe
+- slug: "obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe", title: "ks2.md layer talk replaced by tract orientation + section references", relevance: "low"
+
+## [2026-09-10T14:30:10.306Z] observe
+- slug: "obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in", title: "ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined", relevance: "high"
+
+## [2026-09-10T15:42:38.435Z] query
+- question: "what is the purpose of the ASK_BPE_TOKEN?"
+
+## [2026-09-10T15:52:04.815Z] observe
+- slug: "obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st", title: "ASK_BPE_TOKEN to be removed; ks2 drops the ask atom — ask is structural S4 only", relevance: "high"
+
+## [2026-09-10T16:09:03.249Z] retro
+- slug: "ks2-third-pass-seven-gap-resolutions", title: "ks2 third pass: seven gap resolutions fixing the formal algebra", category: "formalisation"
+
+## [2026-09-11T06:32:01.982Z] observe
+- slug: "obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim", title: "ks2 claim-blindness critique: γ and done never see the claim", relevance: "high"
+
+## [2026-09-11T08:18:28.961Z] observe
+- slug: "obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation", title: "Remove's over-permissive licence: done-by-claim-amputation", relevance: "high"
+
+## [2026-09-11T10:26:02.392Z] observe
+- slug: "obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t", title: "ks2: queued head s is unread within a hop — derivation is C's two sides", relevance: "high"
+
+## [2026-09-11T13:16:06.736Z] observe
+- slug: "obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose", title: "WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed", relevance: "high"
+
+## [2026-09-11T13:16:06.739Z] observe
+- slug: "obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move", title: "Def 14 redesign: evidenced replace as the only targeting move", relevance: "critical"
+
+## [2026-09-11T13:33:21.289Z] observe
+- slug: "obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence", title: "ks2 fourth pass drafted: replace-only targeting with evidence", relevance: "critical"
+
+## [2026-09-11T15:05:42.406Z] observe
+- slug: "obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno", title: "γ resolved: acquisition depth Ĥ added, ratified edges free, one knob", relevance: "critical"
+
+## [2026-09-11T15:09:27.068Z] observe
+- slug: "obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence", title: "Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival", relevance: "critical"
+
+## [2026-09-11T18:17:35.182Z] observe
+- slug: "obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro", title: "D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state", relevance: "critical"
+
+## [2026-09-11T21:28:35.368Z] observe
+- slug: "obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-", title: "Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine", relevance: "critical"
+
+## [2026-09-12T05:02:19.887Z] observe
+- slug: "obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks", title: "docs/ks3.md written as programmer-friendly restatement of ks2", relevance: "medium"
+
+## [2026-09-12T06:43:51.234Z] observe
+- slug: "obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide", title: "ks3 verbatim-definitions restructure reproduced after accidental reset", relevance: "medium"
+
+## [2026-09-12T07:55:40.550Z] observe
+- slug: "obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul", title: "kalvin-symbolic.md updated in place to ks2 semantics and rules", relevance: "high"
+
+## [2026-09-12T09:50:36.616Z] observe
+- slug: "obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen", title: "ks2 §14 absorbs KScript syntax; ks2 now sole normative document", relevance: "high"
+
+## [2026-09-12T10:08:35.812Z] observe
+- slug: "obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful", title: "ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant", relevance: "high"
+
+## [2026-09-12T10:15:19.446Z] observe
+- slug: "obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-", title: "Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap", relevance: "high"
+
+## [2026-09-12T10:28:43.921Z] observe
+- slug: "obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng", title: "Ask atom settled: ordinary atom, externally allocated; only engine branching deviates", relevance: "high"
+
+## [2026-09-12T10:38:07.727Z] observe
+- slug: "obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal", title: "Engine ask-atom branching removed; structural routing + refusal guard landed", relevance: "high"
+
+## [2026-09-12T10:42:32.856Z] observe
+- slug: "obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative", title: "Doc review verdict: ks3 clearest for agents, ks2 authoritative", relevance: "medium"
+
+## [2026-09-12T10:49:50.333Z] retro
+- slug: "ks2-conformance-series-landing", title: "ks2 conformance series: 6 commits to the engine entry path", category: "architecture"
+
+## [2026-09-12T10:55:34.620Z] observe
+- slug: "obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks", title: "User wants 2-doc structure; citation graph already favours ks2 as authority", relevance: "high"
+
+## [2026-09-12T11:03:19.375Z] observe
+- slug: "obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy", title: "Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted", relevance: "critical"
+
+## [2026-09-12T12:28:20.098Z] observe
+- slug: "obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology", title: "CONTEXT.md aligned with kalvin-algebra.md terminology", relevance: "high"
+
+## [2026-09-12T12:28:20.099Z] retro
+- slug: "kalvin-doc-normative-split", title: "Kalvin doc normative split: algebra vs CONTEXT.md", category: "domain-modeling"
+
+## [2026-09-12T12:32:54.338Z] observe
+- slug: "obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m", title: "Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m]", relevance: "high"
+
+## [2026-09-12T12:58:43.169Z] observe
+- slug: "obs-2026-09-12-canonicalisation-by-witness-replaces-contiguity-reverse-occurren", title: "Canonicalisation by witness replaces contiguity: reverse occurrence is multiset-wise", relevance: "high"
+
+## [2026-09-13T08:53:24.687Z] observe
+- slug: "obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu", title: "kalvin-simplified.md rewritten as sole normative Kalvin document", relevance: "high"
+
+## [2026-09-13T16:07:57.074Z] observe
+- slug: "obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al", title: "Step 3 Mary example: o→all hop licensed by reverse read of all:[o]", relevance: "high"
+
+## [2026-09-13T16:20:48.589Z] observe
+- slug: "obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de", title: "Def 13 restructured: mirror clause headed, canonicalisation demoted to Canon instance", relevance: "medium"
+
+## [2026-09-14T05:30:03.097Z] observe
+- slug: "obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-", title: "Algebra probe: -o memory derives MHALL (done); base script stuck at what", relevance: "high"
+
+## [2026-09-14T06:19:43.908Z] observe
+- slug: "obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi", title: "Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged", relevance: "high"
+
+## [2026-09-14T06:29:23.780Z] observe
+- slug: "obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal", title: "Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion", relevance: "high"
+
+## [2026-09-14T06:32:55.541Z] observe
+- slug: "obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi", title: "Def 17 absorption refinement + T2 correspondence-identity keying applied", relevance: "high"
+
+## [2026-09-14T07:36:51.281Z] observe
+- slug: "obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod", title: "Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named", relevance: "medium"
+
+## [2026-09-14T08:04:44.497Z] observe
+- slug: "obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own", title: "\"Absorption\" swept: doc now writes/adds to memory — the doc's own plain vocabulary", relevance: "medium"
+
+## [2026-09-14T08:18:19.327Z] observe
+- slug: "obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-", title: "Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra", relevance: "high"
+
+## [2026-09-14T12:20:00.121Z] observe
+- slug: "obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl", title: "gap/excess renamed to underfit/overfit in algebra doc and glossary", relevance: "high"
+
+## [2026-09-14T14:40:29.455Z] observe
+- slug: "obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots", title: "Slot derivation gap: overfit relationships have no slots", relevance: "high"
+
+## [2026-09-14T14:55:19.527Z] observe
+- slug: "obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo", title: "Def 17 restated: two-party slots, anchor, refinement; earlier work committed", relevance: "high"
+
+## [2026-09-14T15:18:15.286Z] lint
+- orphans: 125, missing_pages: 12, contradictions: 0, auto_fix: true, legacy_pages_repaired: 0
+
+## [2026-09-14T15:19:40.235Z] observe
+- slug: "obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean", title: "Def 17 two-party slots committed (726e2a0); tree clean", relevance: "high"
+
+## [2026-09-14T15:23:41.431Z] ensure_page
+- page_type: "concept", title: "Underfit and Overfit", path: "concepts/underfit-and-overfit"
+
+## [2026-09-14T15:23:41.433Z] ensure_page
+- page_type: "concept", title: "Ask", path: "concepts/ask"
+
+## [2026-09-14T15:23:52.227Z] ensure_page
+- page_type: "concept", title: "Grilling", path: "concepts/grilling"
+
+## [2026-09-14T15:23:52.228Z] ensure_page
+- page_type: "concept", title: "KScript Operator", path: "concepts/kscript-operator"
+
+## [2026-09-14T15:24:40.053Z] observe
+- slug: "obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-", title: "Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links", relevance: "medium"
+
+## [2026-09-14T15:33:24.967Z] observe
+- slug: "obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry", title: "ν_B-walk probe built: 7/7 PASS, control stuck at entry", relevance: "high"
+
+## [2026-09-14T15:37:01.038Z] observe
+- slug: "obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr", title: "Def 14 two-ended reading + \"Mary had\" appendix worked example drafted", relevance: "high"
+
+## [2026-09-14T15:47:46.546Z] observe
+- slug: "obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f", title: "Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged", relevance: "medium"
+
+## [2026-09-14T15:51:12.682Z] observe
+- slug: "obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43", title: "Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green", relevance: "high"
+
+## [2026-09-14T17:43:57.009Z] observe
+- slug: "obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed", title: "Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores", relevance: "high"
+
+## [2026-09-14T22:34:09.053Z] observe
+- slug: "obs-2026-09-14-derivation-engine-port-committed-73e4eba", title: "Derivation engine port committed (73e4eba)", relevance: "medium"
+

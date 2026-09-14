@@ -5,6 +5,7 @@
 ## Concepts
 
 - [[concepts/agent]] — Agent *(created: 2026-08-11)*
+- [[concepts/ask]] — Ask *(created: 2026-09-14)*
 - [[concepts/canon]] — Canon *(created: 2026-08-11)*
 - [[concepts/canonical-synthesis]] — Canonical synthesis *(created: 2026-08-11)*
 - [[concepts/cogitation]] — Cogitation *(created: 2026-08-11)*
@@ -17,10 +18,12 @@
 - [[concepts/fast-route-vs-slow-route]] — Fast route vs slow route *(created: 2026-08-11)*
 - [[concepts/fit]] — Fit *(created: 2026-08-11)*
 - [[concepts/frame]] — Frame *(created: 2026-08-11)*
+- [[concepts/grilling]] — Grilling *(created: 2026-09-14)*
 - [[concepts/grounding]] — Grounding *(created: 2026-08-11)*
 - [[concepts/harness]] — Harness *(created: 2026-08-11)*
 - [[concepts/identity]] — Identity *(created: 2026-08-11)*
 - [[concepts/kline]] — KLine *(created: 2026-08-11)*
+- [[concepts/kscript-operator]] — KScript Operator *(created: 2026-09-14)*
 - [[concepts/kvalue]] — KValue *(created: 2026-08-11)*
 - [[concepts/learned-preferences]] — Learned Preferences *(created: 2026-08-11)*
 - [[concepts/memory]] — Memory *(created: 2026-08-17)*
@@ -52,6 +55,7 @@
 - [[concepts/terminal]] — Terminal *(created: 2026-08-11)*
 - [[concepts/trainee]] — Trainee *(created: 2026-08-11)*
 - [[concepts/trainer]] — Trainer *(created: 2026-08-11)*
+- [[concepts/underfit-and-overfit]] — Underfit and Overfit *(created: 2026-09-14)*
 - [[concepts/unknown]] — Unknown *(created: 2026-08-11)*
 - [[concepts/word-binding]] — Word Binding *(created: 2026-08-11)*
 
@@ -81,8 +85,17 @@
 ## Sources
 
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
+- [[sources/connotation-compound-relocation-encoder-design]] — Relocating a compound across the sig/node boundary requires component plumbing *(created: 2026-09-08)*
+- [[sources/connote-denote-structure-swap-compound-sig-denotation]] — CONNOTE/DENOTE structures swapped — denotation is compound-signature S2 *(created: 2026-09-09)*
+- [[sources/content-preserving-vs-content-aligning-moves]] — Split rewrite moves by preserved invariant to get termination for free *(created: 2026-09-10)*
+- [[sources/coverage-fractions-peak-at-containment]] — One-directional coverage fractions peak at containment, not equality *(created: 2026-09-10)*
+- [[sources/coverage-primary-fit-taxonomy]] — Coverage-primary split for fit classifiers over set-algebra values *(created: 2026-09-10)*
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
+- [[sources/kalvin-doc-normative-split]] — Kalvin doc normative split: algebra vs CONTEXT.md *(created: 2026-09-12)*
+- [[sources/ks2-conformance-series-landing]] — ks2 conformance series: 6 commits to the engine entry path *(created: 2026-09-12)*
+- [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
+- [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-no-python-m-kscript-entrypoint-exists]] — Observation: No `python -m kscript` entrypoint exists *(created: 2026-08-11)*
@@ -141,11 +154,80 @@
 - [[sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe]] — Observation: Solver reading of Kalvin's operations: temporality and existence proofs *(created: 2026-09-02)*
 - [[sources/obs-2026-09-02-symbolic-ai-perspective-document-drafted-with-gap-list]] — Observation: Symbolic-AI perspective document drafted with gap list *(created: 2026-09-02)*
 - [[sources/obs-2026-09-03-compound-words-no-longer-take-word-bits]] — Observation: Compound words no longer take word bits *(created: 2026-09-03)*
+- [[sources/obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram]] — Observation: Engine observations channel removed; harness diffs state; frame in summary *(created: 2026-09-03)*
+- [[sources/obs-2026-09-03-enginestate-stm-renamed-back-to-work-list]] — Observation: EngineState.stm renamed back to work_list *(created: 2026-09-03)*
+- [[sources/obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded]] — Observation: Cogitator.expand dead: connotateY frontier never seeded *(created: 2026-09-04)*
+- [[sources/obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall]] — Observation: connotateY reverse edges bridge WDMH to MHALL *(created: 2026-09-04)*
+- [[sources/obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked]] — Observation: Query-kline hub exclusion committed; legit path still blocked *(created: 2026-09-04)*
+- [[sources/obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab]] — Observation: CONNOTES semantics inverted to compound-in-slot (A:[AB]) *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers]] — Observation: Harness --graph flag renders model state across all layers *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s]] — Observation: Harness -p writes companion .dot/.mmd graph beside state JSON; save-path bug fixed *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-]] — Observation: Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla]] — Observation: Model graph: sig→compound→identity-members construction replaces node fan-out *(created: 2026-09-08)*
+- [[sources/obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh]] — Observation: Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node) *(created: 2026-09-08)*
+- [[sources/obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st]] — Observation: ASK_BPE_TOKEN to be removed; ks2 drops the ask atom — ask is structural S4 only *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi]] — Observation: Connote/denote swap + coverage-based significance levels committed (0f8b56a) *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem]] — Observation: CONTEXT.md glossary rewritten to notes.md's semantic refinement *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla]] — Observation: ks2.md created: Layer 1 second pass with coverage-primary classifier *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t]] — Observation: ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe]] — Observation: ks2.md layer talk replaced by tract orientation + section references *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in]] — Observation: ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap]] — Observation: Layer-1 algebra review: sound core, taxonomy and reference gaps *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-]] — Observation: Layer 1 review: Def 5 misfit partition not disjoint; coverage must be primary split *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg]] — Observation: Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation]] — Observation: Layer 2 review: termination claims inverted, one-step relation undefined *(created: 2026-09-10)*
+- [[sources/obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord]] — Observation: Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core *(created: 2026-09-10)*
+- [[sources/obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro]] — Observation: D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move]] — Observation: Def 14 redesign: evidenced replace as the only targeting move *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence]] — Observation: Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-]] — Observation: Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim]] — Observation: ks2 claim-blindness critique: γ and done never see the claim *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence]] — Observation: ks2 fourth pass drafted: replace-only targeting with evidence *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t]] — Observation: ks2: queued head s is unread within a hop — derivation is C's two sides *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation]] — Observation: Remove's over-permissive licence: done-by-claim-amputation *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno]] — Observation: γ resolved: acquisition depth Ĥ added, ratified edges free, one knob *(created: 2026-09-11)*
+- [[sources/obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose]] — Observation: WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed *(created: 2026-09-11)*
+- [[sources/obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng]] — Observation: Ask atom settled: ordinary atom, externally allocated; only engine branching deviates *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-]] — Observation: Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-canonisation-by-witness-replaces-contiguity-reverse-occurren]] — Observation: Canonicalisation by witness replaces contiguity: reverse occurrence is multiset-wise *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology]] — Observation: CONTEXT.md aligned with kalvin-algebra.md terminology *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative]] — Observation: Doc review verdict: ks3 clearest for agents, ks2 authoritative *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy]] — Observation: Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks]] — Observation: docs/ks3.md written as programmer-friendly restatement of ks2 *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal]] — Observation: Engine ask-atom branching removed; structural routing + refusal guard landed *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul]] — Observation: kalvin-symbolic.md updated in place to ks2 semantics and rules *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen]] — Observation: ks2 §14 absorbs KScript syntax; ks2 now sole normative document *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful]] — Observation: ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide]] — Observation: ks3 verbatim-definitions restructure reproduced after accidental reset *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks]] — Observation: User wants 2-doc structure; citation graph already favours ks2 as authority *(created: 2026-09-12)*
+- [[sources/obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m]] — Observation: Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m] *(created: 2026-09-12)*
+- [[sources/obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de]] — Observation: Def 13 restructured: mirror clause headed, canonicalisation demoted to Canon instance *(created: 2026-09-13)*
+- [[sources/obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu]] — Observation: kalvin-simplified.md rewritten as sole normative Kalvin document *(created: 2026-09-13)*
+- [[sources/obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al]] — Observation: Step 3 Mary example: o→all hop licensed by reverse read of all:[o] *(created: 2026-09-13)*
+- [[sources/obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own]] — Observation: "Absorption" swept: doc now writes/adds to memory — the doc's own plain vocabulary *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-]] — Observation: Algebra probe: -o memory derives MHALL (done); base script stuck at what *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry]] — Observation: ν_B-walk probe built: 7/7 PASS, control stuck at entry *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f]] — Observation: Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr]] — Observation: Def 14 two-ended reading + "Mary had" appendix worked example drafted *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi]] — Observation: Def 17 absorption refinement + T2 correspondence-identity keying applied *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod]] — Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo]] — Observation: Def 17 restated: two-party slots, anchor, refinement; earlier work committed *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean]] — Observation: Def 17 two-party slots committed (726e2a0); tree clean *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-derivation-engine-port-committed-73e4eba]] — Observation: Derivation engine port committed (73e4eba) *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed]] — Observation: Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43]] — Observation: Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl]] — Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-]] — Observation: Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi]] — Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal]] — Observation: Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots]] — Observation: Slot derivation gap: overfit relationships have no slots *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-]] — Observation: Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links *(created: 2026-09-14)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
 - [[sources/stm-cascade-removals-orphan-check]] — STM cascade removals must be orphan-checked *(created: 2026-08-11)*
+- [[sources/structural-significance-coverage-semantics]] — Structural significance is coverage-based — S2 has ≥1 covered node, S3 none *(created: 2026-09-10)*
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-03T10:53:47.462Z* | *Total pages: 136*
+*Last updated: 2026-09-14T22:34:09.137Z* | *Total pages: 218*

@@ -35,6 +35,7 @@ from kalvin.kvalue import KValue
 from kalvin.significance import (
     PROPOSAL_AGGREGATOR,
     SIG8_MAX,
+    misfit_mass,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -173,9 +174,11 @@ class PivotFill:
         if underfit:
             conns = self._crossover_connotations(entry)
             base_nodes = list(entry.nodes)
-            for sig in self._crossing_fills(entry, conns):
+            for sig, hops in self._crossing_fills(entry, conns):
                 expanded = base_nodes + [sig]
-                out.append(KValue(KLine(entry.signature, expanded, entry.dbg), 0))
+                out.append(
+                    KValue(KLine(entry.signature, expanded, entry.dbg, acq_depth=hops), 0)
+                )
         out.extend(self._pivot_proposals(entry))
         return out
 
@@ -199,7 +202,7 @@ class PivotFill:
         ]
         fills = self._crossing_fills(entry, conns)
         # Nearest fills first: discovery order is significance order.
-        for sig, _ in sorted(fills.items(), key=lambda item: item[1]):
+        for sig, hops in sorted(fills.items(), key=lambda item: item[1]):
             if gap and signifier.residual(gap, sig) == 0:
                 # A gap-covering fill is the query word itself, not an answer.
                 continue
@@ -213,7 +216,7 @@ class PivotFill:
                 signifier.signature_of(expanded), entry.signature
             ):
                 continue
-            kline = KLine(entry.signature, expanded, entry.dbg)
+            kline = KLine(entry.signature, expanded, entry.dbg, acq_depth=hops)
             if is_terminal(kline) or is_identity(kline) or is_canon(kline, signifier):
                 # Only misfits are proposed: identities are asks or facts,
                 # canons are the script/compiler's own ground truth.
@@ -223,6 +226,13 @@ class PivotFill:
                 entry.signature, signifier.signature_of(expanded)
             ) != 0:
                 # Unaccounted work: the gap could not be filled.
+                continue
+            if misfit_mass(
+                signifier.signature_of(expanded), entry.signature
+            ) >= misfit_mass(
+                signifier.signature_of(base_nodes), entry.signature
+            ):
+                # Not a targeting move: the misfit mass does not shrink.
                 continue
             yield KValue(kline, self._grade(entry, kline))
 
@@ -245,7 +255,12 @@ class PivotFill:
             if is_identity(grounded):
                 continue
             if grounded.nodes != kline.nodes:
-                return KLine(kline.signature, list(grounded.nodes), kline.dbg)
+                return KLine(
+                    kline.signature,
+                    list(grounded.nodes),
+                    kline.dbg,
+                    acq_depth=kline.acq_depth,
+                )
             break
         return kline
 
@@ -370,6 +385,7 @@ class PivotFill:
                 continue  # no S1 anchor: not a pivot
             resolved: list[KNode | None] = []
             gaps: list[KNode] = []
+            costs: list[int] = []  # acquisition depth: per resolved/filled node
             # Grouped resolution first: canon nodes forming a grounded
             # sub-canon resolve as a unit through its signature's path.
             grouped: set[KNode] = set()
@@ -382,12 +398,14 @@ class PivotFill:
                     )
                     if hit is not None:
                         resolved.extend([hit[1]] * len(sub.nodes))
+                        costs.extend([hit[0]] * len(sub.nodes))
                         grouped |= sub_set
             for n in canon:
                 if n in grouped:
                     continue
                 if n in pnode_set:
                     resolved.append(n)
+                    costs.append(0)
                     continue
                 hit = next(
                     ((h, s) for h, s in self._edge_hops(n) if s in pnode_set), None
@@ -395,6 +413,7 @@ class PivotFill:
                 if hit is not None:
                     # The pivot node does this node's work: replace it.
                     resolved.append(hit[1])
+                    costs.append(hit[0])
                 else:
                     gaps.append(n)
                     resolved.append(None)
@@ -412,7 +431,11 @@ class PivotFill:
             if gaps:
                 if len(gaps) == 1:
                     # The lone gap takes the whole leftover residual as a
-                    # grouped fill (appended).
+                    # grouped fill (appended), priced by the real path to the
+                    # group; an adjacency fill with no path is unpriced.
+                    costs.extend(
+                        self._fill_cost(gaps[0], leftovers, signifier.signature_of(leftovers))
+                    )
                     resolved = [r for r in resolved if r is not None]
                     resolved.extend(leftovers)
                 else:
@@ -422,13 +445,15 @@ class PivotFill:
                     resolved = [
                         r if r is not None else next(it) for r in resolved
                     ]
+                    for gap, fill in zip(gaps, leftovers):
+                        costs.extend(self._fill_cost(gap, [fill], fill))
             nodes: list[KNode] = []
             for rn in resolved:
                 if rn is not None and rn not in nodes:
                     nodes.append(rn)
             if sorted(nodes) == sorted(entry.nodes):
                 continue
-            kline = KLine(entry.signature, nodes, entry.dbg)
+            kline = KLine(entry.signature, nodes, entry.dbg, acq_depth=max(costs) if costs else 0)
             if is_terminal(kline) or is_identity(kline) or is_canon(kline, signifier):
                 # Only misfits are proposed: identities are asks or facts,
                 # canons are the script/compiler's own ground truth.
@@ -438,8 +463,26 @@ class PivotFill:
                 signifier.signature_of(nodes), entry.signature
             ):
                 continue
+            pivot_sig = signifier.signature_of(pnodes)
+            if misfit_mass(
+                signifier.signature_of(nodes), pivot_sig
+            ) >= misfit_mass(signifier.signature_of(entry.nodes), pivot_sig):
+                # Not a targeting move: the misfit mass does not shrink.
+                continue
             out.append(KValue(kline, self._grade(entry, kline)))
         return out
+
+    def _fill_cost(
+        self, gap: KNode, fills: list[KNode], group_sig: KNode
+    ) -> list[int]:
+        """Acquisition cost of a gap fill: the real edge-hop distance from
+        the gap node to the fill (its group for a grouped fill); an
+        adjacency fill with no path is unpriced."""
+        targets = {*fills, group_sig}
+        path = min(
+            (h for h, s in self._edge_hops(gap) if s in targets), default=None
+        )
+        return [path if path is not None else _MAX_HOP] * len(fills)
 
     def _crossover_connotations(self, entry: KLine) -> dict[KNode, int]:
         """``sig -> min hops`` over edge-hop chains from the entry's nodes and
@@ -539,13 +582,21 @@ class PivotFill:
             frontier = next_frontier
 
     def _candidates(self, entry: KLine) -> list[KLine]:
+        """Held klines selectable for the entry — Def 16: occurrence.
+
+        A candidate is selectable when its signature occurs in one of the
+        entry's nodes (containment in bit space). Content overlap is not
+        selection: it routes the band inside expand.
+        """
         signifier = self._state.signifier
         conns: list[KLine] = []
 
         for sig in self._state.where(
             lambda k: entry.signature != k.signature
             and not is_identity(k)
-            and signifier.signifies(entry.signature, k.signature)
+            and any(
+                signifier.node_in(k.signature, n) for n in entry.nodes
+            )
         ):
             conns.append(sig)
         return conns

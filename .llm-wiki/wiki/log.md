@@ -1,7 +1,117 @@
 # Wiki Update Log
 
+## 2026-09-14
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-derivation-engine-port-committed-73e4eba","title":"Derivation engine port committed (73e4eba)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed","title":"Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43","title":"Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f","title":"Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-14-two-ended-reading-mary-had-appendix-worked-example-dr","title":"Def 14 two-ended reading + \"Mary had\" appendix worked example drafted"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-b-walk-probe-built-7-7-pass-control-stuck-at-entry","title":"ν_B-walk probe built: 7/7 PASS, control stuck at entry"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-","title":"Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/kscript-operator","title":"KScript Operator"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/grilling","title":"Grilling"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/ask","title":"Ask"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/underfit-and-overfit","title":"Underfit and Overfit"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean","title":"Def 17 two-party slots committed (726e2a0); tree clean"}
+- **lint**: {"auto_fix":true,"contradictions":0,"legacy_pages_repaired":0,"missing_pages":12,"orphans":125}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo","title":"Def 17 restated: two-party slots, anchor, refinement; earlier work committed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots","title":"Slot derivation gap: overfit relationships have no slots"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl","title":"gap/excess renamed to underfit/overfit in algebra doc and glossary"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-physical-swap-done-and-committed-kalvin-algebra-md-sole-doc-","title":"Physical swap done and committed: kalvin-algebra.md sole doc, probe in dev/algebra"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-absorption-swept-doc-now-writes-adds-to-memory-the-doc-s-own","title":"\"Absorption\" swept: doc now writes/adds to memory — the doc's own plain vocabulary"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod","title":"Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-17-absorption-refinement-t2-correspondence-identity-keyi","title":"Def 17 absorption refinement + T2 correspondence-identity keying applied"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal","title":"Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi","title":"Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-14-algebra-probe-o-memory-derives-mhall-done-base-script-stuck-","title":"Algebra probe: -o memory derives MHALL (done); base script stuck at what"}
+
+## 2026-09-13
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-13-def-13-restructured-mirror-clause-headed-canonicalisation-de","title":"Def 13 restructured: mirror clause headed, canonicalisation demoted to Canon instance"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-13-step-3-mary-example-o-all-hop-licensed-by-reverse-read-of-al","title":"Step 3 Mary example: o→all hop licensed by reverse read of all:[o]"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-13-kalvin-simplified-md-rewritten-as-sole-normative-kalvin-docu","title":"kalvin-simplified.md rewritten as sole normative Kalvin document"}
+
+## 2026-09-12
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-canonicalisation-by-witness-replaces-contiguity-reverse-occurren","title":"Canonicalisation by witness replaces contiguity: reverse occurrence is multiset-wise"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-worked-example-fixed-queue-enters-as-w-d-m-h-not-w-dh-m","title":"Worked example fixed: queue enters as [w,d,m,h], not [w,dh,m]"}
+- **retro**: {"category":"domain-modeling","slug":"kalvin-doc-normative-split","title":"Kalvin doc normative split: algebra vs CONTEXT.md"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-context-md-aligned-with-kalvin-algebra-md-terminology","title":"CONTEXT.md aligned with kalvin-algebra.md terminology"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-12-docs-consolidated-kalvin-algebra-kalvin-for-agents-kalvin-sy","title":"Docs consolidated: kalvin-algebra + kalvin-for-agents; kalvin-symbolic deleted"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-user-wants-2-doc-structure-citation-graph-already-favours-ks","title":"User wants 2-doc structure; citation graph already favours ks2 as authority"}
+- **retro**: {"category":"architecture","slug":"ks2-conformance-series-landing","title":"ks2 conformance series: 6 commits to the engine entry path"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-12-doc-review-verdict-ks3-clearest-for-agents-ks2-authoritative","title":"Doc review verdict: ks3 clearest for agents, ks2 authoritative"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-engine-ask-atom-branching-removed-structural-routing-refusal","title":"Engine ask-atom branching removed; structural routing + refusal guard landed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-ask-atom-settled-ordinary-atom-externally-allocated-only-eng","title":"Ask atom settled: ordinary atom, externally allocated; only engine branching deviates"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-ask-bit-refinement-reservation-manufactures-distinctiveness-","title":"Ask-bit refinement: reservation manufactures distinctiveness and a permanent ungroundable gap"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-ks2-md-vs-harness-path-code-8-deviations-found-spec-faithful","title":"ks2.md vs harness-path code: 8 deviations found, spec-faithful code dormant"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-ks2-14-absorbs-kscript-syntax-ks2-now-sole-normative-documen","title":"ks2 §14 absorbs KScript syntax; ks2 now sole normative document"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-12-kalvin-symbolic-md-updated-in-place-to-ks2-semantics-and-rul","title":"kalvin-symbolic.md updated in place to ks2 semantics and rules"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-12-ks3-verbatim-definitions-restructure-reproduced-after-accide","title":"ks3 verbatim-definitions restructure reproduced after accidental reset"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-12-docs-ks3-md-written-as-programmer-friendly-restatement-of-ks","title":"docs/ks3.md written as programmer-friendly restatement of ks2"}
+
+## 2026-09-11
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-engine-reconciliation-d4-d7-complete-wdmh-priced-end-to-end-","title":"Engine reconciliation D4–D7 complete; WDMH priced end-to-end in engine"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-d2-d3-implemented-canonical-in-engine-expand-py-repaired-fro","title":"D2+D3 implemented: canonical γ in engine; expand.py repaired from dead state"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-def-17-slot-derivation-formalised-walk-licence-is-occurrence","title":"Def 17 slot derivation formalised; walk licence is occurrence, ending is arrival"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-resolved-acquisition-depth-added-ratified-edges-free-one-kno","title":"γ resolved: acquisition depth Ĥ added, ratified edges free, one knob"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-ks2-fourth-pass-drafted-replace-only-targeting-with-evidence","title":"ks2 fourth pass drafted: replace-only targeting with evidence"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-11-def-14-redesign-evidenced-replace-as-the-only-targeting-move","title":"Def 14 redesign: evidenced replace as the only targeting move"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-11-wdmh-mhall-derivation-worked-out-def-16-selection-gap-expose","title":"WDMH⇒MHALL derivation worked out; Def 16 selection gap exposed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-11-ks2-queued-head-s-is-unread-within-a-hop-derivation-is-c-s-t","title":"ks2: queued head s is unread within a hop — derivation is C's two sides"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-11-remove-s-over-permissive-licence-done-by-claim-amputation","title":"Remove's over-permissive licence: done-by-claim-amputation"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-11-ks2-claim-blindness-critique-and-done-never-see-the-claim","title":"ks2 claim-blindness critique: γ and done never see the claim"}
+
+## 2026-09-10
+
+- **retro**: {"category":"formalisation","slug":"ks2-third-pass-seven-gap-resolutions","title":"ks2 third pass: seven gap resolutions fixing the formal algebra"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-ask-bpe-token-to-be-removed-ks2-drops-the-ask-atom-ask-is-st","title":"ASK_BPE_TOKEN to be removed; ks2 drops the ask atom — ask is structural S4 only"}
+- **query**: {"question":"what is the purpose of the ASK_BPE_TOKEN?"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in","title":"ks2.md review: verified sound core, 7 gaps incl. witness-DAG invariant and γ underdetermined"}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-10-ks2-md-layer-talk-replaced-by-tract-orientation-section-refe","title":"ks2.md layer talk replaced by tract orientation + section references"}
+- **retro**: {"category":"design","slug":"coverage-fractions-peak-at-containment","title":"One-directional coverage fractions peak at containment, not equality"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-layers-3-4-review-ks2-10-12-selection-clauses-split-band-ord","title":"Layers 3–4 review + ks2 §§10–12: selection clauses split, band order axiom, Jaccard core"}
+- **retro**: {"category":"design","slug":"content-preserving-vs-content-aligning-moves","title":"Split rewrite moves by preserved invariant to get termination for free"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-ks2-md-layer-2-written-m-b-witnessed-targeting-families-t1-t","title":"ks2.md Layer 2 written: ⊢_{M,B}, witnessed/targeting families, T1/T2 termination"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-layer-2-review-termination-claims-inverted-one-step-relation","title":"Layer 2 review: termination claims inverted, one-step relation undefined"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-ks2-md-created-layer-1-second-pass-with-coverage-primary-cla","title":"ks2.md created: Layer 1 second pass with coverage-primary classifier"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-layer-1-algebra-review-sound-core-taxonomy-and-reference-gap","title":"Layer-1 algebra review: sound core, taxonomy and reference gaps"}
+- **retro**: {"category":"design","slug":"coverage-primary-fit-taxonomy","title":"Coverage-primary split for fit classifiers over set-algebra values"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-layer-1-vocabulary-proposal-values-as-sets-claim-witness-reg","title":"Layer 1 vocabulary proposal: values-as-sets, claim/witness register, one classifier presentation"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-10-layer-1-review-def-5-misfit-partition-not-disjoint-coverage-","title":"Layer 1 review: Def 5 misfit partition not disjoint; coverage must be primary split"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-context-md-glossary-rewritten-to-notes-md-s-semantic-refinem","title":"CONTEXT.md glossary rewritten to notes.md's semantic refinement"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-10-connote-denote-swap-coverage-based-significance-levels-commi","title":"Connote/denote swap + coverage-based significance levels committed (0f8b56a)"}
+- **retro**: {"category":"kscript","slug":"structural-significance-coverage-semantics","title":"Structural significance is coverage-based — S2 has ≥1 covered node, S3 none"}
+
+## 2026-09-09
+
+- **decision**: {"change":"CONNOTE/DENOTE compiled structures swapped; denotation now compound-signature AB:[B] classified S2","files":["src/ks/ast_emitter.py","src/ks/token_encoder.py","src/kalvin/kline.py","src/dialogue/engine_state.py","src/dialogue/harness.py","src/training/trainer/curriculum_generator.py","CONTEXT.md"]}
+- **retro**: {"category":"kscript","slug":"connote-denote-structure-swap-compound-sig-denotation","title":"CONNOTE/DENOTE structures swapped — denotation is compound-signature S2"}
+
+## 2026-09-08
+
+- **observe**: {"relevance":"low","slug":"obs-2026-09-08-model-graph-lfwr-glyphs-replaced-by-ansi-fill-colour-swatch-","title":"Model graph: LFWR glyphs replaced by ANSI/fill colour + swatch key"}
+- **commit**: {"commits":["9773959","2114e10"],"tree":"clean","user_request":"commit all"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-08-model-graph-sig-compound-identity-members-construction-repla","title":"Model graph: sig→compound→identity-members construction replaces node fan-out"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-08-model-graph-splits-rel-into-connotation-denotation-via-s3-sh","title":"Model graph splits rel into connotation/denotation via S3 shape + node_in(sig, node)"}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-08-harness-p-writes-companion-dot-mmd-graph-beside-state-json-s","title":"Harness -p writes companion .dot/.mmd graph beside state JSON; save-path bug fixed"}
+- **retro**: {"category":"design","slug":"model-state-graph-layer-rendering","title":"Model-state graph design: klines deduped with layer glyphs, strongest-layer styling"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-08-harness-graph-flag-renders-model-state-across-all-layers","title":"Harness --graph flag renders model state across all layers"}
+- **retro**: {"category":"compiler","slug":"connotation-compound-relocation-encoder-design","title":"Relocating a compound across the sig/node boundary requires component plumbing"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-08-connotes-semantics-inverted-to-compound-in-slot-a-ab","title":"CONNOTES semantics inverted to compound-in-slot (A:[AB])"}
+
+## 2026-09-04
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-04-query-kline-hub-exclusion-committed-legit-path-still-blocked","title":"Query-kline hub exclusion committed; legit path still blocked"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-04-connotatey-reverse-edges-bridge-wdmh-to-mhall","title":"connotateY reverse edges bridge WDMH to MHALL"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-04-cogitator-expand-dead-connotatey-frontier-never-seeded","title":"Cogitator.expand dead: connotateY frontier never seeded"}
+
 ## 2026-09-03
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-03-engine-observations-channel-removed-harness-diffs-state-fram","title":"Engine observations channel removed; harness diffs state; frame in summary"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-03-enginestate-stm-renamed-back-to-work-list","title":"EngineState.stm renamed back to work_list"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-03-compound-words-no-longer-take-word-bits","title":"Compound words no longer take word bits"}
 
 ## 2026-09-02
