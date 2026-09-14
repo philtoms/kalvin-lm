@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-14T15:19:40.285Z",
+  "last_updated": "2026-09-14T15:24:40.094Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8,6 +8,12 @@
       "description": "A participant that forms its own significance on a kline — a subjective grading. Three roles determine rationalising strategies: Trainee, Trainer, Supervisor.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "concepts/ask": {
+      "type": "concept",
+      "title": "Ask",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
     },
     "concepts/canon": {
       "type": "concept",
@@ -93,6 +99,12 @@
       "created": "2026-08-11",
       "updated": "2026-08-14"
     },
+    "concepts/grilling": {
+      "type": "concept",
+      "title": "Grilling",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
     "concepts/grounding": {
       "type": "concept",
       "title": "Grounding",
@@ -120,6 +132,12 @@
       "description": "The fundamental unit of Kalvin's memory — a structure containing a signature (head) and a nodes list, between which holds a relationship Kalvin rationalises as Structural Significance.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "concepts/kscript-operator": {
+      "type": "concept",
+      "title": "KScript Operator",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
     },
     "concepts/kvalue": {
       "type": "concept",
@@ -335,6 +353,12 @@
       "description": "A rationaliser — the trainer-side peer of the trainee, sharing the same engine but keeping S1 ratifications and S2 proposals. Cogitates and escalates.",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "concepts/underfit-and-overfit": {
+      "type": "concept",
+      "title": "Underfit and Overfit",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
     },
     "concepts/unknown": {
       "type": "concept",
@@ -2691,6 +2715,23 @@
       "relevance": "high",
       "observed_at": "2026-09-14T14:40:29.452Z",
       "source_context": "Design discussion of slot derivation overfit gap in kalvin-algebra.md",
+      "created": "2026-09-14",
+      "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-": {
+      "type": "source",
+      "title": "Observation: Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links",
+      "tags": [
+        "wiki",
+        "maintenance",
+        "lint",
+        "gaps"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-",
+      "relevance": "medium",
+      "observed_at": "2026-09-14T15:24:40.051Z",
+      "source_context": "Wiki lint remediation after /wiki-lint --fix",
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },

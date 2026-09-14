@@ -5,6 +5,7 @@
 ## Concepts
 
 - [[concepts/agent]] — Agent *(created: 2026-08-11)*
+- [[concepts/ask]] — Ask *(created: 2026-09-14)*
 - [[concepts/canon]] — Canon *(created: 2026-08-11)*
 - [[concepts/canonical-synthesis]] — Canonical synthesis *(created: 2026-08-11)*
 - [[concepts/cogitation]] — Cogitation *(created: 2026-08-11)*
@@ -17,10 +18,12 @@
 - [[concepts/fast-route-vs-slow-route]] — Fast route vs slow route *(created: 2026-08-11)*
 - [[concepts/fit]] — Fit *(created: 2026-08-11)*
 - [[concepts/frame]] — Frame *(created: 2026-08-11)*
+- [[concepts/grilling]] — Grilling *(created: 2026-09-14)*
 - [[concepts/grounding]] — Grounding *(created: 2026-08-11)*
 - [[concepts/harness]] — Harness *(created: 2026-08-11)*
 - [[concepts/identity]] — Identity *(created: 2026-08-11)*
 - [[concepts/kline]] — KLine *(created: 2026-08-11)*
+- [[concepts/kscript-operator]] — KScript Operator *(created: 2026-09-14)*
 - [[concepts/kvalue]] — KValue *(created: 2026-08-11)*
 - [[concepts/learned-preferences]] — Learned Preferences *(created: 2026-08-11)*
 - [[concepts/memory]] — Memory *(created: 2026-08-17)*
@@ -52,6 +55,7 @@
 - [[concepts/terminal]] — Terminal *(created: 2026-08-11)*
 - [[concepts/trainee]] — Trainee *(created: 2026-08-11)*
 - [[concepts/trainer]] — Trainer *(created: 2026-08-11)*
+- [[concepts/underfit-and-overfit]] — Underfit and Overfit *(created: 2026-09-14)*
 - [[concepts/unknown]] — Unknown *(created: 2026-08-11)*
 - [[concepts/word-binding]] — Word Binding *(created: 2026-08-11)*
 
@@ -211,6 +215,7 @@
 - [[sources/obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi]] — Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal]] — Observation: Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots]] — Observation: Slot derivation gap: overfit relationships have no slots *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-]] — Observation: Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links *(created: 2026-09-14)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
@@ -219,4 +224,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-14T15:19:40.285Z* | *Total pages: 207*
+*Last updated: 2026-09-14T15:24:40.094Z* | *Total pages: 212*

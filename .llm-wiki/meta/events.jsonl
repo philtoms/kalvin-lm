@@ -146,3 +146,8 @@
 {"slug":"obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo","title":"Def 17 restated: two-party slots, anchor, refinement; earlier work committed","relevance":"high","timestamp":"2026-09-14T14:55:19.527Z","kind":"observe"}
 {"orphans":125,"missing_pages":12,"contradictions":0,"auto_fix":true,"legacy_pages_repaired":0,"timestamp":"2026-09-14T15:18:15.286Z","kind":"lint"}
 {"slug":"obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean","title":"Def 17 two-party slots committed (726e2a0); tree clean","relevance":"high","timestamp":"2026-09-14T15:19:40.235Z","kind":"observe"}
+{"page_type":"concept","title":"Underfit and Overfit","path":"concepts/underfit-and-overfit","timestamp":"2026-09-14T15:23:41.431Z","kind":"ensure_page"}
+{"page_type":"concept","title":"Ask","path":"concepts/ask","timestamp":"2026-09-14T15:23:41.433Z","kind":"ensure_page"}
+{"page_type":"concept","title":"Grilling","path":"concepts/grilling","timestamp":"2026-09-14T15:23:52.227Z","kind":"ensure_page"}
+{"page_type":"concept","title":"KScript Operator","path":"concepts/kscript-operator","timestamp":"2026-09-14T15:23:52.228Z","kind":"ensure_page"}
+{"slug":"obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-","title":"Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links","relevance":"medium","timestamp":"2026-09-14T15:24:40.053Z","kind":"observe"}

@@ -2,6 +2,11 @@
 
 ## 2026-09-14
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-","title":"Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/kscript-operator","title":"KScript Operator"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/grilling","title":"Grilling"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/ask","title":"Ask"}
+- **ensure\_page**: {"page_type":"concept","path":"concepts/underfit-and-overfit","title":"Underfit and Overfit"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean","title":"Def 17 two-party slots committed (726e2a0); tree clean"}
 - **lint**: {"auto_fix":true,"contradictions":0,"legacy_pages_repaired":0,"missing_pages":12,"orphans":125}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo","title":"Def 17 restated: two-party slots, anchor, refinement; earlier work committed"}

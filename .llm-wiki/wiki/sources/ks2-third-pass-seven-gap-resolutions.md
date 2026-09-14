@@ -10,7 +10,7 @@ slug: ks2-third-pass-seven-gap-resolutions
 
 # ks2 third pass: seven gap resolutions fixing the formal algebra
 
-Third pass on [[docs/ks2.md]] resolved all seven review gaps via [[concepts/grilling]] rounds (one gap per round, numbered questions with recommendations). Seven decisions:
+Third pass on `docs/kalvin-algebra.md` (then `ks2.md`) resolved all seven review gaps via [[concepts/grilling]] rounds (one gap per round, numbered questions with recommendations). Seven decisions:
 
 1. **G1 — well-founded witnesses, unrestricted memory.** Any kline may be held (cycles included); expand/contract license only canons with `n ∉ νₙ`. The cycle collapse theorem justifies the clause: a canon's nodes are atom-subsets of its head, so expansion cycles force atom-equality — a self-containing canon. Contract is gated too (congruence symmetry). §8 decidability re-derived from terminating licensed expansion alone. See [[sources/obs-2026-09-10-ks2-md-review-verified-sound-core-7-gaps-incl-witness-dag-in]].
 

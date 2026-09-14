@@ -136,6 +136,7 @@
 - [Observation: Pure-algebra probe: 7/7 exact match; Def 17 refine gap + T2 keying flagged](obs-2026-09-14-pure-algebra-probe-7-7-exact-match-def-17-refine-gap-t2-keyi.md)
 - [Observation: Refine-before-absorb: mechanism general, eager policy not — goal-resolution-directed is the criterion](obs-2026-09-14-refine-before-absorb-mechanism-general-eager-policy-not-goal.md)
 - [Observation: Slot derivation gap: overfit relationships have no slots](obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots.md)
+- [Observation: Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links](obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)
 - [Consolidated wiki duplicate concept pages](wiki-duplicate-consolidation.md)

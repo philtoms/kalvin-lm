@@ -3,6 +3,7 @@
 ## Concepts
 
 - [Agent](agent.md) — A participant that forms its own significance on a kline — a subjective grading. Three roles determine rationalising strategies: Trainee, Trainer, Supervisor.
+- [Ask](ask.md)
 - [Canon](canon.md) — A kline structure where signature = signature_of(nodes), claiming S1 — the signature stands for its nodes and carries no information beyond them.
 - [Canonical synthesis](canonical-synthesis.md) — The S2 proposal at step 16 in similar_fit that represents the correct recombination for mhall — the benchmark proposal expand fails to emit.
 - [Cogitation](cogitation.md) — The slow path of rationalisation — model traversal that tests a kline's structural claim against what Kalvin holds, draining a backlog of S2/S3 klines and emitting proposals.
@@ -15,10 +16,12 @@
 - [Fast route vs slow route](fast-route-vs-slow-route.md) — Engine routing paths — fast admits identities and seen-signature canons; slow unpacks unseen-signature canons as asks and discovers signatures. Dispatch is on sig_level, not the compiled stamp.
 - [Fit](fit.md) — How closely a new kline's nodes resolve (or fail to resolve) to grounded identities and relationships — the structural basis from which significance emerges.
 - [Frame](frame.md) — Kalvin's focus of attention and how it is shifting — the active cogitation kline, plus what focused attention produces. Monotonic, signature-keyed, multi-valued.
+- [Grilling](grilling.md)
 - [Grounding](grounding.md) — The model's mechanism for realising significance — at any level. A grounded signature guarantees its nodes are grounded; Frame-grounded klines are available for cogitation; LTM-grounded klines are frame promotions Kalvin deems important enough to remember.
 - [Harness](harness.md) — The multi-agent runtime that loads agents as participants and runs a dialogue loop between them — a message broker routing role-addressed messages.
 - [Identity](identity.md) — A terminal kline structure that is directly decodable — a known value (`{S: [S]}`) that claims S1, 'I know this.'
 - [KLine](kline.md) — The fundamental unit of Kalvin's memory — a structure containing a signature (head) and a nodes list, between which holds a relationship Kalvin rationalises as Structural Significance.
+- [KScript Operator](kscript-operator.md)
 - [KValue](kvalue.md) — The unit of exchange between participants — a KLine paired with a significance (the sender's assessment of it).
 - [Learned Preferences](learned-preferences.md) — The paths through the model Kalvin favours when multiple candidates compete — learned, not fixed; there is no utility function. What Kalvin values is itself teachable.
 - [Memory](memory.md)
@@ -50,5 +53,6 @@
 - [Terminal](terminal.md) — A kline whose structure carries no further decomposition — a leaf that tells Kalvin to stop traversing. Three shapes: empty nodes, self-referential nodes, and the compound-word form.
 - [Trainee](trainee.md) — The participant under instruction — the rationalising system being trained, and the subject of a training session. Bus role `trainee`.
 - [Trainer](trainer.md) — A rationaliser — the trainer-side peer of the trainee, sharing the same engine but keeping S1 ratifications and S2 proposals. Cogitates and escalates.
+- [Underfit and Overfit](underfit-and-overfit.md)
 - [Unknown](unknown.md) — A terminal kline structure with empty nodes (`{S: []}`) that claims S4 — the structural form of an ask, requesting an Identity ratification.
 - [Word Binding](word-binding.md) — The association of a single-character KScript signature with a word, resolved through annotations — fill-if-empty at top level, unconditional override inline.

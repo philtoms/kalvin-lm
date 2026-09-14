@@ -446,3 +446,18 @@
 ## [2026-09-14T15:19:40.235Z] observe
 - slug: "obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean", title: "Def 17 two-party slots committed (726e2a0); tree clean", relevance: "high"
 
+## [2026-09-14T15:23:41.431Z] ensure_page
+- page_type: "concept", title: "Underfit and Overfit", path: "concepts/underfit-and-overfit"
+
+## [2026-09-14T15:23:41.433Z] ensure_page
+- page_type: "concept", title: "Ask", path: "concepts/ask"
+
+## [2026-09-14T15:23:52.227Z] ensure_page
+- page_type: "concept", title: "Grilling", path: "concepts/grilling"
+
+## [2026-09-14T15:23:52.228Z] ensure_page
+- page_type: "concept", title: "KScript Operator", path: "concepts/kscript-operator"
+
+## [2026-09-14T15:24:40.053Z] observe
+- slug: "obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-", title: "Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links", relevance: "medium"
+
