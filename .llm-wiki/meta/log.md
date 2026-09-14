@@ -476,3 +476,6 @@
 ## [2026-09-14T17:43:57.009Z] observe
 - slug: "obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed", title: "Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores", relevance: "high"
 
+## [2026-09-14T22:34:09.053Z] observe
+- slug: "obs-2026-09-14-derivation-engine-port-committed-73e4eba", title: "Derivation engine port committed (73e4eba)", relevance: "medium"
+

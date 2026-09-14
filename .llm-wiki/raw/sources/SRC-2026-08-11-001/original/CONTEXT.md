@@ -34,7 +34,7 @@ A kline **structure**: a **Terminal** that is directly decodable — a known val
 
 **Canon**:
 A kline **structure**: the signature equals `signature_of(nodes)`. Claims **S1** — the signature stands for its nodes, so it is safe to use the signature in place of them. The signature carries no information beyond what its nodes already express. Structural shape: `{AB: [A, B]}` where `AB` represents a combination of two or more nodes.
-_Avoid_: canonical (ambiguous with Relational Tokens), treating `=>` (CANONICALZES) as synonymous with being a Canon (the token declares an intent to compose; a CANONICALZES statement need not construct a Canon), MTS (an example, not the concept)
+_Avoid_: canonical (ambiguous with Relational Tokens), treating `=>` (CANONICALISES) as synonymous with being a Canon (the token declares an intent to compose; a CANONICALISES statement need not construct a Canon), MTS (an example, not the concept)
 
 **Misfit**:
 A kline **structure**: the signature does not equal `signature_of(nodes)`. Structural shapes:
@@ -94,17 +94,17 @@ The significance a compiled kline is _labelled_ with — the answer the script a
 _Avoid_: compiled significance (describes provenance, not the purpose), the kline's significance (a kline has no significance of its own — participants assign one; the compiled label is the target they are measured against), ground truth (overloaded with Grounding)
 
 **Relational Tokens**:
-The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONICALZES), `>` (CONNOTES), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONICALZES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
+The closed set of written tokens that declare how a kline is produced in KScript — `==` (COUNTERSIGNS), `=>` (CANONICALISES), `>` (CONNOTES), `=` (DENOTES), or none (UNKNOWN). A compiler/provenance concept: the token declares an _intent_ (e.g. CANONICALISES declares an intent to compose), which the resulting kline's actual **Structural Significance** may or may not satisfy.
 
 - **COUNTERSIGNS** (`==`) — 1:1 emits a reciprocal pair `{A: [B]}`, `{B: [A]}`. The signature countersigns each other's nodes.
-- **CANONICALZES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonicalises its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
+- **CANONICALISES** (`=>`) — 1:many `{A: [B, C, D]}`. The signature canonicalises its nodes into a single kline; this declares an intent to aggregate, not that the result is a Canon (see Canon).
 - **CONNOTES** (`>`) — 1:1 `{A: [B]}`. The signature connotes each node (`A > B` ⇒ A connotes B; subjectively, _A is a B_).
 - **DENOTES** (`=`) — 1:1 `{B: [A]}`. The signature denotes each node (`A = B` ⇒ A denotes B; objectively, _B is an A_).
 - **UNKNOWN** — a bare, unbound signature. See **Unknown**. A bare signature with no **Word Binding** compiles to the empty Unknown `{A: []}` — the structural form of an ask. A bare signature that is word-bound compiles instead to an **Identity** `{A: [A]}` (see Identity): the binding gives it a decodable value, so the script labels it a known identity rather than an ask. Binding chooses the structure; the structure then determines the **Target Significance**.
   _Avoid_: structural relationship (collides with Structural Significance), relational operator (the token declares provenance, not an operation)
 
 **MTS (Multi-Token Signature)**:
-A KScript device for representing a multi-token signature on the LHS in a simpler syntax than would otherwise be required. A compound signature built from more than one Token ID by composition; the compiler expands a multi-character KScript identifier into its constituent character identities plus one MTS relationship. This expansion is a property of the _signature string_, distinct from any CANONICALZES decomposition a script declares for that signature via a block. A CANONICALZES scope's nodes are the declared block operands, never the signature's own MTS character expansion.
+A KScript device for representing a multi-token signature on the LHS in a simpler syntax than would otherwise be required. A compound signature built from more than one Token ID by composition; the compiler expands a multi-character KScript identifier into its constituent character identities plus one MTS relationship. This expansion is a property of the _signature string_, distinct from any CANONICALISES decomposition a script declares for that signature via a block. A CANONICALISES scope's nodes are the declared block operands, never the signature's own MTS character expansion.
 _Avoid_: decomposition (overloaded — a Canon decomposes into its nodes; an MTS expands a signature into characters)
 
 **Word Binding**:

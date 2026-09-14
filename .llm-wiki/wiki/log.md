@@ -2,6 +2,7 @@
 
 ## 2026-09-14
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-14-derivation-engine-port-committed-73e4eba","title":"Derivation engine port committed (73e4eba)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed","title":"Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43","title":"Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-14-def-14-appendix-b-probe-committed-b115014-engine-core-port-f","title":"Def 14 + appendix + ν_B probe committed (b115014); engine-core port flagged"}

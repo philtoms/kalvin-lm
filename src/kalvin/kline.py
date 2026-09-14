@@ -116,7 +116,7 @@ class KDbg:
 
     Attributes:
         op: Structural relationship (COUNTERSIGNS, DENOTES, CONNOTES,
-            CANONICALZES, UNKNOWN).
+            CANONICALISES, UNKNOWN).
         label: Origin word or operator context.
         decoded: Tokenizer decode of the signature (actual subword text).
         type_info: Short debug summary of the node's type-dictionary entry
@@ -381,7 +381,7 @@ _OP_SYMBOLS = {
     "COUNTERSIGNS": "==",
     "DENOTES": "=",
     "CONNOTES": ">",
-    "CANONICALZES": "=>",
+    "CANONICALISES": "=>",
     "UNKNOWN": None,
 }
 

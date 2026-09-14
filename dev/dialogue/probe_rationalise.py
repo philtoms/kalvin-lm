@@ -4,7 +4,7 @@ Feeds the first T queries by hand through the dialogue harness's engine and
 prints K's batch + observations, so we can verify the expected behaviour:
   - After `MHALL COUNTERSIGNS SVO` (S2 proposal), K emits identity asks
     for the unrecognised signatures.
-  - After `MHALL CANONICALZES [Mary, had, a, little, lamb]` (an S2-stamped
+  - After `MHALL CANONICALISES [Mary, had, a, little, lamb]` (an S2-stamped
     canon), the engine ignores the subjective S2 stamp, treats it as the
     canon it structurally is, and the next batch is a run of identity
     asks for the unrecognised canon nodes.
@@ -107,14 +107,14 @@ def main() -> None:
     # Drive the full T-query sequence from the script (T turns only).
     t_sequence = [
         ("MHALL COUNTERSIGNS SVO",         "COUNTERSIGNS", "MHALL"),
-        ("MHALL CANONICALZES [M had a little lamb]", "CANONICALZES",  "MHALL"),
+        ("MHALL CANONICALISES [M had a little lamb]", "CANONICALISES",  "MHALL"),
         ("Mary IDENTITY [M ary]",          "IDENTITY",    "Mary"),
         ("had IDENTITY [h ad]",            "IDENTITY",    "had"),
         ("a CONNOTES [Det]",               "CONNOTES",    "a"),
         ("Det IDENTITY [D et]",            "IDENTITY",    "Det"),
         ("little IDENTITY [l ittle]",      "IDENTITY",    "little"),
         ("lamb IDENTITY [l amb]",          "IDENTITY",    "lamb"),
-        ("SVO CANONICALZES [Subject Verb Object]", "CANONICALZES", "SVO"),
+        ("SVO CANONICALISES [Subject Verb Object]", "CANONICALISES", "SVO"),
         ("Subject IDENTITY [Sub ject]",    "IDENTITY",    "Subject"),
         ("Verb IDENTITY [V er b]",         "IDENTITY",    "Verb"),
         ("Object IDENTITY [Ob ject]",      "IDENTITY",    "Object"),

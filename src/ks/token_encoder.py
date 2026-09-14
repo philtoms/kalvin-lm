@@ -32,14 +32,14 @@ Encoding rules:
     signature for compound refs/defs.
   - Nodes → each encoded individually via ``_encode_word``.
   - Canonical encoding: a declared compound identifier's signature is
-    computed once at its MTS CANONICALZES definition (OR of its resolved
+    computed once at its MTS CANONICALISES definition (OR of its resolved
     component node values) and reused by every reference via the
     ``_compound_sigs`` registry.
 
 Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.significance.band_significance(op), computed from the production op at
 encode time (never from dbg):
-    COUNTERSIGNS → S2    DENOTES → S2    CANONICALZES → S2
+    COUNTERSIGNS → S2    DENOTES → S2    CANONICALISES → S2
     CONNOTES → S3      UNKNOWN → S4      MTS → S1
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
@@ -99,7 +99,7 @@ class TokenEncoder:
             max(self._word_bits.values(), default=0).bit_length()
         )
         # Canonical encoding registry: a declared compound
-        # identifier's signature uint64, computed once at its MTS CANONICALZES
+        # identifier's signature uint64, computed once at its MTS CANONICALISES
         # definition as OR of its resolved component node values, then reused
         # by every referencing entry. The ASTEmitter emits definitions before
         # references, so this is populated on demand.
@@ -175,7 +175,7 @@ class TokenEncoder:
           2. Encode each node → uint64 word value.
           3. Emit the entry wrapped as a KValue.
         """
-        is_compound_def = entry.op == "CANONICALZES" and len(entry.sig) > 1
+        is_compound_def = entry.op == "CANONICALISES" and len(entry.sig) > 1
         is_compound_ref = entry.sig in self._compound_sigs
         # A multi-char uppercase sig that no MTS entry registered (e.g. a
         # sigless annotation's synthesized initials `WW...`) is still a
@@ -205,7 +205,7 @@ class TokenEncoder:
 
         # 3. Declared-compound definition: sig = OR of resolved component
         #    node values; register for reuse by references.
-        #    Only the DEFINING entry registers — the MTS CANONICALZES entry
+        #    Only the DEFINING entry registers — the MTS CANONICALISES entry
         #    (declared compound → its declared characters). A block-canon
         #    entry (compound → block operands, e.g. `WDMH => M H W`) is a
         #    REFERENCE: it reuses the registered signature and must NOT

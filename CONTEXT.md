@@ -189,7 +189,7 @@ A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word h
 The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
 
 - `==` **COUNTERSIGNS** — reciprocal pair `{A:[B]}`, `{B:[A]}`
-- `=>` **CANONICALZES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
+- `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
 - `>` / `<` **CONNOTES** — `{A:[B]}`; `A < B` ⇒ `B:[A]` (the identifier reverses to match the reading direction). Self-reference collapses to Identity
 - `=` **DENOTES** — the compound-signature shape `A = B` ⇒ `{AB:[B]}`: the signature is the compound of both operands, the node the denoted value. Self-denote collapses to Identity
 - none **UNKNOWN** — a bare signature: unbound compiles to `{A:[]}` (the ask); word-bound to Identity `{A:[A]}`

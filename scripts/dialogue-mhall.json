@@ -24,7 +24,7 @@
       "role_turn": 1
     },
     {
-      "op": "CANONICALZES",
+      "op": "CANONICALISES",
       "signature": "MHALL",
       "nodes": [
         "Mary",
@@ -183,7 +183,7 @@
       "role_turn": 9
     },
     {
-      "op": "CANONICALZES",
+      "op": "CANONICALISES",
       "signature": "SVO",
       "nodes": [
         "Subject",

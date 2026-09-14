@@ -128,7 +128,7 @@ class Lexer:
             if two_char == "==":
                 return self._make_token(TokenType.COUNTERSIGNS, "==")
             if two_char == "=>":
-                return self._make_token(TokenType.CANONICALZES, "=>")
+                return self._make_token(TokenType.CANONICALISES, "=>")
 
         if ch == "=":
             return self._make_token(TokenType.DENOTES, "=")

@@ -194,7 +194,7 @@ class Harness:
                     next(
                         (
                             e for e in group
-                            if e.kline.dbg and e.kline.dbg.op == "CANONICALZES"
+                            if e.kline.dbg and e.kline.dbg.op == "CANONICALISES"
                         ),
                         group[0],
                     ),

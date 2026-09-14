@@ -213,6 +213,7 @@
 - [[sources/obs-2026-09-14-def-17-clause-rewritten-reason-first-def-13-by-reference-nod]] — Observation: Def 17 clause rewritten: reason-first, Def 13 by reference, node-opacity principle named *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-restated-two-party-slots-anchor-refinement-earlier-wo]] — Observation: Def 17 restated: two-party slots, anchor, refinement; earlier work committed *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-def-17-two-party-slots-committed-726e2a0-tree-clean]] — Observation: Def 17 two-party slots committed (726e2a0); tree clean *(created: 2026-09-14)*
+- [[sources/obs-2026-09-14-derivation-engine-port-committed-73e4eba]] — Observation: Derivation engine port committed (73e4eba) *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-derivation-port-reviewed-anchor-refinement-wedge-dedup-fixed]] — Observation: Derivation port reviewed: anchor refinement + wedge dedup fixed in both cores *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-engine-core-ported-two-ended-guard-b-walk-b-walks-control-43]] — Observation: Engine core ported: two-ended guard, ν_B walk, b_walks control — 43 tests green *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-gap-excess-renamed-to-underfit-overfit-in-algebra-doc-and-gl]] — Observation: gap/excess renamed to underfit/overfit in algebra doc and glossary *(created: 2026-09-14)*
@@ -229,4 +230,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-14T17:43:57.080Z* | *Total pages: 217*
+*Last updated: 2026-09-14T22:34:09.137Z* | *Total pages: 218*
