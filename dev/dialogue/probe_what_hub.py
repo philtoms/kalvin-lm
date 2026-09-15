@@ -25,7 +25,7 @@ for m1, m2 in [(u, o), (o, [])]:
     while m1:
         n = m1.pop(0)
         consumed = None
-        for kl, hops in cog.connotate(n):
+        for kl, hops in cog.denotate(n):
             for m_nodes in [m2, f]:
                 if kl.signature in m_nodes:
                     consumed = (f"hops={hops} arm1 sig {kl.signature.label!r} from {[x.label for x in m_nodes]}")

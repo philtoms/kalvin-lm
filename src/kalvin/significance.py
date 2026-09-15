@@ -108,14 +108,14 @@ LEVEL_TO_SIG: dict[str, int] = {
 # derive, not a structural measurement (kline.sig_level — the kline's
 # significance level — is that measurement; the two may legitimately
 # disagree). CONNOTES maps to
-# SIG_S3 and DENOTES to SIG_S2; IDENTITY (self-referential, word-bound or
-# self-denote) maps to SIG_S1; UNKNOWN (empty, orphan) maps to SIG_S4;
+# SIG_S2 and DENOTES to SIG_S3; IDENTITY (self-referential, word-bound or
+# self-connote) maps to SIG_S1; UNKNOWN (empty, orphan) maps to SIG_S4;
 # unknown ops default to SIG_S4.
 _OP_TO_SIG: dict[str, int] = {
     "COUNTERSIGNS": SIG_S2,
     "CANONICALISES": SIG_S2,
-    "CONNOTES": SIG_S3,
-    "DENOTES": SIG_S2,
+    "DENOTES": SIG_S3,
+    "CONNOTES": SIG_S2,
     "IDENTITY": SIG_S1,
     "UNKNOWN": SIG_S4,
     "ASK": SIG_S4,
@@ -463,7 +463,7 @@ class ProposalAggregator(Aggregator):
 
     - Every slot at least partially accounted: positive. The byte rises
       from the boundary with the weakest claim's accountedness.
-    - Any slot unaccounted (a wild guess — no connotational path): negative.
+    - Any slot unaccounted (a wild guess — no denotational path): negative.
       The byte falls from the boundary with the mean accountedness over
       *all* slots — quality of the understood part times coverage. More
       wild guesses means less of the proposal understood, so a smaller

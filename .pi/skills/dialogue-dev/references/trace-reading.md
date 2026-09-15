@@ -25,7 +25,7 @@ verdict. This is the vocabulary for reading it.
   signature. The engine always asks about entries it has not previously seen.
 - **`propose  <kline> <band> <significance`** — one engine emission this step. `<band>` here
   is the engine's _actual_ output band (S1 ground-and-cascade, S2 propose,
-  S3 connote, S4 ask). `(none)` = the engine had nothing to emit.
+  S3 denote, S4 ask). `(none)` = the engine had nothing to emit.
 - **`grounds <kline>`** — an S1 observation: a kline the engine grounded
   internally this step (added to its grounded model). Distinct from `out`:
   groundings are the engine's private S1 state; `out` is what it would say.
@@ -75,7 +75,7 @@ partition (see behaviour-notes §Compilation).
 - **`work_list (pending at end of run)`** — what the engine was still working on when
   turns ran out. **This is the diagnostic.** Distinguish:
   - _Genuine residue_ — signatures the script never makes groundable
-    (an unbound `L`; a connotes target like `a:[Det]` where `a` is never an
+    (an unbound `L`; a denotes target like `a:[Det]` where `a` is never an
     identity). Not a bug.
   - _Stalled klines_ — something that should have grounded but the engine
     had no path (the historical fast-route drop; relationships that couldn't

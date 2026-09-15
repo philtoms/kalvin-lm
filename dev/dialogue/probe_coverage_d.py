@@ -21,7 +21,7 @@ def expand_c(self, underfit, overfit, fit):
         while len(m1) > 0:
             n = m1.pop(0)
             reserve = True if m1 is underfit else False
-            for kl, hops in self.connotate(n):
+            for kl, hops in self.denotate(n):
                 covers = n in kl.nodes or self.signifier.bit_in(n, kl.signature)
                 if covers:
                     reserve = False
@@ -62,9 +62,9 @@ for qn, w in {"WDMH:[wdmh]": w_full[0], "WDMH:[DH]": w_full[1]}.items():
             prop, dist = cog.expand(u, o, f)
             print(f"  vs {cand_label}:{[n.label for n in m.nodes]} -> {[p.label for p in prop]} d={dist}")
 
-# variant D: connotateY yields the original kline (signature intact)
+# variant D: denotate yields the original kline (signature intact)
 from dialogue.cogitator import Cogitator as _C
-def connotate_orig(self, s, depth=100):
+def denotate_orig(self, s, depth=100):
     state = self._state
     signifier = state.signifier
     frontier = [KLine(s, [])]
@@ -89,7 +89,7 @@ def connotate_orig(self, s, depth=100):
                 yield kline, hop_count
                 nxt.append(kline)
         frontier = nxt
-_C.connotate = connotate_orig
+_C.denotate = denotate_orig
 print("== variant D (original signatures preserved) ==")
 cog2 = Cogitator(state)
 w_full = [k for k in by_label("WDMH") if not is_terminal(k)]
@@ -112,7 +112,7 @@ def expand_dbg(self, underfit, overfit, fit):
         while len(m1) > 0:
             n = m1.pop(0)
             reserve = True if m1 is underfit else False
-            for kl, hops in self.connotate(n):
+            for kl, hops in self.denotate(n):
                 covers = n in kl.nodes or self.signifier.bit_in(n, kl.signature)
                 if covers:
                     reserve = False

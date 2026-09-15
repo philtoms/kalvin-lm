@@ -1,7 +1,7 @@
 """Expand — graph expansion.
 
 This module owns the *graph* layer: traversing the model to expand a
-query|candidate pair into connotations and a terminal significance byte
+query|candidate pair into denotations and a terminal significance byte
 (``expand``).
 
 It builds on the significance topology layer (``kalvin.significance``), which
@@ -81,7 +81,7 @@ def expand(
     delta: float = DEFAULT_DELTA,
     _visited: set[tuple[int, int]] | None = None,
 ) -> Iterator[KValue]:
-    """Expand a query-candidate pair, yielding connotations and terminal byte.
+    """Expand a query-candidate pair, yielding denotations and terminal byte.
 
     Compose-on-return aggregation: topology is captured on descent (per-slot
     records retained), and γ is applied on the return phase.
@@ -95,7 +95,7 @@ def expand(
     The terminal byte is γ = J · δ^(mean depth)
     (:func:`kalvin.significance.gamma_aggregate`).
 
-    Yield asymmetry: exact opposing matches and S3 connotation bridges
+    Yield asymmetry: exact opposing matches and S3 denotation bridges
     recurse; signifies matches emit a side-candidate and do not recurse.
     The final yield is always the terminal KValue for the original
     pair.
@@ -116,7 +116,7 @@ def expand(
     mismatched_c = c_set - q_set
     matched = q_set & c_set
 
-    s3_connotations: dict[int, int] = {}  # sig -> min hops from any query node
+    s3_denotations: dict[int, int] = {}  # sig -> min hops from any query node
 
     # Per-slot records, in slot order: (atom weight, hop depth | None).
     slots: list[SlotRecord] = []
@@ -144,8 +144,8 @@ def expand(
                         sig_byte = gamma_to_byte(geometric_decay(hops, delta))
                         yield KValue(c_kline, sig_byte)
                     break
-                elif match_sig not in s3_connotations or hops < s3_connotations[match_sig]:
-                    s3_connotations[match_sig] = hops
+                elif match_sig not in s3_denotations or hops < s3_denotations[match_sig]:
+                    s3_denotations[match_sig] = hops
         slots.append((word_atom_count(n), slot_hops))
 
     for n in mismatched_c:
@@ -171,9 +171,9 @@ def expand(
                         sig_byte = gamma_to_byte(geometric_decay(hops, delta))
                         yield KValue(c_kline, sig_byte)
                     break
-                elif match_sig in s3_connotations:
-                    # case E: S3 connotation bridge -> recurse (no side-candidate).
-                    s3_hop = s3_connotations[match_sig] + hops
+                elif match_sig in s3_denotations:
+                    # case E: S3 denotation bridge -> recurse (no side-candidate).
+                    s3_hop = s3_denotations[match_sig] + hops
                     slot_hops = s3_hop
                     c_kline = model.find(match_sig)
                     if c_kline is not None:

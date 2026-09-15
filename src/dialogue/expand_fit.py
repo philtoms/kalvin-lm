@@ -1,7 +1,7 @@
 """Expand — graph expansion.
 
 This module owns the *graph* layer: traversing the model to expand a
-query|candidate pair into connotations and a terminal significance byte
+query|candidate pair into denotations and a terminal significance byte
 (``expand``).
 
 It builds on the significance topology layer (``kalvin.significance``), which
@@ -75,7 +75,7 @@ class ExpandFit:
         _visited: set[tuple[int, KNode]],
         _top: bool = True,
     ) -> Iterator[KValue]:
-        """Expand a query-candidate pair, yielding connotations and terminal byte.
+        """Expand a query-candidate pair, yielding denotations and terminal byte.
 
         Compose-on-return aggregation: topology is captured on descent (per-node
         accountedness retained as a float), and composition is applied on the
@@ -87,7 +87,7 @@ class ExpandFit:
         resolvable in h hops      -> decay(h)
         unresolvable              -> 0.0
 
-        Yield asymmetry: exact opposing matches and S3 connotation bridges
+        Yield asymmetry: exact opposing matches and S3 denotation bridges
         recurse; signifies matches emit a side-candidate and do not recurse.
         The final yield is always the terminal KValue for the original
         pair.
@@ -110,7 +110,7 @@ class ExpandFit:
         s2_fit = q_set & c_set
 
         s2_target: list[KNode] = list(s2_fit)
-        s3_connotations: dict[KNode, int] = {}  # sig -> min hops from any query node
+        s3_denotations: dict[KNode, int] = {}  # sig -> min hops from any query node
 
         # Per-node accountedness, in slot order. One float per slot.
         slot_values: list[float] = []
@@ -122,7 +122,7 @@ class ExpandFit:
             accounted = 0.0  # unresolvable default (case F)
             q_kline = state.find(n)
             if q_kline is not None:
-                s3_connotations[n] = 1
+                s3_denotations[n] = 1
                 for hops, hop_sig in self._edge_hops(n):
                     c_kline = state.find(hop_sig)
                     if c_kline is None:
@@ -141,8 +141,8 @@ class ExpandFit:
                         if self._sayable(c_kline):
                             yield KValue(c_kline, sig_byte)
                         break
-                    if hop_sig not in s3_connotations or hops < s3_connotations[hop_sig]:
-                        s3_connotations[hop_sig] = hops
+                    if hop_sig not in s3_denotations or hops < s3_denotations[hop_sig]:
+                        s3_denotations[hop_sig] = hops
             slot_values.append(accounted)
 
         for n in overfit:
@@ -172,9 +172,9 @@ class ExpandFit:
                         if self._sayable(c_kline):
                             yield KValue(c_kline, sig_byte)
                         break
-                    elif hop_sig in s3_connotations:
-                        # case E: S3 connotation bridge -> recurse (no side-candidate).
-                        s3_hop = s3_connotations[hop_sig] + hops
+                    elif hop_sig in s3_denotations:
+                        # case E: S3 denotation bridge -> recurse (no side-candidate).
+                        s3_hop = s3_denotations[hop_sig] + hops
                         accounted = decay(s3_hop)
                         yield from self.expand(
                             q_kline, c_kline, _visited=_visited, _top=False
@@ -220,7 +220,7 @@ class ExpandFit:
             conns.append(sig)
         return conns
 
-    def _connotations(self, entry: KLine) -> dict[KNode, int]:
+    def _denotations(self, entry: KLine) -> dict[KNode, int]:
         """``sig -> min hops`` over edge-hop chains from the entry's nodes and
         from its underfit gap's covering bridges."""
         signifier = self._state.signifier

@@ -482,3 +482,12 @@
 ## [2026-09-15T05:38:21.951Z] observe
 - slug: "obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood", title: "WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain", relevance: "high"
 
+## [2026-09-15T10:07:32.863Z] observe
+- slug: "obs-2026-09-15-connotes-denotes-shapes-swapped-connotes-is-the-compound-den", title: "CONNOTES/DENOTES shapes swapped — connotes is the compound, denotes the plain", relevance: "high"
+
+## [2026-09-15T10:07:56.015Z] retro
+- slug: "shape-swap-vs-name-swap-operator-semantics", title: "Operator semantics swaps: move shapes or move names — the countersign test decides", category: "kscript"
+
+## [2026-09-15T12:13:39.924Z] commit
+- commit: "39b0efd", change: "CONNOTES/DENOTES compiled shapes swapped (connotes compound AB:[B] S2, denotes plain A:[B] S3); predicates, band stamps, S3-bridge renames, docs, tests, probes aligned", files: ["src/ks/ast_emitter.py","src/ks/token_encoder.py","src/kalvin/kline.py","src/kalvin/significance.py","src/dialogue/*","CONTEXT.md","docs/kalvin-algebra.md"]
+

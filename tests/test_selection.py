@@ -32,7 +32,7 @@ def _state() -> EngineState:
         KLine(M, [M]),  # identity — inert
         KLine(DH, [D, H]),  # canon
         KLine(MHALL, [M, H, A, L, L]),  # canon
-        KLine(W, [O]),  # connotation
+        KLine(W, [O]),  # denotation
     ):
         state.ground(kl, state.ltm)
     return state

@@ -178,7 +178,8 @@
     "sources/connotation-compound-relocation-encoder-design"
   ],
   "concepts/kscript-operator": [
-    "sources/connotation-compound-relocation-encoder-design"
+    "sources/connotation-compound-relocation-encoder-design",
+    "sources/shape-swap-vs-name-swap-operator-semantics"
   ],
   "concepts/kvalue": [
     "concepts/kline",
@@ -327,7 +328,8 @@
     "concepts/target-significance",
     "concepts/word-binding",
     "entities/kscript",
-    "sources/SRC-2026-08-11-001"
+    "sources/SRC-2026-08-11-001",
+    "sources/shape-swap-vs-name-swap-operator-semantics"
   ],
   "concepts/relationship": [
     "concepts/fit",
@@ -426,6 +428,7 @@
     "concepts/unknown",
     "entities/route",
     "sources/SRC-2026-08-11-001",
+    "sources/shape-swap-vs-name-swap-operator-semantics",
     "sources/wiki-duplicate-consolidation"
   ],
   "concepts/study": [
@@ -920,7 +923,11 @@
     "concepts/underfit-and-overfit"
   ],
   "sources/obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-": [],
+  "sources/obs-2026-09-15-connotes-denotes-shapes-swapped-connotes-is-the-compound-den": [
+    "sources/shape-swap-vs-name-swap-operator-semantics"
+  ],
   "sources/obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood": [],
+  "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],
   "sources/wiki-duplicate-consolidation": []

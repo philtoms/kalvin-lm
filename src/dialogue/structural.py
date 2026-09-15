@@ -46,7 +46,7 @@ class Grade:
 
 class SemanticEvidence:
     """The derived, cross-kline structure of a script: canon index, countersign
-    pairs, denotation/connotation edges — the undeclared backbone the entries
+    pairs, connotation/denotation edges — the undeclared backbone the entries
     hold collectively. Grows as entries join the harness answering pools
     (no look-ahead)."""
 

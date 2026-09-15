@@ -1,6 +1,6 @@
 """The pivot arm as Def 17 slot walk — consume licence and acquisition depth.
 
-The WDMH→MHALL alignment: M shared (cost 0), DH→H through the denotation
+The WDMH→MHALL alignment: M shared (cost 0), DH→H through the connotation
 (cost 1), the lone gap W grouped-filled from the pivot's leftovers priced
 by its real chain W→O→Q→ALL (cost 3). The proposal must strictly shrink
 the misfit mass against the pivot.
@@ -33,7 +33,7 @@ def _state() -> EngineState:
         KLine(WDMH, [W, DH, M]),  # the entry canon
         KLine(MHALL, [M, H, A, L, L]),  # the pivot
         KLine(DH, [D, H]),  # did-have canon
-        KLine(DH, [H]),  # denotation: did have -> had
+        KLine(DH, [H]),  # connotation: did have -> had
         KLine(W, [O]),  # what -> Object
         KLine(O, [Q]),  # Object -> Query
         KLine(Q, [ALL]),  # Query -> the object phrase

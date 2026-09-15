@@ -140,8 +140,8 @@ KScript syntax overview:
 - Relationship: `NAME > N1 N2`  (nodes listed after >)
 - Countersign: `SIG == N1 N2`  (bidirectional mapping)
 - Canonicalise: `SIG => N1 N2`  (unidirectional mapping)
+- Connote: `SIG > N1 N2`  (subjective mapping — the compound SIG+N1 connotes N1)
 - Denote: `SIG = N1 N2`  (objective mapping — SIG is an N1, an N2)
-- Connote: `SIG > N1 N2`  (subjective mapping — SIG is a kind of each node)
 
 All identifiers are UPPERCASE LETTERS ONLY (A–Z). Never use hex literals \
 (0x...) or numbers — KScript only accepts uppercase names. Each line \

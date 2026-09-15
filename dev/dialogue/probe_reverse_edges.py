@@ -1,4 +1,4 @@
-"""Prototype a reverse-edge connotateY and test WDMH=>MHALL expansion."""
+"""Prototype a reverse-edge denotate and test WDMH=>MHALL expansion."""
 import sys
 sys.path.insert(0, "src")
 from pathlib import Path
@@ -14,7 +14,7 @@ h.run(Path("data/scripts/wdmh-underfit.ks").read_text())
 state, sig = h.state, h.state.signifier
 
 
-def connotateR(self, start, depth=6):
+def denotateR(self, start, depth=6):
     """BFS from a node over forward sig edges AND reverse edges
     (bit-containment on signatures + node containment)."""
     frontier = [KLine(start, [])]
@@ -42,7 +42,7 @@ def connotateR(self, start, depth=6):
         frontier = nxt
 
 
-Cogitator.connotate = connotateR
+Cogitator.denotate = denotateR
 cog = Cogitator(state)
 
 def by_label(label):
@@ -51,8 +51,8 @@ def by_label(label):
 ws = [k for k in by_label("WDMH") if not is_terminal(k)]
 for w in ws[:1]:
     print("WDMH:", [n.label for n in w.nodes])
-    print("  connotateR from WDMH sig:")
-    for kl, hp in connotateR(cog, w.signature):
+    print("  denotateR from WDMH sig:")
+    for kl, hp in denotateR(cog, w.signature):
         print(f"    hops={hp} sig={kl.signature.label} nodes={[n.label for n in kl.nodes]}")
     for m in by_label("MHALL"):
         q_set, c_set = set(w.nodes), set(m.nodes)

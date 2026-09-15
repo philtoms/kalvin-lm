@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-15T05:38:22.029Z",
+  "last_updated": "2026-09-15T12:13:39.972Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2846,6 +2846,24 @@
       "created": "2026-09-14",
       "updated": "2026-09-14"
     },
+    "sources/obs-2026-09-15-connotes-denotes-shapes-swapped-connotes-is-the-compound-den": {
+      "type": "source",
+      "title": "Observation: CONNOTES/DENOTES shapes swapped — connotes is the compound, denotes the plain",
+      "tags": [
+        "kscript",
+        "compiler",
+        "connotation",
+        "denotation",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-15-connotes-denotes-shapes-swapped-connotes-is-the-compound-den",
+      "relevance": "high",
+      "observed_at": "2026-09-15T10:07:32.859Z",
+      "source_context": "Swapping CONNOTES/DENOTES compiled structures in the kscript compiler",
+      "created": "2026-09-15",
+      "updated": "2026-09-15"
+    },
     "sources/obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood": {
       "type": "source",
       "title": "Observation: WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain",
@@ -2862,6 +2880,15 @@
       "relevance": "high",
       "observed_at": "2026-09-15T05:38:21.949Z",
       "source_context": "Diagnosing missing WDMH proposal on wdmh-underfit-o.ks",
+      "created": "2026-09-15",
+      "updated": "2026-09-15"
+    },
+    "sources/shape-swap-vs-name-swap-operator-semantics": {
+      "type": "source",
+      "title": "Operator semantics swaps: move shapes or move names — the countersign test decides",
+      "category": "kscript",
+      "status": "insight",
+      "slug": "shape-swap-vs-name-swap-operator-semantics",
       "created": "2026-09-15",
       "updated": "2026-09-15"
     },

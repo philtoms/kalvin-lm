@@ -27,10 +27,11 @@ Significance, Relational Tokens, MTS, Word Binding, Annotation).
 
 | Token  | Name          | Emits                   | Structural meaning                                     |
 | ------ | ------------- | ----------------------- | ------------------------------------------------------ |
-| `==`   | COUNTERSIGNS  | `{A:[B]}` + `{B:[A]}`   | connotes+denotes shorthand; two traversable structures |
+| `==`   | COUNTERSIGNS  | `{A:[B]}` + `{B:[A]}`   | a pairwise denotes; two traversable structures         |
 | `=>`   | CANONICALISES | `{A: [B, C, D]}`        | A canonicalises its block operands into a single kline |
 | `>`    | CONNOTES      | `{AB: [B]}`             | A connotes B. Becomes IDENTITY when same token.        |
-| `=`    | DENOTES       | `{B: [A]}`              | A denotes B (note the reversed emission)               |
+| `<`    | RCONNOTES     | `{BA: [A]}`             | B connotes A, reversed reading (≡ `B > A`).            |
+| `=`    | DENOTES       | `{A: [B]}`              | A denotes B.                                           |
 | (none) | UNKNOWN       | `{A: []}` or `{A: [A]}` | ask, unless word-bound → identity                      |
 
 `MHALL == SVO` literally means: there is a structure `MHALL:[SVO]` and
@@ -59,8 +60,8 @@ opportunity for the agent, never an error.
    - `MHALL == SVO` A countersign. Kalvin is expected to ground this structure at S1.
    - `SVO => S V O` A canon. Kalvin is expected to verify this structure, and propose
      new structures if there are any gaps (eg `WDMH => M D H`).
-   - `S = M` a denotion. Kalvin is expected to ground this structure at S1.
-   - `O > ALL` a connotion. Kalvin is expected to ground this structure at S1.
+   - `S = M` a denotation. Kalvin is expected to ground this structure at S1.
+   - `O > ALL` a connotation. Kalvin is expected to ground this structure at S1.
    - `DMHAL` an unknown. Kalvin, recognising this structure is incomeplete, is
      expected to complete it. It is a crude but effective question-answer task.
 3. **Read the block shape** — a token with indented lines under it is a

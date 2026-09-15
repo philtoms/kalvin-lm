@@ -6,9 +6,9 @@ from grounded klines. Three proposal arms, in emission order:
 - **Pivots**: a grounded canon sharing a node with the entry's canon is a
   pivot; the entry's canon is aligned onto it and the pivot's word form is
   grafted on.
-- **Fills** (underfit only): connotations are gathered from the entry's
+- **Fills** (underfit only): denotations are gathered from the entry's
   nodes and its underfit gap's covering bridges; grounded canons whose
-  chains cross a connotation contribute the fills, graded by crossover
+  chains cross a denotation contribute the fills, graded by crossover
   distance. An overfit's excess nodes are swapped out.
 - **Reentry**: a proposal that is itself an ungrounded misfit is proposed
   from again, one hop further out.
@@ -141,7 +141,7 @@ class PivotFill:
             emitted += 1
             yield kv
         if _depth > 0:
-            # Reentry: each proposal's own nodes widen the connotation set;
+            # Reentry: each proposal's own nodes widen the denotation set;
             # propose from them to reach fills one hop further out.
             for target in self._reentry_targets(entry):
                 if emitted >= budget:
@@ -172,7 +172,7 @@ class PivotFill:
         underfit, overfit = classify_misfit(entry, signifier)
         out: list[KValue] = []
         if underfit:
-            conns = self._crossover_connotations(entry)
+            conns = self._crossover_denotations(entry)
             base_nodes = list(entry.nodes)
             for sig, hops in self._crossing_fills(entry, conns):
                 expanded = base_nodes + [sig]
@@ -194,7 +194,7 @@ class PivotFill:
         signifier = self._state.signifier
         if not underfit:
             return
-        conns = self._crossover_connotations(entry)
+        conns = self._crossover_denotations(entry)
         if not conns:
             return
         base_nodes = [
@@ -317,15 +317,15 @@ class PivotFill:
         """``sig -> hops`` over the edge-hop chain from ``sig`` (self at 0).
 
         Beyond the bucket edges, a canon's word has a containment edge into
-        it (hop 1): a word connotes the group the script defines it in. This
+        it (hop 1): a word denotes the group the script defines it in. This
         is what links a gap fill to the canon node it answers — e.g. WDMH's
-        ``what`` connotes Object = Query = ALL, whose canon carries
+        ``what`` denotes Object = Query = ALL, whose canon carries
         ``a, little, lamb``: the fills reach ``what``'s chain through it.
 
         Containment is one-directional credit: a proposal node may reach
         through a canon it belongs to, but the canon-side entities must
-        connotate by their own edges only — otherwise any two words sharing
-        a canon credit each other (co-occurrence, not connotation).
+        denotate by their own edges only — otherwise any two words sharing
+        a canon credit each other (co-occurrence, not denotation).
         """
         state = self._state
         signifier = self._state.signifier
@@ -484,7 +484,7 @@ class PivotFill:
         )
         return [path if path is not None else _MAX_HOP] * len(fills)
 
-    def _crossover_connotations(self, entry: KLine) -> dict[KNode, int]:
+    def _crossover_denotations(self, entry: KLine) -> dict[KNode, int]:
         """``sig -> min hops`` over edge-hop chains from the entry's nodes and
         from its underfit gap's covering bridges."""
         signifier = self._state.signifier
@@ -511,7 +511,7 @@ class PivotFill:
     def _crossing_candidates(
         self, entry: KLine, conns: dict[KNode, int]
     ) -> list[KLine]:
-        """Grounded canon klines whose edge-hop chains cross a connotation."""
+        """Grounded canon klines whose edge-hop chains cross a denotation."""
         signifier = self._state.signifier
         out: list[KLine] = []
         for candidate in self._state.where(
@@ -530,10 +530,10 @@ class PivotFill:
     def _crossing_fills(
         self, entry: KLine, conns: dict[KNode, int]
     ) -> dict[KNode, int]:
-        """``fill sig -> total hops`` for candidate values crossing a connotation.
+        """``fill sig -> total hops`` for candidate values crossing a denotation.
 
-        A candidate's signature or node is a fill when it reaches a connotation
-        through its own edge-hop chain; the distance is the connotation's hops
+        A candidate's signature or node is a fill when it reaches a denotation
+        through its own edge-hop chain; the distance is the denotation's hops
         plus the crossing hops.
         """
         fills: dict[KNode, int] = {}

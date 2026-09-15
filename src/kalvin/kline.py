@@ -306,10 +306,10 @@ def is_canon_evidence(kline: KLine, signifier: KSignifier) -> bool:
 def is_relationship(kline: KLine) -> bool:
     """Test whether a kline is a 1:1 relationship.
 
-    The connote/denote structural shape: a non-terminal misfit with exactly
+    The denote/connote structural shape: a non-terminal misfit with exactly
     one node (``{A: [B]}``, ``A != B``). The signature associates with a
     single other value. Band-agnostic — the band-true species are
-    :func:`is_connotation` (case 4) and :func:`is_denotation` (case 6).
+    :func:`is_denotation` (case 4) and :func:`is_connotation` (case 6).
     """
     return (
         len(kline.nodes) == 1
@@ -318,20 +318,22 @@ def is_relationship(kline: KLine) -> bool:
     )
 
 
-def is_connotation(kline: KLine, signifier: KSignifier) -> bool:
+def is_denotation(kline: KLine, signifier: KSignifier) -> bool:
     """Case 4: a 1:1 relationship whose node shares no atom with its signature.
 
-    Uncovered (no word-bit overlap) — S3.
+    Uncovered (no word-bit overlap) — S3. The `=` DENOTES shape; the
+    `==` COUNTERSIGNS halves are a pairwise denotes.
     """
     return is_relationship(kline) and not signifier.signifies(
         kline.nodes[0], kline.signature
     )
 
 
-def is_denotation(kline: KLine, signifier: KSignifier) -> bool:
+def is_connotation(kline: KLine, signifier: KSignifier) -> bool:
     """Case 6: a 1:1 relationship, covered, gap-only.
 
     The node overlaps the signature and carries no excess (``AB:[B]``) — S2.
+    The `>` CONNOTES shape.
     """
     if not is_relationship(kline):
         return False
@@ -396,7 +398,7 @@ def sig_level(kline: KLine, signifier: KSignifier) -> str:
     - S1 — the signature covers its nodes exactly (canon, identity).
     - S2 — at least one node is covered by the signature (shares a word
       bit — Def 8 overlap, not containment).
-    - S3 — no node is covered (connotation, misfit).
+    - S3 — no node is covered (denotation, misfit).
     - S4 — no nodes (unknown).
     """
     nodes = kline.nodes

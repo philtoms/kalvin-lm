@@ -39,7 +39,7 @@ from kalvin.kline import (
     KNode,
     is_canon,
     is_canon_evidence,
-    is_connotation as connotation_shape,
+    is_denotation as denotation_shape,
     is_identity,
 )
 
@@ -132,18 +132,18 @@ class EngineState:
         return None
 
     def is_countersignable(self, entry: KLine) -> bool:
-        """Is ``entry`` a connotation whose two operands both have canons?"""
-        if not self.is_connotation(entry):
+        """Is ``entry`` a denotation whose two operands both have canons?"""
+        if not self.is_denotation(entry):
             return False
         return (
             self.canon_nodes(entry.signature) is not None
             and self.canon_nodes(entry.nodes[0]) is not None
         )
 
-    def is_connotation(self, kline: KLine) -> bool:
+    def is_denotation(self, kline: KLine) -> bool:
         """Case 4: a 1:1 relationship whose node shares no atom with its
         signature (uncovered — S3)."""
-        return connotation_shape(kline, self._signifier)
+        return denotation_shape(kline, self._signifier)
 
 
     # -- work list (attention) ----------------------------------------

@@ -20,7 +20,7 @@ there; ``_split_excess`` partitions a kline's nodes by an excess residual.
 This module builds on the graph layer (``kalvin.expand``) only insofar as
 both share the significance algebra (``kalvin.significance``) and the model
 (``kalvin.model``); the dependency on expand itself is one-way and
-conceptual: expand walks the graph and yields connotations, proposals
+conceptual: expand walks the graph and yields denotations, proposals
 reshapes misfits into self-consistent klines. The significance-model
 grounding predicates (``is_terminal``, ``is_canon``, ``classify_misfit``) and the signifier
 interface (``residual``, ``signifies``,
@@ -58,7 +58,7 @@ def propose_expansions(
     Yields nothing if the candidate is canonical or not a misfit.
 
     The caller is responsible for pairing proposals with the correct query kline
-    for handler dispatch — for connotation yields from ``expand()``, the query
+    for handler dispatch — for denotation yields from ``expand()``, the query
     is the WorkItem's inbound query, not the yielded KValue's kline.
 
     Expansion proposals must carry decomposition information, so terminal

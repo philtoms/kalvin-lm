@@ -29,9 +29,9 @@ def _memory() -> list[KLine]:
         KLine(MHALL, [M, H, A, L, L]),  # B — held canon
         KLine(DH, [D, H]),  # canon
         KLine(ALL, [A, L, L]),  # canon
-        KLine(DH, [H]),  # denotation (S2)
-        KLine(W, [O]),  # connotation (S3)
-        KLine(ALL, [O]),  # connotation (S3)
+        KLine(DH, [H]),  # connotation (S2)
+        KLine(W, [O]),  # denotation (S3)
+        KLine(ALL, [O]),  # denotation (S3)
         KLine(M, [M]),  # identity — inert
     ]
 
@@ -47,7 +47,7 @@ def test_done_with_documented_trace():
     assert r.ending == "done"
     # Step 1: {d,h} ⇉ [dh] under dh:[d,h]
     assert r.trace[1] == [W, DH, M]
-    # Step 2: dh ⇉ [h] under dh:[h] (denotation), misfit mass 4→3
+    # Step 2: dh ⇉ [h] under dh:[h] (connotation), misfit mass 4→3
     assert r.trace[2] == [W, H, M]
     # Step 4 consumes the composed witness; final ≡ [h,m,a,l,l] multiset-wise
     assert Counter(map(int, r.trace[-1])) == Counter(map(int, [H, M, A, L, L]))
@@ -85,9 +85,9 @@ def test_stuck_at_entry_without_a_bridge():
 def _overfit_memory() -> list[KLine]:
     return [
         KLine(MHALL, [M, H, ALL]),  # B — held canon, overfit sealed in [all]
-        KLine(ALL, [O]),  # connotation
+        KLine(ALL, [O]),  # denotation
         KLine(ALL, [A, L, L]),  # canon
-        KLine(O, [M]),  # connotation — the bridge edge
+        KLine(O, [M]),  # denotation — the bridge edge
         KLine(M, [M]),  # identity — inert
     ]
 
@@ -128,7 +128,7 @@ def test_b_walk_arrival_without_resolution_does_not_ground():
     memory = [
         KLine(MHALL, [M, H, ALL]),
         KLine(ALL, [O]),
-        KLine(O, [MX]),  # connotation — arrives at a compound sharing M
+        KLine(O, [MX]),  # denotation — arrives at a compound sharing M
         KLine(M, [M]),
     ]
     r = Derivation(

@@ -1,7 +1,7 @@
 """The 1:1 relationship split — shape vs band-true species (kalvin-algebra.md §4).
 
-is_relationship is the band-agnostic shape; is_connotation is case 4
-(uncovered, S3); is_denotation is case 6 (covered, gap-only, S2).
+is_relationship is the band-agnostic shape; is_denotation is case 4
+(uncovered, S3); is_connotation is case 6 (covered, gap-only, S2).
 """
 
 from __future__ import annotations
@@ -28,17 +28,17 @@ def test_shape_is_band_agnostic():
     assert is_relationship(overlapping)
 
 
-def test_connotation_is_case_four():
+def test_connotation_is_case_six():
     signifier = NLPSignifier()
-    assert is_connotation(KLine(A, [B]), signifier)  # disjoint — S3
-    assert not is_connotation(KLine(AB, [B]), signifier)  # denotation — S2
-    assert not is_connotation(KLine(AB, [B | C]), signifier)  # overlap — S2
+    assert is_connotation(KLine(AB, [B]), signifier)  # covered, gap-only — S2
+    assert not is_connotation(KLine(A, [B]), signifier)  # denotation — S3
+    assert not is_connotation(KLine(AB, [B | C]), signifier)  # carries excess
 
 
-def test_denotation_is_case_six():
+def test_denotation_is_case_four():
     signifier = NLPSignifier()
-    assert is_denotation(KLine(AB, [B]), signifier)  # covered, gap-only
-    assert not is_denotation(KLine(A, [B]), signifier)  # uncovered
+    assert is_denotation(KLine(A, [B]), signifier)  # uncovered — S3
+    assert not is_denotation(KLine(AB, [B]), signifier)  # connotation — S2
     assert not is_denotation(KLine(AB, [B | C]), signifier)  # carries excess
     assert not is_denotation(KLine(A, [A]), signifier)  # identity — terminal
     assert not is_denotation(KLine(A, []), signifier)  # unknown — terminal

@@ -103,7 +103,7 @@ class Cogitator:
         while len(underfit) > 0:
             n=underfit.pop(0)
             preserve=True
-            for fwd_path in self.connotate(n):
+            for fwd_path in self.denotate(n):
                 right, hops = fwd_path.right, fwd_path.hops
                 for m_nodes in [overfit, fit]:
                     if right in m_nodes:
@@ -125,7 +125,7 @@ class Cogitator:
             underfit = remainder
             while len(overfit) > 0:
                 n=overfit.pop(0)
-                for fwd_path in self.connotate(n):
+                for fwd_path in self.denotate(n):
                     right, hops = fwd_path.right, fwd_path.hops
                     if right in rev_paths:
                         rev = rev_paths[right]
@@ -153,7 +153,7 @@ class Cogitator:
         return proposal, slots
 
 
-    def connotate(self, left: KNode, depth: int = MAX_HOP) -> Iterator[KPath]:
+    def denotate(self, left: KNode, depth: int = MAX_HOP) -> Iterator[KPath]:
         state = self._state
         signifier = self._state.signifier
         frontier: list[KNode] = [left]

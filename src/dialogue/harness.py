@@ -1060,7 +1060,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "-e", "--structural", action="store_true",
         help="Grade off-script asks with the structural supervisor: compiler "
-             "evidence (canons, countersigns, denotations) decides the band, "
+             "evidence (canons, countersigns, connotations) decides the band, "
              "S1 only when the script's proof completes.",
     )
     parser.add_argument(

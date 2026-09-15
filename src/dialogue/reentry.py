@@ -2,7 +2,7 @@
 
 Nothing is invented — every node in a proposal is either an original node,
 the node of a grounded signature required by the entry's signature, or the
-node of a grounded kline a required node connotates. Substitution is
+node of a grounded kline a required node denotates. Substitution is
 structural only; nothing is grafted by adjacency.
 
 An entry ``sig:[nodes]`` splits by structure:
@@ -19,7 +19,7 @@ Three arms:
 - **Underfit** — reenter under the same signature with the fit nodes plus
   the underfit signature's nodes; the reentry tends to the canon.
 - **Overfit** — an overfit node is admissible only as a structural
-  stand-in: a required node ``n`` whose connotation ``c`` (a grounded,
+  stand-in: a required node ``n`` whose denotation ``c`` (a grounded,
   non-terminal kline) accounts for the overfit nodes. The substitution
   ``o_sig = sig - n + c.signature`` yields a new head, reentered with the
   fit nodes plus ``c``'s nodes.
@@ -143,7 +143,7 @@ class Reentry:
         for n in sig_nodes:
             if emitted >= budget:
                 return
-            for c in self._connotate(n):
+            for c in self._denotate(n):
                 if emitted >= budget:
                     break
                 if not set(c.nodes) <= overfit_set:
@@ -218,7 +218,7 @@ class Reentry:
             out.append(kline.signature)
         return out
 
-    def _connotate(self, node: KNode) -> list[KLine]:
+    def _denotate(self, node: KNode) -> list[KLine]:
         """Grounded, non-terminal klines reached from ``node`` by edge hops."""
         out: list[KLine] = []
         for _, sig in self._edge_hops(node):
@@ -299,11 +299,11 @@ class Reentry:
         """``sig -> hops`` over the edge-hop chain from ``sig`` (self at 0).
 
         Beyond the bucket edges, a canon's word has a containment edge into
-        it (hop 1): a word connotes the group the script defines it in.
+        it (hop 1): a word denotes the group the script defines it in.
         Containment is one-directional credit: a proposal node may reach
         through a canon it belongs to, but the canon-side entities must
-        connotate by their own edges only — otherwise any two words sharing
-        a canon credit each other (co-occurrence, not connotation).
+        denotate by their own edges only — otherwise any two words sharing
+        a canon credit each other (co-occurrence, not denotation).
         """
         state = self._state
         signifier = self._state.signifier

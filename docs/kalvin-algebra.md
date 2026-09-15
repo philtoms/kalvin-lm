@@ -352,20 +352,20 @@ fit : V × V* → Shape
 
 assigns exactly one shape to every pair. Cases are evaluated in the following order; the first matching case determines the result.
 
-| Case | Condition              | Shape       | Band |
-| ---: | ---------------------- | ----------- | ---- |
-|    1 | ν = [] or s = ∅        | Unknown     | S4   |
-|    2 | ν = [s]                | Identity    | S1   |
-|    3 | s = σ(ν)               | Canon       | S1   |
-|    4 | not covered, \|ν\| = 1 | Connotation | S3   |
-|    5 | not covered, \|ν\| > 1 | No-fit      | S3   |
-|    6 | covered, u ≠ ∅, o = ∅  | Underfit    | S2   |
-|    7 | covered, u = ∅, o ≠ ∅  | Overfit     | S2   |
-|    8 | covered, u ≠ ∅, o ≠ ∅  | Under+over  | S2   |
+| Case | Condition              | Shape      | Band |
+| ---: | ---------------------- | ---------- | ---- |
+|    1 | ν = [] or s = ∅        | Unknown    | S4   |
+|    2 | ν = [s]                | Identity   | S1   |
+|    3 | s = σ(ν)               | Canon      | S1   |
+|    4 | not covered, \|ν\| = 1 | Denotation | S3   |
+|    5 | not covered, \|ν\| > 1 | No-fit     | S3   |
+|    6 | covered, u ≠ ∅, o = ∅  | Underfit   | S2   |
+|    7 | covered, u = ∅, o ≠ ∅  | Overfit    | S2   |
+|    8 | covered, u ≠ ∅, o ≠ ∅  | Under+over | S2   |
 
 The cases are disjoint because exactness is tested before the misfit cases, and coverage is tested before the S2 cases.
 
-If no node overlaps the head, the pair is necessarily an S3 case. Such a pair must therefore be classified as Connotation or No-fit rather than Under+over.
+If no node overlaps the head, the pair is necessarily an S3 case. Such a pair must therefore be classified as Denotation or No-fit rather than Under+over.
 
 The classifier is therefore:
 
@@ -387,7 +387,7 @@ def fit(s, nu):
     covered = any(n & s != ∅ for n in nu)
 
     if not covered:
-        return Connotation if len(nu) == 1 else NoFit
+        return Denotation if len(nu) == 1 else NoFit
 
     if underfit and not overfit:
         return Underfit
@@ -400,14 +400,14 @@ def fit(s, nu):
 
 The fit classifier ignores node order. It uses only evaluation, node count, and coverage.
 
-Duplication can affect the result when it changes node count. For example, `a:[a]` is Identity, while `a:[a,a]` is Canon. Similarly, `a:[b]` is Connotation, while `a:[b,b]` is No-fit.
+Duplication can affect the result when it changes node count. For example, `a:[a]` is Identity, while `a:[a,a]` is Canon. Similarly, `a:[b]` is Denotation, while `a:[b,b]` is No-fit.
 
 ### Species
 
 Two of the nine shapes have names of convenience:
 
-- **Denotation** is the single-node Underfit: `ab:[b]`, one covered node with an underfit only.
-- **Connotation** is case 4: `a:[b]`.
+- **Connotation** is the single-node Underfit: `ab:[b]`, one covered node with an underfit only.
+- **Denotation** is case 4: `a:[b]`.
 
 These names are used by the KScript surface syntax (§13); algebraically they are single-node instances of cases 6 and 4.
 
@@ -771,9 +771,9 @@ Suppose memory contains:
 mhall:[m,h,a,l,l]     Canon
 dh:[d,h]              Canon
 all:[a,l,l]           Canon
-dh:[h]                Denotation
-w:[o]                 Connotation
-all:[o]               Connotation
+dh:[h]                Connotation
+w:[o]                 Denotation
+all:[o]               Denotation
 m:[m]                 Identity
 ```
 
@@ -805,7 +805,7 @@ overfit  = {a,l}
 
 ### Step 1 — Canonicalise the verb
 
-The question arrives as bare word bits — d and h discontinuous around m — while the Denotation `dh:[h]` licenses a replace only at the composed granularity, on a dh node that does not yet exist, and no held kline has signature d. The derivation therefore surveys the unordered configurations of its nodes against held witnesses. The configuration {d,h} is exactly witnessed — d and h each cover dh, and the Canon `dh:[d,h]` counter-witnesses exactly them — so it contracts:
+The question arrives as bare word bits — d and h discontinuous around m — while the Connotation `dh:[h]` licenses a replace only at the composed granularity, on a dh node that does not yet exist, and no held kline has signature d. The derivation therefore surveys the unordered configurations of its nodes against held witnesses. The configuration {d,h} is exactly witnessed — d and h each cover dh, and the Canon `dh:[d,h]` counter-witnesses exactly them — so it contracts:
 
 ```text
 [d,h] ⇉ [dh]
@@ -819,9 +819,9 @@ giving:
 
 The value remains wdhm, so the targeting mismatch is unchanged. The contract is a witnessed move and spends no targeting budget; it exposes the granularity at which Step 2 can apply.
 
-### Step 2 — Apply denotation
+### Step 2 — Apply connotation
 
-The held Denotation:
+The held Connotation:
 
 ```text
 dh:[h]
@@ -853,13 +853,13 @@ w:[w]
 
 and crosses three correspondences:
 
-| Hop                 | Correspondence      | Direction      | Occurring side                        |
-| ------------------- | ------------------- | -------------- | ------------------------------------- |
-| w:[w] → w:[o]       | w:[o] Connotation   | forward        | head w occurs as a node               |
-| w:[o] → w:[all]     | all:[o] Connotation | reverse        | witness [o] occurs as a node multiset |
-| w:[all] → w:[a,l,l] | all:[a,l,l] Canon   | forward expand | head all occurs as a node             |
+| Hop                 | Correspondence     | Direction      | Occurring side                        |
+| ------------------- | ------------------ | -------------- | ------------------------------------- |
+| w:[w] → w:[o]       | w:[o] Denotation   | forward        | head w occurs as a node               |
+| w:[o] → w:[all]     | all:[o] Denotation | reverse        | witness [o] occurs as a node multiset |
+| w:[all] → w:[a,l,l] | all:[a,l,l] Canon  | forward expand | head all occurs as a node             |
 
-The second hop is the crossover. Nothing held maps w to the object content directly: w and all meet only at the shared node o. The walk arrives at o by the forward side of w:[o] and leaves by the reverse side of all:[o] — the same Connotation read from the other side licenses its mirror traversal, [o] ⇉ [all], because its witness occurs in the current nodes. Arrival orients the correspondence; the band does not.
+The second hop is the crossover. Nothing held maps w to the object content directly: w and all meet only at the shared node o. The walk arrives at o by the forward side of w:[o] and leaves by the reverse side of all:[o] — the same Denotation read from the other side licenses its mirror traversal, [o] ⇉ [all], because its witness occurs in the current nodes. Arrival orients the correspondence; the band does not.
 
 Two details do real work here. Occurrence is read on either side — the mirror clause (Definition 13) and the slot-walk licence (Definition 17): read forward-only, the walk would be stuck at w:[o], since no held kline is headed o. And the no-revisit policy (T2) forbids consuming w:[o] a second time, so the reverse occurrence at [o] cannot bounce the walk back to w — only all:[o] remains, and the walk is forced through the crossover.
 
@@ -893,7 +893,7 @@ The relationship is now Canon, so the derivation is done.
 
 The subject m is never replaced: `m:[m]` is Identity, inert.
 
-Had the Connotations not been held, no replace would reach the object underfit: the derivation would be stuck, and the misfit would ask. Had mhall itself not been held, there would be no goal to check done against.
+Had the Denotations not been held, no replace would reach the object underfit: the derivation would be stuck, and the misfit would ask. Had mhall itself not been held, there would be no goal to check done against.
 
 Read from the answer side, the same correspondences license the mirror derivation; the klines are direction-free, and arrival orients them.
 
@@ -1180,12 +1180,11 @@ The syntax specifies an intended structure; the algebra then determines the actu
 | ------------- | ------------------------------ | ---------------------- |
 | `a => b c d`  | `a:[b,c,d]`                    | S1 (Canon) or open S2  |
 | `a == b`      | `a:[b]` and `b:[a]`            | S1 on ratification     |
-| `a > b`       | `a:[b]`                        | S3                     |
-| `a < b`       | `b:[a]`                        | S3                     |
-| `a = b`       | `ab:[b]`                       | S2                     |
-| `a`           | `a:[]`                         | S4 — the ask           |
 | `a = a`       | `a:[a]`                        | S1                     |
+| `a > b`       | `ab:[b]`                       | S2                     |
+| `a = b`       | `a:[b]`                        | S3                     |
 | `a > a`       | `a:[a]`                        | S1                     |
+| `a`           | `a:[]`                         | S4 — the ask           |
 | ask-annotated | any signature marked as an ask | S4                     |
 
 The surface token does not override algebraic classification.
@@ -1221,15 +1220,15 @@ a:[b]
 b:[a].
 ```
 
-These are Connotation klines until the protocol ratifies them.
+These are Denotation klines until the protocol ratifies them.
 
-The `=` form creates:
+The `>` form creates:
 
 ```text
 ab:[b]
 ```
 
-which is a Denotation — a single-node Underfit — when a and b are distinct.
+which is a Connotation — a single-node Underfit — when a and b are distinct.
 
 A bare token:
 
@@ -1271,7 +1270,7 @@ Token expansion, word binding, and annotations belong to the implementation and 
 
 The algebra defines the relevant kline shapes. Ratification is a protocol operation that changes how those klines are treated.
 
-In particular, reciprocal Connotation pairs may be countersigned to create a standing one-hop correspondence. The correspondence then becomes reusable without the acquisition penalty associated with an unratified traversal.
+In particular, reciprocal Denotation pairs may be countersigned to create a standing one-hop correspondence. The correspondence then becomes reusable without the acquisition penalty associated with an unratified traversal.
 
 ---
 
@@ -1283,9 +1282,9 @@ Suppose memory contains:
 
 ```text
 mhall:[m,h,all]       Canon
-all:[o]               Connotation
+all:[o]               Denotation
 all:[a,l,l]           Canon
-o:[m]                 Connotation
+o:[m]                 Denotation
 m:[m]                 Identity
 ```
 
@@ -1327,10 +1326,10 @@ all:[all]
 
 and crosses two correspondences:
 
-| Hop               | Correspondence   | Direction | Occurring side             |
-| ----------------- | ---------------- | --------- | -------------------------- |
-| all:[all] → all:[o] | all:[o] Connotation | forward | head all occurs as a node |
-| all:[o] → all:[m] | o:[m] Connotation | forward   | head o occurs as a node    |
+| Hop                 | Correspondence     | Direction | Occurring side            |
+| ------------------- | ------------------ | --------- | ------------------------- |
+| all:[all] → all:[o] | all:[o] Denotation | forward   | head all occurs as a node |
+| all:[o] → all:[m]   | o:[m] Denotation   | forward   | head o occurs as a node   |
 
 The second hop arrives: content m overlaps σ(ν_A) — the anchor, discovered on arrival. Neither end refines — the anchor is already a node of ν_A, and the departed end is a node of ν_B, at the goal's own witness resolution. The terminal is the arrival state, two edges crossed.
 

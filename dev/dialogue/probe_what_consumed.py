@@ -32,8 +32,8 @@ u, o, f = list(q_set - c_set), list(c_set - q_set), list(q_set & c_set)
 print("pair WDMH:", [n.label for n in w[0].nodes], "vs MHALL:", [n.label for n in m.nodes])
 
 what = [n for n in u if n.label == "what"][0]
-print("== connotateY('what') yields ==")
-for kl, hops in cog.connotate(what):
+print("== denotate('what') yields ==")
+for kl, hops in cog.denotate(what):
     print(f"  hops={hops} sig={kl.signature.label!r} nodes={[n.label for n in kl.nodes]}")
     for name, m_nodes in (("overfit", o[:]), ("fit", f[:])):
         if kl.signature in m_nodes:

@@ -63,7 +63,7 @@ A node is covered by a value when they share at least one atom — overlap, not 
 The total classifier `fit : V × V* → Shape` — one function, two readings: a kline's own fit (the claim it makes standing alone) and the relationship fit `fit(C(A,B))` (what a pair establishes). Nine shapes, four bands; every pair matches exactly one (Def 10, §11).
 
 **Shape**:
-One of the nine fit cases — Canon, Identity, Underfit, Overfit, Under+over, Denotation, Connotation, No-fit, Unknown. Underfit and Overfit also name the misfit quantities (Def 9): the atoms the signature claims beyond its nodes, and the atoms the nodes carry beyond the signature. Denotation (single-node Underfit) and Connotation (uncovered single-node) are names of convenience for KScript; algebraically they are single-node instances of cases 6 and 4 (Def 10).
+One of the nine fit cases — Canon, Identity, Underfit, Overfit, Under+over, Connotation, Denotation, No-fit, Unknown. Underfit and Overfit also name the misfit quantities (Def 9): the atoms the signature claims beyond its nodes, and the atoms the nodes carry beyond the signature. Connotation (single-node Underfit) and Denotation (uncovered single-node) are names of convenience for KScript; algebraically they are single-node instances of cases 6 and 4 (Def 10).
 
 **Band**:
 The structural form of significance — the fit's tier, ordered S1 > S2 > S3 > S4, shapes within a band unordered:
@@ -91,8 +91,8 @@ The nine structures, the band each claims, and the replace licence each doubles 
 | Underfit    | `ABC:[A,C]`   | S2   | shed fwd, adopt rev | `ABC => A C`   |
 | Overfit     | `AB:[A,B,C]`  | S2   | adopt fwd, shed rev | `AB => A B C`  |
 | Under+over  | `ABC:[B,C,D]` | S2   | shed and adopt      | `ABC => B C D` |
-| Denotation  | `AB:[B]`      | S2   | shed                | `A = B`        |
-| Connotation | `A:[B]`       | S3   | traverse            | `A > B`        |
+| Connotation | `AB:[B]`      | S2   | shed                | `A > B`        |
+| Denotation  | `A:[B]`       | S3   | traverse            | `A = B`        |
 | No-fit      | `AB:[C,D]`    | S3   | traverse            | `AB => C D`    |
 | Unknown     | `A:[]`        | S4   | inert — the ask     | `A`            |
 
@@ -183,15 +183,15 @@ The unit of exchange between participants — a KLine paired with a significance
 The language that authors training material. A script is an encounter in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step.
 
 **Token ID**:
-A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word half (upper 32 bits) carries one bit per distinct word — the atoms' engine realisation — assigned first-encountered at bits 0–30, bit 31 reserved for ASK. A multi-subword word is one word and one bit; a compound (MTS signature, DENOTES concatenation) composes no bit of its own — it is the OR-reduction of its component words' values.
+A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word half (upper 32 bits) carries one bit per distinct word — the atoms' engine realisation — assigned first-encountered at bits 0–30, bit 31 reserved for ASK. A multi-subword word is one word and one bit; a compound (MTS signature, CONNOTES concatenation) composes no bit of its own — it is the OR-reduction of its component words' values.
 
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
 
-- `==` **COUNTERSIGNS** — reciprocal pair `{A:[B]}`, `{B:[A]}`
+- `==` **COUNTERSIGNS** — reciprocal pair `{A:[B]}`, `{B:[A]}` — a pairwise denotes
 - `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
-- `>` / `<` **CONNOTES** — `{A:[B]}`; `A < B` ⇒ `B:[A]` (the identifier reverses to match the reading direction). Self-reference collapses to Identity
-- `=` **DENOTES** — the compound-signature shape `A = B` ⇒ `{AB:[B]}`: the signature is the compound of both operands, the node the denoted value. Self-denote collapses to Identity
+- `>` / `<` **CONNOTES** — the compound-signature shape `A > B` ⇒ `{AB:[B]}`, `A < B` ⇒ `{BA:[A]}` (reading order, `A < B ≡ B > A`): the signature is the compound of both operands, the node the connoted value. Self-reference collapses to Identity
+- `=` **DENOTES** — `{A:[B]}`: the signature denotes each node. Self-denote collapses to Identity
 - none **UNKNOWN** — a bare signature: unbound compiles to `{A:[]}` (the ask); word-bound to Identity `{A:[A]}`
 - **ASK** — a bare compound or sigless annotation: keeps its original signature with the ASK bit marking it, so any signature can be an ask. S4
 
@@ -248,7 +248,7 @@ The Trainer deferring a proposal to the supervisor when its cogitation yields no
 _Avoid_: auto-ratify failure
 
 **Semantic Evidence**:
-The correspondences a KScript's entries hold collectively but no single kline declares: the canon index, countersign pairs, and denotation/connotation edges. Emitted by compilation as derived structure, it carries the script's intended significance.
+The correspondences a KScript's entries hold collectively but no single kline declares: the canon index, countersign pairs, and connotation/denotation edges. Emitted by compilation as derived structure, it carries the script's intended significance.
 
 **Target Significance**:
 The band a KScript production op declares — the answer key a trainee must learn to derive, not a measurement of any one kline.

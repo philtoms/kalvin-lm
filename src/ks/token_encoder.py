@@ -21,7 +21,7 @@ Node layout (the compiler's packing, distinct from the raw tokenizer)::
 
 A compound signature (MTS, e.g. ``MHALL``) is not a word: its signature
 is the OR-reduction of its component words' values — one bit per word
-(5 words → 5 bits). A DENOTES concatenation signature (``SubjectM`` =
+(5 words → 5 bits). A CONNOTES concatenation signature (``SubjectM`` =
 ``Subject`` + ``M`` — the compound sitting in the sig's slot) is a
 compound the same way: its value is the OR of its component words — it
 never takes a word bit. The entry's ``concat`` field carries the
@@ -39,8 +39,8 @@ Encoding rules:
 Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.significance.band_significance(op), computed from the production op at
 encode time (never from dbg):
-    COUNTERSIGNS → S2    DENOTES → S2    CANONICALISES → S2
-    CONNOTES → S3      UNKNOWN → S4      MTS → S1
+    COUNTERSIGNS → S2    CONNOTES → S2    CANONICALISES → S2
+    DENOTES → S3      UNKNOWN → S4      MTS → S1
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.significance.band_significance, kalvin.abstract.KTokenizer,
@@ -187,7 +187,7 @@ class TokenEncoder:
         # compound sigs defer to step 3 below; everything else encodes the
         # sig as a word — a multi-subword sig is still one word (one bit),
         # and heads its kline like any other sig — including an empty-form
-        # UNKNOWN and the CONNOTES head word.
+        # UNKNOWN and the DENOTES head word.
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
         elif entry.concat is not None or is_compound_def or is_compound_sig:
@@ -214,7 +214,7 @@ class TokenEncoder:
         #    (the signature is a registry lookup, not a per-entry
         #    reduction of nodes).
         if entry.concat is not None and not is_compound_ref:
-            # Synthesized compound signature (DENOTES concat — the compound
+            # Synthesized compound signature (CONNOTES concat — the compound
             # in the sig's slot, e.g. AB:[B]): composes from its components
             # like any compound, never takes a word bit, and registers
             # under its identifier so later references reuse the value.
