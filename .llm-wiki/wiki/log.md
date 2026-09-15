@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-09-15
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood","title":"WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain"}
+
 ## 2026-09-14
 
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-14-derivation-engine-port-committed-73e4eba","title":"Derivation engine port committed (73e4eba)"}

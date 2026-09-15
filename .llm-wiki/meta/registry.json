@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-14T22:34:09.137Z",
+  "last_updated": "2026-09-15T05:38:22.029Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2845,6 +2845,25 @@
       "source_context": "Wiki lint remediation after /wiki-lint --fix",
       "created": "2026-09-14",
       "updated": "2026-09-14"
+    },
+    "sources/obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood": {
+      "type": "source",
+      "title": "Observation: WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain",
+      "tags": [
+        "derivation",
+        "engine",
+        "goal-enumeration",
+        "walk-bound",
+        "flood",
+        "wdmh"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood",
+      "relevance": "high",
+      "observed_at": "2026-09-15T05:38:21.949Z",
+      "source_context": "Diagnosing missing WDMH proposal on wdmh-underfit-o.ks",
+      "created": "2026-09-15",
+      "updated": "2026-09-15"
     },
     "sources/stm-cascade-removals-orphan-check": {
       "type": "source",

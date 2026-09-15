@@ -31,6 +31,8 @@ from kalvin.significance import (
 MAX_STEPS = 32
 #: T2-class strategy bound: edges per slot walk.
 MAX_WALK_EDGES = 8
+#: T2-class strategy bound: states expanded per slot walk.
+MAX_WALK_STATES = 256
 
 
 @dataclass
@@ -67,6 +69,7 @@ class Derivation:
         *,
         max_steps: int = MAX_STEPS,
         max_walk_edges: int = MAX_WALK_EDGES,
+        max_walk_states: int = MAX_WALK_STATES,
         delta: float = DEFAULT_DELTA,
         b_walks: bool = True,
     ) -> None:
@@ -76,6 +79,7 @@ class Derivation:
         self.signifier = signifier
         self.max_steps = max_steps
         self.max_walk_edges = max_walk_edges
+        self.max_walk_states = max_walk_states
         self.delta = delta
         self.b_walks = b_walks
         self._composed_keys: set[tuple[int, tuple[int, ...]]] = set()

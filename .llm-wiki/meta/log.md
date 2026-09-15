@@ -479,3 +479,6 @@
 ## [2026-09-14T22:34:09.053Z] observe
 - slug: "obs-2026-09-14-derivation-engine-port-committed-73e4eba", title: "Derivation engine port committed (73e4eba)", relevance: "medium"
 
+## [2026-09-15T05:38:21.951Z] observe
+- slug: "obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood", title: "WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain", relevance: "high"
+

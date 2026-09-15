@@ -32,6 +32,8 @@ from dialogue.engine_state import EngineState
 MAX_STEPS = 32
 #: T2-class strategy bound: edges per slot walk.
 MAX_WALK_EDGES = 8
+#: T2-class strategy bound: states expanded per slot walk.
+MAX_WALK_STATES = 256
 
 
 @dataclass
@@ -65,6 +67,7 @@ class Derivation:
         *,
         max_steps: int = MAX_STEPS,
         max_walk_edges: int = MAX_WALK_EDGES,
+        max_walk_states: int = MAX_WALK_STATES,
         delta: float = DEFAULT_DELTA,
         b_walks: bool = True,
     ) -> None:
@@ -72,6 +75,7 @@ class Derivation:
         self.signifier = memory.signifier
         self.max_steps = max_steps
         self.max_walk_edges = max_walk_edges
+        self.max_walk_states = max_walk_states
         self.delta = delta
         self.b_walks = b_walks
 
@@ -215,14 +219,16 @@ class Derivation:
             end_mask = self.excess()
         queue: deque = deque([([slot], frozenset(), 0, [])])
         seen = {(int(slot),)}
+        expanded = 0
         while queue:
             nodes, used, edges, path = queue.popleft()
             if edges and self.signifier.signifies(
                 self.signifier.signature_of(nodes), end_mask
             ):
                 return nodes, edges, path
-            if edges >= self.max_walk_edges:
+            if edges >= self.max_walk_edges or expanded >= self.max_walk_states:
                 continue
+            expanded += 1
             for k in self.memory.where(lambda k: self.usable(k)):
                 key = (k.signature, tuple(n for n in k.nodes))
                 if key in used:

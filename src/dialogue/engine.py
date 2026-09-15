@@ -29,6 +29,7 @@ from kalvin.kvalue import KValue
 from kalvin.significance import (
     BandLayout,
     gamma_to_byte,
+    misfit_mass,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -136,15 +137,18 @@ class Engine:
             if self._state.is_groundable(kline):
                 self._ground(kline)
 
+            # The gate is relational, not internal: a question is canon-shaped
+            # (well-formed), and its misfit lives in C(entry, B) against some
+            # held goal — the derivation runs when such a B exists.
             for candidate in self._select(kline):
-                result = self._misfit.derive(kline, candidate)
-                if result.ending != "done" or len(result.trace) < 2:
-                    # Stuck and abandoned ask; done at entry is the ground
-                    # path's, not a proposal.
-                    continue
-                proposal = KLine(kline.signature, result.trace[-1])
-                if not self._state.is_refused(proposal):
-                    batch.append(KValue(proposal, gamma_to_byte(result.gamma)))
+                    result = self._misfit.derive(kline, candidate)
+                    if result.ending != "done" or len(result.trace) < 2:
+                        # Stuck and abandoned ask; done at entry is the ground
+                        # path's, not a proposal.
+                        continue
+                    proposal = KLine(kline.signature, result.trace[-1])
+                    if not self._state.is_refused(proposal):
+                        batch.append(KValue(proposal, gamma_to_byte(result.gamma)))
 
             if self._state.is_grounded(kline):
                 self._state.remove_work_at(idx)
@@ -175,12 +179,21 @@ class Engine:
                         break
 
     def _select(self, entry: KLine) -> Iterator[KLine]:
-        """Held non-terminal klines whose signature occurs as a node of
-        ``entry`` — Def 16: selection is occurrence, not content overlap;
-        terminals (unknowns, identities) offer no second side."""
+        """Goal candidates (Def 14): held non-terminal klines whose
+        relationship to ``entry`` is S2 — the misfit region connects the
+        parties. Ordered by ascending misfit mass, closest content first.
+        Definition 16 selection (occurrence) governs evidence inside the
+        derivation, not the choice of goal."""
+        sig = self._state.signifier
+        content = sig.signature_of(entry.nodes)
+        cands: list[tuple[int, KLine]] = []
         for kline in self._state.where(
-            lambda k: k.signature != entry.signature
-            and not is_terminal(k)
-            and k.signature in entry.nodes
+            lambda k: k.signature != entry.signature and not is_terminal(k)
         ):
+            rel = KLine(content, kline.nodes)
+            if sig_level(rel, sig) != "S2":
+                continue
+            mass = misfit_mass(content, sig.signature_of(kline.nodes))
+            cands.append((mass, kline))
+        for _, kline in sorted(cands, key=lambda t: t[0]):
             yield kline
