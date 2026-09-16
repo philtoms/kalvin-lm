@@ -112,7 +112,7 @@ engine bugs. Typical retreats:
   identity the harness could offer, add a second question, invert
   ordering deliberately.
 - **Test a theory.** A minimal `.ks` constructed to exercise one engine
-  path (a single countersign; a lone unseen canon; a denotes with no
+  path (a single `==` ask with its goal; a lone unseen canon; a denotes with no
   reciprocal) is the fastest way to confirm or refute a hypothesis about
   engine behaviour.
 
@@ -150,7 +150,7 @@ header. Always compile the `.ks` to ensure there are no errors.
 - **Stop** when grounded + work_list match the trainer expectation and
   the suite passes.
 - **Ask the user** only on a genuine engine-semantics fork (e.g.
-  "should a countersign require compositional operands, or just two
+  "should a `==` goal require compositional operands, or just two
   grounded values?"). Do not ask permission to treat engine behaviour as
   suspect — that is the core activity.
 ```

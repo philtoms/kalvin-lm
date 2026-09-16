@@ -146,6 +146,7 @@
 - [Observation: CONNOTES/DENOTES shapes swapped — connotes is the compound, denotes the plain](obs-2026-09-15-connotes-denotes-shapes-swapped-connotes-is-the-compound-den.md)
 - [Observation: Kalvin algebra translated to verified Maude template](obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template.md)
 - [Observation: WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain](obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood.md)
+- [Observation: COUNTERSIGNS `==` recompiled as ask + implied goal](obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal.md)
 - [Observation: Def 16 rebuilt: pool via Def 8 coverage, order via descending γ significance](obs-2026-09-16-def-16-rebuilt-pool-via-def-8-coverage-order-via-descending-.md)
 - [Observation: Def 16 rewritten: node-fit selection, flow-control purpose, no pre-supposed derivation results](obs-2026-09-16-def-16-rewritten-node-fit-selection-flow-control-purpose-no-.md)
 - [Observation: Def 16 simplified: positive prose only, critique rhetoric removed](obs-2026-09-16-def-16-simplified-positive-prose-only-critique-rhetoric-remo.md)

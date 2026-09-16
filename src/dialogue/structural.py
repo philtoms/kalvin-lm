@@ -45,8 +45,8 @@ class Grade:
 
 
 class SemanticEvidence:
-    """The derived, cross-kline structure of a script: canon index, countersign
-    pairs, connotation/denotation edges — the undeclared backbone the entries
+    """The derived, cross-kline structure of a script: canon index,
+    connotation/denotation edges — the undeclared backbone the entries
     hold collectively. Grows as entries join the harness answering pools
     (no look-ahead)."""
 
@@ -79,7 +79,7 @@ class SemanticEvidence:
 
         Identity and canon by the universal grounding rule (canon needs its
         nodes groundable — self-denoting); a declared relationship
-        (COUNTERSIGNS/DENOTES/CONNOTES) is proven by its own declaration.
+        (DENOTES/CONNOTES) is proven by its own declaration.
         Underfit/overfit questions never ground — they are the asks."""
         if self._dirty:
             seeds = {n for v in self._entries for n in v.kline.nodes}
@@ -115,7 +115,7 @@ class SemanticEvidence:
         if nodes == [kline.signature]:
             return True  # identity
         if is_relationship(kline) and kline.dbg and kline.dbg.op in (
-            "COUNTERSIGNS", "DENOTES", "CONNOTES"
+            "DENOTES", "CONNOTES"
         ):
             return True  # declared proof
         if is_canon(kline, sig):

@@ -39,7 +39,7 @@ Encoding rules:
 Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.significance.band_significance(op), computed from the production op at
 encode time (never from dbg):
-    COUNTERSIGNS → S2    CONNOTES → S2    CANONICALISES → S2
+    ASK → S4         CONNOTES → S2    CANONICALISES → S2
     DENOTES → S3      UNKNOWN → S4      MTS → S1
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,

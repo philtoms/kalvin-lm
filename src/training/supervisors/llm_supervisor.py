@@ -138,7 +138,8 @@ expectations and proposals, and write KScript that bridges the gap.
 KScript syntax overview:
 - Identity: `NAME`  (uppercase identifiers, e.g. M, H, MH)
 - Relationship: `NAME > N1 N2`  (nodes listed after >)
-- Countersign: `SIG == N1 N2`  (bidirectional mapping)
+- Countersign: `A == B => N1 N2`  (goal-targeted training: A is the queued
+  ask `A: []`, B the implied goal `B: [N1, N2]`)
 - Canonicalise: `SIG => N1 N2`  (unidirectional mapping)
 - Connote: `SIG > N1 N2`  (subjective mapping — the compound SIG+N1 connotes N1)
 - Denote: `SIG = N1 N2`  (objective mapping — SIG is an N1, an N2)

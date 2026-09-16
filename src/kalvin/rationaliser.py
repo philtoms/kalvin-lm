@@ -266,8 +266,9 @@ class Rationaliser:
                 return True
 
         # Register in STM before the ratification check so sequential
-        # countersign pairs (e.g. from `M == H` compiling to {M: H} and
-        # {H: M}) can find each other via model.is_countersigned.
+        # countersign pairs (from the runtime countersign action, which
+        # builds the reciprocal) can find each other via
+        # model.is_countersigned.
         self._model.add_to_stm(kline)
 
         # Ratification — countersigned in the model → S1. Only countersign

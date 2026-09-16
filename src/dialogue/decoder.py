@@ -30,7 +30,7 @@ BAND_TO_SIG: dict[str, int] = {
 Role = Literal["T", "K"]  # trainer (T) or trainee (K)
 OnDivergence = Literal["fail", "accept"]
 DIALOGUE_OPS = frozenset(
-    {"COUNTERSIGNS", "CANONICALISES", "CONNOTES", "DENOTES", "IDENTITY", "UNKNOWN"}
+    {"CANONICALISES", "CONNOTES", "DENOTES", "IDENTITY", "UNKNOWN"}
 )
 
 
@@ -137,11 +137,11 @@ def _resolve_script(
                 f"compiled entry 0x{kl.signature:x} has no debug info "
                 "— dev compile invariant broken"
             )
-        # Canon-by-label: populated for any compiled canon (COUNTERSIGNS or
-        # CANONICALISES with nodes) so node/signature resolution can prefer it.
-        if d.op in ("CANONICALISES", "COUNTERSIGNS") and kl.nodes and d.label:
+        # Canon-by-label: populated for any compiled canon (CANONICALISES
+        # with nodes) so node/signature resolution can prefer it.
+        if d.op == "CANONICALISES" and kl.nodes and d.label:
             resolved.canon_by_label.setdefault(d.label, kl)
-        if d.op in ("COUNTERSIGNS", "CONNOTES", "DENOTES") and d.label:
+        if d.op in ("CONNOTES", "DENOTES") and d.label:
             resolved.relation_by_label.setdefault(d.label, kl)
         # Label index: atom/compound dbg.label (covers single-token
         # subwords too — ``label`` defaults to the decoded text).
@@ -220,7 +220,7 @@ def _resolve_kline(
         node_sigs = _resolve_node_signatures(nodes, resolved, op="IDENTITY")
         return KLine(kl.signature, node_sigs, dbg=kl.dbg)
 
-    # Constructed relation (CONNOTES/DENOTES/COUNTERSIGNS).
+    # Constructed relation (CONNOTES/DENOTES).
     node_sigs = _resolve_node_signatures(nodes, resolved, op="relation")
     sig_kl = (
         resolved.relation_by_label.get(signature)

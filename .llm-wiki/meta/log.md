@@ -533,3 +533,6 @@
 ## [2026-09-16T12:50:53.643Z] observe
 - slug: "obs-2026-09-16-engine-select-entry-point-rewired-to-hop-harness-diff-shows-", title: "Engine select entry point rewired to Hop; harness diff shows junk proposals eliminated", relevance: "critical"
 
+## [2026-09-16T13:04:10.440Z] observe
+- slug: "obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal", title: "COUNTERSIGNS `==` recompiled as ask + implied goal", relevance: "high"
+

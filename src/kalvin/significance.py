@@ -81,7 +81,7 @@ _MAX_INTERIOR_DISTANCE: int = 0xFE
 
 # Band-representative significance values — the canonical bytes a producer
 # stamps when asserting a band rather than computing a grade (the compiler,
-# the countersign reciprocal, band_significance). Computed values from
+# the runtime countersign ratification, band_significance). Computed values from
 # expand() may be any byte within a band, not only the representative.
 #
 # Fixed (not derived from a BandLayout): structural significance marks *which
@@ -112,7 +112,6 @@ LEVEL_TO_SIG: dict[str, int] = {
 # self-connote) maps to SIG_S1; UNKNOWN (empty, orphan) maps to SIG_S4;
 # unknown ops default to SIG_S4.
 _OP_TO_SIG: dict[str, int] = {
-    "COUNTERSIGNS": SIG_S2,
     "CANONICALISES": SIG_S2,
     "DENOTES": SIG_S3,
     "CONNOTES": SIG_S2,

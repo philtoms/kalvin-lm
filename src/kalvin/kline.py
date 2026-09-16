@@ -115,7 +115,7 @@ class KDbg:
     by misfit expansions and model duplication.
 
     Attributes:
-        op: Structural relationship (COUNTERSIGNS, DENOTES, CONNOTES,
+        op: Structural relationship (ASK, DENOTES, CONNOTES,
             CANONICALISES, UNKNOWN).
         label: Origin word or operator context.
         decoded: Tokenizer decode of the signature (actual subword text).
@@ -321,8 +321,7 @@ def is_relationship(kline: KLine) -> bool:
 def is_denotation(kline: KLine, signifier: KSignifier) -> bool:
     """Case 4: a 1:1 relationship whose node shares no atom with its signature.
 
-    Uncovered (no word-bit overlap) — S3. The `=` DENOTES shape; the
-    `==` COUNTERSIGNS halves are a pairwise denotes.
+    Uncovered (no word-bit overlap) — S3. The `=` DENOTES shape.
     """
     return is_relationship(kline) and not signifier.signifies(
         kline.nodes[0], kline.signature
@@ -380,10 +379,10 @@ def classify_misfit(
 # Display helpers
 
 _OP_SYMBOLS = {
-    "COUNTERSIGNS": "==",
     "DENOTES": "=",
     "CONNOTES": ">",
     "CANONICALISES": "=>",
+    "ASK": "?",
     "UNKNOWN": None,
 }
 

@@ -27,18 +27,18 @@ Significance, Relational Tokens, MTS, Word Binding, Annotation).
 
 | Token  | Name          | Emits                   | Structural meaning                                     |
 | ------ | ------------- | ----------------------- | ------------------------------------------------------ |
-| `==`   | COUNTERSIGNS  | `{A:[B]}` + `{B:[A]}`   | a pairwise denotes; two traversable structures         |
+| `==`   | COUNTERSIGNS  | `{A:[]}` + goal `{B:[C,D]}` | goal-targeted training: A is the queued ask (S4), B the implied goal from the `=>` block |
 | `=>`   | CANONICALISES | `{A: [B, C, D]}`        | A canonicalises its block operands into a single kline |
 | `>`    | CONNOTES      | `{AB: [B]}`             | A connotes B. Becomes IDENTITY when same token.        |
 | `<`    | RCONNOTES     | `{BA: [A]}`             | B connotes A, reversed reading (≡ `B > A`).            |
 | `=`    | DENOTES       | `{A: [B]}`              | A denotes B.                                           |
 | (none) | UNKNOWN       | `{A: []}` or `{A: [A]}` | ask, unless word-bound → identity                      |
 
-`MHALL == SVO` literally means: there is a structure `MHALL:[SVO]` and
-its counterpart `SVO:[MHALL]`, so The engine can traverse from one concept to the
-other. An agent reading the script can see a route from MHALL via SVO to
-other parts of the script. Whether "MHALL is a kind of SVO" is a useful
-gloss is up to the agent.
+`MHALL == SVO => ...` literally means: queue `MHALL:[]` — the ask at
+S4 — with `SVO:[block operands]` as the implied goal. No reciprocal
+pair is compiled. The engine still selects its own goals (the goal is
+just another held kline to it); the goal exists so the agent running
+the session can grade Kalvin's proposals against the true answer.
 
 ## MTS and annotations
 
@@ -57,7 +57,9 @@ opportunity for the agent, never an error.
    is asking. `(did Mary have a lamb)` over a bare `DMHAL` tells you the
    ask; without the annotation you have opaque structure.
 2. **Read the first relation in a block** — it defines Kalvin's task:
-   - `MHALL == SVO` A countersign. Kalvin is expected to ground this structure at S1.
+   - `MHALL == SVO => ...` goal-targeted training. `MHALL:[]` is queued at
+     S4; `SVO:[...]` is the implied goal. Kalvin is expected to propose
+     toward the goal — grade its proposals against it.
    - `SVO => S V O` A canon. Kalvin is expected to verify this structure, and propose
      new structures if there are any gaps (eg `WDMH => M D H`).
    - `S = M` a denotation. Kalvin is expected to ground this structure at S1.
@@ -99,8 +101,8 @@ theory or shake up a settled engine — never to work around an engine bug
    decode against when reading the run. It can be anything, but keep it
    simple, and keep it consistent. Bad annotations don't show up as compiler
    errors, the just silently mislead you.
-2. **Choose tokens that express the teaching.** `==` for mutual
-   traversability, `=>` to break down a signtature into more detail, `>` and
+2. **Choose tokens that express the teaching.** `==` to pair an ask with
+   its true goal, `=>` to break down a signtature into more detail, `>` and
    `=` for connotation/denotation edges. Don't be afraid to use multiple connotations
    if you think that steps from `M(ary) > G(irl) > O(bject)` offerts better teaching
    opportunities. But if you do that, make sure you exercise them further down the script.
@@ -129,7 +131,8 @@ AI > T
 DGFAI
 ```
 
-The first block lays out the first ask: Ground `GFAI == SVO`. The scaffolding
+The first block lays out the first ask: `GFAI:[]` is queued at S4 with
+`SVO:[...]` its implied goal. The scaffolding
 is there to verify that Kalvin is grounding the ask correctly but it has a deliberate
 gap. Kalvin won't be able to understand `AI` from this block alone. It needs to wait.
 The next block fills the gap. Expect Kalvin to ground this, and then revisit and

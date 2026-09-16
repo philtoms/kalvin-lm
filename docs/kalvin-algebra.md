@@ -1186,7 +1186,7 @@ The syntax specifies an intended structure; the algebra then determines the actu
 | Token         | Structure                      | Band claim once solved |
 | ------------- | ------------------------------ | ---------------------- |
 | `a => b c d`  | `a:[b,c,d]`                    | S1 (Canon) or open S2  |
-| `a == b`      | `a:[b]` and `b:[a]`            | S1 on ratification     |
+| `a == b => c d` | `a:[]` (the ask) and the goal `b:[c,d]` | S4 ask; goal S1 or S2 per scaffolding |
 | `a = a`       | `a:[a]`                        | S1                     |
 | `a > b`       | `ab:[b]`                       | S2                     |
 | `a = b`       | `a:[b]`                        | S3                     |
@@ -1217,17 +1217,27 @@ a = σ([b,c,d]).
 Similarly:
 
 ```text
-a == b
+a == b => c d
 ```
 
-creates the reciprocal pair:
+declares goal-targeted training. It creates the queued entry
 
 ```text
-a:[b]
-b:[a].
+a:[]
 ```
 
-These are Denotation klines until the protocol ratifies them.
+— the ask, S4 — and the implied goal
+
+```text
+b:[c,d]
+```
+
+whose witness is the `=>` block's scaffolding: a Canon when the block
+decomposes b exactly, an open covered misfit otherwise. No pair is
+created. The goal is a held kline like any other; the engine's own
+selection (Definition 22) is unchanged. What the goal adds is a true
+answer key: the trainer can compare the trainee's proposals against
+b's content rather than against the trainee's own candidate ordering.
 
 The `>` form creates:
 
@@ -1277,7 +1287,7 @@ Token expansion, word binding, and annotations belong to the implementation and 
 
 The algebra defines the relevant kline shapes. Ratification is a protocol operation that changes how those klines are treated.
 
-In particular, reciprocal Denotation pairs may be countersigned to create a standing one-hop correspondence. The correspondence then becomes reusable without the acquisition penalty associated with an unratified traversal.
+In particular, a trainer's countersign of a proposal creates a standing one-hop correspondence between the proposal's parties. The correspondence then becomes reusable without the acquisition penalty associated with an unratified traversal. The KScript `==` token is not this countersign: it declares the training pair (ask and implied goal) whose proposals the countersign ratifies.
 
 ---
 

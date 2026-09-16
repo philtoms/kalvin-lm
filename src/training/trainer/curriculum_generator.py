@@ -39,7 +39,8 @@ Each lesson body contains:
 KScript syntax:
 - Identity: single character (e.g. M)
 - Connote: Q > V  →  {QV: [V]}  (the compound QV connotes V)
-- Countersign: Q == V  →  {Q: [V]}, {V: [Q]}
+- Countersign: A == B => V1 V2  →  {A: []} + {B: [V1, V2]}  (goal-targeted
+  training: A is the queued ask, B the implied goal)
 - Denote: Q = V  →  {Q: [V]}  (Q is a V)
 - Canonicalise: Q => V1 V2  →  {Q: [V1, V2]}
 - Indented chaining: value on one line becomes query of indented block

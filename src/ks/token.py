@@ -9,7 +9,7 @@ class TokenType(Enum):
     """Token types for KScript v3 language.
 
     Construct operators (relationship each token declares):
-        COUNTERSIGNS: ==  (bidirectional link)
+        COUNTERSIGNS: ==  (goal-targeted training: entry ask + implied goal)
         CANONICALISES:    =>  (aggregation)
         CONNOTES:     >   (connotation)
     RCONNOTES:    <   (connotation, reversed direction)

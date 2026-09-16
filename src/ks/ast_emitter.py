@@ -11,7 +11,10 @@ SymbolicEntry tuples to encoded uint64 values.
   entries:
 
   - UNKNOWN (op=None):   {sig: []}   — bare unknown ask
-  - COUNTERSIGNS (==):   {sig: [node]}, {node: [sig]} per item  — bidirectional
+  - COUNTERSIGNS (==):   {sig: []}   — the queued ask; the goal scope's
+                         block canon (the nested ``B =>`` item) is the
+                         implied goal the trainer grades K's proposals
+                         against. No reciprocal pair is emitted.
   - DENOTES (=):         {sig: [nodes]}        — forward association
   - CONNOTES (>):        {sig+nodes: [nodes]}  — compound signature
   - RCONNOTES (<):       {nodes+sig: [sig]}    — compound signature, reversed
@@ -84,16 +87,17 @@ class SymbolicEntry(NamedTuple):
         nodes: Always a list — empty for UNKNOWN, single-item for per-item
                operators, multi-item for CANONICALISES aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
-        op:   One of "COUNTERSIGNS", "CANONICALISES", "CONNOTES", "RCONNOTES",
-               "DENOTES",
-               "UNKNOWN".
+        op:   One of "ASK", "CANONICALISES", "CONNOTES", "RCONNOTES",
+               "DENOTES", "IDENTITY", "UNKNOWN". ("COUNTERSIGNS" is a scope
+               operator only — its scope emits an ASK entry, never an entry
+               of its own.)
         component_labels: Resolved words per signature character (for word
                mode).  None when not applicable.
     """
 
     sig: str
     nodes: list[str]
-    op: str  # COUNTERSIGNS | CANONICALISES | CONNOTES | DENOTES | IDENTITY | UNKNOWN
+    op: str  # ASK | CANONICALISES | CONNOTES | DENOTES | IDENTITY | UNKNOWN
     component_labels: list[str] | None = None
     is_mts: bool = False  # True for MTS-produced entries (component
                           # identity + MTS canonization). The TokenEncoder
@@ -351,9 +355,11 @@ class ASTEmitter:
     ) -> None:
         """Emit operator-specific entries based on the operator type."""
         if op == "COUNTERSIGNS":
-            for node in nodes:
-                self._emit_entry(sig, [node], "COUNTERSIGNS")
-                self._emit_entry(node, [sig], "COUNTERSIGNS")
+            # Goal-targeted training: the sig is the queued entry — an ask
+            # at S4. The goal (the nested `B =>` scope's block canon
+            # `B:[C,D]`) is compiled by _compile_children as its own scope;
+            # nothing pairs with the ask here.
+            self._emit_entry(sig, [], "ASK", is_ask=True)
 
         elif op == "CONNOTES":
             if nodes == [sig]:

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-16T12:50:53.704Z",
+  "last_updated": "2026-09-16T13:04:10.539Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2899,6 +2899,23 @@
       "source_context": "Diagnosing missing WDMH proposal on wdmh-underfit-o.ks",
       "created": "2026-09-15",
       "updated": "2026-09-15"
+    },
+    "sources/obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal": {
+      "type": "source",
+      "title": "Observation: COUNTERSIGNS `==` recompiled as ask + implied goal",
+      "tags": [
+        "ks",
+        "compiler",
+        "countersigns",
+        "goal-targeted-training"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal",
+      "relevance": "high",
+      "observed_at": "2026-09-16T13:04:10.437Z",
+      "source_context": "Redefining KScript COUNTERSIGNS compilation to goal-targeted training",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
     },
     "sources/obs-2026-09-16-def-16-rebuilt-pool-via-def-8-coverage-order-via-descending-": {
       "type": "source",

@@ -194,12 +194,12 @@ A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word h
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
 
-- `==` **COUNTERSIGNS** — reciprocal pair `{A:[B]}`, `{B:[A]}` — a pairwise denotes
+- `==` **COUNTERSIGNS** — goal-targeted training: `A == B => C D` compiles to the queued ask `{A:[]}` (S4, the entry) and the implied goal `{B:[C,D]}` (a Canon or covered misfit per the block's scaffolding). No reciprocal pair is emitted; the engine's own selection is unchanged — the goal is the trainer's answer key
 - `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
 - `>` / `<` **CONNOTES** — the compound-signature shape `A > B` ⇒ `{AB:[B]}`, `A < B` ⇒ `{BA:[A]}` (reading order, `A < B ≡ B > A`): the signature is the compound of both operands, the node the connoted value. Self-reference collapses to Identity
 - `=` **DENOTES** — `{A:[B]}`: the signature denotes each node. Self-denote collapses to Identity
 - none **UNKNOWN** — a bare signature: unbound compiles to `{A:[]}` (the ask); word-bound to Identity `{A:[A]}`
-- **ASK** — a bare compound or sigless annotation: keeps its original signature with the ASK bit marking it, so any signature can be an ask. S4
+- **ASK** — an authored ask (a sigless annotation, a bare compound, or a `==` entry): keeps its original signature with the ASK bit marking it, so any signature can be an ask. S4
 
 **Comment**:
 A leading `#` — the rest of the line is dropped by the lexer and never reaches binding or klines.
@@ -254,7 +254,7 @@ The Trainer deferring a proposal to the supervisor when its cogitation yields no
 _Avoid_: auto-ratify failure
 
 **Semantic Evidence**:
-The correspondences a KScript's entries hold collectively but no single kline declares: the canon index, countersign pairs, and connotation/denotation edges. Emitted by compilation as derived structure, it carries the script's intended significance.
+The correspondences a KScript's entries hold collectively but no single kline declares: the canon index and the connotation/denotation edges. Emitted by compilation as derived structure, it carries the script's intended significance.
 
 **Target Significance**:
 The band a KScript production op declares — the answer key a trainee must learn to derive, not a measurement of any one kline.
