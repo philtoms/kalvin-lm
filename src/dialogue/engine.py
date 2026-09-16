@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-from kalvin.hop import Hop
+from kalvin.hop import run_hops
 from kalvin.kline import (
     ASK_SIG,
     KLine,
@@ -167,17 +167,25 @@ class Engine:
                         break
 
     def _propose(self, kline: KLine) -> list[KValue]:
-        """One hop over the held memory (Defs 21–23): goals from the
-        selection list in order, each scoped and derived to an ending.
-        Done derivations propose; the hop's writes extend the reservoir
-        later hops trawl from."""
-        hop = Hop(self._held(), kline, self.signifier).run()
+        """The re-entry chain over the held memory (Defs 21–23): goals
+        from the selection list in order, each scoped and derived to an
+        ending; a hop that ends without done re-enters at the ending
+        state of the derivation that wrote — the evidence-building
+        route — so a composed correspondence is consumed by a later
+        derivation of the same queued kline. Done derivations propose;
+        the chain's writes extend the reservoir later hops trawl from."""
+        hop = run_hops(self._held(), kline, self.signifier)
         self._writes.extend(hop.writes)
         batch: list[KValue] = []
+        original = [int(n) for n in kline.nodes]
         for result in hop.results:
-            if result.ending != "done" or len(result.trace) < 2:
+            if result.ending != "done":
                 # Stuck and abandoned ask; done at entry is the ground
                 # path's, not a proposal.
+                continue
+            if result.trace[-1] == original:
+                # Done without moving — the queued kline as held: the
+                # ground path's done, not a derivation's answer.
                 continue
             proposal = KLine(
                 int(kline.signature) & ~ASK_SIG, result.trace[-1]
