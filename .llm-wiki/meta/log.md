@@ -563,3 +563,9 @@
 ## [2026-09-16T15:11:24.992Z] observe
 - slug: "obs-2026-09-16-five-commits-landed-def-22-self-exclusion-graded-asks-case-i", title: "Five commits landed: Def 22 self-exclusion, γ-graded asks, case-insensitive B4", relevance: "medium"
 
+## [2026-09-16T15:18:11.174Z] observe
+- slug: "obs-2026-09-16-ask-sig-bit-noded-ask-blast-radius-mapped", title: "ASK_SIG bit + noded ask blast radius mapped", relevance: "high"
+
+## [2026-09-16T15:43:52.063Z] observe
+- slug: "obs-2026-09-16-ask-marker-landed-sig-ask-sig-canon-nodes-fully-masked-from-", title: "ASK marker landed: sig|ASK_SIG:[canon nodes], fully masked from measurement", relevance: "critical"
+

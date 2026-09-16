@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-16T15:11:25.039Z",
+  "last_updated": "2026-09-16T15:43:52.151Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2914,6 +2914,43 @@
       "relevance": "high",
       "observed_at": "2026-09-16T14:17:50.557Z",
       "source_context": "Harness ask-feed contract refinement",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-ask-marker-landed-sig-ask-sig-canon-nodes-fully-masked-from-": {
+      "type": "source",
+      "title": "Observation: ASK marker landed: sig|ASK_SIG:[canon nodes], fully masked from measurement",
+      "tags": [
+        "ask",
+        "compiler",
+        "engine",
+        "hop",
+        "harness",
+        "masking"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-ask-marker-landed-sig-ask-sig-canon-nodes-fully-masked-from-",
+      "relevance": "critical",
+      "observed_at": "2026-09-16T15:43:52.061Z",
+      "source_context": "Landing the ASK marker + masking + is_ask self-exclusion",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-ask-sig-bit-noded-ask-blast-radius-mapped": {
+      "type": "source",
+      "title": "Observation: ASK_SIG bit + noded ask blast radius mapped",
+      "tags": [
+        "ask",
+        "compiler",
+        "engine",
+        "hop",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-ask-sig-bit-noded-ask-blast-radius-mapped",
+      "relevance": "high",
+      "observed_at": "2026-09-16T15:18:11.173Z",
+      "source_context": "ASK kline ASK_SIG|nodes blast-radius investigation",
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },

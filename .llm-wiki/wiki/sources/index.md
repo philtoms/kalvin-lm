@@ -147,6 +147,8 @@
 - [Observation: Kalvin algebra translated to verified Maude template](obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template.md)
 - [Observation: WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain](obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood.md)
 - [Observation: Ask content form never fed; WDMH:\[\] at γ is the whole question](obs-2026-09-16-ask-content-form-never-fed-wdmh-at-is-the-whole-question.md)
+- [Observation: ASK marker landed: sig|ASK_SIG:\[canon nodes\], fully masked from measurement](obs-2026-09-16-ask-marker-landed-sig-ask-sig-canon-nodes-fully-masked-from-.md)
+- [Observation: ASK_SIG bit + noded ask blast radius mapped](obs-2026-09-16-ask-sig-bit-noded-ask-blast-radius-mapped.md)
 - [Observation: Case-insensitive Rule B4 patch: h(ad) binds compound char H→had](obs-2026-09-16-case-insensitive-rule-b4-patch-h-ad-binds-compound-char-h-ha.md)
 - [Observation: COUNTERSIGNS `==` recompiled as ask + implied goal](obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal.md)
 - [Observation: Def 16 rebuilt: pool via Def 8 coverage, order via descending γ significance](obs-2026-09-16-def-16-rebuilt-pool-via-def-8-coverage-order-via-descending-.md)

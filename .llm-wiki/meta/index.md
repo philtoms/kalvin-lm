@@ -226,6 +226,8 @@
 - [[sources/obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template]] — Observation: Kalvin algebra translated to verified Maude template *(created: 2026-09-15)*
 - [[sources/obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood]] — Observation: WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain *(created: 2026-09-15)*
 - [[sources/obs-2026-09-16-ask-content-form-never-fed-wdmh-at-is-the-whole-question]] — Observation: Ask content form never fed; WDMH:[] at γ is the whole question *(created: 2026-09-16)*
+- [[sources/obs-2026-09-16-ask-marker-landed-sig-ask-sig-canon-nodes-fully-masked-from-]] — Observation: ASK marker landed: sig|ASK_SIG:[canon nodes], fully masked from measurement *(created: 2026-09-16)*
+- [[sources/obs-2026-09-16-ask-sig-bit-noded-ask-blast-radius-mapped]] — Observation: ASK_SIG bit + noded ask blast radius mapped *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-case-insensitive-rule-b4-patch-h-ad-binds-compound-char-h-ha]] — Observation: Case-insensitive Rule B4 patch: h(ad) binds compound char H→had *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal]] — Observation: COUNTERSIGNS `==` recompiled as ask + implied goal *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-def-16-rebuilt-pool-via-def-8-coverage-order-via-descending-]] — Observation: Def 16 rebuilt: pool via Def 8 coverage, order via descending γ significance *(created: 2026-09-16)*
@@ -257,4 +259,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-16T15:11:25.039Z* | *Total pages: 245*
+*Last updated: 2026-09-16T15:43:52.151Z* | *Total pages: 247*

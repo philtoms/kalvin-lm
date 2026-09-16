@@ -2,6 +2,8 @@
 
 ## 2026-09-16
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-16-ask-marker-landed-sig-ask-sig-canon-nodes-fully-masked-from-","title":"ASK marker landed: sig|ASK_SIG:[canon nodes], fully masked from measurement"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-ask-sig-bit-noded-ask-blast-radius-mapped","title":"ASK_SIG bit + noded ask blast radius mapped"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-16-five-commits-landed-def-22-self-exclusion-graded-asks-case-i","title":"Five commits landed: Def 22 self-exclusion, γ-graded asks, case-insensitive B4"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-wdmh-ask-zero-candidates-empty-nodes-canon-form-orders-verb-","title":"WDMH ask: zero candidates (empty nodes); canon form orders verb→answer"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-case-insensitive-rule-b4-patch-h-ad-binds-compound-char-h-ha","title":"Case-insensitive Rule B4 patch: h(ad) binds compound char H→had"}
