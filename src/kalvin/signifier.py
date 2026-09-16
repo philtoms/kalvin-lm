@@ -11,7 +11,7 @@ BPE tokenizer returns tokens with the upper 32 bits zero — see
     node = (word_bit << 32) | bpe_token_id
 
 The word word gives one bit per distinct word (bits 0-30,
-first-encountered basis); bit 31 is unused.
+first-encountered basis); bit 31 carries the ASK marker.
 
 ``NLPSignifier`` understands this packing. Its operations:
 
@@ -23,7 +23,10 @@ first-encountered basis); bit 31 is unused.
   in *b*.
 
 The lower 32 bits (BPE token IDs) are masked off in :meth:`signifies` so two
-values are compared by word-bit overlap, not by token-ID collision.
+values are compared by word-bit overlap, not by token-ID collision. The ASK
+marker (bit 31 of the word word — :data:`kalvin.kline.ASK_SIG`) is masked
+off in :meth:`signifies` and :meth:`residual` alike: it marks identity, not
+content, so it never weighs as an atom and never appears as a gap.
 
 Misfit classification of a kline's signature against its nodes is a
 structural concern: see :func:`kalvin.kline.classify_misfit`, which
@@ -36,12 +39,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from kalvin.abstract import KSignifier
-from kalvin.kline import KNode, KSig
+from kalvin.kline import ASK_SIG, KNode, KSig
 
 # The word word occupies the upper 32 bits of a node; signifies() compares
 # only that half — the BPE component (lower 32) is masked off so two values
-# signify each other based on word-bit overlap, not token identity.
-_TYPE_MASK = 0xFFFF_FFFF_0000_0000
+# signify each other based on word-bit overlap, not token identity. The ASK
+# marker is masked off with it: measurement reads content only.
+_TYPE_MASK = 0xFFFF_FFFF_0000_0000 & ~ASK_SIG
 
 
 class NLPSignifier(KSignifier):
@@ -77,8 +81,8 @@ class NLPSignifier(KSignifier):
     def signifies(self, a: KSig, b: KSig) -> bool:
         """Test whether two values share a word-word bit.
 
-        The lower 32 bits (BPE token IDs) are masked off; only the upper 32
-        (the word word) participate.
+        The lower 32 bits (BPE token IDs) and the ASK marker are masked
+        off; only the word word (bits 0-30) participates.
         """
         s = (a & b & _TYPE_MASK) != 0
         return s
@@ -87,9 +91,10 @@ class NLPSignifier(KSignifier):
         """Return the masked word-word bits of *a* not in *b*.
 
         ``(a & ~b) & _TYPE_MASK`` — consistent with :meth:`signifies`,
-        BPE-token-id residuals are excluded so the residual captures
-        word-dimension claims, not token-id differences. The label is the
-        mask expression ``a.label & ~b.label``.
+        BPE-token-id residuals and the ASK marker are excluded so the
+        residual captures word-dimension claims, not token-id differences
+        nor ask-marked distinctiveness. The label is the mask expression
+        ``a.label & ~b.label``.
         """
         mask = (a & ~b) & _TYPE_MASK
         label = f"{getattr(a, 'label', '')} & ~{getattr(b, 'label', '')}"

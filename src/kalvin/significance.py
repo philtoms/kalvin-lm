@@ -335,9 +335,10 @@ def mean_compose(slot_values: Sequence[float]) -> float:
 # denominator (band-consistency: full A-inside-B coverage still grades below
 # 1), decay of the mean, geometric, one knob (δ ∈ (0,1), edges the unit).
 
-#: The word word — the atom space of the algebra (the BPE half never weighs;
-#: mirrors ``signifier.NLPSignifier._TYPE_MASK``).
-WORD_BITS: int = 0xFFFF_FFFF_0000_0000
+#: The word word — the atom space of the algebra (the BPE half never
+#: weighs; the ASK marker is masked with it — it marks identity, not
+#: content; mirrors ``signifier.NLPSignifier._TYPE_MASK``).
+WORD_BITS: int = 0x7FFF_FFFF_0000_0000
 
 #: The strategy's knob, the only one. 0.5: each hop halves.
 DEFAULT_DELTA: float = 0.5
@@ -347,7 +348,7 @@ SlotRecord = tuple[int, int | None]
 
 
 def word_atom_count(value: int) -> int:
-    """Atoms (word bits) carried by a value."""
+    """Atoms (word bits) carried by a value. The ASK marker is not an atom."""
     return (value & WORD_BITS).bit_count()
 
 

@@ -16,6 +16,20 @@ if TYPE_CHECKING:
 
 # === Core Types ===
 
+#: The ASK marker: bit 31 of the word word (uint64 bit 63). OR-ed into a
+#: kline signature it marks the kline as an ask — any signature can be one.
+#: Identity-only: equality, store keys, and lookups see it; every atom-space
+#: measurement masks it out (signifier residual/signifies, significance
+#: word_atom_count). No word is ever allocated the bit (TokenEncoder bits
+#: 0–30), so it manufactures the ask's distinctiveness from its canon.
+ASK_SIG = 1 << 63
+
+
+def is_ask(signature: int) -> bool:
+    """Does ``signature`` carry the ASK marker?"""
+    return (int(signature) & ASK_SIG) != 0
+
+
 
 class KNode(int):
     """A node: a uint64 value with an optional label.
@@ -294,9 +308,15 @@ def is_canon(kline: KLine, signifier: KSignifier) -> bool:
 
     A kline is a canon when it is a non-terminal whose signature equals
     ``signature_of(nodes)`` over the atom space. A terminal is never a
-    canon.
+    canon; an ask never is either — the marker is not an atom, so the
+    ask's atoms can cover its nodes exactly while it stays the question,
+    not the answer.
     """
-    return not is_terminal(kline) and is_exact(kline, signifier)
+    return (
+        not is_terminal(kline)
+        and not is_ask(kline.signature)
+        and is_exact(kline, signifier)
+    )
 
 
 def is_canon_evidence(kline: KLine, signifier: KSignifier) -> bool:
@@ -399,10 +419,11 @@ def sig_level(kline: KLine, signifier: KSignifier) -> str:
     - S2 — at least one node is covered by the signature (shares a word
       bit — Def 8 overlap, not containment).
     - S3 — no node is covered (denotation, misfit).
-    - S4 — no nodes (unknown).
+    - S4 — no nodes (unknown), or the ASK marker (the question, whatever
+      its nodes).
     """
     nodes = kline.nodes
-    if not nodes:
+    if not nodes or is_ask(kline.signature):
         return "S4"
     if is_exact(kline, signifier):
         return "S1"
