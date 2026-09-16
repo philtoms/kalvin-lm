@@ -175,7 +175,14 @@ class TokenEncoder:
           2. Encode each node → uint64 word value.
           3. Emit the entry wrapped as a KValue.
         """
-        is_compound_def = entry.op == "CANONICALISES" and len(entry.sig) > 1
+        # A compound definition is uppercase-shaped: a lowercase
+        # multi-char sig (e.g. `h(ad)` resolving to the word 'had') is a
+        # word head — one bit — not a deferred compound computation.
+        is_compound_def = (
+            entry.op == "CANONICALISES"
+            and len(entry.sig) > 1
+            and entry.sig.isupper()
+        )
         is_compound_ref = entry.sig in self._compound_sigs
         # A multi-char uppercase sig that no MTS entry registered (e.g. a
         # sigless annotation's synthesized initials `WW...`) is still a
