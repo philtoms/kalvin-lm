@@ -494,3 +494,36 @@
 ## [2026-09-15T16:47:10.100Z] observe
 - slug: "obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template", title: "Kalvin algebra translated to verified Maude template", relevance: "high"
 
+## [2026-09-16T08:58:32.015Z] observe
+- slug: "obs-2026-09-16-def-16-rewritten-node-fit-selection-flow-control-purpose-no-", title: "Def 16 rewritten: node-fit selection, flow-control purpose, no pre-supposed derivation results", relevance: "high"
+
+## [2026-09-16T09:21:23.453Z] observe
+- slug: "obs-2026-09-16-def-16-simplified-positive-prose-only-critique-rhetoric-remo", title: "Def 16 simplified: positive prose only, critique rhetoric removed", relevance: "medium"
+
+## [2026-09-16T09:47:47.507Z] observe
+- slug: "obs-2026-09-16-def-16-rebuilt-pool-via-def-8-coverage-order-via-descending-", title: "Def 16 rebuilt: pool via Def 8 coverage, order via descending γ significance", relevance: "high"
+
+## [2026-09-16T09:59:29.369Z] observe
+- slug: "obs-2026-09-16-kalvin-algebra-md-restructured-measurement-10-defs-16-19-bef", title: "kalvin-algebra.md restructured: Measurement §10 (Defs 16-19) before Strategy §11 (Defs 20-21)", relevance: "high"
+
+## [2026-09-16T10:09:18.810Z] observe
+- slug: "obs-2026-09-16-goal-paragraph-moved-from-def-20-to-6-preamble-derivation-se", title: "Goal paragraph moved from Def 20 to §6 preamble; derivation section now refs Def 21", relevance: "medium"
+
+## [2026-09-16T10:19:24.757Z] observe
+- slug: "obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w", title: "Slot derivation moved to §6 as Def 15; renumber cascade; file-wipe incident recovered from git index", relevance: "high"
+
+## [2026-09-16T10:22:48.755Z] observe
+- slug: "obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in", title: "Progressive path, Bounds, Re-entry promoted to own ## sections in §11", relevance: "low"
+
+## [2026-09-16T10:33:32.038Z] observe
+- slug: "obs-2026-09-16-hop-defined-at-strategy-loop-walk-table-hop-column-renamed-e", title: "Hop defined at strategy loop; walk-table \"Hop\" column renamed \"Edge\"", relevance: "medium"
+
+## [2026-09-16T10:43:14.140Z] observe
+- slug: "obs-2026-09-16-hop-rebuilt-as-def-21-derivation-whole-fixed-m-b-write-consu", title: "Hop rebuilt as Def 21: derivation-whole, fixed (M,B), write/consume boundary for re-entry", relevance: "high"
+
+## [2026-09-16T11:26:03.553Z] observe
+- slug: "obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop", title: "Scoped-memory design landed: Def 22 selects goals, Def 23 scope trawl, re-entry changes A only", relevance: "critical"
+
+## [2026-09-16T12:05:56.862Z] observe
+- slug: "obs-2026-09-16-goal-taken-from-top-of-list-hop-runs-multiple-derivations-do", title: "Goal taken from top of list; hop runs multiple derivations down it", relevance: "high"
+

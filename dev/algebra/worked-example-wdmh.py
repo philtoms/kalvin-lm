@@ -8,7 +8,7 @@ documented trace and measurement:
     Step 2   dh ⇉ [h]       under Denotation dh:[h]     → [w,h,m],   Δ 4→3
     Step 3   walk w:[w] → w:[o] → w:[all] → w:[a,l,l];  write w:[a,l,l] at
              acquisition depth 3; consume w ⇉ [a,l,l]  → σ = mhall, done
-    §11      Ĥ = (0+0+3+3+3)/5 = 9/5,  γ = 2^(-9/5) ≈ 0.29
+    §10      Ĥ = (0+0+3+3+3)/5 = 9/5,  γ = 2^(-9/5) ≈ 0.29
 
 Run from the repo root:  python3 dev/algebra/worked-example-wdmh.py
 """
@@ -33,7 +33,7 @@ NAMES = {
 
 @dataclass
 class K:
-    """A kline: signature, node sequence, acquisition depth (Def 5, §11)."""
+    """A kline: signature, node sequence, acquisition depth (Def 5, §10)."""
 
     signature: int
     nodes: list
@@ -204,7 +204,7 @@ class Derivation:
         return None
 
     def slot_walk(self, slot: int, excess: int):
-        """Def 17: goal-less walk from the slot identity; occurrence on
+        """Def 15: goal-less walk from the slot identity; occurrence on
         either side licenses; no-revisit keys on correspondence identity
         (the documented walk consumes signature all twice: all:[o], then
         all:[a,l,l])."""
@@ -238,7 +238,7 @@ class Derivation:
         return None
 
     def refine(self, nodes: list, edges: int, path: list):
-        """Write granularity (Def 17): expand the terminal's nodes
+        """Write granularity (Def 15): expand the terminal's nodes
         covering the excess to the goal's own witness resolution of that
         content, under held well-founded canons. Policy A reproduces the
         documented write w:[a,l,l]; the lazy policy writes the walk's
@@ -378,7 +378,7 @@ class Derivation:
                 content(trace[-1]) == mhall and rel == "Canon",
             "The subject m is never replaced (m:[m] Identity, inert)":
                 m in trace[-1] and all(m in state for state in trace),
-            "§11: Ĥ = 9/5, γ = 2^(-9/5) ≈ 0.29":
+            "§10: Ĥ = 9/5, γ = 2^(-9/5) ≈ 0.29":
                 abs(hbar - 9 / 5) < 1e-9 and abs(gamma - 2 ** (-9 / 5)) < 1e-9,
         }
         print("\n── verdict ──")
@@ -390,7 +390,7 @@ class Derivation:
             "\n  Note: the walk's end-condition fires at w:[all] (content {a,l}\n"
             "  already overlaps the excess); the third edge is the write-time\n"
             "  expansion toward the goal's witness resolution of the excess,\n"
-            "  per Def 17. No-revisit keys on correspondence identity, not\n"
+            "  per Def 15. No-revisit keys on correspondence identity, not\n"
             "  bare signature — the walk consumes `all` twice (all:[o], then\n"
             "  all:[a,l,l]), as T2 requires."
         )

@@ -1,4 +1,4 @@
-"""Verify Def 17 read from ν_B — the overfit slot walk — against the pure
+"""Verify Def 15 read from ν_B — the overfit slot walk — against the pure
 algebra. No engine, compiler, or tokenizer: values are ints (one bit per
 atom), klines are records. Scenario:
 
@@ -11,7 +11,7 @@ atom), klines are records. Scenario:
     targeting alone is stuck and the misfit asks — falsely, because
     memory connects the parties (o:[m]).
 
-    Def 17, walk from ν_B — the overfit slot is the goal's node `all`:
+    Def 15, walk from ν_B — the overfit slot is the goal's node `all`:
 
         all:[all] → all:[o]  (all:[o] Connotation, forward)
                   → all:[m]  (o:[m]  Connotation, forward)  — anchor m
@@ -156,7 +156,7 @@ def wellfounded(k: K) -> bool:
 
 
 class Derivation:
-    """A ⊢_{M,B} … with Def 17's two-party slots."""
+    """A ⊢_{M,B} … with Def 15's two-party slots."""
 
     def __init__(self, b_walks: bool = True) -> None:
         self.b_walks = b_walks
@@ -220,7 +220,7 @@ class Derivation:
         return None
 
     def walk(self, seed: int, end_mask: int):
-        """Def 17 slot walk from either party: goal-less, occurrence
+        """Def 15 slot walk from either party: goal-less, occurrence
         licensed on either side, no-revisit keyed on correspondence
         identity, ending at arrival in end_mask."""
         queue = deque([([seed], frozenset(), 0, [])])
@@ -407,7 +407,7 @@ def fmt_state(nodes: list) -> str:
 
 
 def main() -> int:
-    print("── ν_B walks on (Def 17 as written) ──\n")
+    print("── ν_B walks on (Def 15 as written) ──\n")
     enabled = Derivation(b_walks=True)
     enabled.run()
     print("\n── control: ν_B walks off (the one-party def) ──\n")

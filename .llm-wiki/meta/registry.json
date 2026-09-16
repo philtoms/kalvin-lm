@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-15T16:47:10.172Z",
+  "last_updated": "2026-09-16T12:05:56.918Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2899,6 +2899,205 @@
       "source_context": "Diagnosing missing WDMH proposal on wdmh-underfit-o.ks",
       "created": "2026-09-15",
       "updated": "2026-09-15"
+    },
+    "sources/obs-2026-09-16-def-16-rebuilt-pool-via-def-8-coverage-order-via-descending-": {
+      "type": "source",
+      "title": "Observation: Def 16 rebuilt: pool via Def 8 coverage, order via descending γ significance",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def16",
+        "selection",
+        "significance"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-def-16-rebuilt-pool-via-def-8-coverage-order-via-descending-",
+      "relevance": "high",
+      "observed_at": "2026-09-16T09:47:47.504Z",
+      "source_context": "Rebuilding Def 16 as ordered candidate selection on Def 8 + γ",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-def-16-rewritten-node-fit-selection-flow-control-purpose-no-": {
+      "type": "source",
+      "title": "Observation: Def 16 rewritten: node-fit selection, flow-control purpose, no pre-supposed derivation results",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def16",
+        "selection"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-def-16-rewritten-node-fit-selection-flow-control-purpose-no-",
+      "relevance": "high",
+      "observed_at": "2026-09-16T08:58:32.011Z",
+      "source_context": "Reworking Def 16 (Selection) in docs/kalvin-algebra.md",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-def-16-simplified-positive-prose-only-critique-rhetoric-remo": {
+      "type": "source",
+      "title": "Observation: Def 16 simplified: positive prose only, critique rhetoric removed",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def16",
+        "writing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-def-16-simplified-positive-prose-only-critique-rhetoric-remo",
+      "relevance": "medium",
+      "observed_at": "2026-09-16T09:21:23.451Z",
+      "source_context": "Simplifying Def 16 prose in docs/kalvin-algebra.md",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-goal-paragraph-moved-from-def-20-to-6-preamble-derivation-se": {
+      "type": "source",
+      "title": "Observation: Goal paragraph moved from Def 20 to §6 preamble; derivation section now refs Def 21",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def20",
+        "goal",
+        "slot-walks"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-goal-paragraph-moved-from-def-20-to-6-preamble-derivation-se",
+      "relevance": "medium",
+      "observed_at": "2026-09-16T10:09:18.807Z",
+      "source_context": "Relocating goal-role paragraph from Def 20 to §6 derivation preamble",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-goal-taken-from-top-of-list-hop-runs-multiple-derivations-do": {
+      "type": "source",
+      "title": "Observation: Goal taken from top of list; hop runs multiple derivations down it",
+      "tags": [
+        "docs",
+        "kalvin",
+        "selection",
+        "hop",
+        "loop"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-goal-taken-from-top-of-list-hop-runs-multiple-derivations-do",
+      "relevance": "high",
+      "observed_at": "2026-09-16T12:05:56.860Z",
+      "source_context": "Correcting goal-taking and hop's multiple derivations in kalvin-algebra.md",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-hop-defined-at-strategy-loop-walk-table-hop-column-renamed-e": {
+      "type": "source",
+      "title": "Observation: Hop defined at strategy loop; walk-table \"Hop\" column renamed \"Edge\"",
+      "tags": [
+        "docs",
+        "kalvin",
+        "hop",
+        "strategy",
+        "definitions"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-hop-defined-at-strategy-loop-walk-table-hop-column-renamed-e",
+      "relevance": "medium",
+      "observed_at": "2026-09-16T10:33:32.034Z",
+      "source_context": "Defining hop in §11; disambiguating walk-table Hop vs Edge",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-hop-rebuilt-as-def-21-derivation-whole-fixed-m-b-write-consu": {
+      "type": "source",
+      "title": "Observation: Hop rebuilt as Def 21: derivation-whole, fixed (M,B), write/consume boundary for re-entry",
+      "tags": [
+        "docs",
+        "kalvin",
+        "hop",
+        "re-entry",
+        "strategy",
+        "def21"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-hop-rebuilt-as-def-21-derivation-whole-fixed-m-b-write-consu",
+      "relevance": "high",
+      "observed_at": "2026-09-16T10:43:14.138Z",
+      "source_context": "Making Hop a substantial definition to ground re-entry work",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-kalvin-algebra-md-restructured-measurement-10-defs-16-19-bef": {
+      "type": "source",
+      "title": "Observation: kalvin-algebra.md restructured: Measurement §10 (Defs 16-19) before Strategy §11 (Defs 20-21)",
+      "tags": [
+        "docs",
+        "kalvin",
+        "structure",
+        "measurement",
+        "renumbering"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-kalvin-algebra-md-restructured-measurement-10-defs-16-19-bef",
+      "relevance": "high",
+      "observed_at": "2026-09-16T09:59:29.365Z",
+      "source_context": "Restructuring kalvin-algebra.md: measurement promoted to definitions, moved before strategy",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in": {
+      "type": "source",
+      "title": "Observation: Progressive path, Bounds, Re-entry promoted to own ## sections in §11",
+      "tags": [
+        "docs",
+        "kalvin",
+        "structure",
+        "strategy"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in",
+      "relevance": "low",
+      "observed_at": "2026-09-16T10:22:48.753Z",
+      "source_context": "Detaching Progressive path/Bounds/Re-entry from Def 21 in §11",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop": {
+      "type": "source",
+      "title": "Observation: Scoped-memory design landed: Def 22 selects goals, Def 23 scope trawl, re-entry changes A only",
+      "tags": [
+        "docs",
+        "kalvin",
+        "selection",
+        "scope",
+        "hop",
+        "re-entry",
+        "architecture"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop",
+      "relevance": "critical",
+      "observed_at": "2026-09-16T11:26:03.551Z",
+      "source_context": "Implementing the scoped-memory fork with goal selection in kalvin-algebra.md",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w": {
+      "type": "source",
+      "title": "Observation: Slot derivation moved to §6 as Def 15; renumber cascade; file-wipe incident recovered from git index",
+      "tags": [
+        "docs",
+        "kalvin",
+        "def15",
+        "renumbering",
+        "incident",
+        "git-recovery"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w",
+      "relevance": "high",
+      "observed_at": "2026-09-16T10:19:24.754Z",
+      "source_context": "Moving Def 21 into §6 Derivations with full renumber; file truncation incident and recovery",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

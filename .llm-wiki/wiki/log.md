@@ -1,5 +1,19 @@
 # Wiki Update Log
 
+## 2026-09-16
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-goal-taken-from-top-of-list-hop-runs-multiple-derivations-do","title":"Goal taken from top of list; hop runs multiple derivations down it"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop","title":"Scoped-memory design landed: Def 22 selects goals, Def 23 scope trawl, re-entry changes A only"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-hop-rebuilt-as-def-21-derivation-whole-fixed-m-b-write-consu","title":"Hop rebuilt as Def 21: derivation-whole, fixed (M,B), write/consume boundary for re-entry"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-16-hop-defined-at-strategy-loop-walk-table-hop-column-renamed-e","title":"Hop defined at strategy loop; walk-table \"Hop\" column renamed \"Edge\""}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in","title":"Progressive path, Bounds, Re-entry promoted to own ## sections in §11"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w","title":"Slot derivation moved to §6 as Def 15; renumber cascade; file-wipe incident recovered from git index"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-16-goal-paragraph-moved-from-def-20-to-6-preamble-derivation-se","title":"Goal paragraph moved from Def 20 to §6 preamble; derivation section now refs Def 21"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-kalvin-algebra-md-restructured-measurement-10-defs-16-19-bef","title":"kalvin-algebra.md restructured: Measurement §10 (Defs 16-19) before Strategy §11 (Defs 20-21)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-def-16-rebuilt-pool-via-def-8-coverage-order-via-descending-","title":"Def 16 rebuilt: pool via Def 8 coverage, order via descending γ significance"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-16-def-16-simplified-positive-prose-only-critique-rhetoric-remo","title":"Def 16 simplified: positive prose only, critique rhetoric removed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-def-16-rewritten-node-fit-selection-flow-control-purpose-no-","title":"Def 16 rewritten: node-fit selection, flow-control purpose, no pre-supposed derivation results"}
+
 ## 2026-09-15
 
 - **observe**: {"relevance":"high","slug":"obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template","title":"Kalvin algebra translated to verified Maude template"}

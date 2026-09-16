@@ -6,15 +6,15 @@
 ---   KALVIN-KLINE       §3, §7        klines, memory (the correspondence graph)
 ---   KALVIN-FIT         §4            fit classifier, bands
 ---   KALVIN-STATE       §5, §6, §8    C(A,B), derivation states, licensing predicates
----   KALVIN-MEASURE     §11           J, δ, γ (depths are inputs — provenance is strategy-side)
+---   KALVIN-MEASURE     §10 Defs 17–20 J, δ, γ (depths are inputs — provenance is strategy-side)
 ---   KALVIN-WITNESSED   §6, §7        replace — witnessed licence (canon expand / contract)
 ---   KALVIN-TARGETING   §6, §7        replace — targeting licence (strict mismatch decrease)
 ---   KALVIN-DERIVE      §6–§9         both licences, one rewrite operation
----   KALVIN-WALK        §10 Def 17    slot walks (occurrence licence)
+---   KALVIN-WALK        §6  Def 15    slot walks (occurrence licence)
 ---   KALVIN-KSCRIPT     §13           surface syntax → klines
 ---   MARY-HAD, MARY-STUCK, MARY-FRAGMENT   §9 worked example + appendix
 ---
---- Outside the algebra (§10 loop, §14): hop selection, re-entry, memory growth between
+--- Outside the algebra (§11 loop, §14): loop control, re-entry, memory growth between
 --- hops, ratification, tier mechanics.  search deduplicates states; witnessed cycles
 --- and traversal still need strategy bounds (§8 T2).
 
@@ -185,7 +185,7 @@ fmod KALVIN-FIT is
   ceq fit(V, NS) = underover if covered(NS, V) .        --- 8
 endfm
 
---- ----------------------------------------------------------- §5 §6 §8 §11 ---
+--- ----------------------------------------------------------- §5 §6 §8 §10 ---
 
 fmod KALVIN-STATE is
   protecting KALVIN-FIT .
@@ -202,7 +202,7 @@ fmod KALVIN-STATE is
   op mismatch : NodeSeq NodeSeq -> Nat .                --- |σ(νA) Δ σ(νB)| (Def 14, T1)
   eq mismatch(NS, GS) = card(symdiff(sigma(NS), sigma(GS))) .
 
-  op isDone : DerivState -> Bool .                      --- Def 15 done: value equality
+  op isDone : DerivState -> Bool .                      --- Def 16 done: value equality
   var M : Memory .
   eq isDone(< S | NS | GS | M >) = sigma(NS) == sigma(GS) .
 
@@ -236,7 +236,7 @@ fmod KALVIN-MEASURE is
   protecting KALVIN-VALUE .
   protecting RAT .
 
-  op J : Value Value -> Rat .                           --- §11 Jaccard overlap
+  op J : Value Value -> Rat .                           --- §10 Def 17 Jaccard overlap
   vars X Y : Value .
   eq J(X, Y) = card(X & Y) / card(X ; Y) .
 
@@ -316,7 +316,7 @@ endm
 mod KALVIN-WALK is
   including KALVIN-STATE .
 
-  --- Def 17 — slot walk: goal-less derivation seeded at a slot identity n:[n], licensed
+  --- Def 15 — slot walk: goal-less derivation seeded at a slot identity n:[n], licensed
   --- by occurrence of either side of a held kline, not by the targeting-scoping rule.
   sort WalkState .
   op walk : NodeSeq Memory -> WalkState .
@@ -446,7 +446,7 @@ endm
 ---   red in MARY-HAD : mismatch((w d m h), (m h a l l)) .        --- 4 — Δ0 (T1 bound)
 ---   red in KALVIN-MEASURE : gamma((m ; h), (m ; h ; a ; l), 2) .  --- 1/8
 ---
----   Slot walk (§9 Step 3, Def 17): from the slot identity w:[w] to content
+---   Slot walk (§9 Step 3, Def 15): from the slot identity w:[w] to content
 ---   overlapping the overfit {a,l}.  Solutions: [a,l] and [a,l,l] — the walk
 ---   crossed w → [o] → [all] → [a,l,l], the crossover at the shared node o:
 ---     search in MARY-HAD : W0 =>* walk(NS:NodeSeq, M:Memory)

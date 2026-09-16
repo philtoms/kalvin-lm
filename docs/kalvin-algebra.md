@@ -30,12 +30,13 @@ The measurement model assigns each derivation a graded significance value. The g
 - the granularity of the current witness; and
 - the acquisition depth of the content used.
 
-The formal system is divided into four parts:
+The formal system is divided as follows:
 
 - **§1–5:** the objects and their relationships;
 - **§6–9:** derivation and rewrite rules;
-- **§10:** strategy;
-- **§11–12:** measurement and terminology.
+- **§10:** measurement;
+- **§11:** strategy;
+- **§12:** terminology.
 
 **§13** defines the KScript surface syntax.
 
@@ -485,6 +486,8 @@ Three klines may be involved:
 - **B — goal kline:** the target used to scope targeting;
 - **K — evidence kline:** a held kline that licenses a replacement.
 
+The goal is read, never rewritten: it scopes targeting (Definition 14), determines the ending (Definition 16), and its nodes may seed slot walks (Definition 15).
+
 ## Definition 12 — Derivation
 
 For A = s:ν_A and goal B = t:ν_B, a derivation step has the form:
@@ -493,7 +496,9 @@ For A = s:ν_A and goal B = t:ν_B, a derivation step has the form:
 A ⊢_{M,B} A′.
 ```
 
-The head s of A does not change during the derivation. Only its node sequence changes. Nothing in §§6–9 reads s: licences, endings, bounds, and grades read only the relationship, whose head σ(ν_A) is exact against ν_A at every state by construction. The queued head rides along inert, mattering only after the hop — in absorption, re-entry (§10), and the claim's grounding (§14).
+The subscript names the derivation's parameters: the memory it reads — its scope, fixed as trawled at entry (Definition 23) — and the goal it works toward, fixed for the derivation's duration. Writes go to memory (Definition 7), not to the scope: a derivation never consumes what it writes.
+
+The head s of A does not change during the derivation. Only its node sequence changes. Nothing in §§6–9 reads s: licences, endings, bounds, and grades read only the relationship, whose head σ(ν_A) is exact against ν_A at every state by construction. The queued head rides along inert, mattering only after the hop — in absorption, re-entry (§11), and the claim's grounding (§14).
 
 At every state, the current content is:
 
@@ -614,6 +619,36 @@ Thus a replacement that affects only shared content, or increases the mismatch, 
 
 Canon expansion and contraction are different: they preserve the current content and are licensed by the witness alone.
 
+## Definition 15 — Slot derivation
+
+A targeting relationship can be decomposed into slots.
+
+The misfit is carried on both parties: the underfit by nodes of ν_A, the overfit by nodes of ν_B. A node is a **slot** when it carries a misfit atom — an underfit slot of ν_A, an overfit slot of ν_B. The notion is one, read on the two parties: an overfit slot of C(A,B) is an underfit slot of C(B,A).
+
+For an underfit slot, strategy first looks for a licensed replacement at the slot. For the overfit, an adoptive replacement is sought by selection, at any node of ν_A. If none exists, either slot may be explored by a goal-less derivation beginning with:
+
+```text
+n:[n].
+```
+
+A slot walk is licensed by occurrence of a correspondence — either side of a held kline occurring in the walk's nodes — not by the targeting-scoping rule.
+
+A slot walk ends when:
+
+- from an underfit slot, it reaches content overlapping the overfit;
+- from an overfit slot, it reaches content overlapping σ(ν_A), the **anchor**; or
+- no unvisited correspondence is available.
+
+The goal is never rewritten. A walk from an overfit slot departs from a node of ν_B and writes only a correspondence; ν_B itself never changes.
+
+Arrival is not absorption. The walk continues under held Canons alone, refining its discovered end to the arrival party's resolution — the overfit content to the goal's witness, the anchor to ν_A's nodes. The departed end already sits at its own party's. The refined state is the terminal.
+
+The terminal is written into memory as a composed correspondence spanning the walk's two ends, with acquisition depth equal to the edges crossed, which the main derivation may then consume. The head is the A-side end: the departed slot or the discovered anchor. The witness holds the head's atoms shared with the goal, together with the B-side end's nodes covering the overfit. A compound node is opaque to licensing — occurrence reads nodes, never the atoms within them — so refinement goes exactly to the consuming resolution and no further: expansion by Definition 13's well-foundedness, contraction by its exact witnessing.
+
+A walk from ν_B that arrives at an underfit slot composes the same correspondence a walk from that slot would; only the direction of discovery differs.
+
+The slot walk is therefore an evidence-construction mechanism: seeded at either misfit location, it discovers a route through memory and turns that route into a new reusable correspondence.
+
 ---
 
 # 7. Two Licences, One Rewrite Rule
@@ -658,7 +693,7 @@ Terminals are targeting-closed, not rule-closed. An Identity relationship is don
 
 # 8. Endings, Progress and Termination
 
-## Definition 15 — Endings
+## Definition 16 — Endings
 
 A derivation has one of three outcomes:
 
@@ -683,7 +718,7 @@ The derivation is not done and no licensed targeting replacement exists.
 This includes:
 
 1. no goal is present; or
-2. a goal is present but the current misfit cannot be reduced by any available correspondence, directly or through a slot walk from either party (§10): nothing in M connects either misfit location to the other party's content.
+2. a goal is present but the current misfit cannot be reduced by any available correspondence, directly or through a slot walk from either party (Definition 15): nothing in M connects either misfit location to the other party's content.
 
 A stuck derivation therefore represents the absence of a currently available semantic bridge in memory. Relative non-existence is an honest outcome, reachable at entry and mid-run alike.
 
@@ -853,15 +888,15 @@ w:[w]
 
 and crosses three correspondences:
 
-| Hop                 | Correspondence     | Direction      | Occurring side                        |
+| Edge                | Correspondence     | Direction      | Occurring side                        |
 | ------------------- | ------------------ | -------------- | ------------------------------------- |
 | w:[w] → w:[o]       | w:[o] Denotation   | forward        | head w occurs as a node               |
 | w:[o] → w:[all]     | all:[o] Denotation | reverse        | witness [o] occurs as a node multiset |
 | w:[all] → w:[a,l,l] | all:[a,l,l] Canon  | forward expand | head all occurs as a node             |
 
-The second hop is the crossover. Nothing held maps w to the object content directly: w and all meet only at the shared node o. The walk arrives at o by the forward side of w:[o] and leaves by the reverse side of all:[o] — the same Denotation read from the other side licenses its mirror traversal, [o] ⇉ [all], because its witness occurs in the current nodes. Arrival orients the correspondence; the band does not.
+The second edge is the crossover. Nothing held maps w to the object content directly: w and all meet only at the shared node o. The walk arrives at o by the forward side of w:[o] and leaves by the reverse side of all:[o] — the same Denotation read from the other side licenses its mirror traversal, [o] ⇉ [all], because its witness occurs in the current nodes. Arrival orients the correspondence; the band does not.
 
-Two details do real work here. Occurrence is read on either side — the mirror clause (Definition 13) and the slot-walk licence (Definition 17): read forward-only, the walk would be stuck at w:[o], since no held kline is headed o. And the no-revisit policy (T2) forbids consuming w:[o] a second time, so the reverse occurrence at [o] cannot bounce the walk back to w — only all:[o] remains, and the walk is forced through the crossover.
+Two details do real work here. Occurrence is read on either side — the mirror clause (Definition 13) and the slot-walk licence (Definition 15): read forward-only, the walk would be stuck at w:[o], since no held kline is headed o. And the no-revisit policy (T2) forbids consuming w:[o] a second time, so the reverse occurrence at [o] cannot bounce the walk back to w — only all:[o] remains, and the walk is forced through the crossover.
 
 The final state overlaps the goal's overfit and is written into memory as the composed correspondence:
 
@@ -869,7 +904,7 @@ The final state overlaps the goal's overfit and is written into memory as the co
 w:[a,l,l]
 ```
 
-with acquisition depth 3, the three edges crossed; the third is the refinement edge (Definition 17).
+with acquisition depth 3, the three edges crossed; the third is the refinement edge (Definition 15).
 
 The main derivation can then apply:
 
@@ -901,113 +936,7 @@ The important point is that the system reaches the answer through held correspon
 
 ---
 
-# 10. Strategy
-
-Sections 6–9 define what a derivation may do. Strategy determines which permitted operation is attempted and in what order.
-
-The strategy loop is:
-
-```text
-select a hop
-    ↓
-derive to an ending
-    ↓
-add the result to memory
-    ↓
-re-enter with the resulting kline
-```
-
-Strategy may also abandon or retarget a derivation.
-
-## Definition 16 — Selection
-
-A held kline
-
-```text
-K = t:ν_K
-```
-
-is selectable for queued kline A when:
-
-```text
-t ∈ ν_A.
-```
-
-That is, the signature of the candidate correspondence must occur as a node in the current queue.
-
-Selection therefore exposes only correspondences that the current derivation can apply immediately. The clause compounds into a ratchet: each replacement's arrival puts new nodes into ν_A, making their klines selectable next. Reachability grows as the run proceeds; the path is the guard.
-
-The goal B is not selected for replacement. It is declared separately, scopes targeting, and determines when the derivation is done. Its nodes may seed slot walks (Definition 17); they are never rewritten.
-
-Content overlap between A and B is not sufficient for selection. Conversely, occurrence of a signature in A does not guarantee that the relationship is S2. The two conditions are independent. For example, A = abc:[a] against B = x:[c,a] stands in an Overfit relationship while x neither occurs in nor overlaps A's nodes; B = x:[y] against A = abc:[x] occurs in A's nodes yet yields S3. Selection requires the second condition; the band routes by the first.
-
-## Definition 17 — Slot derivation
-
-A targeting relationship can be decomposed into slots.
-
-The misfit is carried on both parties: the underfit by nodes of ν_A, the overfit by nodes of ν_B. A node is a **slot** when it carries a misfit atom — an underfit slot of ν_A, an overfit slot of ν_B. The notion is one, read on the two parties: an overfit slot of C(A,B) is an underfit slot of C(B,A).
-
-For an underfit slot, strategy first looks for a licensed replacement at the slot. For the overfit, an adoptive replacement is sought by selection, at any node of ν_A. If none exists, either slot may be explored by a goal-less derivation beginning with:
-
-```text
-n:[n].
-```
-
-A slot walk is licensed by occurrence of a correspondence — either side of a held kline occurring in the walk's nodes — not by the targeting-scoping rule.
-
-A slot walk ends when:
-
-- from an underfit slot, it reaches content overlapping the overfit;
-- from an overfit slot, it reaches content overlapping σ(ν_A), the **anchor**; or
-- no unvisited correspondence is available.
-
-The goal is never rewritten. A walk from an overfit slot departs from a node of ν_B and writes only a correspondence; ν_B itself never changes.
-
-Arrival is not absorption. The walk continues under held Canons alone, refining its discovered end to the arrival party's resolution — the overfit content to the goal's witness, the anchor to ν_A's nodes. The departed end already sits at its own party's. The refined state is the terminal.
-
-The terminal is written into memory as a composed correspondence spanning the walk's two ends, with acquisition depth equal to the edges crossed, which the main derivation may then consume. The head is the A-side end: the departed slot or the discovered anchor. The witness holds the head's atoms shared with the goal, together with the B-side end's nodes covering the overfit. A compound node is opaque to licensing — occurrence reads nodes, never the atoms within them — so refinement goes exactly to the consuming resolution and no further: expansion by Definition 13's well-foundedness, contraction by its exact witnessing.
-
-A walk from ν_B that arrives at an underfit slot composes the same correspondence a walk from that slot would; only the direction of discovery differs.
-
-The slot walk is therefore an evidence-construction mechanism: seeded at either misfit location, it discovers a route through memory and turns that route into a new reusable correspondence.
-
-### Progressive path
-
-Each hop may add evidence to memory. Later hops therefore operate with:
-
-```text
-M_{k+1} ⊇ M_k.
-```
-
-The memory used by a later hop may therefore contain correspondences generated by earlier hops.
-
-### Bounds
-
-Strategy controls three independent limits:
-
-1. the targeting bound from T1;
-2. limits on repeated witnessed transformations and traversal, per T2;
-3. the maximum re-entry depth.
-
-### Re-entry
-
-A completed, stuck, or otherwise selected hop may produce the input to a subsequent hop.
-
-A hop is parameterised by:
-
-```text
-(M_k, B_k)
-```
-
-and produces the next queued state.
-
-Memory may grow between hops, so successive hops need not be derivations in one fixed memory state.
-
-Hop order is the only temporal structure defined by the system.
-
----
-
-# 11. Measurement
+# 10. Measurement
 
 The significance bands are ordered:
 
@@ -1026,36 +955,15 @@ There are two relevant bands:
 
 The first describes the claim represented by a kline. The second describes the result of a derivation relative to a goal.
 
-## Graded distance
+## Definition 17 — Jaccard overlap
 
-The significance measure is:
-
-```text
-γ(A,B) = J(σ(ν_A), σ(ν_B)) · δ^(D̄ + Ĥ)
-```
-
-where
+For values x and y:
 
 ```text
 J(x,y) = |x ∧ y| / |x ∨ y|.
 ```
 
-Thus:
-
-```text
-significance = content overlap × discount for granularity and acquisition cost.
-```
-
-The form is fixed, not free: four requirements force it.
-
-### Jaccard overlap
-
-J is:
-
-- 0 when the contents are disjoint;
-- 1 when the contents are equal.
-
-It is symmetric and therefore measures content overlap independently of derivation direction.
+J is 0 when the contents are disjoint and 1 when they are equal. It is symmetric and therefore measures content overlap independently of derivation direction.
 
 Jaccard is forced rather than chosen. Score each node by its accountedness with the goal,
 
@@ -1065,7 +973,7 @@ Jaccard is forced rather than chosen. Score each node by its accountedness with 
 
 and compose atom-weighted: the result is A's coverage fraction, |σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A)|. That fraction reads 1 whenever A's content sits wholly inside B's — an Underfit, still S2. A measure that scores perfect on a misfit is band-inconsistent. Weighing B's overfit as well yields the symmetric form, which is Jaccard.
 
-### Resolution depth
+## Definition 18 — Resolution depth
 
 D̄ is the atom-weighted mean resolution depth of the current content.
 
@@ -1073,7 +981,7 @@ Content held at its own resolution has depth 0. Expansion increases depth; contr
 
 Depth is well-defined because licensed Canon expansion terminates (§6).
 
-### Acquisition depth
+## Definition 19 — Acquisition depth
 
 Ĥ is the atom-weighted mean acquisition depth of the current content.
 
@@ -1089,13 +997,23 @@ Klines written into memory carry their recorded depths; consuming one composes i
 
 Acquisition depth is stored provenance. It cannot in general be reconstructed from the current node sequence alone, because the sequence does not record the path by which its atoms were acquired: consumption leaves no trace in ν_A.
 
-### Discount factor
+## Definition 20 — Graded significance
+
+The significance measure is:
 
 ```text
-0 < δ < 1.
+γ(A,B) = J(σ(ν_A), σ(ν_B)) · δ^(D̄ + Ĥ)
 ```
 
-The same factor discounts both resolution depth and acquisition depth; both are denominated in edges.
+where 0 < δ < 1 is the discount factor. The same factor discounts both depths; both are denominated in edges.
+
+Thus:
+
+```text
+significance = content overlap × discount for granularity and acquisition cost.
+```
+
+The form is fixed, not free: four requirements force it.
 
 Consequently:
 
@@ -1155,6 +1073,95 @@ For δ = 1/2, the final significance is:
 The answer is therefore complete even though its significance has decreased. The decrease records the cost of reaching the answer through unratified evidence.
 
 Ratification can remove that cost on a subsequent derivation by allowing the same correspondence to be traversed without the unratified penalty.
+
+---
+
+# 11. Strategy
+
+Sections 6–9 define what a derivation may do; §10 measures its worth. Strategy determines which permitted operation is attempted and in what order.
+
+The strategy loop is:
+
+```text
+select a goal
+    ↓
+scope the memory
+    ↓
+derive to an ending
+    ↓
+add the result to memory
+    ↓
+re-enter with the resulting kline
+```
+
+A hop takes its goals from the top of the candidate list (Definition 22) and works down it: each goal gets its own scope and its own derivation, and a derivation that ends without done yields the next goal. The first four phases repeat within a hop; the last queues its result as the next hop's input. Strategy may also abandon or retarget a derivation.
+
+## Definition 21 — Hop
+
+A hop is the strategy unit of one queued kline: goals are taken from the top of its candidate list (Definition 22) in order, and each goal is scoped (Definition 23) and derived to an ending. A hop may therefore run several derivations; one that ends without done yields the next goal, and the hop ends at done, at the list's exhaustion, or at a bound.
+
+Within a hop, the queued kline's head is fixed, and each derivation's goal and scope are fixed for its duration (Definition 12). The hop's writes land in memory and are available to later hops alone; between hops, re-entry supplies the next queued kline.
+
+## Definition 22 — Selection
+
+For queued kline A, selection assembles the candidate goals, in order.
+
+A held kline
+
+```text
+K = t:ν_K ∈ M
+```
+
+is a candidate goal for A when its content covers a node of ν_A:
+
+```text
+n ∧ σ(ν_K) ≠ ∅, for some node n ∈ ν_A    (Definition 8).
+```
+
+The candidates, ordered by descending γ(A, K), are the goal list. γ is the graded significance (Definition 20): the significance of working from A toward the candidate — content overlap between the two parties, discounted for granularity and acquisition cost. Significance, not band, sets the order.
+
+The goal is taken from the front of the list; each derivation within a hop takes the next candidate in turn (Definition 21).
+
+## Definition 23 — Scope
+
+Once A and B are set, the derivation's memory is scoped. A scope is a trawl of the correspondence graph (§7), rooted at both parties: every correspondence reachable from A's nodes and B's nodes within a fixed depth.
+
+The trawl is dual-rooted, so the correspondences that join the parties — the misfit edges a derivation needs — are in scope by construction. It is depth-bounded and unranked: fast but stupid, no lookahead.
+
+The scope is the derivation's M for the hop's duration, read as trawled and never extended mid-hop. What a hop writes goes to memory (Definition 7); later hops' trawls reach it.
+
+## Progressive path
+
+Each hop may add evidence to memory. Later hops therefore operate with:
+
+```text
+M_{k+1} ⊇ M_k.
+```
+
+The memory a later hop trawls from may therefore contain correspondences generated by earlier hops.
+
+## Bounds
+
+Strategy controls four independent limits:
+
+1. the targeting bound from T1;
+2. limits on repeated witnessed transformations and traversal, per T2;
+3. the number of goals a hop takes from its list;
+4. the maximum re-entry depth.
+
+## Re-entry
+
+Every ending — done, stuck, or abandoned (Definition 16) — leaves a result that may produce the input to a subsequent hop. Re-entry changes A, never B: the resulting A reselects its candidate list (Definition 22), and the top of the new list may be the same kline again.
+
+Hop k is parameterised by:
+
+```text
+(M_k, B_k)
+```
+
+— the scope trawled from A_k and B_k (Definition 23), and the goal selected from A_k. A hop's writes land in memory as it proceeds, so later hops trawl from a memory grown by every earlier hop.
+
+Hop order is the only temporal structure defined by the system.
 
 ---
 
@@ -1276,7 +1283,7 @@ In particular, reciprocal Denotation pairs may be countersigned to create a stan
 
 # Appendix — Worked example: “Mary had”
 
-The §9 example works an under+over relationship: the question holds content the answer lacks (w, d) and lacks content the answer holds (a, l). This example works the pure overfit relationship — the fragment — where the underfit is empty and the ν_B walk of Definition 17 is the only bridge.
+The §9 example works an under+over relationship: the question holds content the answer lacks (w, d) and lacks content the answer holds (a, l). This example works the pure overfit relationship — the fragment — where the underfit is empty and the ν_B walk of Definition 15 is the only bridge.
 
 Suppose memory contains:
 
@@ -1326,12 +1333,12 @@ all:[all]
 
 and crosses two correspondences:
 
-| Hop                 | Correspondence     | Direction | Occurring side            |
+| Edge                | Correspondence     | Direction | Occurring side            |
 | ------------------- | ------------------ | --------- | ------------------------- |
 | all:[all] → all:[o] | all:[o] Denotation | forward   | head all occurs as a node |
 | all:[o] → all:[m]   | o:[m] Denotation   | forward   | head o occurs as a node   |
 
-The second hop arrives: content m overlaps σ(ν_A) — the anchor, discovered on arrival. Neither end refines — the anchor is already a node of ν_A, and the departed end is a node of ν_B, at the goal's own witness resolution. The terminal is the arrival state, two edges crossed.
+The second edge arrives: content m overlaps σ(ν_A) — the anchor, discovered on arrival. Neither end refines — the anchor is already a node of ν_A, and the departed end is a node of ν_B, at the goal's own witness resolution. The terminal is the arrival state, two edges crossed.
 
 It is written head-ward as the composed correspondence:
 
@@ -1343,7 +1350,7 @@ an Overfit kline with acquisition depth 2: the head is the anchor, whose atoms s
 
 ### Step 2 — Adopt
 
-The composed correspondence is selectable — its signature m occurs in ν_A — and its forward replacement adopts the overfit:
+The composed correspondence is in reach of the next hop — its content covers the node m of ν_A, so the trawl finds it — and its forward replacement adopts the overfit:
 
 ```text
 m ⇉ [m,all]
