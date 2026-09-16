@@ -2,6 +2,7 @@
 
 ## 2026-09-15
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template","title":"Kalvin algebra translated to verified Maude template"}
 - **commit**: {"change":"CONNOTES/DENOTES compiled shapes swapped (connotes compound AB:[B] S2, denotes plain A:[B] S3); predicates, band stamps, S3-bridge renames, docs, tests, probes aligned","commit":"39b0efd","files":["src/ks/ast_emitter.py","src/ks/token_encoder.py","src/kalvin/kline.py","src/kalvin/significance.py","src/dialogue/*","CONTEXT.md","docs/kalvin-algebra.md"]}
 - **retro**: {"category":"kscript","slug":"shape-swap-vs-name-swap-operator-semantics","title":"Operator semantics swaps: move shapes or move names — the countersign test decides"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-15-connotes-denotes-shapes-swapped-connotes-is-the-compound-den","title":"CONNOTES/DENOTES shapes swapped — connotes is the compound, denotes the plain"}

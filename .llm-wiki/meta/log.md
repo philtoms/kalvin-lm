@@ -491,3 +491,6 @@
 ## [2026-09-15T12:13:39.924Z] commit
 - commit: "39b0efd", change: "CONNOTES/DENOTES compiled shapes swapped (connotes compound AB:[B] S2, denotes plain A:[B] S3); predicates, band stamps, S3-bridge renames, docs, tests, probes aligned", files: ["src/ks/ast_emitter.py","src/ks/token_encoder.py","src/kalvin/kline.py","src/kalvin/significance.py","src/dialogue/*","CONTEXT.md","docs/kalvin-algebra.md"]
 
+## [2026-09-15T16:47:10.100Z] observe
+- slug: "obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template", title: "Kalvin algebra translated to verified Maude template", relevance: "high"
+

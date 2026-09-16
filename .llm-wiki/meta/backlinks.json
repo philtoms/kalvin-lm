@@ -926,6 +926,7 @@
   "sources/obs-2026-09-15-connotes-denotes-shapes-swapped-connotes-is-the-compound-den": [
     "sources/shape-swap-vs-name-swap-operator-semantics"
   ],
+  "sources/obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template": [],
   "sources/obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],

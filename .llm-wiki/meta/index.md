@@ -223,6 +223,7 @@
 - [[sources/obs-2026-09-14-slot-derivation-gap-overfit-relationships-have-no-slots]] — Observation: Slot derivation gap: overfit relationships have no slots *(created: 2026-09-14)*
 - [[sources/obs-2026-09-14-wiki-lint-remediation-4-gap-pages-8-link-fixes-0-unresolved-]] — Observation: Wiki lint remediation: 4 gap pages, 8 link fixes, 0 unresolved links *(created: 2026-09-14)*
 - [[sources/obs-2026-09-15-connotes-denotes-shapes-swapped-connotes-is-the-compound-den]] — Observation: CONNOTES/DENOTES shapes swapped — connotes is the compound, denotes the plain *(created: 2026-09-15)*
+- [[sources/obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template]] — Observation: Kalvin algebra translated to verified Maude template *(created: 2026-09-15)*
 - [[sources/obs-2026-09-15-wdmh-proposal-3-fixes-landed-entry-corruption-proposal-flood]] — Observation: WDMH proposal: 3 fixes landed; entry corruption + proposal flood remain *(created: 2026-09-15)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
@@ -233,4 +234,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-15T12:13:39.972Z* | *Total pages: 221*
+*Last updated: 2026-09-15T16:47:10.172Z* | *Total pages: 222*

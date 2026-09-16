@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-15T12:13:39.972Z",
+  "last_updated": "2026-09-15T16:47:10.172Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2861,6 +2861,23 @@
       "relevance": "high",
       "observed_at": "2026-09-15T10:07:32.859Z",
       "source_context": "Swapping CONNOTES/DENOTES compiled structures in the kscript compiler",
+      "created": "2026-09-15",
+      "updated": "2026-09-15"
+    },
+    "sources/obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template": {
+      "type": "source",
+      "title": "Observation: Kalvin algebra translated to verified Maude template",
+      "tags": [
+        "maude",
+        "formal-spec",
+        "docs",
+        "kalvin-algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-15-kalvin-algebra-translated-to-verified-maude-template",
+      "relevance": "high",
+      "observed_at": "2026-09-15T16:47:10.098Z",
+      "source_context": "Translating docs/kalvin-algebra.md to a Maude template",
       "created": "2026-09-15",
       "updated": "2026-09-15"
     },
