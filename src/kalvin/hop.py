@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from kalvin.derivation import Derivation, DerivationResult
-from kalvin.kline import KLine, is_terminal
+from kalvin.kline import ASK_SIG, KLine, is_ask, is_terminal
 from kalvin.significance import word_atom_count
 
 if TYPE_CHECKING:
@@ -46,13 +46,22 @@ def candidate_goals(
 
     The queued kline itself is never a candidate: C(A, A) is Canon at
     entry and proves nothing — a hop that breaks on it never reaches the
-    real goals down the list.
+    real goals down the list. An ask's canon is that same vacuous case
+    one step removed: the marker is not an atom, so the ask and its
+    canon share content — the canon is excluded too, by the ask step.
     """
     content = int(signifier.signature_of(queued.nodes))
+    ask_base = (
+        int(queued.signature) & ~ASK_SIG if is_ask(queued.signature) else None
+    )
     scored: list[tuple[float, int, KLine]] = []
     for i, k in enumerate(memory):
         if k.signature == queued.signature and k.nodes == queued.nodes:
             continue  # the queued kline is not its own goal
+        if is_ask(k.signature):
+            continue  # a question is never a goal
+        if ask_base is not None and (int(k.signature) & ~ASK_SIG) == ask_base:
+            continue  # an ask never heads its own goal list — nor its canon
         kc = int(signifier.signature_of(k.nodes))
         if not any(int(n) & kc for n in queued.nodes):
             continue  # covers no node of ν_A — not a candidate
