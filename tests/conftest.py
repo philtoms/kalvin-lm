@@ -26,14 +26,14 @@ import pytest
 def _tokenizer_data_available() -> bool:
     """Return ``True`` when the kalvin tokenizer data assets are loadable.
 
-    Probes :class:`kalvin.nlp_tokenizer.BPETokenizer` (the production
+    Probes :class:`kalvin.bpe_tokenizer.BPETokenizer` (the production
     tokenizer, whose constructor loads the BPE engine and NLP type
     dictionary) and returns ``False`` on any of ``ImportError`` (optional
     backend missing), ``FileNotFoundError`` (data directory absent) or
     ``OSError``.
     """
     try:
-        from kalvin.nlp_tokenizer import BPETokenizer
+        from kalvin.bpe_tokenizer import BPETokenizer
 
         BPETokenizer()
         return True
@@ -66,12 +66,12 @@ requires_tokenizer_data = pytest.mark.skipif(
 
 @pytest.fixture(scope="session")
 def tokenizer():
-    """Load the production :class:`kalvin.nlp_tokenizer.BPETokenizer` from data files.
+    """Load the production :class:`kalvin.bpe_tokenizer.BPETokenizer` from data files.
 
     Session-scoped: the tokenizer is immutable/read-only in tests (no test
     mutates the instance), so a single shared instance is constructed once
     for the whole run instead of once per test module.
     """
-    from kalvin.nlp_tokenizer import BPETokenizer
+    from kalvin.bpe_tokenizer import BPETokenizer
 
     return BPETokenizer()

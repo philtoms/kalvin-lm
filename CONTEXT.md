@@ -189,7 +189,7 @@ The unit of exchange between participants — a KLine paired with a significance
 The language that authors training material. A script is an encounter in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step.
 
 **Token ID**:
-A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word half (upper 32 bits) carries one bit per distinct word — the atoms' engine realisation — assigned first-encountered at bits 0–30; bit 31 is unused. A multi-subword word is one word and one bit; a compound (MTS signature, CONNOTES concatenation) composes no bit of its own — it is the OR-reduction of its component words' values.
+A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word half (upper 32 bits) carries one bit per distinct word — the atoms' engine realisation — assigned first-encountered at bits 0–30; bit 31 is the ASK marker (`ASK_SIG`), reserved — no word ever carries it. A multi-subword word is one word and one bit; a compound (MTS signature, CONNOTES concatenation) composes no bit of its own — it is the OR-reduction of its component words' values.
 
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
@@ -198,7 +198,7 @@ The closed set of written tokens that declare how a kline is produced. A token d
 - `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
 - `>` / `<` **CONNOTES** — the compound-signature shape `A > B` ⇒ `{AB:[B]}`, `A < B` ⇒ `{BA:[A]}` (reading order, `A < B ≡ B > A`): the signature is the compound of both operands, the node the connoted value. Self-reference collapses to Identity
 - `=` **DENOTES** — `{A:[B]}`: the signature denotes each node. Self-denote collapses to Identity
-- (none) **ASK** — a bare signature: unbound compiles to `{A:[]}` (the ask); word-bound to Identity `{A:[A]}`. The ASK op is the one op for every ask — a sigless annotation compiles to `{ABC:[a,big,cat]}` (the annotation's words as nodes), a `==` entry to the queued `{A:[]}`, a bare compound to its canon-noded ask. S4
+- (none) **ASK** — a bare signature: unbound compiles to `{A:[]}` (the ask); word-bound to Identity `{A:[A]}`. The ASK op is the one op for every ask — a sigless annotation compiles to `{ABC:[a,big,cat]}` (the annotation's words as nodes), a `==` entry to the queued ask, a bare compound to its canon-noded ask. Every ask's signature carries the ASK marker OR-ed in and its canon's nodes ride along (`WDMH|ASK_SIG:[what,did,Mary,have]`): the marker manufactures the ask's distinctiveness from its canon — identity, store keys, and lookups see it; every atom-space measurement (signifies, residual, γ) masks it out — and the nodes are what candidate selection (Def 22) reads. S4
 
 **Comment**:
 A leading `#` — the rest of the line is dropped by the lexer and never reaches binding or klines.

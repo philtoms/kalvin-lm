@@ -1185,14 +1185,19 @@ The syntax specifies an intended structure; the algebra then determines the actu
 
 | Token           | Structure                               | Band claim once solved             |
 | --------------- | --------------------------------------- | ---------------------------------- |
-| `a == b => c d` | `a:[]` (the ask) and the goal `b:[c,d]` | S4 ask; goal S1 (Canon) or open S2 |
+| `a == b => c d` | `a|ASK:[a's canon nodes]` (the ask) and the goal `b:[c,d]` | S4 ask; goal S1 (Canon) or open S2 |
 | `a => b c d`    | `a:[b,c,d]`                             | S1 (Canon) or open S2              |
 | `a = a`         | `a:[a]`                                 | S1                                 |
 | `a > b`         | `ab:[b]`                                | S2                                 |
 | `a = b`         | `a:[b]`                                 | S3                                 |
 | `a > a`         | `a:[a]`                                 | S1                                 |
-| `a`             | `a:[]`                                  | S4 — the ask                       |
-| ask-annotated   | any signature declared an ask           | S4                                 |
+| `a`             | `a|ASK:[]`                              | S4 — the ask                       |
+| ask-annotated   | any signature carrying the ASK marker   | S4                                 |
+
+`ASK` is the ASK marker (word-word bit 31): it marks identity, never
+content — every atom-space measurement masks it out — and the ask's canon
+nodes ride along so selection sees the question's content. An ask never
+heads a goal list, nor does its canon.
 
 The surface token does not override algebraic classification.
 

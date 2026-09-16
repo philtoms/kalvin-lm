@@ -32,7 +32,7 @@ Significance, Relational Tokens, MTS, Word Binding, Annotation).
 | `>`    | CONNOTES      | `{AB: [B]}`             | A connotes B. Becomes IDENTITY when same token.        |
 | `<`    | RCONNOTES     | `{BA: [A]}`             | B connotes A, reversed reading (≡ `B > A`).            |
 | `=`    | DENOTES       | `{A: [B]}`              | A denotes B.                                           |
-| (none) | ASK          | `{A: []}` or `{A: [A]}` | ask, unless word-bound → identity                      |
+| (none) | ASK          | `{A\|ASK: []}` or `{A: [A]}` | ask, unless word-bound → identity; the ASK marker rides the sig, the canon's nodes ride along |
 
 `MHALL == SVO => ...` literally means: queue `MHALL:[]` — the ask at
 S4 — with `SVO:[block operands]` as the implied goal. No reciprocal
