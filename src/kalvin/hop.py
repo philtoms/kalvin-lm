@@ -42,10 +42,17 @@ MAX_HOPS = 8
 def candidate_goals(
     memory: list[KLine], queued: KLine, signifier: KSignifier
 ) -> list[KLine]:
-    """Def 22 — the goal list: coverage pool (Def 8), γ(A, K) order."""
+    """Def 22 — the goal list: coverage pool (Def 8), γ(A, K) order.
+
+    The queued kline itself is never a candidate: C(A, A) is Canon at
+    entry and proves nothing — a hop that breaks on it never reaches the
+    real goals down the list.
+    """
     content = int(signifier.signature_of(queued.nodes))
     scored: list[tuple[float, int, KLine]] = []
     for i, k in enumerate(memory):
+        if k.signature == queued.signature and k.nodes == queued.nodes:
+            continue  # the queued kline is not its own goal
         kc = int(signifier.signature_of(k.nodes))
         if not any(int(n) & kc for n in queued.nodes):
             continue  # covers no node of ν_A — not a candidate
