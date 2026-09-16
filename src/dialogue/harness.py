@@ -26,9 +26,11 @@ from typing import Literal, cast
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
 from kalvin.kline import (
+    ASK_SIG,
     KLine,
     KNode,
     classify_misfit,
+    is_ask,
     is_canon,
     is_connotation,
     is_denotation,
@@ -148,6 +150,8 @@ class Harness:
         # (Def 20): fresh content carries zero depths, so γ(A, B) = J of the
         # two contents. The structural band (the ask's S4 shape) is
         # recomputed from structure by the engine — never the fed byte.
+        # The ask signature carries the ASK marker; goals key on the marked
+        # out base so the ask and its canon look up the same goal.
         goals: dict[int, KValue] = {}
         for e in entries:
             d = e.kline.dbg
@@ -162,25 +166,27 @@ class Harness:
                 None,
             )
             if goal is not None:
-                goals[e.kline.signature] = goal
+                goals[int(e.kline.signature) & ~ASK_SIG] = goal
 
         def graded(entry: KValue) -> KValue:
-            """The ask's empty form, graded; every other entry feeds as
-            compiled."""
-            if entry.kline.nodes or entry.kline.signature not in goals:
+            """The ask, graded; every other entry feeds as compiled."""
+            base = int(entry.kline.signature) & ~ASK_SIG
+            if not is_ask(entry.kline.signature) or base not in goals:
                 return entry
-            goal = goals[entry.kline.signature]
+            goal = goals[base]
             a, b = int(entry.kline.signature), int(goal.kline.signature)
             union = word_atom_count(a | b)
             j = word_atom_count(a & b) / union if union else 1.0
             return KValue(entry.kline, gamma_to_byte(j))
 
         def is_ask_content(entry: KValue) -> bool:
-            """The ask's content form (e.g. its MTS canon) — the answer to
-            the question, never the feed. It still joins the answering
+            """The ask's content form (its canon) — the answer to the
+            question, never the feed. It still joins the answering
             pools: the harness releases it when the engine asks."""
             return (
-                bool(entry.kline.nodes) and entry.kline.signature in goals
+                bool(entry.kline.nodes)
+                and not is_ask(entry.kline.signature)
+                and int(entry.kline.signature) & ~ASK_SIG in goals
             )
         tokens = {
             sig: word
@@ -349,8 +355,8 @@ class Harness:
                     continue
                 reply = self._answer(ask, heads, exact, words, answered)
                 if reply is None:
-                    if not ask.kline.nodes:
-                        # An empty ask is signature discovery, not a
+                    if is_ask(ask.kline.signature):
+                        # An ask is signature discovery, not a
                         # proposal — nothing for a supervisor to decide.
                         replies.append(KValue(ask.kline, SIG_S4))
                         continue
@@ -394,18 +400,22 @@ class Harness:
         """The ratifying reply to ``ask``, or ``None`` when the script cannot
         answer it.
 
-        An identity ask ``X:[]`` is answered by an identity ``X:[X]`` plus the
-        script klines headed ``X``. A proposal ask ``A:[B]`` is answered by the
-        matching script kline plus its countersignature ``B:[A]``.
+        An ask-marked kline is answered by the script klines under its
+        unmarked base (its canon — the answer), plus an identity when the
+        base is a terminal word. A proposal ``A:[B]`` is answered by the
+        matching script kline plus its countersignatures.
         """
         kline = ask.kline
         key = (kline.signature, tuple(kline.nodes))
         if key in answered:
             return []
         answered.add(key)
-        if not kline.nodes:
+        if is_ask(kline.signature):
+            # The ASK marker is not an atom: the question and its canon
+            # share the unmarked base — the release pools key on it.
+            base = int(kline.signature) & ~ASK_SIG
             script_klines = [
-                e for e in heads.get(kline.signature, [])
+                e for e in heads.get(base, [])
                 if e.kline.nodes != [kline.signature]
                 # K already holds it: grounded, or attending to it in the work list
                 # (re-feeding the asked question re-arms a refused ask).
@@ -416,9 +426,9 @@ class Harness:
                     for entry in self.state.work_list
                 )
             ]
-            is_word = kline.signature in words or any(
+            is_word = base in words or any(
                 e.kline.nodes == [kline.signature]
-                for e in heads.get(kline.signature, [])
+                for e in heads.get(base, [])
             )
             if not script_klines and not is_word:
                 return None
@@ -426,9 +436,7 @@ class Harness:
             # a non-terminal's word form must come from the script.
             if not is_word:
                 return [*script_klines]
-            identity = KValue(
-                KLine(kline.signature, [kline.signature]), SIG_S1
-            )
+            identity = KValue(KLine(base, [base]), SIG_S1)
             return [identity, *script_klines]
         hit = exact.get(key)
         if hit is None:

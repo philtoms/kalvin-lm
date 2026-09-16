@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
-from kalvin.kline import KLine
+from kalvin.kline import ASK_SIG, KLine
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from ks.compiler import compile_source
@@ -201,10 +201,14 @@ def _resolve_kline(
             )
         if nodes:
             raise DecodeError(
-                f"ASK {signature!r}: an ask carries no decomposition, "
-                f"but nodes {nodes!r} were declared"
+                f"ASK {signature!r}: an ask's nodes are its canon's — "
+                f"declared nodes {nodes!r} are not decoded"
             )
-        return KLine(kl.signature, [], dbg=kl.dbg)  # the S4 ask ``X:[]``
+        # The marked ask ``X|ASK_SIG:[canon nodes]`` — the question with
+        # its canon's nodes riding along.
+        return KLine(
+            int(kl.signature) | ASK_SIG, list(kl.nodes), dbg=kl.dbg
+        )
 
     if op == "IDENTITY":
         kl = resolved.canon_by_label.get(signature) or resolved.labels.get(signature)

@@ -18,7 +18,9 @@ from typing import TYPE_CHECKING
 from dialogue.engine_state import EngineState
 from kalvin.hop import Hop
 from kalvin.kline import (
+    ASK_SIG,
     KLine,
+    is_ask,
     is_terminal,
     sig_level,
     using_resolver,
@@ -177,7 +179,9 @@ class Engine:
                 # Stuck and abandoned ask; done at entry is the ground
                 # path's, not a proposal.
                 continue
-            proposal = KLine(kline.signature, result.trace[-1])
+            proposal = KLine(
+                int(kline.signature) & ~ASK_SIG, result.trace[-1]
+            )
             if not self._state.is_refused(proposal):
                 batch.append(KValue(proposal, gamma_to_byte(result.gamma)))
         return batch
