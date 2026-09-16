@@ -240,7 +240,7 @@ An agent that resolves what the Trainer escalates — deciding ratify, scaffold,
 _Avoid_: UI, human
 
 **Scaffolding**:
-KScript entries that provide grounding context for other entries — structurally identical regardless of origin (pre-compiled by the author, or reactive from the supervisor). Delivery is a harness mode: batch (all before the group's opening entry) or on-demand (released as the trainee asks).
+KScript entries that provide grounding context for other entries — structurally identical regardless of origin (pre-compiled by the author, or reactive from the supervisor). Delivery is a harness mode: batch (all before the group's opening entry) or on-demand (released as the trainee asks). Scaffold groups open before ask groups: the trainer primes K before asking, so the ask's hops trawl the scaffold from memory.
 
 **Proposal**:
 A KLine emitted by a trainee during rationalisation. Ungrounded when generated under the ask — S3 evidence is a promise, not a fact; weighing promises is protocol.

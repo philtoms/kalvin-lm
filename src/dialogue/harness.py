@@ -258,6 +258,10 @@ class Harness:
             ):
                 continue
             steps.append((key, group, opener))
+        # Scaffold groups open before ask groups: the trainer primes K
+        # before asking, so the ask's hops trawl the scaffold from memory.
+        # Stable within each class — authored order preserved.
+        steps.sort(key=lambda s: bool(s[2].kline.dbg and s[2].kline.dbg.op == "ASK"))
         results: list[StepResult] = []
         for i, (key, group, opener) in enumerate(steps):
             # Fresh answers per authored group: a repeated group is a second
