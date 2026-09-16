@@ -116,6 +116,9 @@ class Harness:
         # The word→bit table compiles share; persisted with the state so a
         # reloaded state's node values mean the same words.
         self.word_bits: dict[str, int] = {}
+        # The prior state's words in acquisition order — the compile's
+        # outermost word list, binding chars the script cannot bind itself.
+        self.known_words: list[str] = []
 
     @property
     def engine(self) -> Engine:
@@ -144,7 +147,7 @@ class Harness:
         """
         entries = compile_source(
             source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True,
-            word_bits=self.word_bits,
+            word_bits=self.word_bits, known_words=self.known_words,
         )
         # A `==` ask feeds at its subjective significance toward the goal
         # (Def 20): fresh content carries zero depths, so γ(A, B) = J of the
@@ -385,7 +388,8 @@ class Harness:
         from ks.lexer import Lexer
         from ks.parser import Parser
         compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True,
-                            word_bits=self.word_bits)
+                            word_bits=self.word_bits,
+                            known_words=self.known_words)
         compiler.compile(Parser(Lexer(source).tokenize()).parse())
         return {
             sig: word
@@ -485,6 +489,9 @@ def load_engine(
     harness = Harness(tokenizer, Engine(state), scaffolding=scaffolding)
     # Compiles must continue the loaded state's word→bit mapping.
     harness.word_bits = dict(state.word_bits or {})
+    # And its word binding: the state's words bind chars the script
+    # cannot bind itself (the underfit question script's answer chars).
+    harness.known_words = list(state.word_bits or {})
     return harness
 
 

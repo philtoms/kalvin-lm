@@ -54,11 +54,13 @@ class Compiler:
         signifier: KSignifier | None = None,
         dev: bool = False,
         word_bits: dict[str, int] | None = None,
+        known_words: list[str] | None = None,
     ) -> None:
         self.tokenizer: KTokenizer = tokenizer or BPETokenizer()
         self._signifier: KSignifier = signifier or NLPSignifier()
         self.dev = dev
         self._word_bits = word_bits
+        self._known_words = known_words
         self.entries: list[KValue] = []
 
     def compile(self, file: KScriptFile) -> list[KValue]:
@@ -78,6 +80,12 @@ class Compiler:
         """
         scope = BindingScope()
         scope.push_scope()  # root scope
+        if self._known_words:
+            # The prior state's words, in acquisition order — the outermost
+            # word list. A char the script cannot bind itself resolves here,
+            # continuing the earlier scripts' word binding; the script's own
+            # lists are searched most-recent-first and always win.
+            scope.add_words(self._known_words)
 
         emitter = ASTEmitter(scope=scope, dev=self.dev)
         symbolic: list[SymbolicEntry] = emitter.emit(file)
@@ -94,6 +102,7 @@ def compile_source(
     signifier: KSignifier | None = None,
     dev: bool = False,
     word_bits: dict[str, int] | None = None,
+    known_words: list[str] | None = None,
 ) -> list[KValue]:
     """Compile a KScript source string into encoded entries.
 
@@ -115,4 +124,7 @@ def compile_source(
 
     tokens = Lexer(source).tokenize()
     kfile = Parser(tokens).parse()
-    return Compiler(tokenizer, signifier=signifier, dev=dev, word_bits=word_bits).compile(kfile)
+    return Compiler(
+        tokenizer, signifier=signifier, dev=dev, word_bits=word_bits,
+        known_words=known_words,
+    ).compile(kfile)
