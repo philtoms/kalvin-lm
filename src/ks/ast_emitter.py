@@ -260,14 +260,19 @@ class ASTEmitter:
         if op == "ASK":
             # For multi-char sigs _emit_mts already introduced the compound
             # via CANONICALISES (mts_idx is not None) — a compound can't form an
-            # identity. Single-char sigs refine by Word Binding:
-            # word-bound → self-referential IDENTITY {S:[S]} (S1); unbound →
-            # empty ASK {S:[]} (S4). Binding is the sole discriminator.
+            # identity. Single-char sigs refine by Word Binding: word-bound →
+            # self-referential IDENTITY {S:[S]} (S1); unbound → the ask
+            # {S|ASK:[S]} — the identity shape, marked. Binding is the sole
+            # discriminator — except a synthesized scope (a sigless
+            # annotation's utterance): always the ask, the binding resolving
+            # its nodes, exactly as a multi-word annotation's do.
             if mts_idx is None:
-                if sig_resolved != scope.sig.id:
+                if sig_resolved != scope.sig.id and not scope.synthetic:
                     self._emit_entry(sig_resolved, [sig_resolved], "IDENTITY")
                 else:
-                    self._emit_entry(sig_resolved, [], "ASK", is_ask=True)
+                    self._emit_entry(
+                        sig_resolved, [sig_resolved], "ASK", is_ask=True
+                    )
             else:
                 # A bare compound is an ask. When this scope created the MTS
                 # canon, it becomes the ask in place (leaving the dedup
@@ -606,7 +611,7 @@ class ASTEmitter:
         Used in CANONICALISES subscript blocks to ensure every identifier appears
         as the signature of at least one emitted entry. Applies the binding-
         aware rule: word-bound → self-referential IDENTITY {w:[w]};
-        unbound → empty ASK {w:[]}.
+        unbound → the ask {w|ASK:[w]} — the identity shape, marked.
 
         Dedup checks (in order):
           1. Existing CANONICALISES entry — sig is a compound already introduced
@@ -626,7 +631,7 @@ class ASTEmitter:
         if resolved != raw_id:
             self._emit_entry(resolved, [resolved], "IDENTITY")
         else:
-            self._emit_entry(resolved, [], "ASK", is_ask=True)
+            self._emit_entry(resolved, [resolved], "ASK", is_ask=True)
 
     # Scope walk and child compilation (Step 3)
 

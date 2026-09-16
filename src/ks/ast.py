@@ -57,6 +57,9 @@ class OperatorScope:
         inline_annotation: Annotation attached to sig-side, e.g. S(ubject) = M.
             A top-level (signature-prefix) annotation: binds fill-if-empty per
             Word Binding (never overriding an outer binding on the same char).
+        synthetic: True when the parser synthesized this scope from a sigless
+            annotation (the sig is the annotation's initials) — an utterance,
+            always the ask, its binding resolving nodes.
     """
 
     sig: Signature
@@ -64,6 +67,7 @@ class OperatorScope:
     items: list[ScopeItem] = field(default_factory=list)
     child_block: Block | None = None
     inline_annotation: Annotation | None = None  # sig-side (top-level)
+    synthetic: bool = False
 
 
 @dataclass

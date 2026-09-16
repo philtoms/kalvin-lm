@@ -176,6 +176,7 @@ class Parser:
             return ann
         sig = Signature(id=initials, line=ann.line, column=ann.column)
         scope = self._parse_operator_scope_rest(sig)
+        scope.synthetic = True
         return Block(constructs=[ann, scope])
 
     @staticmethod
