@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING
 
 from kalvin.derivation import Derivation, DerivationResult
 from kalvin.kline import ASK_SIG, KLine, is_ask, is_terminal
-from kalvin.significance import word_atom_count
+from kalvin.significance import WORD_BITS, word_atom_count
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 #: Def 21 bound — goals a hop takes from its list.
 MAX_GOALS = 8
 #: Def 23 bound — trawl depth, in correspondence-graph edges.
-TRAWL_DEPTH = 4
+TRAWL_DEPTH = 5
 #: Re-entry bound — the hop ceiling.
 MAX_HOPS = 8
 
@@ -77,24 +77,33 @@ def trawl(
     *,
     max_depth: int = TRAWL_DEPTH,
 ) -> list[KLine]:
-    """Def 23 — dual-rooted, depth-bounded correspondence-graph trawl."""
-    reach = {int(n) for n in a_nodes} | {int(n) for n in b_nodes}
+    """Def 23 — dual-rooted, depth-bounded correspondence-graph trawl.
+
+    A kline touches the reached set when its signature or any node
+    shares a word bit with it — the same atom-level coverage Def 22
+    reads (token-id bits carry no correspondence). The reached set is
+    the OR of every root's and scoped kline's word bits.
+    """
+    reach = 0
+    for n in list(a_nodes) + list(b_nodes):
+        reach |= int(n) & WORD_BITS
     pending = [k for k in memory if not is_terminal(k)]
     scope: list[KLine] = []
     for _ in range(max_depth):
         hit = [
             k
             for k in pending
-            if int(k.signature) in reach
-            or any(int(n) in reach for n in k.nodes)
+            if int(k.signature) & reach
+            or any(int(n) & reach for n in k.nodes)
         ]
         if not hit:
             break
         taken = {id(k) for k in hit}
         for k in hit:
             scope.append(k)
-            reach.add(int(k.signature))
-            reach.update(int(n) for n in k.nodes)
+            reach |= int(k.signature) & WORD_BITS
+            for n in k.nodes:
+                reach |= int(n) & WORD_BITS
         pending = [k for k in pending if id(k) not in taken]
     return scope
 

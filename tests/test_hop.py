@@ -64,6 +64,22 @@ def test_trawl_excludes_terminals():
     assert int(M) not in {int(k.signature) for k in scope}
 
 
+def test_trawl_touches_at_word_bits():
+    # A connoted compound shares a word bit with the roots — it scopes,
+    # even though its whole value never equals a root's value.
+    ws = bit(7)  # w|s compound, root w
+    mem = [KLine(ws, [W])]
+    scope = trawl(mem, [W, D, M, H], [M, H, A, L, L], max_depth=1)
+    assert int(ws) in {int(k.signature) for k in scope}
+    # Token-id bits alone carry no correspondence: values sharing only
+    # low bits never touch.
+    root = (1 << (32 + 9)) | 0xFF
+    sig = (1 << (32 + 8)) | 0xFF
+    node = (1 << (32 + 10)) | 0xFF  # shares 0xFF with root, no word bit
+    mem = [KLine(sig, [node])]
+    assert trawl(mem, [root], [root], max_depth=5) == []
+
+
 def test_hop_ends_abandoned_at_the_goal_bound():
     hop = Hop(_memory(), KLine(WDMH, [W, D, M, H]), SIG, max_goals=1).run()
     assert hop.ending == "abandoned"
