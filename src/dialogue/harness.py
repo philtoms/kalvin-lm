@@ -416,7 +416,7 @@ class Harness:
             base = int(kline.signature) & ~ASK_SIG
             script_klines = [
                 e for e in heads.get(base, [])
-                if e.kline.nodes != [kline.signature]
+                if e.kline.nodes != [base]
                 # K already holds it: grounded, or attending to it in the work list
                 # (re-feeding the asked question re-arms a refused ask).
                 and not self.state.is_grounded(e.kline)
@@ -427,7 +427,7 @@ class Harness:
                 )
             ]
             is_word = base in words or any(
-                e.kline.nodes == [kline.signature]
+                e.kline.nodes == [base]
                 for e in heads.get(base, [])
             )
             if not script_klines and not is_word:
