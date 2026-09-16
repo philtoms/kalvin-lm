@@ -38,7 +38,15 @@ from kalvin.kline import (
 )
 from kalvin.kvalue import KValue
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin.significance import SIG_MASK, SIG_S1, SIG_S3, SIG_S4, BandLayout
+from kalvin.significance import (
+    SIG_MASK,
+    SIG_S1,
+    SIG_S3,
+    SIG_S4,
+    BandLayout,
+    gamma_to_byte,
+    word_atom_count,
+)
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
 from training.trainer.curriculum_document import (
@@ -136,6 +144,44 @@ class Harness:
             source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True,
             word_bits=self.word_bits,
         )
+        # A `==` ask feeds at its subjective significance toward the goal
+        # (Def 20): fresh content carries zero depths, so γ(A, B) = J of the
+        # two contents. The structural band (the ask's S4 shape) is
+        # recomputed from structure by the engine — never the fed byte.
+        goals: dict[int, KValue] = {}
+        for e in entries:
+            d = e.kline.dbg
+            if d is None or d.op != "ASK" or not d.goal:
+                continue
+            goal = next(
+                (
+                    g for g in entries
+                    if g.kline.dbg and g.kline.dbg.label == d.goal
+                    and g.kline.nodes
+                ),
+                None,
+            )
+            if goal is not None:
+                goals[e.kline.signature] = goal
+
+        def graded(entry: KValue) -> KValue:
+            """The ask's empty form, graded; every other entry feeds as
+            compiled."""
+            if entry.kline.nodes or entry.kline.signature not in goals:
+                return entry
+            goal = goals[entry.kline.signature]
+            a, b = int(entry.kline.signature), int(goal.kline.signature)
+            union = word_atom_count(a | b)
+            j = word_atom_count(a & b) / union if union else 1.0
+            return KValue(entry.kline, gamma_to_byte(j))
+
+        def is_ask_content(entry: KValue) -> bool:
+            """The ask's content form (e.g. its MTS canon) — the answer to
+            the question, never the feed. It still joins the answering
+            pools: the harness releases it when the engine asks."""
+            return (
+                bool(entry.kline.nodes) and entry.kline.signature in goals
+            )
         tokens = {
             sig: word
             for sig, word in self._single_token_labels(source).items()
@@ -239,8 +285,9 @@ class Harness:
             # become known.
             def build_batch(sources: list[KValue]) -> list[KValue]:
                 batch = [
-                    e for e in sources
+                    graded(e) for e in sources
                     if not self.state.is_grounded(e.kline)
+                    and not is_ask_content(e)
                 ]
                 fed = {
                     (e.kline.signature, tuple(e.kline.nodes)) for e in batch
@@ -265,7 +312,7 @@ class Harness:
                     self._drive(step, [scaffolding], heads, exact, words,
                                 answered)
                 if not self.state.is_grounded(opener.kline):
-                    self._drive(step, [[opener]], heads, exact, words,
+                    self._drive(step, [[graded(opener)]], heads, exact, words,
                                 answered)
             else:
                 self._drive(step, [build_batch([opener])], heads, exact,

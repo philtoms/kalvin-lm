@@ -107,6 +107,7 @@ class SymbolicEntry(NamedTuple):
                           # push every MTS kline after compiled source.
     annotation: str = ""   # the owning scope's annotation text
     scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
+    goal: str = ""         # a COUNTERSIGNS ask: the `==` RHS sig id
     concat: list[str] | None = None
     # Component words of a synthesized compound SIGNATURE (identifier
     # order). Set only by CONNOTES (sig+nodes) and RCONNOTES (nodes+sig),
@@ -336,7 +337,17 @@ class ASTEmitter:
                 q.setdefault(nid, deque()).append(word)
         self._node_res_q = q
 
-        self._emit_operator_entries(sig_resolved, resolved_nodes, op)
+        goal = ""
+        if op == "COUNTERSIGNS":
+            goal = next(
+                (
+                    self._resolve_inline_or_scope(item.sig.id, item.inline_annotation)
+                    for item in scope.items
+                    if isinstance(item, OperatorScope)
+                ),
+                "",
+            )
+        self._emit_operator_entries(sig_resolved, resolved_nodes, op, goal=goal)
         self._compile_children(scope, op, mts_idx, pushed_scope=pushed_scope)
 
         self._parent_kline_chars = saved_chars
@@ -350,14 +361,16 @@ class ASTEmitter:
         sig: str,
         nodes: list[str],
         op: str,
+        goal: str = "",
     ) -> None:
         """Emit operator-specific entries based on the operator type."""
         if op == "COUNTERSIGNS":
             # Goal-targeted training: the sig is the queued entry — an ask
             # at S4. The goal (the nested `B =>` scope's block canon
             # `B:[C,D]`) is compiled by _compile_children as its own scope;
-            # nothing pairs with the ask here.
-            self._emit_entry(sig, [], "ASK")
+            # nothing pairs with the ask here. The goal's sig id rides the
+            # ask so a feeder can grade the query at γ(A, B).
+            self._emit_entry(sig, [], "ASK", goal=goal)
 
         elif op == "CONNOTES":
             if nodes == [sig]:
@@ -537,7 +550,7 @@ class ASTEmitter:
 
     # Entry emission with CANONICALISES dedup
 
-    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, concat: list[str] | None = None) -> None:
+    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, concat: list[str] | None = None, goal: str = "") -> None:
         """Emit a SymbolicEntry.
 
         CANONICALISES dedup applies only to MTS expansion (one decoding aid per
@@ -569,6 +582,7 @@ class ASTEmitter:
             concat=concat,
             annotation=self._scope_annotation,
             scope=1 if is_mts else 0,
+            goal=goal,
         ))
 
     # Identity emission for CANONICALISES subscript blocks

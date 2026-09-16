@@ -230,6 +230,7 @@ class TokenEncoder:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)
         dbg.annotation = entry.annotation
         dbg.scope = entry.scope
+        dbg.goal = entry.goal
 
         main = KLine(
             signature=sig_uint64,

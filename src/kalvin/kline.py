@@ -130,6 +130,7 @@ class KDbg:
     type_info: str = ""
     annotation: str = ""
     scope: int = 0
+    goal: str = ""
 
     def __bool__(self) -> bool:
         """Truthy when any field is non-empty."""
@@ -196,6 +197,7 @@ class KLine:
             self.dbg = KDbg(
                 op=dbg.op, label=dbg.label, decoded=dbg.decoded,
                 type_info=dbg.type_info, annotation=dbg.annotation, scope=dbg.scope,
+                goal=dbg.goal,
             )
         self.dbg.decoded = kline_decode(self, resolver)
 

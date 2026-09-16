@@ -194,7 +194,7 @@ A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word h
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
 
-- `==` **COUNTERSIGNS** — goal-targeted training: `A == B => C D` compiles to the queued ask `{A:[]}` (S4, the entry) and the implied goal `{B:[C,D]}` (a Canon or covered misfit per the block's scaffolding). No reciprocal pair is emitted; the engine's own selection is unchanged — the goal is the trainer's answer key
+- `==` **COUNTERSIGNS** — goal-targeted training: `A == B => C D` compiles to the queued ask `{A:[]}` (S4, the entry) and the implied goal `{B:[C,D]}` (a Canon or covered misfit per the block's scaffolding). No reciprocal pair is emitted; the engine's own selection is unchanged — the goal is the trainer's answer key. The harness feeds the ask at its subjective significance γ(A, B) (Def 20 — fresh content carries zero depths, so γ = J of the two contents); the structural S4 shape is never the exchanged byte
 - `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
 - `>` / `<` **CONNOTES** — the compound-signature shape `A > B` ⇒ `{AB:[B]}`, `A < B` ⇒ `{BA:[A]}` (reading order, `A < B ≡ B > A`): the signature is the compound of both operands, the node the connoted value. Self-reference collapses to Identity
 - `=` **DENOTES** — `{A:[B]}`: the signature denotes each node. Self-denote collapses to Identity
