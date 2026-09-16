@@ -212,7 +212,7 @@ A device for representing a multi-token signature on the LHS: the compiler expan
 _Avoid_: decomposition (a Canon decomposes into nodes; an MTS expands a signature into characters)
 
 **Word Binding**:
-The association of a single-character signature with a word, resolved through annotations. Precedence: inline annotation (nearest, overrides all others, also binds its immediate parent scope), then top-level annotations by scope, then resolved bindings (the char→word memory of earlier resolutions). Within a tier, the most recent match wins; each identity occurrence binds exactly once.
+The association of a single-character signature with a word, resolved through annotations. The letter binds, not its case — an authored witness `h(ad)` binds the compound char `H` as readily as `H(ad)` (the sig char's case is typographic; the word's case is the word). Precedence: inline annotation (nearest, overrides all others, also binds its immediate parent scope), then top-level annotations by scope, then resolved bindings (the char→word memory of earlier resolutions). Within a tier, the most recent match wins; each identity occurrence binds exactly once.
 _Avoid_: comment mapping, rebind
 
 ## Training and Runtime

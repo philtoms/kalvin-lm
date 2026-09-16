@@ -897,7 +897,9 @@ class ASTEmitter:
         """
         if self._parent_kline_chars is None or self._parent_kline_canonicalise_idx is None:
             return
-        idx = self._parent_kline_chars.find(char)
+        # Case-insensitive: the sig char's case is typographic — a compound
+        # char H binds from an authored witness h(ad) as readily as H(ad).
+        idx = self._parent_kline_chars.lower().find(char.lower())
         if idx < 0:
             return  # no-op — char not in parent kline
         entry = self.entries[self._parent_kline_canonicalise_idx]
