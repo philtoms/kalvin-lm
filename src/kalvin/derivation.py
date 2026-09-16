@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections import Counter, deque
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
-from itertools import combinations
+from itertools import combinations, product
 
 from kalvin.abstract import KSignifier
 from kalvin.kline import KLine, is_canon, is_terminal, sig_level
@@ -165,19 +165,34 @@ class Derivation:
 
     def canonicalisations(self) -> Iterator[tuple[KLine, tuple[int, ...], list[int]]]:
         """Exactly-witnessed proper groups contractable under a held canon,
-        smallest group first (Def 13, canonicalisation)."""
-        n = len(self.nodes)
-        for size in range(2, n):
-            for idxs in combinations(range(n), size):
-                group = tuple(int(self.nodes[i]) for i in idxs)
-                for k in self.memory:
-                    if not is_canon(k, self.signifier):
-                        continue
-                    if Counter(int(x) for x in k.nodes) != Counter(group):
-                        continue
-                    new = [x for i, x in enumerate(self.nodes) if i not in idxs]
-                    new.insert(idxs[0], k.signature)
-                    yield k, group, new
+        smallest group first (Def 13, canonicalisation).
+
+        The survey runs over held witnesses, not node subsets: a group is
+        contractable iff some held canon's node multiset matches it. The
+        subset enumeration the letter of Def 13 suggests is exponential in
+        a grown node list; witness-driven matching is the same relation.
+        """
+        canons = [
+            (i, k) for i, k in enumerate(self.memory)
+            if is_canon(k, self.signifier) and 2 <= len(k.nodes) < len(self.nodes)
+        ]
+        canons.sort(key=lambda t: (len(t[1].nodes), t[0]))
+        for _, k in canons:
+            want = Counter(int(x) for x in k.nodes)
+            # every placement of the canon's multiset in the current nodes
+            idxs_by_val: dict[int, list[int]] = {}
+            for i, x in enumerate(self.nodes):
+                idxs_by_val.setdefault(int(x), []).append(i)
+            if any(len(idxs_by_val.get(v, ())) < c for v, c in want.items()):
+                continue
+            per_val = [
+                list(combinations(sorted(idxs_by_val[v]), want[v])) for v in want
+            ]
+            for picks in product(*per_val):
+                combo = sorted(i for pick in picks for i in pick)
+                new = [x for i, x in enumerate(self.nodes) if i not in combo]
+                new.insert(combo[0], k.signature)
+                yield k, tuple(int(self.nodes[i]) for i in combo), new
 
     def targetings(self) -> Iterator[tuple[KLine, str, list[int], int, int]]:
         """Licensed targeting replaces with strictly falling misfit mass
@@ -232,7 +247,11 @@ class Derivation:
             end_mask = self.excess()
         queue: deque = deque([([slot], frozenset(), 0, [])])
         seen = {(int(slot),)}
+        expanded = 0
         while queue:
+            if expanded >= self.max_walk_states:
+                return None  # T2: the state bound — the walk is abandoned
+            expanded += 1
             nodes, used, edges, path = queue.popleft()
             if edges and self.signifier.signifies(
                 int(self.signifier.signature_of(nodes)), end_mask
