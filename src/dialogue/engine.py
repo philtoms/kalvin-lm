@@ -93,10 +93,14 @@ class Engine:
 
         # A stamped-S1 query is a ratification: ground on receipt, before
         # any answering — the ratified kline is the answer just granted.
+        # The stamp, not structure, is the licence: the reached-goal
+        # answer is a misfit in the question's head, never groundable
+        # structurally. An ask never grounds however stamped (a question
+        # is not an answer), nor an empty unknown.
         if query_sig == "S1" or (
             structural_sig == query_sig and structural_sig == "S1"
         ):
-            if self._state.is_groundable(kline):
+            if not is_ask(kline.signature) and kline.nodes:
                 self._ground(kline)
                 return True
 

@@ -323,13 +323,13 @@ class Harness:
                 )
                 if scaffolding:
                     self._drive(step, [scaffolding], heads, exact, words,
-                                answered)
+                                answered, goals)
                 if not self.state.is_grounded(opener.kline):
                     self._drive(step, [[graded(opener)]], heads, exact, words,
-                                answered)
+                                answered, goals)
             else:
                 self._drive(step, [build_batch([opener])], heads, exact,
-                            words, answered)
+                            words, answered, goals)
         return results
 
     def _drive(
@@ -340,6 +340,7 @@ class Harness:
         exact: dict[tuple[int, tuple[int, ...]], KValue],
         words: set[int],
         answered: set[tuple[int, tuple[int, ...]]],
+        goals: dict[int, KValue],
     ) -> None:
         """Run the feed→ask→answer loop until ``queue`` drains."""
         while queue:
@@ -367,6 +368,13 @@ class Harness:
                         # proposal — nothing for a supervisor to decide.
                         replies.append(KValue(ask.kline, SIG_S4))
                         continue
+                    graded = self._grade_proposal(ask, goals)
+                    if graded is not None:
+                        # A proposal under a `==` goal grades at γ of the
+                        # two contents — the byte is the trainer's answer,
+                        # never the S4 decline.
+                        replies.append(graded)
+                        continue
                     # Off-script: escalate — the supervisor decides.
                     response = self._escalate(ask)
                     turn.escalations.append((ask_i, response))
@@ -376,6 +384,25 @@ class Harness:
             if replies:
                 step.answers.extend(replies)
                 queue.append(replies)
+
+    def _grade_proposal(
+        self, ask: KValue, goals: dict[int, KValue]
+    ) -> KValue | None:
+        """A proposal under a ``==`` goal, graded at γ of the proposal's
+        content against the goal's target — its signature value (Def 20 —
+        fresh depths, so γ = J): the proposal that reached its goal is
+        ratified at S1 — the answer just granted; one off the goal grades
+        low and refuses on re-feed. ``None`` when no goal pairs with the
+        proposal's head."""
+        base = int(ask.kline.signature) & ~ASK_SIG
+        goal = goals.get(base)
+        if goal is None or not ask.kline.nodes:
+            return None
+        a = int(self.signifier.signature_of(ask.kline.nodes))
+        b = int(goal.kline.signature)
+        union = word_atom_count(a | b)
+        j = word_atom_count(a & b) / union if union else 1.0
+        return KValue(ask.kline, gamma_to_byte(j))
 
     def _single_token_labels(self, source: str) -> dict[int, str]:
         """``{signature: word}`` for every single-token word in the source.
