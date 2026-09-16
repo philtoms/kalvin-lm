@@ -78,6 +78,43 @@ def test_marker_never_weighs_as_residual(tokenizer):
     assert sig.residual(nodes_sig, ask.kline.signature) == 0
 
 
+def test_one_ask_structure_every_ask_is_noded_and_marked(tokenizer):
+    sig = NLPSignifier()
+    for src, sig_label, nodes in (
+        ("a\n", "a", ["a"]),
+        ("(a)\n", "a", ["a"]),
+        ("(a big cat)\n", "ABC", ["a", "big", "cat"]),
+    ):
+        entries = compile_source(src, tokenizer=tokenizer, signifier=sig, dev=True)
+        asks = [e for e in entries if e.kline.dbg and e.kline.dbg.op == "ASK"]
+        assert len(asks) == 1, src
+        ask = asks[0]
+        assert is_ask(ask.kline.signature), src
+        assert [n.label for n in ask.kline.nodes] == nodes, src
+        assert sig_level(ask.kline, sig) == "S4", src
+
+
+def test_word_bound_bare_token_is_identity_synthetic_is_ask(tokenizer):
+    sig = NLPSignifier()
+    # an authored bare char bound by the word list to a different word:
+    # identity
+    entries = compile_source(
+        "(cat)\nc\n", tokenizer=tokenizer, signifier=sig, dev=True
+    )
+    bound = [e for e in entries if e.kline.dbg and e.kline.dbg.op != "ASK"]
+    assert any(
+        e.kline.dbg.op == "IDENTITY" and not is_ask(e.kline.signature)
+        for e in bound
+    )
+    # the sigless annotation's own utterance: the ask, binding resolving nodes
+    entries = compile_source(
+        "(cat)\n", tokenizer=tokenizer, signifier=sig, dev=True
+    )
+    (ask,) = [e for e in entries if e.kline.dbg and e.kline.dbg.op == "ASK"]
+    assert is_ask(ask.kline.signature)
+    assert [n.label for n in ask.kline.nodes] == ["cat"]
+
+
 def test_ask_never_heads_a_goal_list_not_even_via_its_canon():
     sig = NLPSignifier()
 

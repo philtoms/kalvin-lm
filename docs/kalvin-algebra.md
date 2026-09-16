@@ -66,6 +66,10 @@ The atom set is A. A value is a subset of A.
 
 The formalisation also uses V\* for sequences of values and 2^A for the set of all values.
 
+A excludes the ASK marker — a value bit that marks a kline as the question
+(§13). The marker is identity, not content: σ, γ, and every set operation
+range over A only; no measurement sees it.
+
 ### 0.2 Klines and derivations
 
 A kline is written:
@@ -430,7 +434,7 @@ Informally, the bands represent increasing uncertainty:
 - **S3:** indirect or unsupported relation — I recognise aspects of this, indirectly
 - **S4:** no represented content — I do not understand this at all
 
-Unknown is also the structural representation of an ask: the system has no current content on the relevant side.
+Unknown is also S4's shape of no represented content: the system has no current content on the relevant side. No compiled ask takes it — the ask is the marked kline (§13).
 
 ---
 
@@ -1120,6 +1124,12 @@ n ∧ σ(ν_K) ≠ ∅, for some node n ∈ ν_A    (Definition 8).
 
 The candidates, ordered by descending γ(A, K), are the goal list. γ is the graded significance (Definition 20): the significance of working from A toward the candidate — content overlap between the two parties, discounted for granularity and acquisition cost. Significance, not band, sets the order.
 
+Three klines never join the list. The queued kline itself: C(A, A) is Canon
+at entry and proves nothing — a hop that breaks on it never reaches the
+real goals down the list. An ask: a question is not held content to derive
+toward. And an ask's canon: the marker is invisible to measurement, so the
+canon's content is the ask's own — that goal would be A again.
+
 The goal is taken from the front of the list; each derivation within a hop takes the next candidate in turn (Definition 21).
 
 ## Definition 23 — Scope
@@ -1191,7 +1201,7 @@ The syntax specifies an intended structure; the algebra then determines the actu
 | `a > b`         | `ab:[b]`                                | S2                                 |
 | `a = b`         | `a:[b]`                                 | S3                                 |
 | `a > a`         | `a:[a]`                                 | S1                                 |
-| `a`             | `a|ASK:[]`                              | S4 — the ask                       |
+| `a`             | `a|ASK:[a]`                             | S4 — the ask                       |
 | ask-annotated   | any signature carrying the ASK marker   | S4                                 |
 
 `ASK` is the ASK marker (word-word bit 31): it marks identity, never
@@ -1228,7 +1238,7 @@ a == b => c d
 declares goal-targeted training. It creates the queued entry
 
 ```text
-a:[]
+a|ASK:[a's canon nodes]
 ```
 
 — the ask, S4 — and the implied goal
@@ -1261,10 +1271,15 @@ a
 creates:
 
 ```text
-a:[]
+a|ASK:[a]
 ```
 
-which is Unknown and therefore represents an ask. The ask is structural: the Unknown shape is the ask's shape, and no atom, mark, or decree is involved.
+— the identity shape, marked. There is one ask structure: `s|ASK:[nodes]`
+— the question with its canon's nodes (a single token's own value) riding
+along. The ask is structural — the marker is read from the kline's value,
+not decreed — and it is outside the atom space: no measurement weighs it,
+and selection (Definition 22) reads the question's content through the
+nodes.
 
 The `=>` operator establishes a composition claim and supplies a goal for completion checking. It is not itself a rewrite licence; licences are correspondence klines (§6).
 

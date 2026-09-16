@@ -270,8 +270,9 @@ def is_terminal(kline: KLine) -> bool:
 def is_unknown(kline: KLine) -> bool:
     """Test whether a kline is an Unknown — the empty form ``{S: []}``.
 
-    An Unknown claims S4: nothing held for this signature, the structural
-    form of an ask.
+    An Unknown claims S4: no represented content on the relevant side. No
+    compiled ask takes the shape — the ask is the marked kline
+    (:func:`is_ask`).
     """
     return not kline.nodes
 
