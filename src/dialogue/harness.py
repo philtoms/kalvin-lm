@@ -658,10 +658,8 @@ def _model_graph(
     return klines, values
 
 
-def _graph_name(node: KNode, labels: dict[int, str], verbose: bool,
-                signifier: NLPSignifier) -> str:
-    name = _label(node, labels, verbose)
-    return f"?{name}" if signifier.is_ask(node) else name
+def _graph_name(node: KNode, labels: dict[int, str], verbose: bool, signifier = None) -> str:
+    return _label(node, labels, verbose)
 
 
 def _sorted_values(values: dict[KNode, set[str]]) -> list[KNode]:
@@ -720,12 +718,12 @@ def _render_model_graph(state: EngineState, labels: dict[int, str],
         for g, n in (("L", "ltm"), ("F", "frame"), ("W", "work"), ("R", "refused"))
     )
     lines = [
-        f"── model graph ──  {key}  *=heads klines of its own  ?=ask",
+        f"── model graph ──  {key}  *=heads klines of its own",
         "    multi-node klines: sig ---> compound ---> identity-held members",
     ]
     leaves: list[str] = []
     for node in _sorted_values(values):
-        name = _graph_name(node, labels, verbose, signifier)
+        name = _graph_name(node, labels, verbose)
         if node in heads:
             lines.append(f"  {_paint(name, values[node])}")
             seen_compounds: set[int] = set()
@@ -747,14 +745,14 @@ def _render_model_graph(state: EngineState, labels: dict[int, str],
                             continue
                         lines.append(
                             f"{' ':27}{_paint('--->', identities[n])} "
-                            f"{_graph_name(n, labels, verbose, signifier)}"
+                            f"{_graph_name(n, labels, verbose)}"
                             f"{'*' if n in heads else ''}"
                         )
                 elif kl.nodes:
                     n = kl.nodes[0]
                     lines.append(
                         f"      {cls:<11} {_paint('--->', klayers)} "
-                        f"{_graph_name(n, labels, verbose, signifier)}"
+                        f"{_graph_name(n, labels, verbose)}"
                         f"{'*' if n in heads else ''}"
                     )
                 else:

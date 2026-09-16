@@ -239,6 +239,7 @@
 - [[sources/obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in]] — Observation: Progressive path, Bounds, Re-entry promoted to own ## sections in §11 *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop]] — Observation: Scoped-memory design landed: Def 22 selects goals, Def 23 scope trawl, re-entry changes A only *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w]] — Observation: Slot derivation moved to §6 as Def 15; renumber cascade; file-wipe incident recovered from git index *(created: 2026-09-16)*
+- [[sources/obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted]] — Observation: UNKNOWN op unified into ASK; ask bit deleted *(created: 2026-09-16)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -248,4 +249,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-16T13:04:10.539Z* | *Total pages: 236*
+*Last updated: 2026-09-16T13:13:09.505Z* | *Total pages: 237*

@@ -536,3 +536,6 @@
 ## [2026-09-16T13:04:10.440Z] observe
 - slug: "obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal", title: "COUNTERSIGNS `==` recompiled as ask + implied goal", relevance: "high"
 
+## [2026-09-16T13:13:09.435Z] observe
+- slug: "obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted", title: "UNKNOWN op unified into ASK; ask bit deleted", relevance: "high"
+

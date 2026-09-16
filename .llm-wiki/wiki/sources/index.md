@@ -160,6 +160,7 @@
 - [Observation: Progressive path, Bounds, Re-entry promoted to own ## sections in §11](obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in.md)
 - [Observation: Scoped-memory design landed: Def 22 selects goals, Def 23 scope trawl, re-entry changes A only](obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop.md)
 - [Observation: Slot derivation moved to §6 as Def 15; renumber cascade; file-wipe incident recovered from git index](obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w.md)
+- [Observation: UNKNOWN op unified into ASK; ask bit deleted](obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted.md)
 - [Operator semantics swaps: move shapes or move names — the countersign test decides](shape-swap-vs-name-swap-operator-semantics.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)

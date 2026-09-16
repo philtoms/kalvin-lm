@@ -116,7 +116,7 @@ class KDbg:
 
     Attributes:
         op: Structural relationship (ASK, DENOTES, CONNOTES,
-            CANONICALISES, UNKNOWN).
+            CANONICALISES). Empty when unset.
         label: Origin word or operator context.
         decoded: Tokenizer decode of the signature (actual subword text).
         type_info: Short debug summary of the node's type-dictionary entry
@@ -124,7 +124,7 @@ class KDbg:
             by NLP tooling). Opaque to kalvin.
     """
 
-    op: str = "UNKNOWN"
+    op: str = ""
     label: str = ""
     decoded: str = ""
     type_info: str = ""
@@ -134,7 +134,7 @@ class KDbg:
     def __bool__(self) -> bool:
         """Truthy when any field is non-empty."""
         return bool(
-            self.op != "UNKNOWN"
+            self.op
             or self.label
             or self.decoded
             or self.type_info
@@ -144,7 +144,7 @@ class KDbg:
 
     def __repr__(self) -> str:
         parts = []
-        if self.op != "UNKNOWN":
+        if self.op:
             parts.append(f"op={self.op}")
         if self.label:
             parts.append(self.label)
@@ -383,7 +383,6 @@ _OP_SYMBOLS = {
     "CONNOTES": ">",
     "CANONICALISES": "=>",
     "ASK": "?",
-    "UNKNOWN": None,
 }
 
 

@@ -109,14 +109,13 @@ LEVEL_TO_SIG: dict[str, int] = {
 # significance level — is that measurement; the two may legitimately
 # disagree). CONNOTES maps to
 # SIG_S2 and DENOTES to SIG_S3; IDENTITY (self-referential, word-bound or
-# self-connote) maps to SIG_S1; UNKNOWN (empty, orphan) maps to SIG_S4;
+# self-connote) maps to SIG_S1; ASK (empty, orphan) maps to SIG_S4;
 # unknown ops default to SIG_S4.
 _OP_TO_SIG: dict[str, int] = {
     "CANONICALISES": SIG_S2,
     "DENOTES": SIG_S3,
     "CONNOTES": SIG_S2,
     "IDENTITY": SIG_S1,
-    "UNKNOWN": SIG_S4,
     "ASK": SIG_S4,
     "MTS": SIG_S1,
 }

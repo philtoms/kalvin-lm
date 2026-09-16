@@ -30,7 +30,7 @@ BAND_TO_SIG: dict[str, int] = {
 Role = Literal["T", "K"]  # trainer (T) or trainee (K)
 OnDivergence = Literal["fail", "accept"]
 DIALOGUE_OPS = frozenset(
-    {"CANONICALISES", "CONNOTES", "DENOTES", "IDENTITY", "UNKNOWN"}
+    {"ASK", "CANONICALISES", "CONNOTES", "DENOTES", "IDENTITY"}
 )
 
 
@@ -193,15 +193,15 @@ def _resolve_kline(
             )
         return KLine(sig_kl.signature, node_sigs, dbg=sig_kl.dbg)
 
-    if op == "UNKNOWN":
+    if op == "ASK":
         kl = resolved.canon_by_label.get(signature) or resolved.labels.get(signature)
         if kl is None:
             raise DecodeError(
-                f"UNKNOWN {signature!r}: label not found in compiled source"
+                f"ASK {signature!r}: label not found in compiled source"
             )
         if nodes:
             raise DecodeError(
-                f"UNKNOWN {signature!r}: an Unknown carries no decomposition, "
+                f"ASK {signature!r}: an ask carries no decomposition, "
                 f"but nodes {nodes!r} were declared"
             )
         return KLine(kl.signature, [], dbg=kl.dbg)  # the S4 ask ``X:[]``
@@ -215,7 +215,7 @@ def _resolve_kline(
         if not nodes:
             # A scripted true identity with no declared nodes: the
             # self-referential form ``{X: [X]}`` (S1), the decodable identity
-            # the UNKNOWN token cannot express.
+            # the bare-signature ask cannot express.
             return KLine(kl.signature, [kl.signature], dbg=kl.dbg)
         node_sigs = _resolve_node_signatures(nodes, resolved, op="IDENTITY")
         return KLine(kl.signature, node_sigs, dbg=kl.dbg)

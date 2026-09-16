@@ -942,6 +942,7 @@
   "sources/obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in": [],
   "sources/obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop": [],
   "sources/obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w": [],
+  "sources/obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],

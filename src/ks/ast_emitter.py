@@ -10,7 +10,8 @@ SymbolicEntry tuples to encoded uint64 values.
   node identifiers from items and child_block, and emitting operator-specific
   entries:
 
-  - UNKNOWN (op=None):   {sig: []}   — bare unknown ask
+  - ASK (op=None):        {sig: []}   — bare ask; word-bound sigs emit
+                         IDENTITY instead
   - COUNTERSIGNS (==):   {sig: []}   — the queued ask; the goal scope's
                          block canon (the nested ``B =>`` item) is the
                          implied goal the trainer grades K's proposals
@@ -58,7 +59,8 @@ SymbolicEntry tuples to encoded uint64 values.
 **Key design constraints:**
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
-  - No UNKNOWN op written — self-reference (A = A / A > A) collapses to IDENTITY.
+  - No COUNTERSIGNS entry written — a `==` scope emits the ASK; self-
+    reference (A = A / A > A) collapses to IDENTITY.
   - No general deduplication beyond CANONICALISES dedup.
 """
 
@@ -84,11 +86,11 @@ class SymbolicEntry(NamedTuple):
 
     Attributes:
         sig:  The signature identifier string (possibly a resolved word).
-        nodes: Always a list — empty for UNKNOWN, single-item for per-item
+        nodes: Always a list — empty for ASK, single-item for per-item
                operators, multi-item for CANONICALISES aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
         op:   One of "ASK", "CANONICALISES", "CONNOTES", "RCONNOTES",
-               "DENOTES", "IDENTITY", "UNKNOWN". ("COUNTERSIGNS" is a scope
+               "DENOTES", "IDENTITY". ("COUNTERSIGNS" is a scope
                operator only — its scope emits an ASK entry, never an entry
                of its own.)
         component_labels: Resolved words per signature character (for word
@@ -97,7 +99,7 @@ class SymbolicEntry(NamedTuple):
 
     sig: str
     nodes: list[str]
-    op: str  # ASK | CANONICALISES | CONNOTES | DENOTES | IDENTITY | UNKNOWN
+    op: str  # ASK | CANONICALISES | CONNOTES | DENOTES | IDENTITY
     component_labels: list[str] | None = None
     is_mts: bool = False  # True for MTS-produced entries (component
                           # identity + MTS canonization). The TokenEncoder
@@ -105,9 +107,6 @@ class SymbolicEntry(NamedTuple):
                           # push every MTS kline after compiled source.
     annotation: str = ""   # the owning scope's annotation text
     scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
-    is_ask: bool = False   # ASK_BPE_TOKEN bit: the sig is the original
-                           # canonical signature; the bit marks the kline
-                           # as an ask (TokenEncoder ORs it into the sig)
     concat: list[str] | None = None
     # Component words of a synthesized compound SIGNATURE (identifier
     # order). Set only by CONNOTES (sig+nodes) and RCONNOTES (nodes+sig),
@@ -189,12 +188,11 @@ class ASTEmitter:
                 self._process_constructs(construct.constructs)
 
     def _emit_ask(self, text: str) -> None:
-        """Emit a sigless annotation as an ask kline:
-        ``ABC|ASK_BPE_TOKEN:[a big cat]``.
+        """Emit a sigless annotation as an ask kline: ``ABC:[a big cat]``.
 
         The canonical signature is the annotation's word initials (one
-        uppercased letter per word); the nodes are the words. The ASK bit
-        marks it as an ask — any signature can be one.
+        uppercased letter per word); the nodes are the words. The ASK op
+        declares it an ask — any signature can be one.
         """
         words = self._extract_words(f"({text})")
         if not words:
@@ -202,7 +200,7 @@ class ASTEmitter:
         sig = "".join(w[:1].upper() for w in words)
         saved = self._scope_annotation
         self._scope_annotation = text
-        self._emit_entry(sig, words, "ASK", is_ask=True)
+        self._emit_entry(sig, words, "ASK")
         self._scope_annotation = saved
 
     @staticmethod
@@ -254,17 +252,17 @@ class ASTEmitter:
         mts_created = len(self.entries) > prev_len
         op = self._op_to_str(scope.op)
 
-        if op == "UNKNOWN":
+        if op == "ASK":
             # For multi-char sigs _emit_mts already introduced the compound
             # via CANONICALISES (mts_idx is not None) — a compound can't form an
             # identity. Single-char sigs refine by Word Binding:
             # word-bound → self-referential IDENTITY {S:[S]} (S1); unbound →
-            # empty UNKNOWN {S:[]} (S4). Binding is the sole discriminator.
+            # empty ASK {S:[]} (S4). Binding is the sole discriminator.
             if mts_idx is None:
                 if sig_resolved != scope.sig.id:
                     self._emit_entry(sig_resolved, [sig_resolved], "IDENTITY")
                 else:
-                    self._emit_entry(sig_resolved, [], "UNKNOWN")
+                    self._emit_entry(sig_resolved, [], "ASK")
             else:
                 # A bare compound is an ask. When this scope created the MTS
                 # canon, it becomes the ask in place (leaving the dedup
@@ -273,13 +271,13 @@ class ASTEmitter:
                 # earlier authored scope (dedup hit), it stands untouched and
                 # the ask is a fresh entry with the canon's nodes. Either way
                 # the ask keeps the compound's original canonical signature;
-                # the ASK_BPE_TOKEN bit marks it as an ask.
+                # the ASK op marks it as an ask.
                 canon = self.entries[mts_idx]
                 # The ask is an authored statement of THIS scope — it takes
                 # the current scope's annotation and authored provenance,
                 # not the cached MTS canon's.
                 ask = canon._replace(
-                    op="ASK", is_ask=True, is_mts=False, scope=0,
+                    op="ASK", is_mts=False, scope=0,
                     annotation=self._scope_annotation,
                 )
                 if mts_created:
@@ -359,7 +357,7 @@ class ASTEmitter:
             # at S4. The goal (the nested `B =>` scope's block canon
             # `B:[C,D]`) is compiled by _compile_children as its own scope;
             # nothing pairs with the ask here.
-            self._emit_entry(sig, [], "ASK", is_ask=True)
+            self._emit_entry(sig, [], "ASK")
 
         elif op == "CONNOTES":
             if nodes == [sig]:
@@ -530,7 +528,7 @@ class ASTEmitter:
             if word == c:
                 continue
             if any(
-                e.sig == word and e.op in ("IDENTITY", "UNKNOWN")
+                e.sig == word and e.op in ("IDENTITY", "ASK")
                 for e in self.entries
             ):
                 continue
@@ -539,7 +537,7 @@ class ASTEmitter:
 
     # Entry emission with CANONICALISES dedup
 
-    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, is_ask: bool = False, concat: list[str] | None = None) -> None:
+    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, concat: list[str] | None = None) -> None:
         """Emit a SymbolicEntry.
 
         CANONICALISES dedup applies only to MTS expansion (one decoding aid per
@@ -567,7 +565,7 @@ class ASTEmitter:
             self._mts_canonicalise_seen[key] = (len(self.entries), is_mts)
 
         self.entries.append(SymbolicEntry(
-            sig=sig, nodes=nodes, op=op, is_mts=is_mts, is_ask=is_ask,
+            sig=sig, nodes=nodes, op=op, is_mts=is_mts,
             concat=concat,
             annotation=self._scope_annotation,
             scope=1 if is_mts else 0,
@@ -581,27 +579,27 @@ class ASTEmitter:
         Used in CANONICALISES subscript blocks to ensure every identifier appears
         as the signature of at least one emitted entry. Applies the binding-
         aware rule: word-bound → self-referential IDENTITY {w:[w]};
-        unbound → empty UNKNOWN {w:[]}.
+        unbound → empty ASK {w:[]}.
 
         Dedup checks (in order):
           1. Existing CANONICALISES entry — sig is a compound already introduced
              by its CANONICALISES entry from MTS.
-          2. Existing IDENTITY or UNKNOWN entries — sig already has one.
+          2. Existing IDENTITY or ASK entries — sig already has one.
 
         This prevents duplicate entries when the identifier already appears
-        as the signature of an IDENTITY/UNKNOWN entry.  The CANONICALISES check
+        as the signature of an IDENTITY/ASK entry.  The CANONICALISES check
         blocks compounds (which cannot form an identity) without affecting
         single-char sigs that have only DENOTES entries.
         """
         resolved = self._resolve_char(raw_id)
         if any(e.sig == resolved and e.op == "CANONICALISES" for e in self.entries):
             return  # compound already introduced by its CANONICALISES entry
-        if any(e.sig == resolved and e.op in ("IDENTITY", "UNKNOWN") for e in self.entries):
+        if any(e.sig == resolved and e.op in ("IDENTITY", "ASK") for e in self.entries):
             return
         if resolved != raw_id:
             self._emit_entry(resolved, [resolved], "IDENTITY")
         else:
-            self._emit_entry(resolved, [], "UNKNOWN")
+            self._emit_entry(resolved, [], "ASK")
 
     # Scope walk and child compilation (Step 3)
 
@@ -619,13 +617,13 @@ class ASTEmitter:
         kline tracking (Rule B4). Bare OperatorScope nodes (op=None) in a
         non-CANONICALISES child_block are skipped — already collected as node
         identifiers by _collect_node_ids; under CANONICALISES they still emit
-        their own UNKNOWN (independent subscript identity).
+        their own ASK (independent subscript identity).
 
         **CANONICALISES subscript identity:**
 
         A CANONICALISES scope with recursive content forms a "subscript block"
         where every identifier must appear as the signature of at least
-        one emitted entry; identity UNKNOWN fills any gap. Activated only
+        one emitted entry; the ASK fills any gap. Activated only
         when the CANONICALISES sig did NOT trigger MTS (mts_idx is None) —
         multi-char sigs trigger MTS (the canon kline), so subscript identity
         is suppressed for them.
@@ -633,7 +631,7 @@ class ASTEmitter:
         _emit_identity_if_needed is applied to leaf Signature items (no
         operator entry). Not needed for CANONICALISES/COUNTERSIGNS/CONNOTES/
         DENOTES scope sigs (all produce entries with the scope's sig)
-        nor bare op=None scopes (emit UNKNOWN in _process_scope). The flag does not propagate between CANONICALISES scopes.
+        nor bare op=None scopes (emit ASK in _process_scope). The flag does not propagate between CANONICALISES scopes.
         """
         is_canonicalise = op == "CANONICALISES"
 
@@ -675,9 +673,9 @@ class ASTEmitter:
                 ):
                     # Bare node in non-CANONICALISES child_block — already
                     # collected by _collect_node_ids; skip to avoid a
-                    # spurious UNKNOWN.
+                    # spurious ASK.
                     continue
-                # Bare scopes (op=None) emit UNKNOWN in _process_scope.
+                # Bare scopes (op=None) emit ASK in _process_scope.
                 self._process_constructs([construct])
 
         if pushed_scope and self._scope is not None:
@@ -915,9 +913,10 @@ class ASTEmitter:
 
     @staticmethod
     def _op_to_str(op: TokenType | None) -> str:
-        """Convert a TokenType operator to its string name, or 'UNKNOWN'."""
+        """Convert a TokenType operator to its string name; a bare scope is
+        the ASK."""
         if op is None:
-            return "UNKNOWN"
+            return "ASK"
         _map = {
             TokenType.COUNTERSIGNS: "COUNTERSIGNS",
             TokenType.CANONICALISES: "CANONICALISES",
@@ -925,4 +924,4 @@ class ASTEmitter:
             TokenType.RCONNOTES: "RCONNOTES",
             TokenType.DENOTES: "DENOTES",
         }
-        return _map.get(op, "UNKNOWN")
+        return _map.get(op, "ASK")

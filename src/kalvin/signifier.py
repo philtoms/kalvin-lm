@@ -11,7 +11,7 @@ BPE tokenizer returns tokens with the upper 32 bits zero — see
     node = (word_bit << 32) | bpe_token_id
 
 The word word gives one bit per distinct word (bits 0-30,
-first-encountered basis); bit 31 is reserved for ASK_BPE_TOKEN.
+first-encountered basis); bit 31 is unused.
 
 ``NLPSignifier`` understands this packing. Its operations:
 
@@ -37,13 +37,6 @@ from collections.abc import Sequence
 
 from kalvin.abstract import KSignifier
 from kalvin.kline import KNode, KSig
-
-# ASK is a word-word flag, not a token: bit 31 of the word word (words
-# occupy bits 0-30). OR-ed into a kline signature, it
-# marks the kline as an ask regardless of its signature — any signature
-# can be an ask. Compiled asks read ``sig|ASK_BPE_TOKEN:[nodes]``.
-ASK_BPE_TOKEN = 1 << 63
-
 
 # The word word occupies the upper 32 bits of a node; signifies() compares
 # only that half — the BPE component (lower 32) is masked off so two values
@@ -105,7 +98,3 @@ class NLPSignifier(KSignifier):
     def node_in(self, node: KNode, signature: KSig) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         return (node & signature) == node
-
-    def is_ask(self, signature: KSig) -> bool:
-        """Does ``signature`` carry the ASK_BPE_TOKEN flag?"""
-        return (signature & ASK_BPE_TOKEN) != 0

@@ -12,8 +12,7 @@ Node layout (the compiler's packing, distinct from the raw tokenizer)::
 
 - ``word_bit`` (upper 32 bits) — the **word word**: one bit per distinct
   word, assigned on a first-encountered basis at bits 0-30 (bit 31 is
-  reserved for ``ASK_BPE_TOKEN``). The 32nd distinct word is a system
-  error: word size overflow.
+  unused). The 32nd distinct word is a system error: word size overflow.
 - ``bpe_token_id`` (lower 32 bits) — the OR-reduction of the word's BPE
   subword tokens. A multi-subword word (``Mary`` → ``[mar, y]``) is still
   ONE word and ONE bit — the subword ids OR together, so a multi-subword
@@ -40,7 +39,7 @@ Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.significance.band_significance(op), computed from the production op at
 encode time (never from dbg):
     ASK → S4         CONNOTES → S2    CANONICALISES → S2
-    DENOTES → S3      UNKNOWN → S4      MTS → S1
+    DENOTES → S3      MTS → S1
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.significance.band_significance, kalvin.abstract.KTokenizer,
@@ -58,7 +57,7 @@ from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.significance import SIG_S1, band_significance
 from kalvin.kline import KDbg, KLine, KNode, using_resolver
 from kalvin.kvalue import KValue
-from kalvin.signifier import NLPSignifier, ASK_BPE_TOKEN
+from kalvin.signifier import NLPSignifier
 
 from .ast_emitter import SymbolicEntry
 
@@ -66,7 +65,7 @@ __all__ = ["TokenEncoder"]
 
 # The word word occupies the upper 32 bits of a node: word_bit << 32.
 TOP_WORD_SHIFT = 32
-# Word size: one bit per distinct word, bits 0-30. Bit 31 is ASK_BPE_TOKEN.
+# Word size: one bit per distinct word, bits 0-30. Bit 31 is unused.
 WORD_SIZE = 31
 
 
@@ -187,7 +186,7 @@ class TokenEncoder:
         # compound sigs defer to step 3 below; everything else encodes the
         # sig as a word — a multi-subword sig is still one word (one bit),
         # and heads its kline like any other sig — including an empty-form
-        # UNKNOWN and the DENOTES head word.
+        # ASK and the DENOTES head word.
         if is_compound_ref:
             sig_uint64 = self._compound_sigs[entry.sig]
         elif entry.concat is not None or is_compound_def or is_compound_sig:
@@ -225,12 +224,7 @@ class TokenEncoder:
                 self._compound_sigs[entry.sig] = sig_uint64
                 self._compound_labels.setdefault(sig_uint64, entry.sig)
 
-        # 4. Ask bit: an ask keeps its original canonical signature with
-        #    the ASK_BPE_TOKEN flag OR-ed in — any signature can be an ask.
-        if entry.is_ask:
-            sig_uint64 = KNode(int(sig_uint64) | ASK_BPE_TOKEN, entry.sig)
-
-        # 5. Debug info.
+        # 4. Debug info.
         dbg = KDbg(op=entry.op)
         if self._dev:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)
@@ -245,10 +239,10 @@ class TokenEncoder:
         # Wrap as a KValue. Significance comes from the production op
         # (entry.op — the SymbolicEntry field), NEVER read back from
         # main.dbg.op (D3: dbg is unspec'd dev-only provenance). MTS
-        # emissions are asserted at S1; an MTS ask keeps its ask band.
+        # emissions are asserted at S1.
         band = (
             band_significance("MTS")
-            if entry.is_mts and not entry.is_ask
+            if entry.is_mts
             else band_significance(entry.op)
         )
         return [(KValue(main, band), entry.is_mts)]
@@ -298,7 +292,7 @@ class TokenEncoder:
         self,
         sig_uint64: int,
         label: str,
-        op: str = "UNKNOWN",
+        op: str = "ASK",
     ) -> KDbg:
         """Build a KDbg for a compiled signature.
 

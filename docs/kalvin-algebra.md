@@ -1183,16 +1183,16 @@ KScript is a surface language for constructing klines and kline pairs.
 
 The syntax specifies an intended structure; the algebra then determines the actual fit shape.
 
-| Token         | Structure                      | Band claim once solved |
-| ------------- | ------------------------------ | ---------------------- |
-| `a => b c d`  | `a:[b,c,d]`                    | S1 (Canon) or open S2  |
-| `a == b => c d` | `a:[]` (the ask) and the goal `b:[c,d]` | S4 ask; goal S1 or S2 per scaffolding |
-| `a = a`       | `a:[a]`                        | S1                     |
-| `a > b`       | `ab:[b]`                       | S2                     |
-| `a = b`       | `a:[b]`                        | S3                     |
-| `a > a`       | `a:[a]`                        | S1                     |
-| `a`           | `a:[]`                         | S4 — the ask           |
-| ask-annotated | any signature marked as an ask | S4                     |
+| Token           | Structure                               | Band claim once solved             |
+| --------------- | --------------------------------------- | ---------------------------------- |
+| `a == b => c d` | `a:[]` (the ask) and the goal `b:[c,d]` | S4 ask; goal S1 (Canon) or open S2 |
+| `a => b c d`    | `a:[b,c,d]`                             | S1 (Canon) or open S2              |
+| `a = a`         | `a:[a]`                                 | S1                                 |
+| `a > b`         | `ab:[b]`                                | S2                                 |
+| `a = b`         | `a:[b]`                                 | S3                                 |
+| `a > a`         | `a:[a]`                                 | S1                                 |
+| `a`             | `a:[]`                                  | S4 — the ask                       |
+| ask-annotated   | any signature declared an ask           | S4                                 |
 
 The surface token does not override algebraic classification.
 

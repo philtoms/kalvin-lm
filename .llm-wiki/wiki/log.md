@@ -2,6 +2,7 @@
 
 ## 2026-09-16
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted","title":"UNKNOWN op unified into ASK; ask bit deleted"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal","title":"COUNTERSIGNS `==` recompiled as ask + implied goal"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-16-engine-select-entry-point-rewired-to-hop-harness-diff-shows-","title":"Engine select entry point rewired to Hop; harness diff shows junk proposals eliminated"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-16-hop-layer-implemented-selection-trawl-frozen-scope-two-hop-9","title":"Hop layer implemented: selection, trawl, frozen scope, two-hop §9 completion with Ĥ=9/5"}

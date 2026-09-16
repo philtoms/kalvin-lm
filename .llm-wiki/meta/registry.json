@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-16T13:04:10.539Z",
+  "last_updated": "2026-09-16T13:13:09.505Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3151,6 +3151,24 @@
       "relevance": "high",
       "observed_at": "2026-09-16T10:19:24.754Z",
       "source_context": "Moving Def 21 into §6 Derivations with full renumber; file truncation incident and recovery",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted": {
+      "type": "source",
+      "title": "Observation: UNKNOWN op unified into ASK; ask bit deleted",
+      "tags": [
+        "ks",
+        "compiler",
+        "ask",
+        "unknown",
+        "ask-bit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted",
+      "relevance": "high",
+      "observed_at": "2026-09-16T13:13:09.431Z",
+      "source_context": "Unifying UNKNOWN into ASK and dropping the ask bit",
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
