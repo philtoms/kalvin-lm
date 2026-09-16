@@ -54,9 +54,9 @@ from __future__ import annotations
 import contextlib
 
 from kalvin.abstract import KSignifier, KTokenizer
-from kalvin.significance import SIG_S1, band_significance
-from kalvin.kline import KDbg, KLine, KNode, using_resolver
+from kalvin.kline import ASK_SIG, KDbg, KLine, KNode, using_resolver
 from kalvin.kvalue import KValue
+from kalvin.significance import SIG_S1, band_significance
 from kalvin.signifier import NLPSignifier
 
 from .ast_emitter import SymbolicEntry
@@ -65,7 +65,8 @@ __all__ = ["TokenEncoder"]
 
 # The word word occupies the upper 32 bits of a node: word_bit << 32.
 TOP_WORD_SHIFT = 32
-# Word size: one bit per distinct word, bits 0-30. Bit 31 is unused.
+# Word size: one bit per distinct word, bits 0-30. Bit 31 is the ASK
+# marker (kalvin.kline.ASK_SIG) — reserved, never allocated to a word.
 WORD_SIZE = 31
 
 
@@ -224,7 +225,13 @@ class TokenEncoder:
                 self._compound_sigs[entry.sig] = sig_uint64
                 self._compound_labels.setdefault(sig_uint64, entry.sig)
 
-        # 4. Debug info.
+        # 4. Ask marker: an ask keeps its original canonical signature
+        #    with ASK_SIG OR-ed in — any signature can be an ask, its
+        #    canon nodes riding along.
+        if entry.is_ask:
+            sig_uint64 = KNode(int(sig_uint64) | ASK_SIG, entry.sig)
+
+        # 5. Debug info.
         dbg = KDbg(op=entry.op)
         if self._dev:
             dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)

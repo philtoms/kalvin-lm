@@ -107,6 +107,9 @@ class SymbolicEntry(NamedTuple):
                           # push every MTS kline after compiled source.
     annotation: str = ""   # the owning scope's annotation text
     scope: int = 0         # nesting level; 0 at top level, +1 for MTS output
+    is_ask: bool = False   # the ASK marker: TokenEncoder ORs ASK_SIG into
+                           # the encoded signature — the kline is the
+                           # question, never the canon, whatever its nodes
     goal: str = ""         # a COUNTERSIGNS ask: the `==` RHS sig id
     concat: list[str] | None = None
     # Component words of a synthesized compound SIGNATURE (identifier
@@ -192,8 +195,9 @@ class ASTEmitter:
         """Emit a sigless annotation as an ask kline: ``ABC:[a big cat]``.
 
         The canonical signature is the annotation's word initials (one
-        uppercased letter per word); the nodes are the words. The ASK op
-        declares it an ask — any signature can be one.
+        uppercased letter per word); the nodes are the words. The ASK
+        marker distinguishes the ask from its canon — any signature can
+        be an ask.
         """
         words = self._extract_words(f"({text})")
         if not words:
@@ -201,7 +205,7 @@ class ASTEmitter:
         sig = "".join(w[:1].upper() for w in words)
         saved = self._scope_annotation
         self._scope_annotation = text
-        self._emit_entry(sig, words, "ASK")
+        self._emit_entry(sig, words, "ASK", is_ask=True)
         self._scope_annotation = saved
 
     @staticmethod
@@ -263,7 +267,7 @@ class ASTEmitter:
                 if sig_resolved != scope.sig.id:
                     self._emit_entry(sig_resolved, [sig_resolved], "IDENTITY")
                 else:
-                    self._emit_entry(sig_resolved, [], "ASK")
+                    self._emit_entry(sig_resolved, [], "ASK", is_ask=True)
             else:
                 # A bare compound is an ask. When this scope created the MTS
                 # canon, it becomes the ask in place (leaving the dedup
@@ -271,14 +275,15 @@ class ASTEmitter:
                 # distinct relationship). When the canon is shared with an
                 # earlier authored scope (dedup hit), it stands untouched and
                 # the ask is a fresh entry with the canon's nodes. Either way
-                # the ask keeps the compound's original canonical signature;
-                # the ASK op marks it as an ask.
+                # the ask keeps the compound's original canonical signature
+                # and its nodes; the ASK marker distinguishes it from the
+                # canon.
                 canon = self.entries[mts_idx]
                 # The ask is an authored statement of THIS scope — it takes
                 # the current scope's annotation and authored provenance,
                 # not the cached MTS canon's.
                 ask = canon._replace(
-                    op="ASK", is_mts=False, scope=0,
+                    op="ASK", is_ask=True, is_mts=False, scope=0,
                     annotation=self._scope_annotation,
                 )
                 if mts_created:
@@ -347,7 +352,8 @@ class ASTEmitter:
                 ),
                 "",
             )
-        self._emit_operator_entries(sig_resolved, resolved_nodes, op, goal=goal)
+        self._emit_operator_entries(sig_resolved, resolved_nodes, op,
+                                    mts_idx=mts_idx, goal=goal)
         self._compile_children(scope, op, mts_idx, pushed_scope=pushed_scope)
 
         self._parent_kline_chars = saved_chars
@@ -361,6 +367,7 @@ class ASTEmitter:
         sig: str,
         nodes: list[str],
         op: str,
+        mts_idx: int | None = None,
         goal: str = "",
     ) -> None:
         """Emit operator-specific entries based on the operator type."""
@@ -369,8 +376,14 @@ class ASTEmitter:
             # at S4. The goal (the nested `B =>` scope's block canon
             # `B:[C,D]`) is compiled by _compile_children as its own scope;
             # nothing pairs with the ask here. The goal's sig id rides the
-            # ask so a feeder can grade the query at γ(A, B).
-            self._emit_entry(sig, [], "ASK", goal=goal)
+            # ask so a feeder can grade the query at γ(A, B). The ask
+            # carries the signature's MTS canon nodes (a compound's
+            # decomposition — what the engine's candidate selection reads);
+            # a single-char sig has none.
+            canon_nodes = (
+                list(self.entries[mts_idx].nodes) if mts_idx is not None else []
+            )
+            self._emit_entry(sig, canon_nodes, "ASK", is_ask=True, goal=goal)
 
         elif op == "CONNOTES":
             if nodes == [sig]:
@@ -550,7 +563,7 @@ class ASTEmitter:
 
     # Entry emission with CANONICALISES dedup
 
-    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, concat: list[str] | None = None, goal: str = "") -> None:
+    def _emit_entry(self, sig: str, nodes: list[str], op: str, *, is_mts: bool = False, is_ask: bool = False, concat: list[str] | None = None, goal: str = "") -> None:
         """Emit a SymbolicEntry.
 
         CANONICALISES dedup applies only to MTS expansion (one decoding aid per
@@ -578,7 +591,7 @@ class ASTEmitter:
             self._mts_canonicalise_seen[key] = (len(self.entries), is_mts)
 
         self.entries.append(SymbolicEntry(
-            sig=sig, nodes=nodes, op=op, is_mts=is_mts,
+            sig=sig, nodes=nodes, op=op, is_mts=is_mts, is_ask=is_ask,
             concat=concat,
             annotation=self._scope_annotation,
             scope=1 if is_mts else 0,
@@ -613,7 +626,7 @@ class ASTEmitter:
         if resolved != raw_id:
             self._emit_entry(resolved, [resolved], "IDENTITY")
         else:
-            self._emit_entry(resolved, [], "ASK")
+            self._emit_entry(resolved, [], "ASK", is_ask=True)
 
     # Scope walk and child compilation (Step 3)
 
