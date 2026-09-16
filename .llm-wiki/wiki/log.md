@@ -2,6 +2,11 @@
 
 ## 2026-09-16
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-six-commits-landed-bounds-zero-sig-seed-re-entry-ratificatio","title":"Six commits landed: bounds, zero-sig, seed, re-entry, ratification"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-16-ratification-landed-goal-grades-proposals-s1-stamp-grounds-o","title":"Ratification landed: goal grades proposals; S1 stamp grounds on receipt"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-16-hop-run-hang-fixed-witness-driven-survey-enforced-walk-state","title":"Hop.run hang fixed: witness-driven survey + enforced walk state bound"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-a-l-l-labels-fixed-cross-script-word-binding-via-seeded-know","title":"A/L/L labels fixed: cross-script word binding via seeded known_words"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-16-wdmh-mhall-done-end-to-end-zero-sig-bug-denotations-re-entry","title":"WDMH→MHALL done end-to-end: zero-sig bug, denotations, re-entry"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no","title":"Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-one-ask-structure-sig-ask-sig-nodes-everywhere-annotation-ut","title":"One ask structure: sig|ASK_SIG:[nodes] everywhere; annotation utterances are asks"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-thin-wdmh-scope-exact-value-trawl-test-late-scaffold-feed-al","title":"Thin WDMH scope: exact-value trawl test, late scaffold feed, ALL drift"}

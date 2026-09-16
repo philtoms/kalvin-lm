@@ -578,3 +578,18 @@
 ## [2026-09-16T16:26:08.671Z] observe
 - slug: "obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no", title: "Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir", relevance: "high"
 
+## [2026-09-16T16:48:22.123Z] observe
+- slug: "obs-2026-09-16-wdmh-mhall-done-end-to-end-zero-sig-bug-denotations-re-entry", title: "WDMH→MHALL done end-to-end: zero-sig bug, denotations, re-entry", relevance: "critical"
+
+## [2026-09-16T17:02:51.293Z] observe
+- slug: "obs-2026-09-16-a-l-l-labels-fixed-cross-script-word-binding-via-seeded-know", title: "A/L/L labels fixed: cross-script word binding via seeded known_words", relevance: "high"
+
+## [2026-09-16T17:09:57.829Z] observe
+- slug: "obs-2026-09-16-hop-run-hang-fixed-witness-driven-survey-enforced-walk-state", title: "Hop.run hang fixed: witness-driven survey + enforced walk state bound", relevance: "critical"
+
+## [2026-09-16T17:16:52.548Z] observe
+- slug: "obs-2026-09-16-ratification-landed-goal-grades-proposals-s1-stamp-grounds-o", title: "Ratification landed: goal grades proposals; S1 stamp grounds on receipt", relevance: "critical"
+
+## [2026-09-16T18:08:01.350Z] observe
+- slug: "obs-2026-09-16-six-commits-landed-bounds-zero-sig-seed-re-entry-ratificatio", title: "Six commits landed: bounds, zero-sig, seed, re-entry, ratification", relevance: "high"
+

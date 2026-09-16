@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-16T16:26:08.729Z",
+  "last_updated": "2026-09-16T18:08:01.408Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2900,6 +2900,23 @@
       "created": "2026-09-15",
       "updated": "2026-09-15"
     },
+    "sources/obs-2026-09-16-a-l-l-labels-fixed-cross-script-word-binding-via-seeded-know": {
+      "type": "source",
+      "title": "Observation: A/L/L labels fixed: cross-script word binding via seeded known_words",
+      "tags": [
+        "compiler",
+        "word-binding",
+        "labels",
+        "drift"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-a-l-l-labels-fixed-cross-script-word-binding-via-seeded-know",
+      "relevance": "high",
+      "observed_at": "2026-09-16T17:02:51.290Z",
+      "source_context": "Fixing A/L/L labels in the wdmh compile",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-ask-content-form-never-fed-wdmh-at-is-the-whole-question": {
       "type": "source",
       "title": "Observation: Ask content form never fed; WDMH:[] at γ is the whole question",
@@ -3202,6 +3219,23 @@
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
+    "sources/obs-2026-09-16-hop-run-hang-fixed-witness-driven-survey-enforced-walk-state": {
+      "type": "source",
+      "title": "Observation: Hop.run hang fixed: witness-driven survey + enforced walk state bound",
+      "tags": [
+        "derivation",
+        "bugfix",
+        "performance",
+        "bounds"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-hop-run-hang-fixed-witness-driven-survey-enforced-walk-state",
+      "relevance": "critical",
+      "observed_at": "2026-09-16T17:09:57.826Z",
+      "source_context": "Fixing the infinite loop in Hop.run",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-kalvin-algebra-md-restructured-measurement-10-defs-16-19-bef": {
       "type": "source",
       "title": "Observation: kalvin-algebra.md restructured: Measurement §10 (Defs 16-19) before Strategy §11 (Defs 20-21)",
@@ -3254,6 +3288,23 @@
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
+    "sources/obs-2026-09-16-ratification-landed-goal-grades-proposals-s1-stamp-grounds-o": {
+      "type": "source",
+      "title": "Observation: Ratification landed: goal grades proposals; S1 stamp grounds on receipt",
+      "tags": [
+        "harness",
+        "engine",
+        "ratification",
+        "grading"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-ratification-landed-goal-grades-proposals-s1-stamp-grounds-o",
+      "relevance": "critical",
+      "observed_at": "2026-09-16T17:16:52.546Z",
+      "source_context": "Ratification: goal-reached proposals answered at S1, not S4",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop": {
       "type": "source",
       "title": "Observation: Scoped-memory design landed: Def 22 selects goals, Def 23 scope trawl, re-entry changes A only",
@@ -3288,6 +3339,21 @@
       "relevance": "high",
       "observed_at": "2026-09-16T13:46:17.975Z",
       "source_context": "Harness fitness review; outstanding task: verify WDMH→MHALL through harness",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-six-commits-landed-bounds-zero-sig-seed-re-entry-ratificatio": {
+      "type": "source",
+      "title": "Observation: Six commits landed: bounds, zero-sig, seed, re-entry, ratification",
+      "tags": [
+        "commit",
+        "milestone"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-six-commits-landed-bounds-zero-sig-seed-re-entry-ratificatio",
+      "relevance": "high",
+      "observed_at": "2026-09-16T18:08:01.349Z",
+      "source_context": "Committing the milestone batch",
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
@@ -3361,6 +3427,24 @@
       "relevance": "high",
       "observed_at": "2026-09-16T14:48:20.671Z",
       "source_context": "WDMH candidate generation investigation",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-wdmh-mhall-done-end-to-end-zero-sig-bug-denotations-re-entry": {
+      "type": "source",
+      "title": "Observation: WDMH→MHALL done end-to-end: zero-sig bug, denotations, re-entry",
+      "tags": [
+        "derivation",
+        "engine",
+        "compiler",
+        "bugfix",
+        "milestone"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-wdmh-mhall-done-end-to-end-zero-sig-bug-denotations-re-entry",
+      "relevance": "critical",
+      "observed_at": "2026-09-16T16:48:22.121Z",
+      "source_context": "WDMH→MHALL derivation brought to done end-to-end",
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
