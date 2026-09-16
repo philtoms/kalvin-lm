@@ -243,13 +243,16 @@
 - [[sources/obs-2026-09-16-hop-layer-implemented-selection-trawl-frozen-scope-two-hop-9]] — Observation: Hop layer implemented: selection, trawl, frozen scope, two-hop §9 completion with Ĥ=9/5 *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-hop-rebuilt-as-def-21-derivation-whole-fixed-m-b-write-consu]] — Observation: Hop rebuilt as Def 21: derivation-whole, fixed (M,B), write/consume boundary for re-entry *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-kalvin-algebra-md-restructured-measurement-10-defs-16-19-bef]] — Observation: kalvin-algebra.md restructured: Measurement §10 (Defs 16-19) before Strategy §11 (Defs 20-21) *(created: 2026-09-16)*
+- [[sources/obs-2026-09-16-one-ask-structure-sig-ask-sig-nodes-everywhere-annotation-ut]] — Observation: One ask structure: sig|ASK_SIG:[nodes] everywhere; annotation utterances are asks *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in]] — Observation: Progressive path, Bounds, Re-entry promoted to own ## sections in §11 *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-scoped-memory-design-landed-def-22-selects-goals-def-23-scop]] — Observation: Scoped-memory design landed: Def 22 selects goals, Def 23 scope trawl, re-entry changes A only *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-self-candidate-monopolizes-every-hop-wdmh-derivation-never-r]] — Observation: Self-candidate monopolizes every hop; WDMH derivation never runs *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w]] — Observation: Slot derivation moved to §6 as Def 15; renumber cascade; file-wipe incident recovered from git index *(created: 2026-09-16)*
+- [[sources/obs-2026-09-16-thin-wdmh-scope-exact-value-trawl-test-late-scaffold-feed-al]] — Observation: Thin WDMH scope: exact-value trawl test, late scaffold feed, ALL drift *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted]] — Observation: UNKNOWN op unified into ASK; ask bit deleted *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-wdmh-ask-zero-candidates-empty-nodes-canon-form-orders-verb-]] — Observation: WDMH ask: zero candidates (empty nodes); canon form orders verb→answer *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-wdmh-mhall-s3-via-mary-have-mhall-value-drifts-per-compile]] — Observation: γ(WDMH,MHALL)=S3 via Mary+have; MHALL value drifts per compile *(created: 2026-09-16)*
+- [[sources/obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no]] — Observation: Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir *(created: 2026-09-16)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -259,4 +262,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-16T15:43:52.151Z* | *Total pages: 247*
+*Last updated: 2026-09-16T16:26:08.729Z* | *Total pages: 250*

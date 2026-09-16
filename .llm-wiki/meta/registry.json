@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-16T15:43:52.151Z",
+  "last_updated": "2026-09-16T16:26:08.729Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3220,6 +3220,23 @@
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
+    "sources/obs-2026-09-16-one-ask-structure-sig-ask-sig-nodes-everywhere-annotation-ut": {
+      "type": "source",
+      "title": "Observation: One ask structure: sig|ASK_SIG:[nodes] everywhere; annotation utterances are asks",
+      "tags": [
+        "ask",
+        "compiler",
+        "parser",
+        "unification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-one-ask-structure-sig-ask-sig-nodes-everywhere-annotation-ut",
+      "relevance": "high",
+      "observed_at": "2026-09-16T16:19:26.699Z",
+      "source_context": "One ask structure — no empty form, annotation utterances always asks",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-progressive-path-bounds-re-entry-promoted-to-own-sections-in": {
       "type": "source",
       "title": "Observation: Progressive path, Bounds, Re-entry promoted to own ## sections in §11",
@@ -3293,6 +3310,24 @@
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
+    "sources/obs-2026-09-16-thin-wdmh-scope-exact-value-trawl-test-late-scaffold-feed-al": {
+      "type": "source",
+      "title": "Observation: Thin WDMH scope: exact-value trawl test, late scaffold feed, ALL drift",
+      "tags": [
+        "trawl",
+        "scope",
+        "hop",
+        "engine",
+        "ask"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-thin-wdmh-scope-exact-value-trawl-test-late-scaffold-feed-al",
+      "relevance": "high",
+      "observed_at": "2026-09-16T16:05:17.109Z",
+      "source_context": "Diagnosing the thin WDMH→MHALL Def 23 scope",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted": {
       "type": "source",
       "title": "Observation: UNKNOWN op unified into ASK; ask bit deleted",
@@ -3343,6 +3378,24 @@
       "relevance": "high",
       "observed_at": "2026-09-16T14:22:21.805Z",
       "source_context": "γ(WDMH, MHALL) verification question",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no": {
+      "type": "source",
+      "title": "Observation: Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir",
+      "tags": [
+        "trawl",
+        "scope",
+        "harness",
+        "feed-order",
+        "engine"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no",
+      "relevance": "high",
+      "observed_at": "2026-09-16T16:26:08.669Z",
+      "source_context": "Landing word-bit trawl + scaffold-first feed order + depth 5",
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },

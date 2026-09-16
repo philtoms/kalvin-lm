@@ -2,6 +2,9 @@
 
 ## 2026-09-16
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no","title":"Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-one-ask-structure-sig-ask-sig-nodes-everywhere-annotation-ut","title":"One ask structure: sig|ASK_SIG:[nodes] everywhere; annotation utterances are asks"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-thin-wdmh-scope-exact-value-trawl-test-late-scaffold-feed-al","title":"Thin WDMH scope: exact-value trawl test, late scaffold feed, ALL drift"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-16-ask-marker-landed-sig-ask-sig-canon-nodes-fully-masked-from-","title":"ASK marker landed: sig|ASK_SIG:[canon nodes], fully masked from measurement"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-ask-sig-bit-noded-ask-blast-radius-mapped","title":"ASK_SIG bit + noded ask blast radius mapped"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-16-five-commits-landed-def-22-self-exclusion-graded-asks-case-i","title":"Five commits landed: Def 22 self-exclusion, γ-graded asks, case-insensitive B4"}

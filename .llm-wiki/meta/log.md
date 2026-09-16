@@ -569,3 +569,12 @@
 ## [2026-09-16T15:43:52.063Z] observe
 - slug: "obs-2026-09-16-ask-marker-landed-sig-ask-sig-canon-nodes-fully-masked-from-", title: "ASK marker landed: sig|ASK_SIG:[canon nodes], fully masked from measurement", relevance: "critical"
 
+## [2026-09-16T16:05:17.111Z] observe
+- slug: "obs-2026-09-16-thin-wdmh-scope-exact-value-trawl-test-late-scaffold-feed-al", title: "Thin WDMH scope: exact-value trawl test, late scaffold feed, ALL drift", relevance: "high"
+
+## [2026-09-16T16:19:26.703Z] observe
+- slug: "obs-2026-09-16-one-ask-structure-sig-ask-sig-nodes-everywhere-annotation-ut", title: "One ask structure: sig|ASK_SIG:[nodes] everywhere; annotation utterances are asks", relevance: "high"
+
+## [2026-09-16T16:26:08.671Z] observe
+- slug: "obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no", title: "Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir", relevance: "high"
+
