@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-16T12:05:56.918Z",
+  "last_updated": "2026-09-16T12:50:53.704Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2952,6 +2952,25 @@
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
+    "sources/obs-2026-09-16-engine-select-entry-point-rewired-to-hop-harness-diff-shows-": {
+      "type": "source",
+      "title": "Observation: Engine select entry point rewired to Hop; harness diff shows junk proposals eliminated",
+      "tags": [
+        "kalvin",
+        "engine",
+        "integration",
+        "hop",
+        "selection",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-engine-select-entry-point-rewired-to-hop-harness-diff-shows-",
+      "relevance": "critical",
+      "observed_at": "2026-09-16T12:50:53.641Z",
+      "source_context": "Wiring the hop layer into dialogue/engine.py as the select entry point",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-goal-paragraph-moved-from-def-20-to-6-preamble-derivation-se": {
       "type": "source",
       "title": "Observation: Goal paragraph moved from Def 20 to §6 preamble; derivation section now refs Def 21",
@@ -3003,6 +3022,25 @@
       "relevance": "medium",
       "observed_at": "2026-09-16T10:33:32.034Z",
       "source_context": "Defining hop in §11; disambiguating walk-table Hop vs Edge",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-hop-layer-implemented-selection-trawl-frozen-scope-two-hop-9": {
+      "type": "source",
+      "title": "Observation: Hop layer implemented: selection, trawl, frozen scope, two-hop §9 completion with Ĥ=9/5",
+      "tags": [
+        "kalvin",
+        "implementation",
+        "hop",
+        "selection",
+        "scope",
+        "re-entry"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-hop-layer-implemented-selection-trawl-frozen-scope-two-hop-9",
+      "relevance": "critical",
+      "observed_at": "2026-09-16T12:36:33.563Z",
+      "source_context": "Implementing Defs 21-23 strategy model in src/kalvin",
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },

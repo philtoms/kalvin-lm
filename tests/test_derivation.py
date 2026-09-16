@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections import Counter
 
 from kalvin.derivation import Derivation
+from kalvin.hop import run_hops
 from kalvin.kline import KLine, KNode
 from kalvin.signifier import NLPSignifier
 
@@ -42,15 +43,24 @@ def _run() -> object:
     ).run()
 
 
-def test_done_with_documented_trace():
+def test_single_derivation_freezes_scope_and_writes_bridge():
     r = _run()
-    assert r.ending == "done"
+    # The scope never sees the walk's write: the derivation ends stuck at
+    # the state the bridge applies at — a later hop consumes it (Def 23).
+    assert r.ending == "stuck"
     # Step 1: {d,h} ⇉ [dh] under dh:[d,h]
     assert r.trace[1] == [W, DH, M]
     # Step 2: dh ⇉ [h] under dh:[h] (connotation), misfit mass 4→3
     assert r.trace[2] == [W, H, M]
-    # Step 4 consumes the composed witness; final ≡ [h,m,a,l,l] multiset-wise
-    assert Counter(map(int, r.trace[-1])) == Counter(map(int, [H, M, A, L, L]))
+
+
+def test_hop_derives_documented_example():
+    h = run_hops(_memory(), KLine(WDMH, [W, D, M, H]), SIG)
+    assert h.ending == "done"
+    done = h.results[-1]
+    assert Counter(map(int, done.trace[-1])) == Counter(map(int, [H, M, A, L, L]))
+    # the goal is taken from the top of the list: mhall leads the done hop
+    assert int(h.goals[-1].signature) == int(MHALL)
 
 
 def test_walk_writes_composed_correspondence():
@@ -66,12 +76,16 @@ def test_subject_identity_is_never_replaced():
     assert all(int(M) in map(int, state) for state in r.trace)
 
 
-def test_measurement_matches_section_11():
-    r = _run()
-    assert abs(r.j0 - 1 / 3) < 1e-9
-    assert abs(r.j1 - 1.0) < 1e-9
-    assert abs(r.hbar - 9 / 5) < 1e-9
-    assert abs(r.gamma - 2 ** (-9 / 5)) < 1e-9
+def test_measurement_matches_section_10_example():
+    # The done derivation inside the re-entry chain reproduces §10's
+    # example: Ĥ = 9/5 on the adopted overfit, γ = 2^(-9/5).
+    h = run_hops(_memory(), KLine(WDMH, [W, D, M, H]), SIG)
+    assert h.ending == "done"
+    done = h.results[-1]
+    assert abs(done.j0 - 2 / 5) < 1e-9  # [w,h,m] against mhall
+    assert abs(done.j1 - 1.0) < 1e-9
+    assert abs(done.hbar - 9 / 5) < 1e-9
+    assert abs(done.gamma - 2 ** (-9 / 5)) < 1e-9
 
 
 def test_stuck_at_entry_without_a_bridge():
@@ -102,15 +116,21 @@ def _overfit_run(**kwargs) -> object:
     ).run()
 
 
-def test_overfit_walk_anchors_and_adopts():
+def test_overfit_walk_writes_and_hop_adopts():
     r = _overfit_run()
-    assert r.ending == "done"
     # pure overfit: no A-side slot exists; the walk departs the goal's node
+    assert r.ending == "stuck"
     assert len(r.composed) == 1
     assert int(r.composed[0].signature) == int(M)  # head = the anchor
     assert r.composed[0].nodes == [M, ALL]
     assert r.composed[0].acq_depth == 2
-    assert Counter(map(int, r.trace[-1])) == Counter(map(int, [M, ALL, H]))
+    h = run_hops(
+        _overfit_memory(), KLine(M | H, [M, H]), SIG
+    )
+    assert h.ending == "done"
+    assert Counter(map(int, h.results[-1].trace[-1])) == Counter(
+        map(int, [M, ALL, H])
+    )
 
 
 def test_overfit_stuck_at_entry_without_b_walks():

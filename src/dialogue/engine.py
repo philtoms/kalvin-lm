@@ -12,16 +12,14 @@ assemble signifier, state, and engine live in :mod:`dialogue.harness`.
 
 from __future__ import annotations
 
-from collections.abc import Sequence, Iterator
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 from dialogue.engine_state import EngineState
-from dialogue.derivation import Derivation, DerivationResult
+from kalvin.hop import Hop
 from kalvin.kline import (
     KLine,
-    is_canon,
     is_terminal,
-    is_misfit,
     sig_level,
     using_resolver,
 )
@@ -29,7 +27,6 @@ from kalvin.kvalue import KValue
 from kalvin.significance import (
     BandLayout,
     gamma_to_byte,
-    misfit_mass,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -52,7 +49,7 @@ class Engine:
 
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
-        self._misfit = Derivation(state)
+        self._writes: list[KLine] = []  # hop writes — unratified evidence later hops trawl
 
     @property
     def state(self) -> EngineState:
@@ -137,18 +134,7 @@ class Engine:
             if self._state.is_groundable(kline):
                 self._ground(kline)
 
-            # The gate is relational, not internal: a question is canon-shaped
-            # (well-formed), and its misfit lives in C(entry, B) against some
-            # held goal — the derivation runs when such a B exists.
-            for candidate in self._select(kline):
-                    result = self._misfit.derive(kline, candidate)
-                    if result.ending != "done" or len(result.trace) < 2:
-                        # Stuck and abandoned ask; done at entry is the ground
-                        # path's, not a proposal.
-                        continue
-                    proposal = KLine(kline.signature, result.trace[-1])
-                    if not self._state.is_refused(proposal):
-                        batch.append(KValue(proposal, gamma_to_byte(result.gamma)))
+            batch.extend(self._propose(kline))
 
             if self._state.is_grounded(kline):
                 self._state.remove_work_at(idx)
@@ -178,22 +164,25 @@ class Engine:
                         sweep = True
                         break
 
-    def _select(self, entry: KLine) -> Iterator[KLine]:
-        """Goal candidates (Def 14): held non-terminal klines whose
-        relationship to ``entry`` is S2 — the misfit region connects the
-        parties. Ordered by ascending misfit mass, closest content first.
-        Definition 16 selection (occurrence) governs evidence inside the
-        derivation, not the choice of goal."""
-        sig = self._state.signifier
-        content = sig.signature_of(entry.nodes)
-        cands: list[tuple[int, KLine]] = []
-        for kline in self._state.where(
-            lambda k: k.signature != entry.signature and not is_terminal(k)
-        ):
-            rel = KLine(content, kline.nodes)
-            if sig_level(rel, sig) != "S2":
+    def _propose(self, kline: KLine) -> list[KValue]:
+        """One hop over the held memory (Defs 21–23): goals from the
+        selection list in order, each scoped and derived to an ending.
+        Done derivations propose; the hop's writes extend the reservoir
+        later hops trawl from."""
+        hop = Hop(self._held(), kline, self.signifier).run()
+        self._writes.extend(hop.writes)
+        batch: list[KValue] = []
+        for result in hop.results:
+            if result.ending != "done" or len(result.trace) < 2:
+                # Stuck and abandoned ask; done at entry is the ground
+                # path's, not a proposal.
                 continue
-            mass = misfit_mass(content, sig.signature_of(kline.nodes))
-            cands.append((mass, kline))
-        for _, kline in sorted(cands, key=lambda t: t[0]):
-            yield kline
+            proposal = KLine(kline.signature, result.trace[-1])
+            if not self._state.is_refused(proposal):
+                batch.append(KValue(proposal, gamma_to_byte(result.gamma)))
+        return batch
+
+    def _held(self) -> list[KLine]:
+        """The reservoir a hop trawls from: held klines plus the writes
+        of earlier hops — the progressive path."""
+        return self._state.where(lambda k: not is_terminal(k)) + self._writes

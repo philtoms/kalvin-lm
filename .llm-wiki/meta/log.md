@@ -527,3 +527,9 @@
 ## [2026-09-16T12:05:56.862Z] observe
 - slug: "obs-2026-09-16-goal-taken-from-top-of-list-hop-runs-multiple-derivations-do", title: "Goal taken from top of list; hop runs multiple derivations down it", relevance: "high"
 
+## [2026-09-16T12:36:33.566Z] observe
+- slug: "obs-2026-09-16-hop-layer-implemented-selection-trawl-frozen-scope-two-hop-9", title: "Hop layer implemented: selection, trawl, frozen scope, two-hop §9 completion with Ĥ=9/5", relevance: "critical"
+
+## [2026-09-16T12:50:53.643Z] observe
+- slug: "obs-2026-09-16-engine-select-entry-point-rewired-to-hop-harness-diff-shows-", title: "Engine select entry point rewired to Hop; harness diff shows junk proposals eliminated", relevance: "critical"
+

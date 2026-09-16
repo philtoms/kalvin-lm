@@ -58,7 +58,9 @@ def _atom_bits(value: int) -> Iterator[int]:
 
 
 class Derivation:
-    """A ⊢_{M,B} … — Defs 12–17 over held memory, on engine primitives."""
+    """A ⊢_{M,B} … — Defs 12–17 over the memory supplied. The memory is the
+    derivation's scope (Def 23): read as given, never extended mid-run;
+    writes leave via result.composed for the reservoir (Def 12)."""
 
     def __init__(
         self,
@@ -181,14 +183,14 @@ class Derivation:
         """Licensed targeting replaces with strictly falling misfit mass
         (Def 14). In an S2 region the restriction reads on both ends of
         the move: forward departs the gap or adopts the excess; reverse
-        consumes the gap or lands in the excess. Order: memory then
-        composed, forward before reverse."""
+        consumes the gap or lands in the excess. Order: memory order,
+        forward before reverse."""
         cur = self.content()
         d0 = self.mismatch()
         gap = self.gap()
         excess = self.excess()
         s2 = self.relationship_band() == "S2"
-        for k in self.memory + self.composed:
+        for k in self.memory:
             if not self.usable(k):
                 continue
             if k.signature in self.nodes:
@@ -327,6 +329,8 @@ class Derivation:
         return True
 
     def _walk(self) -> bool:
+        if not self.excess():
+            return False  # Def 15: a walk bridges to the overfit — none to reach
         if self._walk_a():
             return True
         return self.b_walks and self._walk_b()
@@ -400,12 +404,12 @@ class Derivation:
 
     def _ground_composed(self, composed: KLine) -> bool:
         """Write a composed correspondence once per run: a repeated
-        bridge is not progress, and re-deriving it wedges the loop."""
+        bridge is not progress, and re-deriving it wedges the loop. The
+        write leaves with the result — the scope never sees it."""
         key = (int(composed.signature), tuple(int(n) for n in composed.nodes))
         if key in self._composed_keys:
             return False
         self._composed_keys.add(key)
-        self.memory.append(composed)
         return True
 
     def _exposes(self, new_nodes: list[int]) -> bool:
@@ -426,7 +430,7 @@ class Derivation:
         )
         cost = (
             k.acq_depth
-            if k in self.composed
+            if k.acq_depth
             else 0
             if sig_level(k, self.signifier) == "S1"
             else 1
