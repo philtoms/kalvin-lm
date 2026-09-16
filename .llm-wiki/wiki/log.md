@@ -2,6 +2,14 @@
 
 ## 2026-09-16
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-16-five-commits-landed-def-22-self-exclusion-graded-asks-case-i","title":"Five commits landed: Def 22 self-exclusion, γ-graded asks, case-insensitive B4"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-wdmh-ask-zero-candidates-empty-nodes-canon-form-orders-verb-","title":"WDMH ask: zero candidates (empty nodes); canon form orders verb→answer"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-case-insensitive-rule-b4-patch-h-ad-binds-compound-char-h-ha","title":"Case-insensitive Rule B4 patch: h(ad) binds compound char H→had"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-wdmh-mhall-s3-via-mary-have-mhall-value-drifts-per-compile","title":"γ(WDMH,MHALL)=S3 via Mary+have; MHALL value drifts per compile"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-ask-content-form-never-fed-wdmh-at-is-the-whole-question","title":"Ask content form never fed; WDMH:[] at γ is the whole question"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-harness-feeds-asks-at-a-b-not-structural-bands-def-22-self-e","title":"Harness feeds asks at γ(A,B), not structural bands; Def 22 self-exclusion"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-self-candidate-monopolizes-every-hop-wdmh-derivation-never-r","title":"Self-candidate monopolizes every hop; WDMH derivation never runs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-16-harness-feed-ask-answer-loop-broken-after-algebra-switch","title":"Harness feed→ask→answer loop broken after algebra switch"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted","title":"UNKNOWN op unified into ASK; ask bit deleted"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal","title":"COUNTERSIGNS `==` recompiled as ask + implied goal"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-16-engine-select-entry-point-rewired-to-hop-harness-diff-shows-","title":"Engine select entry point rewired to Hop; harness diff shows junk proposals eliminated"}

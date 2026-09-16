@@ -539,3 +539,27 @@
 ## [2026-09-16T13:13:09.435Z] observe
 - slug: "obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted", title: "UNKNOWN op unified into ASK; ask bit deleted", relevance: "high"
 
+## [2026-09-16T13:46:08.862Z] observe
+- slug: "obs-2026-09-16-harness-feed-ask-answer-loop-broken-after-algebra-switch", title: "Harness feed→ask→answer loop broken after algebra switch", relevance: "high"
+
+## [2026-09-16T13:46:17.976Z] observe
+- slug: "obs-2026-09-16-self-candidate-monopolizes-every-hop-wdmh-derivation-never-r", title: "Self-candidate monopolizes every hop; WDMH derivation never runs", relevance: "high"
+
+## [2026-09-16T14:04:05.831Z] observe
+- slug: "obs-2026-09-16-harness-feeds-asks-at-a-b-not-structural-bands-def-22-self-e", title: "Harness feeds asks at γ(A,B), not structural bands; Def 22 self-exclusion", relevance: "high"
+
+## [2026-09-16T14:17:50.561Z] observe
+- slug: "obs-2026-09-16-ask-content-form-never-fed-wdmh-at-is-the-whole-question", title: "Ask content form never fed; WDMH:[] at γ is the whole question", relevance: "high"
+
+## [2026-09-16T14:22:21.807Z] observe
+- slug: "obs-2026-09-16-wdmh-mhall-s3-via-mary-have-mhall-value-drifts-per-compile", title: "γ(WDMH,MHALL)=S3 via Mary+have; MHALL value drifts per compile", relevance: "high"
+
+## [2026-09-16T14:35:54.163Z] observe
+- slug: "obs-2026-09-16-case-insensitive-rule-b4-patch-h-ad-binds-compound-char-h-ha", title: "Case-insensitive Rule B4 patch: h(ad) binds compound char H→had", relevance: "high"
+
+## [2026-09-16T14:48:20.673Z] observe
+- slug: "obs-2026-09-16-wdmh-ask-zero-candidates-empty-nodes-canon-form-orders-verb-", title: "WDMH ask: zero candidates (empty nodes); canon form orders verb→answer", relevance: "high"
+
+## [2026-09-16T15:11:24.992Z] observe
+- slug: "obs-2026-09-16-five-commits-landed-def-22-self-exclusion-graded-asks-case-i", title: "Five commits landed: Def 22 self-exclusion, γ-graded asks, case-insensitive B4", relevance: "medium"
+

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-16T13:13:09.505Z",
+  "last_updated": "2026-09-16T15:11:25.039Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -2900,6 +2900,40 @@
       "created": "2026-09-15",
       "updated": "2026-09-15"
     },
+    "sources/obs-2026-09-16-ask-content-form-never-fed-wdmh-at-is-the-whole-question": {
+      "type": "source",
+      "title": "Observation: Ask content form never fed; WDMH:[] at γ is the whole question",
+      "tags": [
+        "harness",
+        "ask",
+        "feed",
+        "scaffolding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-ask-content-form-never-fed-wdmh-at-is-the-whole-question",
+      "relevance": "high",
+      "observed_at": "2026-09-16T14:17:50.557Z",
+      "source_context": "Harness ask-feed contract refinement",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-case-insensitive-rule-b4-patch-h-ad-binds-compound-char-h-ha": {
+      "type": "source",
+      "title": "Observation: Case-insensitive Rule B4 patch: h(ad) binds compound char H→had",
+      "tags": [
+        "kscript",
+        "word-binding",
+        "patch",
+        "bugfix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-case-insensitive-rule-b4-patch-h-ad-binds-compound-char-h-ha",
+      "relevance": "high",
+      "observed_at": "2026-09-16T14:35:54.161Z",
+      "source_context": "wdmh H binding fix",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-countersigns-recompiled-as-ask-implied-goal": {
       "type": "source",
       "title": "Observation: COUNTERSIGNS `==` recompiled as ask + implied goal",
@@ -2988,6 +3022,22 @@
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
+    "sources/obs-2026-09-16-five-commits-landed-def-22-self-exclusion-graded-asks-case-i": {
+      "type": "source",
+      "title": "Observation: Five commits landed: Def 22 self-exclusion, γ-graded asks, case-insensitive B4",
+      "tags": [
+        "commit",
+        "session",
+        "milestone"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-five-commits-landed-def-22-self-exclusion-graded-asks-case-i",
+      "relevance": "medium",
+      "observed_at": "2026-09-16T15:11:24.990Z",
+      "source_context": "Committing session work",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-goal-paragraph-moved-from-def-20-to-6-preamble-derivation-se": {
       "type": "source",
       "title": "Observation: Goal paragraph moved from Def 20 to §6 preamble; derivation section now refs Def 21",
@@ -3021,6 +3071,41 @@
       "relevance": "high",
       "observed_at": "2026-09-16T12:05:56.860Z",
       "source_context": "Correcting goal-taking and hop's multiple derivations in kalvin-algebra.md",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-harness-feed-ask-answer-loop-broken-after-algebra-switch": {
+      "type": "source",
+      "title": "Observation: Harness feed→ask→answer loop broken after algebra switch",
+      "tags": [
+        "dialogue",
+        "harness",
+        "engine",
+        "architecture"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-harness-feed-ask-answer-loop-broken-after-algebra-switch",
+      "relevance": "high",
+      "observed_at": "2026-09-16T13:46:08.860Z",
+      "source_context": "Harness fitness review after algebra-backed switch",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-harness-feeds-asks-at-a-b-not-structural-bands-def-22-self-e": {
+      "type": "source",
+      "title": "Observation: Harness feeds asks at γ(A,B), not structural bands; Def 22 self-exclusion",
+      "tags": [
+        "harness",
+        "significance",
+        "gamma",
+        "ask",
+        "countersigns"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-harness-feeds-asks-at-a-b-not-structural-bands-def-22-self-e",
+      "relevance": "high",
+      "observed_at": "2026-09-16T14:04:05.827Z",
+      "source_context": "Harness γ-significance correction after review",
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
@@ -3135,6 +3220,23 @@
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
+    "sources/obs-2026-09-16-self-candidate-monopolizes-every-hop-wdmh-derivation-never-r": {
+      "type": "source",
+      "title": "Observation: Self-candidate monopolizes every hop; WDMH derivation never runs",
+      "tags": [
+        "engine",
+        "hop",
+        "derivation",
+        "bug"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-self-candidate-monopolizes-every-hop-wdmh-derivation-never-r",
+      "relevance": "high",
+      "observed_at": "2026-09-16T13:46:17.975Z",
+      "source_context": "Harness fitness review; outstanding task: verify WDMH→MHALL through harness",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
     "sources/obs-2026-09-16-slot-derivation-moved-to-6-as-def-15-renumber-cascade-file-w": {
       "type": "source",
       "title": "Observation: Slot derivation moved to §6 as Def 15; renumber cascade; file-wipe incident recovered from git index",
@@ -3169,6 +3271,41 @@
       "relevance": "high",
       "observed_at": "2026-09-16T13:13:09.431Z",
       "source_context": "Unifying UNKNOWN into ASK and dropping the ask bit",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-wdmh-ask-zero-candidates-empty-nodes-canon-form-orders-verb-": {
+      "type": "source",
+      "title": "Observation: WDMH ask: zero candidates (empty nodes); canon form orders verb→answer",
+      "tags": [
+        "engine",
+        "hop",
+        "selection",
+        "ask",
+        "candidates"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-wdmh-ask-zero-candidates-empty-nodes-canon-form-orders-verb-",
+      "relevance": "high",
+      "observed_at": "2026-09-16T14:48:20.671Z",
+      "source_context": "WDMH candidate generation investigation",
+      "created": "2026-09-16",
+      "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-16-wdmh-mhall-s3-via-mary-have-mhall-value-drifts-per-compile": {
+      "type": "source",
+      "title": "Observation: γ(WDMH,MHALL)=S3 via Mary+have; MHALL value drifts per compile",
+      "tags": [
+        "gamma",
+        "jaccard",
+        "word-binding",
+        "values"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-16-wdmh-mhall-s3-via-mary-have-mhall-value-drifts-per-compile",
+      "relevance": "high",
+      "observed_at": "2026-09-16T14:22:21.805Z",
+      "source_context": "γ(WDMH, MHALL) verification question",
       "created": "2026-09-16",
       "updated": "2026-09-16"
     },
