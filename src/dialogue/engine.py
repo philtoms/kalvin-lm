@@ -176,8 +176,11 @@ class Engine:
         ending; a hop that ends without done re-enters at the ending
         state of the derivation that wrote — the evidence-building
         route — so a composed correspondence is consumed by a later
-        derivation of the same queued kline. Done derivations propose;
-        the chain's writes extend the reservoir later hops trawl from."""
+        derivation of the same queued kline. Done derivations propose
+        at their significance — J of the final content against the goal
+        (Defs 16, 20); γ — significance net of complexity — grades
+        effort and never selects the band. The chain's writes extend
+        the reservoir later hops trawl from."""
         hop = run_hops(self._held(), kline, self.signifier)
         self._writes.extend(hop.writes)
         batch: list[KValue] = []
@@ -195,7 +198,7 @@ class Engine:
                 int(kline.signature) & ~ASK_SIG, result.trace[-1]
             )
             if not self._state.is_refused(proposal):
-                batch.append(KValue(proposal, gamma_to_byte(result.gamma)))
+                batch.append(KValue(proposal, gamma_to_byte(result.j1)))
         return batch
 
     def _held(self) -> list[KLine]:

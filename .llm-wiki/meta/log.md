@@ -593,3 +593,21 @@
 ## [2026-09-16T18:08:01.350Z] observe
 - slug: "obs-2026-09-16-six-commits-landed-bounds-zero-sig-seed-re-entry-ratificatio", title: "Six commits landed: bounds, zero-sig, seed, re-entry, ratification", relevance: "high"
 
+## [2026-09-17T10:33:47.091Z] observe
+- slug: "obs-2026-09-17-done-redefined-as-achieved-significance-1-0-split-into-achie", title: "Done redefined as achieved significance 1.0; γ split into achieved vs journey evaluations", relevance: "critical"
+
+## [2026-09-17T10:38:08.911Z] observe
+- slug: "obs-2026-09-17-9-adjusted-equality-saturated-calculation-per-step-paragraph", title: "§9 adjusted: equality = saturated calculation; per-step paragraph split into two evaluations", relevance: "high"
+
+## [2026-09-17T10:44:04.765Z] observe
+- slug: "obs-2026-09-17-9-retitled-what-a-derivation-establishes-significance-is-the", title: "§9 retitled \"What a Derivation Establishes\" — significance is the result, equality only at S1", relevance: "high"
+
+## [2026-09-17T10:47:20.343Z] observe
+- slug: "obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e", title: "CONTEXT.md glossary aligned: Done = saturated calculation; two γ evaluations in Significance/KValue", relevance: "high"
+
+## [2026-09-17T11:13:03.635Z] observe
+- slug: "obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit", title: "Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite", relevance: "critical"
+
+## [2026-09-17T11:29:12.962Z] observe
+- slug: "obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc", title: "Committed 3ad08b7: significance/complexity split, done by calculation", relevance: "medium"
+

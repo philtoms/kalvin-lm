@@ -43,10 +43,10 @@ class DerivationResult:
     trace: list[list[int]] = field(default_factory=list)
     composed: list[KLine] = field(default_factory=list)
     j0: float = 0.0
-    j1: float = 0.0
+    j1: float = 0.0  # significance: J(final content, goal)
     dbar: float = 0.0
     hbar: float = 0.0
-    gamma: float = 0.0
+    gamma: float = 0.0  # γ: J·δ^(D̄+Ĥ) — significance net of complexity; never the band
 
 
 def _atom_bits(value: int) -> Iterator[int]:

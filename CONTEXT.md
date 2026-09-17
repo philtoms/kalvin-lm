@@ -66,7 +66,7 @@ The total classifier `fit : V × V* → Shape` — one function, two readings: a
 One of the nine fit cases — Canon, Identity, Underfit, Overfit, Under+over, Connotation, Denotation, No-fit, Unknown. Underfit and Overfit also name the misfit quantities (Def 9): the atoms the signature claims beyond its nodes, and the atoms the nodes carry beyond the signature. Connotation (single-node Underfit) and Denotation (uncovered single-node) are names of convenience for KScript; algebraically they are single-node instances of cases 6 and 4 (Def 10).
 
 **Band**:
-The structural form of significance — the fit's tier, ordered S1 > S2 > S3 > S4, shapes within a band unordered:
+The quantization of significance — the fit's tier, ordered S1 > S2 > S3 > S4, shapes within a band unordered:
 
 - **S1** — exact: the claim is kept. _I know that I know this._
 - **S2** — covered misfit. _I infer this, but it does not yet fit._
@@ -76,8 +76,11 @@ The structural form of significance — the fit's tier, ordered S1 > S2 > S3 > S
 Observer-independent — given the same held memory, every agent classifies alike — so a band is never exchanged; it is recomputable from structure (§10).
 
 **Significance**:
-The value rationalisation produces and consumes; understanding, informally, is high significance attained and held (§12). Two forms: **structural** — the band of a fit, derived by forming the relationship kline and classifying its shape; **graded** — the distance `γ = J · δ^(D̄ + Ĥ)` (Def 20): the Jaccard overlap of the two contents, discounted by two depths — the mean **resolution depth** at which A's content is held (granularity), and the mean **acquisition depth** of the unratified correspondence edges crossed to win it (provenance). Ratified edges cost nothing: hard-won until it consolidates.
-_Avoid_: confidence, score, weight, grounded
+The measure of rational understanding — the value rationalisation produces and consumes; understanding, informally, is high significance attained and held (§12). Formally the content overlap `J(σ(ν_A), σ(ν_B))` (Defs 17, 20): path-independent, 1.0 exactly at value-equality (done), 0 at disjointness; γ at entry depths, where the depths vanish and only overlap remains. The bands are its quantization — S1 = 1.0, S2 = overlap short of equality, S3 = zero overlap, S4 the vacuous halt off the scale — so one measure serves a kline's own claim and a relationship alike. Selects the band; travels with the proposal.
+_Avoid_: confidence, score, weight, grounded; structural significance (redundant — the band is quantized significance)
+
+**Complexity**:
+The measure of work — how much effort arriving at a significance cost: `1 − δ^(D̄ + Ĥ)` (Def 20), the complement of the discount over the mean **resolution depth** at which A's content is held (granularity) and the mean **acquisition depth** of the unratified correspondence edges crossed to win it (provenance). Entry content and ratified standing licences cost nothing: hard-won until it consolidates. Independent of significance — it prices moving between embedded concepts — and never selects a band. The composite `γ = J · δ^(D̄ + Ĥ)`, significance net of complexity, compares derivations of equal significance and steers strategy by its rate of change.
 
 **Relationship**:
 The construction that grades two klines against each other: `C(A,B) = signature_of(A.nodes) : B.nodes` — the head is defined, not claimed, so all misfit comes from B's side. `fit(C(A,B))` is the structural relationship of A and B; Canon iff the two klines hold the same value, differently decomposed (Def 11).
@@ -104,14 +107,14 @@ How a participant tests a kline's structural claim against what Kalvin actually 
 The process that produces and consumes significance (§12).
 
 **Cogitation**:
-The slow path of rationalisation — the strategy loop over derivations: **select** a goal, **scope** the memory, **derive** to an ending, **add** the result to memory, **reenter** with the output as the next queue's input (§11). Each phase is strategy: the rule system constrains what any of it may do, never what it must. The fit is graded at each state and its rate of change feeds back, telling Kalvin whether its effort is increasingly or decreasingly significant.
+The slow path of rationalisation — the strategy loop over derivations: **select** a goal, **scope** the memory, **derive** to an ending, **add** the result to memory, **reenter** with the output as the next queue's input (§11). Each phase is strategy: the rule system constrains what any of it may do, never what it must. Significance is graded at each state; γ's rate of change — significance net of complexity — feeds back, telling Kalvin whether its effort is increasingly or decreasingly worthwhile.
 _Avoid_: thinking, background thread, the cogitator
 
 **Hop**:
 The strategy unit of one queued kline: goals taken from the top of its candidate list in order, each scoped and derived to an ending — a hop may run several derivations, one that ends without done yielding the next (Def 21). The queued head is fixed within the hop; each derivation's goal and scope are fixed for its duration (Def 12); writes land in memory for later hops alone. Re-entry changes A, and A reselects candidates for B; hop order is the system's only temporal structure.
 
 **Derivation**:
-The rewrite of a queued kline's node sequence against one held goal: `A ⊢_{M,B} A′`. The signature — the claim — never changes; states differ only in nodes (Def 12). The goal is read, never rewritten: it scopes targeting (Def 14), determines the ending (Def 16), and its nodes may seed slot walks (Def 15).
+The rewrite of a queued kline's node sequence against one held goal: `A ⊢_{M,B} A′`. The signature — the claim — never changes; states differ only in nodes (Def 12). The goal is read, never rewritten: it scopes targeting (Def 14), determines the ending (Def 16), and its nodes may seed slot walks (Def 15). Its outcome is the significance established at the stopping state — a calculated level, never a boolean (Def 16, §9).
 
 **Replace**:
 The only rule: a held **correspondence** kline's two sides swap at a multiset-wise occurrence in the node sequence — forward (signature → witness) or reverse (witness → signature). The evidence kline's own fit fixes the **mode**: canon — expand/contract, granularity at constant content; covered misfit — shed/adopt, its underfit out and its overfit in; uncovered misfit — traverse, disjoint atoms swap. Direction is not a property of the kline: arrival orients the licence (Def 13).
@@ -132,13 +135,13 @@ What permits a replace — two kinds on one rule (§7): **witnessed** (canon-mod
 `|signature_of(A.nodes) Δ signature_of(B.nodes)|` — the atoms the two contents disagree on. The unit of progress: every licensed targeting replace strictly decreases it, and a run from entry is bounded by its initial value (Def 14, T1).
 
 **Done**:
-The ending where the relationship reaches S1: **value-equality**, `signature_of(A.nodes) = signature_of(B.nodes)` — not node-equality. Done may arrive early; pending nodes are witness structure. A constructive existence proof within what is held: every step of the witness was licensed by a correspondence (Def 16, §9).
+The ending where the calculation saturates: **significance 1.0** — the band S1, which states **value-equality**, `signature_of(A.nodes) = signature_of(B.nodes)` — not node-equality. Done may arrive early; pending nodes are witness structure. The final node sequence is a constructive witness for the equality, every step licensed by a held correspondence (Def 16, §9).
 
 **Stuck**:
-The ending where no licensed targeting move remains — not done, and nothing in memory connects. Two conditions, both the **ask**: no goal held, or no connection across the correspondence graph. Relative non-existence — the honest outcome when the bridge is missing (Def 16, §9).
+The ending where no licensed targeting move remains — not done, and nothing in memory connects. Two conditions, both the **ask**: no goal held, or no connection across the correspondence graph. Relative non-existence — the honest stopping when the bridge is missing. The significance established there — real overlap short of equality — is still the result (Def 16, §9).
 
 **Abandoned**:
-Not an ending the rules produce: strategy halts or re-targets a run mid-derivation, e.g. when graded effort falls (Def 16).
+Not an ending the rules produce: strategy halts or re-targets a run mid-derivation, e.g. when γ — significance net of complexity — falls (Def 16). The significance established at abandonment is the result.
 
 **Ask**:
 The structural halt condition — no atom, mark, or decree involved. The Unknown shape (`S:[]` — nothing held) is the ask's shape, and a misfit region no held correspondence reaches asks. The event under which ungrounded proposals are generated (§4, §8).
@@ -182,7 +185,7 @@ _Avoid_: persistent store, knowledge base
 The model's mechanism for realising significance: if a signature is grounded, all of its nodes are grounded. Frame-grounded klines are available to cogitation; LTM grounding is a frame promotion Kalvin deems important enough to remember.
 
 **KValue**:
-The unit of exchange between participants — a KLine paired with a significance (the sender's assessment). The kline carries its acquisition record; the significance is computed against it.
+The unit of exchange between participants — a KLine paired with a significance (the sender's assessment). For a proposal that is its significance — J at entry depths; the complexity stays with the kline as its acquisition record.
 
 ## KScript
 
@@ -194,7 +197,7 @@ A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word h
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
 
-- `==` **COUNTERSIGNS** — goal-targeted training: `A == B => C D` compiles to the queued ask `{A:[]}` (S4, the entry) and the implied goal `{B:[C,D]}` (a Canon or covered misfit per the block's scaffolding). No reciprocal pair is emitted; the engine's own selection is unchanged — the goal is the trainer's answer key. The harness feeds the ask at its subjective significance γ(A, B) (Def 20 — fresh content carries zero depths, so γ = J of the two contents); the structural S4 shape is never the exchanged byte. The engine's proposals under the goal grade the same way — the proposal's content against the goal's target (its signature value): the proposal that reached its goal is ratified at S1 and grounds on receipt (the stamp, not structure, is the licence); one off the goal grades low and refuses on re-feed
+- `==` **COUNTERSIGNS** — goal-targeted training: `A == B => C D` compiles to the queued ask `{A:[]}` (S4, the entry) and the implied goal `{B:[C,D]}` (a Canon or covered misfit per the block's scaffolding). No reciprocal pair is emitted; the engine's own selection is unchanged — the goal is the trainer's answer key. The harness feeds the ask at its subjective significance γ(A, B) (Def 20 — fresh content carries zero depths, so γ = J, the significance of the two contents); the structural S4 shape is never the exchanged byte. The engine's proposals under the goal grade the same way — the proposal's content against the goal's target (its signature value): the proposal that reached its goal is ratified at S1 and grounds on receipt (the stamp, not structure, is the licence); one off the goal grades low and refuses on re-feed
 - `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
 - `>` / `<` **CONNOTES** — the compound-signature shape `A > B` ⇒ `{AB:[B]}`, `A < B` ⇒ `{BA:[A]}` (reading order, `A < B ≡ B > A`): the signature is the compound of both operands, the node the connoted value. Self-reference collapses to Identity
 - `=` **DENOTES** — `{A:[B]}`: the signature denotes each node. Self-denote collapses to Identity

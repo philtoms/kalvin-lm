@@ -50,6 +50,6 @@ from kalvin.bpe_tokenizer import BPETokenizer
 from dialogue import engine as eng_mod
 eng_mod.Hop = hop_mod.Hop
 
-sys.argv = ["harness", "data/scripts/wdmh-underfit.ks", "-p", "data/dialogue/mhall.json"]
+sys.argv = ["harness", "data/scripts/wdmh.ks", "-p", "data/dialogue/mhall.json"]
 from dialogue.harness import main
 main()

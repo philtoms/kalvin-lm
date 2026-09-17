@@ -1,5 +1,14 @@
 # Wiki Update Log
 
+## 2026-09-17
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc","title":"Committed 3ad08b7: significance/complexity split, done by calculation"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit","title":"Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e","title":"CONTEXT.md glossary aligned: Done = saturated calculation; two γ evaluations in Significance/KValue"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-9-retitled-what-a-derivation-establishes-significance-is-the","title":"§9 retitled \"What a Derivation Establishes\" — significance is the result, equality only at S1"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-9-adjusted-equality-saturated-calculation-per-step-paragraph","title":"§9 adjusted: equality = saturated calculation; per-step paragraph split into two evaluations"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-17-done-redefined-as-achieved-significance-1-0-split-into-achie","title":"Done redefined as achieved significance 1.0; γ split into achieved vs journey evaluations"}
+
 ## 2026-09-16
 
 - **observe**: {"relevance":"high","slug":"obs-2026-09-16-six-commits-landed-bounds-zero-sig-seed-re-entry-ratificatio","title":"Six commits landed: bounds, zero-sig, seed, re-entry, ratification"}

@@ -24,7 +24,7 @@ A derivation therefore has two distinct kinds of step:
 
 A derivation ends when the current value equals the goal value, or when no licensed targeting step remains. Strategy determines which licensed operation to attempt and whether a derivation should be continued, abandoned, or followed by another hop.
 
-The measurement model assigns each derivation a graded significance value. The grade depends on:
+The measurement model assigns each derivation a significance value — the understanding achieved — and a complexity value — the work spent achieving it. The two depend on:
 
 - content overlap with the goal;
 - the granularity of the current witness; and
@@ -122,7 +122,7 @@ fit(s, ν).
 γ(A,B)
 ```
 
-is the graded significance of working from A toward B.
+is the composite of working from A toward B: significance net of complexity (Definition 20).
 
 ```text
 J(x,y) = |x ∧ y| / |x ∨ y|
@@ -699,19 +699,25 @@ Terminals are targeting-closed, not rule-closed. An Identity relationship is don
 
 ## Definition 16 — Endings
 
-A derivation has one of three outcomes:
+A derivation stops in one of three ways. Its outcome is not how it stopped but the significance of the state it stops at — a calculated level (Definition 20), never a boolean.
 
 ### Done
 
-```text
-fit(C(A,B)) ∈ S1.
-```
-
-Equivalently:
+Done is defined by the calculation:
 
 ```text
-σ(ν_A) = σ(ν_B).
+significance = 1.0.
 ```
+
+Significance is γ at entry depths — the content overlap J(σ(ν_A), σ(ν_B)) — which is 1.0 exactly when the terminal contents are equal. Each S1 shape of the relationship satisfies that equality: Canon by its case condition, Identity because ν_B = [σ(ν_A)] collapses to the same content. Therefore
+
+```text
+fit(C(A,B)) ∈ S1
+```
+
+holds at done. The band statement is a proof that done means S1, not the definition.
+
+A proposal carries its significance; one that reaches done is proposed at S1 by calculation.
 
 Node sequences need not be equal.
 
@@ -776,15 +782,19 @@ Because the atom set is finite and well-founded Canon expansion terminates, the 
 
 ---
 
-# 9. What a Derivation Proves
+# 9. What a Derivation Establishes
 
-A completed derivation proves:
+A derivation establishes the significance of the state it stops at (Definition 16). Done, stuck, or abandoned, the stopping is an observation; the established significance is the result, and the calculation proves the band reached.
+
+At 1.0 the band is S1, and S1 states the equality:
 
 ```text
 σ(ν_A) = σ(ν_B).
 ```
 
 The final node sequence is a constructive witness for that equality. Every rewrite in the path was licensed by a correspondence held in memory: the path itself is carried as evidence.
+
+Below 1.0 nothing is proven equal. An S2 outcome — real, measured overlap short of equality — may be a useful result, but it is not a proof of equality.
 
 The derivation does **not** prove:
 
@@ -794,13 +804,7 @@ The derivation does **not** prove:
 
 An S3 kline may represent a promise rather than established knowledge. Ratification and evaluation of such promises are outside the rewrite rules.
 
-The relationship:
-
-```text
-fit(C(Aᵢ, B))
-```
-
-may nevertheless be measured after every step, and its rate of change tracked over steps. This measurement is used by strategy to decide whether continued effort is worthwhile.
+Significance — the content overlap of fit(C(Aᵢ, B)) — may be measured at every state; γ, significance net of complexity, is tracked step by step, and its rate of change is the signal strategy uses to decide whether continued effort is worthwhile.
 
 ## Worked example — “what did Mary have?”
 
@@ -1001,50 +1005,64 @@ Klines written into memory carry their recorded depths; consuming one composes i
 
 Acquisition depth is stored provenance. It cannot in general be reconstructed from the current node sequence alone, because the sequence does not record the path by which its atoms were acquired: consumption leaves no trace in ν_A.
 
-## Definition 20 — Graded significance
+## Definition 20 — Significance and complexity
 
-The significance measure is:
-
-```text
-γ(A,B) = J(σ(ν_A), σ(ν_B)) · δ^(D̄ + Ĥ)
-```
-
-where 0 < δ < 1 is the discount factor. The same factor discounts both depths; both are denominated in edges.
-
-Thus:
+Significance is the measure of rational understanding:
 
 ```text
-significance = content overlap × discount for granularity and acquisition cost.
+sig(A,B) = J(σ(ν_A), σ(ν_B)).
 ```
 
-The form is fixed, not free: four requirements force it.
+It reads only the two contents: 1.0 exactly at value-equality — done (Definition 16) — and 0 at disjointness. It is γ at entry depths — Definition 19 gives content present at entry depth 0, so the discount vanishes and only the overlap remains. Significance selects the band and travels with the proposal.
+
+Complexity is the measure of work — how much effort arriving at that significance cost:
+
+```text
+complexity = 1 − δ^(D̄ + Ĥ),
+```
+
+the complement of the discount over both depths (0 < δ < 1; both denominated in edges). Entry content and ratified standing licences cost nothing; deeper decomposition and unratified acquisition raise it. Complexity is independent of significance: it prices moving between embedded concepts, and never selects a band.
+
+Their composite is γ:
+
+```text
+γ = J(σ(ν_A), σ(ν_B)) · δ^(D̄ + Ĥ) = significance × (1 − complexity)
+```
+
+— significance net of the work spent. The form is fixed, not free: four requirements force it.
 
 Consequently:
 
-- deeper decomposition lowers significance;
-- unratified acquisition lowers significance;
-- equal-content states can have different significance if they were reached by different paths.
+- deeper decomposition raises complexity;
+- unratified acquisition raises complexity;
+- equal-content states can differ in complexity when reached by different paths.
 
 γ is directional by design: it grades this derivation's effort toward its goal. B's depths are B's own derivation's problem.
+
+### Bands quantize significance
+
+For non-vacuous pairs the band is the quantization of significance: S1 is significance 1.0, S2 is overlap short of equality, S3 is zero overlap. S4 — the unknown — is off the scale: the halt with nothing to measure. The former "structural significance" is this quantization; one measure serves a kline's own claim and a relationship alike.
+
+γ at the recorded depths — significance net of complexity — compares derivations that achieve the same significance: same arrival, different cost. Its rate of change steers strategy. A derivation may arrive at significance 1.0 with γ far below.
 
 ### Invariants
 
 Four properties of the measure:
 
-1. **Band-consistency.** γ is 0 exactly at content-disjointness and maximal only at value-equality. Both ends belong to J; the depths only scale down.
-2. **Granularity-invariance.** Witnessed moves change γ only through D̄, never through recomposition. Atom-weighted composition is blind to how content is sliced into nodes. An unweighted per-slot mean violates this: expansion alone can raise it at constant content and constant depth.
-3. **Granularity-monotonicity.** Expand strictly increases D̄, so strictly decreases γ; contract strictly decreases D̄, so increases γ. This makes gratuitous expansion detectable.
+1. **Band-consistency.** Significance is 0 exactly at content-disjointness and 1 exactly at value-equality — the band's two ends. The depths only scale γ down.
+2. **Granularity-invariance.** Witnessed moves change complexity only through D̄, never through recomposition. Atom-weighted composition is blind to how content is sliced into nodes. An unweighted per-slot mean violates this: expansion alone can raise it at constant content and constant depth.
+3. **Granularity-monotonicity.** Expand strictly increases D̄, so strictly increases complexity; contract strictly decreases it. This makes gratuitous expansion detectable.
 4. **Provenance-monotonicity.** Unratified acquisition strictly increases Ĥ, and nothing in a derivation lowers it — only ratification or re-derivation through ratified licences does. This makes promise-stacking detectable.
 
 The monotonicities are properties of the intended strategy model, not guarantees for arbitrary mixed derivations. Consuming unratified evidence can lower γ even as J rises — the step that wins the answer dips. That dip is the price signal steering strategy toward ratified standing licences.
 
 ### Rate of change
 
-The rate of change of γ per step is defined only at this level — a four-band predicate has no useful derivative — and is the signal that cogitation's feedback acts on.
+γ, unlike the band, changes measurably per step; its rate of change is the signal that cogitation's feedback acts on.
 
 ### Exchange
 
-The graded value travels in a KValue (CONTEXT.md) as the sender's assessment, and the acquisition record travels with the kline that earned it: depths are part of what memory holds. Bands need not travel, for they are recomputable from structure.
+A KValue (CONTEXT.md) carries the sender's assessment — for a proposal, its significance; the complexity stays behind as the acquisition record: depths are part of what memory holds. Bands need not travel, for they are recomputable from structure.
 
 ### Example
 
@@ -1068,13 +1086,13 @@ Then:
 Ĥ = (0 + 0 + 3 + 3 + 3) / 5 = 9/5.
 ```
 
-For δ = 1/2, the final significance is:
+For δ = 1/2:
 
 ```text
-γ = 2^(−9/5) ≈ 0.29.
+γ = 2^(−9/5) ≈ 0.29 — significance 1.0 at complexity 1 − 2^(−9/5) ≈ 0.71.
 ```
 
-The answer is therefore complete even though its significance has decreased. The decrease records the cost of reaching the answer through unratified evidence.
+The answer is therefore complete at full significance, high complexity: the work records the cost of reaching the answer through unratified evidence.
 
 Ratification can remove that cost on a subsequent derivation by allowing the same correspondence to be traversed without the unratified penalty.
 
@@ -1122,7 +1140,7 @@ is a candidate goal for A when its content covers a node of ν_A:
 n ∧ σ(ν_K) ≠ ∅, for some node n ∈ ν_A    (Definition 8).
 ```
 
-The candidates, ordered by descending γ(A, K), are the goal list. γ is the graded significance (Definition 20): the significance of working from A toward the candidate — content overlap between the two parties, discounted for granularity and acquisition cost. Significance, not band, sets the order.
+The candidates, ordered by descending γ(A, K), are the goal list. γ is the composite (Definition 20): the significance of working from A toward the candidate — content overlap between the two parties — net of the complexity of reaching it. γ, not band, sets the order.
 
 Three klines never join the list. The queued kline itself: C(A, A) is Canon
 at entry and proves nothing — a hop that breaks on it never reaches the

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-16T18:08:01.408Z",
+  "last_updated": "2026-09-17T11:29:13.023Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3482,6 +3482,120 @@
       "source_context": "Landing word-bit trawl + scaffold-first feed order + depth 5",
       "created": "2026-09-16",
       "updated": "2026-09-16"
+    },
+    "sources/obs-2026-09-17-9-adjusted-equality-saturated-calculation-per-step-paragraph": {
+      "type": "source",
+      "title": "Observation: §9 adjusted: equality = saturated calculation; per-step paragraph split into two evaluations",
+      "tags": [
+        "kalvin-algebra",
+        "section-9",
+        "definition-16",
+        "definition-20",
+        "significance"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-9-adjusted-equality-saturated-calculation-per-step-paragraph",
+      "relevance": "high",
+      "observed_at": "2026-09-17T10:38:08.909Z",
+      "source_context": "Aligning §9 with achieved/journey significance restructure",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-9-retitled-what-a-derivation-establishes-significance-is-the": {
+      "type": "source",
+      "title": "Observation: §9 retitled \"What a Derivation Establishes\" — significance is the result, equality only at S1",
+      "tags": [
+        "kalvin-algebra",
+        "section-9",
+        "definition-16",
+        "significance",
+        "establishes"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-9-retitled-what-a-derivation-establishes-significance-is-the",
+      "relevance": "high",
+      "observed_at": "2026-09-17T10:44:04.762Z",
+      "source_context": "Reframing §9: derivation establishes significance, not equality",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc": {
+      "type": "source",
+      "title": "Observation: Committed 3ad08b7: significance/complexity split, done by calculation",
+      "tags": [
+        "commit",
+        "significance",
+        "complexity",
+        "definition-16",
+        "definition-20"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc",
+      "relevance": "medium",
+      "observed_at": "2026-09-17T11:29:12.961Z",
+      "source_context": "Committing the significance/complexity terminology restructure",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md glossary aligned: Done = saturated calculation; two γ evaluations in Significance/KValue",
+      "tags": [
+        "context-md",
+        "glossary",
+        "definition-16",
+        "definition-20",
+        "significance",
+        "done",
+        "kvalue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e",
+      "relevance": "high",
+      "observed_at": "2026-09-17T10:47:20.341Z",
+      "source_context": "Aligning CONTEXT.md glossary with achieved/journey significance structure",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-done-redefined-as-achieved-significance-1-0-split-into-achie": {
+      "type": "source",
+      "title": "Observation: Done redefined as achieved significance 1.0; γ split into achieved vs journey evaluations",
+      "tags": [
+        "kalvin-algebra",
+        "definition-16",
+        "definition-20",
+        "significance",
+        "gamma",
+        "achieved-journey",
+        "proposals"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-done-redefined-as-achieved-significance-1-0-split-into-achie",
+      "relevance": "critical",
+      "observed_at": "2026-09-17T10:33:47.087Z",
+      "source_context": "Redefining done via calculated significance; achieved vs journey γ split",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit": {
+      "type": "source",
+      "title": "Observation: Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite",
+      "tags": [
+        "kalvin-algebra",
+        "context-md",
+        "definition-20",
+        "significance",
+        "complexity",
+        "gamma",
+        "terminology"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit",
+      "relevance": "critical",
+      "observed_at": "2026-09-17T11:13:03.633Z",
+      "source_context": "Terminology fix: significance vs complexity split; structural significance absorbed",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

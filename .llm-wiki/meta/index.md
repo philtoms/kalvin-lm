@@ -258,6 +258,12 @@
 - [[sources/obs-2026-09-16-wdmh-mhall-done-end-to-end-zero-sig-bug-denotations-re-entry]] — Observation: WDMH→MHALL done end-to-end: zero-sig bug, denotations, re-entry *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-wdmh-mhall-s3-via-mary-have-mhall-value-drifts-per-compile]] — Observation: γ(WDMH,MHALL)=S3 via Mary+have; MHALL value drifts per compile *(created: 2026-09-16)*
 - [[sources/obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no]] — Observation: Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir *(created: 2026-09-16)*
+- [[sources/obs-2026-09-17-9-adjusted-equality-saturated-calculation-per-step-paragraph]] — Observation: §9 adjusted: equality = saturated calculation; per-step paragraph split into two evaluations *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-9-retitled-what-a-derivation-establishes-significance-is-the]] — Observation: §9 retitled "What a Derivation Establishes" — significance is the result, equality only at S1 *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc]] — Observation: Committed 3ad08b7: significance/complexity split, done by calculation *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e]] — Observation: CONTEXT.md glossary aligned: Done = saturated calculation; two γ evaluations in Significance/KValue *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-done-redefined-as-achieved-significance-1-0-split-into-achie]] — Observation: Done redefined as achieved significance 1.0; γ split into achieved vs journey evaluations *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit]] — Observation: Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite *(created: 2026-09-17)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -267,4 +273,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-16T18:08:01.408Z* | *Total pages: 255*
+*Last updated: 2026-09-17T11:29:13.023Z* | *Total pages: 261*
