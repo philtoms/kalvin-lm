@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-17T14:58:47.859Z",
+  "last_updated": "2026-09-17T17:48:24.930Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3575,6 +3575,26 @@
       "created": "2026-09-17",
       "updated": "2026-09-17"
     },
+    "sources/obs-2026-09-17-directed-s3-walk-honest-but-answerless-without-authored-reci": {
+      "type": "source",
+      "title": "Observation: Directed S3 walk: honest but answerless without authored reciprocals",
+      "tags": [
+        "dialogue",
+        "engine",
+        "s3",
+        "walk",
+        "licence",
+        "direction",
+        "fork"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-directed-s3-walk-honest-but-answerless-without-authored-reci",
+      "relevance": "high",
+      "observed_at": "2026-09-17T15:40:52.157Z",
+      "source_context": "dialogue-dev: testing the directed-S3 walk licence",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
     "sources/obs-2026-09-17-done-redefined-as-achieved-significance-1-0-split-into-achie": {
       "type": "source",
       "title": "Observation: Done redefined as achieved significance 1.0; γ split into achieved vs journey evaluations",
@@ -3592,6 +3612,44 @@
       "relevance": "critical",
       "observed_at": "2026-09-17T10:33:47.087Z",
       "source_context": "Redefining done via calculated significance; achieved vs journey γ split",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-expansion-policy-split-lazy-memory-canonical-at-the-proposal": {
+      "type": "source",
+      "title": "Observation: Expansion policy split: lazy memory, canonical at the proposal boundary",
+      "tags": [
+        "dialogue",
+        "engine",
+        "refinement",
+        "policy",
+        "granularity",
+        "proposal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-expansion-policy-split-lazy-memory-canonical-at-the-proposal",
+      "relevance": "high",
+      "observed_at": "2026-09-17T16:43:52.659Z",
+      "source_context": "dialogue-dev: O2 canonical expansion policy discussion",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-hex-node-in-wdmh-trace-was-prior-lesson-mts-form-harness-lab": {
+      "type": "source",
+      "title": "Observation: Hex node in wdmh trace was prior-lesson MTS form; harness label maps now seed from state",
+      "tags": [
+        "dialogue-dev",
+        "harness",
+        "labels",
+        "mts",
+        "wdmh",
+        "presentation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-hex-node-in-wdmh-trace-was-prior-lesson-mts-form-harness-lab",
+      "relevance": "high",
+      "observed_at": "2026-09-17T17:48:24.863Z",
+      "source_context": "dialogue-dev: undecodable signature in wdmh.ks trace",
       "created": "2026-09-17",
       "updated": "2026-09-17"
     },
@@ -3641,6 +3699,43 @@
       "relevance": "high",
       "observed_at": "2026-09-17T11:59:15.756Z",
       "source_context": "Rewriting docs/kalvin-vision.md as a new baseline aligned with the algebra and glossary",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-meeting-walk-committed-as-3351301-engine-def-15-tests-append": {
+      "type": "source",
+      "title": "Observation: Meeting walk committed as 3351301: engine, Def 15, tests, appendix fork",
+      "tags": [
+        "dialogue",
+        "engine",
+        "meeting-walk",
+        "def15",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-meeting-walk-committed-as-3351301-engine-def-15-tests-append",
+      "relevance": "high",
+      "observed_at": "2026-09-17T17:01:52.488Z",
+      "source_context": "dialogue-dev: promoting the meeting walk to engine + docs",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-meeting-walk-verified-what-all-once-wdmh-answers-no-fabricat": {
+      "type": "source",
+      "title": "Observation: Meeting walk verified: what:[ALL] once, WDMH answers, no fabrications",
+      "tags": [
+        "dialogue",
+        "engine",
+        "walk",
+        "meeting",
+        "bridge",
+        "s3"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-meeting-walk-verified-what-all-once-wdmh-answers-no-fabricat",
+      "relevance": "high",
+      "observed_at": "2026-09-17T16:25:19.462Z",
+      "source_context": "dialogue-dev: meeting-walk algorithm implemented and verified",
       "created": "2026-09-17",
       "updated": "2026-09-17"
     },

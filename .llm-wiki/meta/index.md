@@ -263,10 +263,15 @@
 - [[sources/obs-2026-09-17-b-walk-bridge-mechanics-det-object-written-with-zero-overlap]] — Observation: ν_B walk bridge mechanics: Det:[Object] written with zero overlap *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc]] — Observation: Committed 3ad08b7: significance/complexity split, done by calculation *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e]] — Observation: CONTEXT.md glossary aligned: Done = saturated calculation; two γ evaluations in Significance/KValue *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-directed-s3-walk-honest-but-answerless-without-authored-reci]] — Observation: Directed S3 walk: honest but answerless without authored reciprocals *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-done-redefined-as-achieved-significance-1-0-split-into-achie]] — Observation: Done redefined as achieved significance 1.0; γ split into achieved vs journey evaluations *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-expansion-policy-split-lazy-memory-canonical-at-the-proposal]] — Observation: Expansion policy split: lazy memory, canonical at the proposal boundary *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-hex-node-in-wdmh-trace-was-prior-lesson-mts-form-harness-lab]] — Observation: Hex node in wdmh trace was prior-lesson MTS form; harness label maps now seed from state *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-hop-tiering-committed-as-a23d194]] — Observation: Hop tiering committed as a23d194 *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-hops-tiered-into-enginestate-stm-flattened-memory-removed]] — Observation: Hops tiered into EngineState.stm; flattened memory removed *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-kalvin-vision-md-rewritten-as-september-2026-baseline]] — Observation: kalvin-vision.md rewritten as September 2026 baseline *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-meeting-walk-committed-as-3351301-engine-def-15-tests-append]] — Observation: Meeting walk committed as 3351301: engine, Def 15, tests, appendix fork *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-meeting-walk-verified-what-all-once-wdmh-answers-no-fabricat]] — Observation: Meeting walk verified: what:[ALL] once, WDMH answers, no fabrications *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-overfit-walk-licence-fork-tested-mode-a-no-walk-b-strictly-c]] — Observation: Overfit-walk licence fork tested: MODE A (no walk_b) strictly cleaner *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family]] — Observation: STM dedup insufficient: WDMH loop re-routes via bridge family *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit]] — Observation: Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite *(created: 2026-09-17)*
@@ -280,4 +285,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-17T14:58:47.859Z* | *Total pages: 268*
+*Last updated: 2026-09-17T17:48:24.930Z* | *Total pages: 273*

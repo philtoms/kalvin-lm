@@ -2,6 +2,11 @@
 
 ## 2026-09-17
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-hex-node-in-wdmh-trace-was-prior-lesson-mts-form-harness-lab","title":"Hex node in wdmh trace was prior-lesson MTS form; harness label maps now seed from state"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-meeting-walk-committed-as-3351301-engine-def-15-tests-append","title":"Meeting walk committed as 3351301: engine, Def 15, tests, appendix fork"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-expansion-policy-split-lazy-memory-canonical-at-the-proposal","title":"Expansion policy split: lazy memory, canonical at the proposal boundary"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-meeting-walk-verified-what-all-once-wdmh-answers-no-fabricat","title":"Meeting walk verified: what:[ALL] once, WDMH answers, no fabrications"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-directed-s3-walk-honest-but-answerless-without-authored-reci","title":"Directed S3 walk: honest but answerless without authored reciprocals"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-17-overfit-walk-licence-fork-tested-mode-a-no-walk-b-strictly-c","title":"Overfit-walk licence fork tested: MODE A (no walk_b) strictly cleaner"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family","title":"STM dedup insufficient: WDMH loop re-routes via bridge family"}
 - **observe**: {"relevance":"low","slug":"obs-2026-09-17-hop-tiering-committed-as-a23d194","title":"Hop tiering committed as a23d194"}

@@ -632,3 +632,18 @@
 ## [2026-09-17T14:58:47.789Z] observe
 - slug: "obs-2026-09-17-overfit-walk-licence-fork-tested-mode-a-no-walk-b-strictly-c", title: "Overfit-walk licence fork tested: MODE A (no walk_b) strictly cleaner", relevance: "high"
 
+## [2026-09-17T15:40:52.158Z] observe
+- slug: "obs-2026-09-17-directed-s3-walk-honest-but-answerless-without-authored-reci", title: "Directed S3 walk: honest but answerless without authored reciprocals", relevance: "high"
+
+## [2026-09-17T16:25:19.465Z] observe
+- slug: "obs-2026-09-17-meeting-walk-verified-what-all-once-wdmh-answers-no-fabricat", title: "Meeting walk verified: what:[ALL] once, WDMH answers, no fabrications", relevance: "high"
+
+## [2026-09-17T16:43:52.661Z] observe
+- slug: "obs-2026-09-17-expansion-policy-split-lazy-memory-canonical-at-the-proposal", title: "Expansion policy split: lazy memory, canonical at the proposal boundary", relevance: "high"
+
+## [2026-09-17T17:01:52.490Z] observe
+- slug: "obs-2026-09-17-meeting-walk-committed-as-3351301-engine-def-15-tests-append", title: "Meeting walk committed as 3351301: engine, Def 15, tests, appendix fork", relevance: "high"
+
+## [2026-09-17T17:48:24.865Z] observe
+- slug: "obs-2026-09-17-hex-node-in-wdmh-trace-was-prior-lesson-mts-form-harness-lab", title: "Hex node in wdmh trace was prior-lesson MTS form; harness label maps now seed from state", relevance: "high"
+

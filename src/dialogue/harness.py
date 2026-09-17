@@ -565,8 +565,32 @@ def _sig_display(value: KValue) -> str:
     return f"{_band(value)} {value.significance & SIG_MASK}"
 
 
+def _state_labels(state: EngineState) -> dict[int, str]:
+    """{value: label} off held klines — prior-lesson MTS forms and word
+    bindings the current script never names."""
+    out: dict[int, str] = {}
+
+    def take(v) -> None:
+        label = getattr(v, "label", "")
+        if label:
+            out.setdefault(int(v), label)
+
+    for store in (state.frame, state.ltm):
+        for bucket in store.values():
+            for k in bucket:
+                take(k.signature)
+                for n in k.nodes:
+                    take(n)
+    for k in state.work_list:
+        take(k.signature)
+        for n in k.nodes:
+            take(n)
+    return out
+
+
 def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
-                  word_bits: dict[str, int] | None = None) -> dict[int, str]:
+                  word_bits: dict[str, int] | None = None,
+                  state: EngineState | None = None) -> dict[int, str]:
     """Recompile once to recover ``{signature: scripted label}`` for display.
 
     Compiled-entry labels are authoritative; the encoder's ``node_labels``
@@ -586,6 +610,9 @@ def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
         label = d.label
         if label:
             out.setdefault(e.kline.signature, label)
+    if state is not None:
+        for value, label in _state_labels(state).items():
+            out.setdefault(value, label)
     return out
 
 
@@ -1050,7 +1077,7 @@ def present(results: list[StepResult], state: EngineState, source: str,
             pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None,
             word_bits: dict[str, int] | None = None,
             graph: Literal["ascii", "dot", "mermaid"] | None = None) -> None:
-    labels = _sig_to_label(source, tokenizer, signifier, word_bits)
+    labels = _sig_to_label(source, tokenizer, signifier, word_bits, state)
     last_annotation: str | None = None
     for step in results:
         annotation = step.entry.kline.dbg.annotation if step.entry.kline.dbg else ""
@@ -1202,14 +1229,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.structural:
             from dialogue.structural import SemanticEvidence, StructuralSupervisor
 
-            labels = _sig_to_label(source, tok, harness.signifier, harness.word_bits)
+            labels = _sig_to_label(source, tok, harness.signifier,
+                                   harness.word_bits, harness.state)
             render = lambda v: _render_kline(v, labels, args.verbose)  # noqa: E731
             supervisor = StructuralSupervisor(
                 SemanticEvidence(harness.signifier), harness.state, render
             )
             harness._escalate = supervisor
         if args.supervise:
-            labels = _sig_to_label(source, tok, harness.signifier, harness.word_bits)
+            labels = _sig_to_label(source, tok, harness.signifier,
+                                   harness.word_bits, harness.state)
             harness._escalate = (
                 _interactive_supervisor(labels, args.verbose)
                 if args.supervise == "interactive"
@@ -1231,7 +1260,8 @@ def main(argv: list[str] | None = None) -> int:
             harness.state.save(state_path)
             fmt = args.graph if args.graph in ("dot", "mermaid") else "dot"
             graph_path = state_path.with_suffix(".dot" if fmt == "dot" else ".mmd")
-            labels = _sig_to_label(source, tok, harness.signifier, harness.word_bits)
+            labels = _sig_to_label(source, tok, harness.signifier,
+                                   harness.word_bits, harness.state)
             graph_path.write_text(
                 _GRAPH_RENDERERS[fmt](harness.state, labels, args.verbose)
             )
