@@ -2,18 +2,18 @@
 
 A Derivation rewrites the node sequence of a queued kline under held
 correspondences, relative to a goal kline (Def 12). The queued head rides
-inert; only the nodes change. Memory grows as slot walks from either party write composed
-correspondences (Def 17, progressive path).
+inert; only the nodes change. Memory grows as meeting walks write bridge
+correspondences (Def 15, progressive path).
 
 The run loop implements policy A — the §9 documented order
-(canonicalisation → targeting → slot walk, ν_A slots before ν_B slots).
-The enumerators are the mechanism/policy boundary: they yield licensed
+(canonicalisation → targeting → the meeting walk). The enumerators
+are the mechanism/policy boundary: they yield licensed
 options in deterministic order; the loop chooses.
 """
 
 from __future__ import annotations
 
-from collections import Counter, deque
+from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from itertools import combinations, product
@@ -29,10 +29,8 @@ from kalvin.significance import (
 
 #: T2-class strategy bound: total rewrites per run.
 MAX_STEPS = 32
-#: T2-class strategy bound: edges per slot walk.
+#: T2-class strategy bound: descent edges per party in a meeting walk.
 MAX_WALK_EDGES = 8
-#: T2-class strategy bound: states expanded per slot walk.
-MAX_WALK_STATES = 256
 
 
 @dataclass
@@ -71,9 +69,7 @@ class Derivation:
         *,
         max_steps: int = MAX_STEPS,
         max_walk_edges: int = MAX_WALK_EDGES,
-        max_walk_states: int = MAX_WALK_STATES,
         delta: float = DEFAULT_DELTA,
-        b_walks: bool = True,
     ) -> None:
         self.memory = list(memory)
         self.queued = queued
@@ -81,9 +77,7 @@ class Derivation:
         self.signifier = signifier
         self.max_steps = max_steps
         self.max_walk_edges = max_walk_edges
-        self.max_walk_states = max_walk_states
         self.delta = delta
-        self.b_walks = b_walks
         self._composed_keys: set[tuple[int, tuple[int, ...]]] = set()
         self.nodes: list[int] = list(queued.nodes)
         self.composed: list[KLine] = []
@@ -235,78 +229,32 @@ class Derivation:
                 if d1 < d0:
                     yield k, "reverse", new, d0, d1
 
-    def slot_walk(
-        self, slot: int, end_mask: int | None = None
-    ) -> tuple[list[int], int, list[tuple[str, KLine]]] | None:
-        """Goal-less walk from the slot identity, licensed by occurrence on
-        either side (Def 17), ending at arrival in end_mask — the excess
-        for a ν_A slot, σ(ν_A) for a ν_B slot. T2 no-revisit keys on
-        correspondence identity — signature together with witness, not
-        signature alone."""
-        if end_mask is None:
-            end_mask = self.excess()
-        queue: deque = deque([([slot], frozenset(), 0, [])])
-        seen = {(int(slot),)}
-        expanded = 0
-        while queue:
-            if expanded >= self.max_walk_states:
-                return None  # T2: the state bound — the walk is abandoned
-            expanded += 1
-            nodes, used, edges, path = queue.popleft()
-            if edges and self.signifier.signifies(
-                int(self.signifier.signature_of(nodes)), end_mask
-            ):
-                return nodes, edges, path
-            if edges >= self.max_walk_edges:
-                continue
-            for k in self.memory:
-                if not self.usable(k):
+    def descend(
+        self, starts: Sequence[int]
+    ) -> dict[int, tuple[int, tuple[int, tuple[int, ...]], int]]:
+        """Def 15 — a sig→witness descent: every value reachable from
+        ``starts`` through held klines its current value heads, as
+        ``{value: (depth, delivering kline key, start)}``. A value with
+        no headed kline is a descent's end."""
+        reached: dict[int, tuple[int, tuple[int, tuple[int, ...]], int]] = {}
+        frontier = [(int(v), 0, int(v)) for v in starts]
+        while frontier:
+            nxt: list[tuple[int, int, int]] = []
+            for v, depth, start in frontier:
+                if depth >= self.max_walk_edges:
                     continue
-                key = (int(k.signature), tuple(int(n) for n in k.nodes))
-                if key in used:
-                    continue
-                moves = []
-                if k.signature in nodes and (
-                    not is_canon(k, self.signifier) or self.wellfounded(k)
-                ):
-                    moves.append(("forward", self.replace_fwd(k, nodes)))
-                if self.occurs_rev(k, nodes):
-                    moves.append(("reverse", self.replace_rev(k, nodes)))
-                for direction, new in moves:
-                    t = tuple(sorted(int(x) for x in new))
-                    if t in seen:
+                for k in self.memory:
+                    if not self.usable(k) or int(k.signature) != v:
                         continue
-                    seen.add(t)
-                    queue.append((new, used | {key}, edges + 1, path + [(direction, k)]))
-        return None
-
-    def refine(
-        self, nodes: list[int], edges: int, path: list[tuple[str, KLine]]
-    ) -> tuple[list[int], int, list[tuple[str, KLine]]]:
-        """Write granularity (Def 17): expand the walk's nodes covering the
-        excess toward the goal's witness resolution, under held
-        well-founded canons. Each expansion is an edge."""
-        excess = self.excess()
-        while True:
-            for i, n in enumerate(nodes):
-                kanon = next(
-                    (
-                        k
-                        for k in self.memory
-                        if k.signature == n
-                        and is_canon(k, self.signifier)
-                        and self.wellfounded(k)
-                    ),
-                    None,
-                )
-                if kanon is None or not self.signifier.signifies(n, excess):
-                    continue
-                nodes = nodes[:i] + list(kanon.nodes) + nodes[i + 1 :]
-                path = path + [("expand", kanon)]
-                edges += 1
-                break
-            else:
-                return nodes, edges, path
+                    if int(k.signature) in [int(n) for n in k.nodes]:
+                        continue  # self-containing — an inert witness
+                    key = (int(k.signature), tuple(int(n) for n in k.nodes))
+                    for n in k.nodes:
+                        if int(n) not in reached:
+                            reached[int(n)] = (depth + 1, key, start)
+                            nxt.append((int(n), depth + 1, start))
+            frontier = nxt
+        return reached
 
     # ── the run (policy A) ─────────────────────────────────────────────────
 
@@ -348,78 +296,74 @@ class Derivation:
         return True
 
     def _walk(self) -> bool:
+        """Def 15 — the slot walk is a meeting of two descents: A's from
+        its underfit slots, B's from the held value containing the
+        overfit. The meeting — a value delivered by distinct klines on
+        the two sides — writes the bridge slot_a:[slot_b]."""
         if not self.excess():
-            return False  # Def 15: a walk bridges to the overfit — none to reach
-        if self._walk_a():
-            return True
-        return self.b_walks and self._walk_b()
-
-    def _walk_a(self) -> bool:
-        for slot in self.nodes:
-            if not self.signifier.signifies(slot, self.gap()):
-                continue
-            walk = self.slot_walk(slot)
-            if walk is None:
-                continue
-            end, edges, path = walk
-            end, edges, _ = self.refine(end, edges, path)
-            composed = KLine(slot, end, acq_depth=edges)
-            if self._ground_composed(composed):
-                self.composed.append(composed)
-                return True
-        return False
-
-    def _walk_b(self) -> bool:
-        """ν_B walk (Def 17): depart an overfit slot of the goal's
-        witness, arrive at σ(ν_A) — the anchor — and write the bridge
-        head-ward: head = the anchor, witness = the arrived nodes shared
-        with the goal plus the departed node covering the excess."""
-        a_content = self.content()
-        goal_content = self.goal_content()
+            return False  # no overfit to bridge to
+        a_starts = [
+            n for n in self.nodes if self.signifier.signifies(n, self.gap())
+        ]
+        if not a_starts:
+            return False
+        path_a = self.descend(a_starts)
+        if not path_a:
+            return False
         excess = self.excess()
-        for slot in self.goal.nodes:
-            if not self.signifier.signifies(slot, excess):
-                continue
-            walk = self.slot_walk(slot, end_mask=a_content)
-            if walk is None:
-                continue
-            end, edges, _ = walk
-            end, edges = self._refine_anchor(end, edges)
-            if not any(n in self.nodes for n in end):
-                continue
-            witness = [n for n in end if self.signifier.signifies(n, goal_content)]
-            head = next(n for n in end if n in self.nodes)
-            composed = KLine(head, witness + [slot], acq_depth=edges)
-            if self._ground_composed(composed):
-                self.composed.append(composed)
-                return True
-        return False
+        b_values: list[int] = []
+        for k in self.memory:
+            if excess & int(k.signature) & WORD_BITS == excess:
+                b_values.append(int(k.signature))
+            for n in k.nodes:
+                if excess & int(n) & WORD_BITS == excess:
+                    b_values.append(int(n))
+        b_starts = list(dict.fromkeys(b_values))  # first-occurrence order
+        if not b_starts:
+            return False
+        return self._meet(path_a, b_starts)
 
-    def _refine_anchor(
-        self, end: list[KNode], edges: int
-    ) -> tuple[list[KNode], int]:
-        """Def 17 anchor refinement: an arrived node not held at ν_A's
-        resolution contracts under a held canon whose witness it exactly
-        is, when that canon's head does occur in ν_A. Each contraction is
-        an edge."""
-        out: list[KNode] = []
-        for n in end:
-            kanon = next(
-                (
-                    k
-                    for k in self.memory
-                    if is_canon(k, self.signifier)
-                    and k.nodes == [n]
-                    and k.signature in self.nodes
-                ),
-                None,
-            )
-            if kanon is not None:
-                out.append(kanon.signature)
-                edges += 1
-            else:
-                out.append(n)
-        return out, edges
+    def _meet(
+        self,
+        path_a: dict[int, tuple[int, tuple[int, tuple[int, ...]], int]],
+        b_starts: Sequence[int],
+    ) -> bool:
+        """Descend from B's slots until a value of ``path_a`` is reached;
+        the first meeting delivered by a distinct kline writes the bridge:
+        the A-side departure replaced by the B-side departure."""
+        frontier = [(int(v), 0, int(v)) for v in b_starts]
+        seen = {int(v) for v in b_starts}
+        while frontier:
+            nxt: list[tuple[int, int, int]] = []
+            for v, depth, start in frontier:
+                if depth >= self.max_walk_edges:
+                    continue
+                for k in self.memory:
+                    if not self.usable(k) or int(k.signature) != v:
+                        continue
+                    if int(k.signature) in [int(n) for n in k.nodes]:
+                        continue
+                    for n in k.nodes:
+                        ni = int(n)
+                        if ni in path_a:
+                            a_depth, a_key, a_start = path_a[ni]
+                            b_key = (
+                                int(k.signature),
+                                tuple(int(x) for x in k.nodes),
+                            )
+                            if a_key != b_key and a_start != start:
+                                bridge = KLine(
+                                    a_start, [start], acq_depth=a_depth + depth + 1
+                                )
+                                if self._ground_composed(bridge):
+                                    self.composed.append(bridge)
+                                    return True
+                            continue
+                        if ni not in seen:
+                            seen.add(ni)
+                            nxt.append((ni, depth + 1, start))
+            frontier = nxt
+        return False
 
     def _ground_composed(self, composed: KLine) -> bool:
         """Write a composed correspondence once per run: a repeated

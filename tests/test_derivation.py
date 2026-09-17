@@ -65,7 +65,7 @@ def test_hop_derives_documented_example():
     h = run_hops(_state(), KLine(WDMH, [W, D, M, H]), SIG)
     assert h.ending == "done"
     done = h.results[-1]
-    assert Counter(map(int, done.trace[-1])) == Counter(map(int, [H, M, A, L, L]))
+    assert Counter(map(int, done.trace[-1])) == Counter(map(int, [ALL, H, M]))
     # the goal is taken from the top of the list: mhall leads the done hop
     assert int(h.goals[-1].signature) == int(MHALL)
 
@@ -74,8 +74,8 @@ def test_walk_writes_composed_correspondence():
     r = _run()
     assert len(r.composed) == 1
     assert int(r.composed[0].signature) == int(W)
-    assert r.composed[0].nodes == [A, L, L]
-    assert r.composed[0].acq_depth == 3
+    assert r.composed[0].nodes == [ALL]
+    assert r.composed[0].acq_depth == 2
 
 
 def test_subject_identity_is_never_replaced():
@@ -84,15 +84,15 @@ def test_subject_identity_is_never_replaced():
 
 
 def test_measurement_matches_section_10_example():
-    # The done derivation inside the re-entry chain reproduces §10's
-    # example: Ĥ = 9/5 on the adopted overfit, γ = 2^(-9/5).
+    # The done derivation inside the re-entry chain: the adopted overfit
+    # arrives as one compound node at depth 2 — Ĥ = 2/3, γ = 2^(-2/3).
     h = run_hops(_state(), KLine(WDMH, [W, D, M, H]), SIG)
     assert h.ending == "done"
     done = h.results[-1]
     assert abs(done.j0 - 2 / 5) < 1e-9  # [w,h,m] against mhall
     assert abs(done.j1 - 1.0) < 1e-9
-    assert abs(done.hbar - 9 / 5) < 1e-9
-    assert abs(done.gamma - 2 ** (-9 / 5)) < 1e-9
+    assert abs(done.hbar - 2 / 3) < 1e-9
+    assert abs(done.gamma - 2 ** (-2 / 3)) < 1e-9
 
 
 def test_stuck_at_entry_without_a_bridge():
@@ -123,47 +123,50 @@ def _overfit_run(**kwargs) -> object:
     ).run()
 
 
-def test_overfit_walk_writes_and_hop_adopts():
+def test_pure_overfit_asks_without_an_a_slot():
+    """The meeting needs both parties: with the underfit empty, A has no
+    slot to descend from and no bridge forms — the derivation is stuck at
+    entry (Def 15; the anchor-arrival licence is an open question)."""
     r = _overfit_run()
-    # pure overfit: no A-side slot exists; the walk departs the goal's node
     assert r.ending == "stuck"
-    assert len(r.composed) == 1
-    assert int(r.composed[0].signature) == int(M)  # head = the anchor
-    assert r.composed[0].nodes == [M, ALL]
-    assert r.composed[0].acq_depth == 2
+    assert r.composed == []
+    assert len(r.trace) == 1
     h = run_hops(
         _state(
             KLine(MHALL, [M, H, ALL]),  # B — held canon, overfit sealed in [all]
             KLine(ALL, [O]),  # denotation
             KLine(ALL, [A, L, L]),  # canon
-            KLine(O, [M]),  # denotation — the bridge edge
+            KLine(O, [M]),  # denotation — would bridge to the anchor m
             KLine(M, [M]),  # identity — inert
         ),
         KLine(M | H, [M, H]),
         SIG,
     )
-    assert h.ending == "done"
-    assert Counter(map(int, h.results[-1].trace[-1])) == Counter(
-        map(int, [M, ALL, H])
-    )
+    assert h.ending != "done"
 
 
-def test_overfit_stuck_at_entry_without_b_walks():
-    r = _overfit_run(b_walks=False)
+def test_descent_is_licensed_by_heading_alone():
+    """A value nothing heads is a descent's end: x:[y] held does not let
+    y descend, and y's occurrence licenses nothing (the Mod:[little]
+    ban)."""
+    X, Y = bit(7), bit(8)
+    memory = [KLine(X, [Y]), KLine(Y | X, [Y, X])]
+    r = Derivation(
+        memory, KLine(X, [Y]), KLine(Y | X, [Y, X]), SIG
+    ).run()
     assert r.ending == "stuck"
-    assert len(r.trace) == 1
+    assert r.composed == []
 
 
 def test_b_walk_arrival_without_resolution_does_not_ground():
-    """Arrival on content overlap at a node ν_A does not hold, with no
-    canon contracting it, writes no bridge and ends stuck (Def 17 anchor
-    refinement; the pre-fix loop grounded duplicates to the bound)."""
+    """A B-side value delivering no A-side descent still writes no
+    bridge and ends stuck (the meeting needs both parties)."""
     X = bit(7)
     MX = M | X
     memory = [
         KLine(MHALL, [M, H, ALL]),
         KLine(ALL, [O]),
-        KLine(O, [MX]),  # denotation — arrives at a compound sharing M
+        KLine(O, [MX]),  # denotation — delivers a compound sharing M
         KLine(M, [M]),
     ]
     r = Derivation(

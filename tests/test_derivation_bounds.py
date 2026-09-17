@@ -43,10 +43,12 @@ def test_canonicalisation_places_each_disjoint_occurrence():
     assert (int(a), int(b)) in groups and (int(b), int(a)) in groups
 
 
-def test_slot_walk_enforces_the_state_bound():
-    # a lattice of interchangeable denotations: the BFS would expand
-    # unboundedly without the T2 state bound.
+def test_descent_enforces_the_edge_bound():
+    # a chain of denotations: the descent would run unbounded without the
+    # T2 edge bound.
     mem = [KLine(bit(i), [bit(i + 1)]) for i in range(40)]
     d = Derivation(mem, KLine(0, [bit(0)]), KLine(0, [bit(60)]), SIG,
-                   max_walk_states=8)
-    assert d.slot_walk(bit(0), end_mask=1 << (32 + 60)) is None
+                   max_walk_edges=8)
+    reached = d.descend([bit(0)])
+    assert max(depth for depth, _, _ in reached.values()) == 8
+    assert int(bit(60)) not in reached

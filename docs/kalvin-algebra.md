@@ -490,7 +490,7 @@ Three klines may be involved:
 - **B — goal kline:** the target used to scope targeting;
 - **K — evidence kline:** a held kline that licenses a replacement.
 
-The goal is read, never rewritten: it scopes targeting (Definition 14), determines the ending (Definition 16), and its nodes may seed slot walks (Definition 15).
+The goal is read, never rewritten: it scopes targeting (Definition 14), determines the ending (Definition 16), and fixes the overfit the meeting walk bridges to (Definition 15).
 
 ## Definition 12 — Derivation
 
@@ -629,29 +629,15 @@ A targeting relationship can be decomposed into slots.
 
 The misfit is carried on both parties: the underfit by nodes of ν_A, the overfit by nodes of ν_B. A node is a **slot** when it carries a misfit atom — an underfit slot of ν_A, an overfit slot of ν_B. The notion is one, read on the two parties: an overfit slot of C(A,B) is an underfit slot of C(B,A).
 
-For an underfit slot, strategy first looks for a licensed replacement at the slot. For the overfit, an adoptive replacement is sought by selection, at any node of ν_A. If none exists, either slot may be explored by a goal-less derivation beginning with:
+For an underfit slot, strategy first looks for a licensed replacement at the slot. For the overfit, an adoptive replacement is sought by selection, at any node of ν_A. If none exists, the slot is walked: a **meeting** of two descents, one from each party.
 
-```text
-n:[n].
-```
+A descent is licensed by heading alone: a step crosses a held kline its current value heads, from its signature to its witness. A value with no headed kline is a descent's end. No other licence is permitted — occurrence of a witness licenses nothing, and a kline's direction is a property of the walk, not of arrival.
 
-A slot walk is licensed by occurrence of a correspondence — either side of a held kline occurring in the walk's nodes — not by the targeting-scoping rule.
+A's descent departs its underfit slots — the nodes of ν_A carrying gap atoms. B's descent departs the held value containing the overfit, the compound the overfit composes into. Both parties descend through their own klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
 
-A slot walk ends when:
+The meeting is written into memory as the **bridge** — a composed correspondence `slot_a:[slot_b]` with acquisition depth equal to the edges both descents crossed, which the main derivation may then consume: the A-side departure value is replaced by the B-side departure value. The goal is never rewritten; ν_B's klines are descent material, read and never changed.
 
-- from an underfit slot, it reaches content overlapping the overfit;
-- from an overfit slot, it reaches content overlapping σ(ν_A), the **anchor**; or
-- no unvisited correspondence is available.
-
-The goal is never rewritten. A walk from an overfit slot departs from a node of ν_B and writes only a correspondence; ν_B itself never changes.
-
-Arrival is not absorption. The walk continues under held Canons alone, refining its discovered end to the arrival party's resolution — the overfit content to the goal's witness, the anchor to ν_A's nodes. The departed end already sits at its own party's. The refined state is the terminal.
-
-The terminal is written into memory as a composed correspondence spanning the walk's two ends, with acquisition depth equal to the edges crossed, which the main derivation may then consume. The head is the A-side end: the departed slot or the discovered anchor. The witness holds the head's atoms shared with the goal, together with the B-side end's nodes covering the overfit. A compound node is opaque to licensing — occurrence reads nodes, never the atoms within them — so refinement goes exactly to the consuming resolution and no further: expansion by Definition 13's well-foundedness, contraction by its exact witnessing.
-
-A walk from ν_B that arrives at an underfit slot composes the same correspondence a walk from that slot would; only the direction of discovery differs.
-
-The slot walk is therefore an evidence-construction mechanism: seeded at either misfit location, it discovers a route through memory and turns that route into a new reusable correspondence.
+The slot walk is therefore an evidence-construction mechanism: the two parties descend from their misfit locations, and the bridge exists only where held klines genuinely meet — two klines sharing a value, one reachable from each side. Nothing is invented: a value nothing heads is unreachable, a hub's klines replace one another only as the meeting's distinct-kline pair licenses, and a misfit with no slot on either side — a pure overfit against A — has no descent to meet.
 
 ---
 
@@ -728,7 +714,7 @@ The derivation is not done and no licensed targeting replacement exists.
 This includes:
 
 1. no goal is present; or
-2. a goal is present but the current misfit cannot be reduced by any available correspondence, directly or through a slot walk from either party (Definition 15): nothing in M connects either misfit location to the other party's content.
+2. a goal is present but the current misfit cannot be reduced by any available correspondence, directly or through a meeting walk (Definition 15): no pair of held klines delivers a shared value to the two parties' misfit locations.
 
 A stuck derivation therefore represents the absence of a currently available semantic bridge in memory. Relative non-existence is an honest outcome, reachable at entry and mid-run alike.
 
@@ -768,7 +754,7 @@ Traversal may also revisit correspondence states without changing the mismatch.
 
 Therefore termination of a mixed derivation is a strategy property rather than a property of the rewrite relation alone.
 
-A strategy must bound witnessed runs and traversal. Suitable policies forbid expand-after-contract of the same witness, and adopt no-revisit for traversal: each consumed correspondence — its signature together with its witness, not the signature alone — is used at most once during a slot walk.
+A strategy must bound witnessed runs and traversal. Suitable policies forbid expand-after-contract of the same witness, and adopt single-visit, depth-bounded descents for the meeting walk: each value enters a descent once (Definition 15).
 
 ### Confluence
 
@@ -886,44 +872,33 @@ The atom d is removed, so the mismatch decreases from 4 to 3.
 
 ### Step 3 — Obtain the object correspondence
 
-No directly held kline maps w to the object content. A slot derivation is therefore used to construct that correspondence.
+No directly held kline maps w to the object content. A slot derivation is therefore used to construct it — a meeting of two descents (Definition 15).
 
-The slot is the node w. The walk starts at the slot identity:
+A's descent departs the underfit slot w. B's departs `all`, the held value containing the overfit:
 
-```text
-w:[w]
-```
+| Descent | Edge    | Correspondence | Licence            |
+| ------- | ------- | -------------- | ------------------ |
+| A       | w → o   | w:[o]          | w heads w:[o]      |
+| B       | all → o | all:[o]        | all heads all:[o]  |
 
-and crosses three correspondences:
-
-| Edge                | Correspondence     | Direction      | Occurring side                        |
-| ------------------- | ------------------ | -------------- | ------------------------------------- |
-| w:[w] → w:[o]       | w:[o] Denotation   | forward        | head w occurs as a node               |
-| w:[o] → w:[all]     | all:[o] Denotation | reverse        | witness [o] occurs as a node multiset |
-| w:[all] → w:[a,l,l] | all:[a,l,l] Canon  | forward expand | head all occurs as a node             |
-
-The second edge is the crossover. Nothing held maps w to the object content directly: w and all meet only at the shared node o. The walk arrives at o by the forward side of w:[o] and leaves by the reverse side of all:[o] — the same Denotation read from the other side licenses its mirror traversal, [o] ⇉ [all], because its witness occurs in the current nodes. Arrival orients the correspondence; the band does not.
-
-Two details do real work here. Occurrence is read on either side — the mirror clause (Definition 13) and the slot-walk licence (Definition 15): read forward-only, the walk would be stuck at w:[o], since no held kline is headed o. And the no-revisit policy (T2) forbids consuming w:[o] a second time, so the reverse occurrence at [o] cannot bounce the walk back to w — only all:[o] remains, and the walk is forced through the crossover.
-
-The final state overlaps the goal's overfit and is written into memory as the composed correspondence:
+The descents meet at o — a value delivered by two distinct klines, one from each side. The meeting writes the bridge:
 
 ```text
-w:[a,l,l]
+w:[all]
 ```
 
-with acquisition depth 3, the three edges crossed; the third is the refinement edge (Definition 15).
+with acquisition depth 2, the edges both descents crossed. The bridge says: w is replaceable by all, licensed at o. Nothing else is written — the klines the descents crossed are already held, and a value nothing heads is unreachable.
 
 The main derivation can then apply:
 
 ```text
-w ⇉ [a,l,l]
+w ⇉ [all]
 ```
 
 giving:
 
 ```text
-[h,m,a,l,l]
+[all,h,m]
 ```
 
 whose value is:
@@ -932,15 +907,15 @@ whose value is:
 mhall.
 ```
 
-The relationship is now Canon, so the derivation is done.
+The relationship is now Canon, so the derivation is done — the adopted overfit arrives as one compound node at acquisition depth 2, so the measurement reads Ĥ = 2/3, γ = 2^(-2/3).
 
 The subject m is never replaced: `m:[m]` is Identity, inert.
 
-Had the Denotations not been held, no replace would reach the object underfit: the derivation would be stuck, and the misfit would ask. Had mhall itself not been held, there would be no goal to check done against.
+Had the Denotations not been held, no descent would leave w and no meeting could form: the derivation would be stuck, and the misfit would ask. Had mhall itself not been held, there would be no goal to check done against.
 
-Read from the answer side, the same correspondences license the mirror derivation; the klines are direction-free, and arrival orients them.
+Read from the answer side, the same klines license mhall's own descent — direction is a property of the walk, fixed by heading, not by arrival.
 
-The important point is that the system reaches the answer through held correspondences and the witness transformations they permit; it does not simply replace the question with the answer.
+The important point is that the system reaches the answer through held correspondences and the meetings they permit; it does not simply replace the question with the answer.
 
 ---
 
@@ -1331,7 +1306,7 @@ In particular, a trainer's countersign of a proposal creates a standing one-hop 
 
 # Appendix — Worked example: “Mary had”
 
-The §9 example works an under+over relationship: the question holds content the answer lacks (w, d) and lacks content the answer holds (a, l). This example works the pure overfit relationship — the fragment — where the underfit is empty and the ν_B walk of Definition 15 is the only bridge.
+The §9 example works an under+over relationship: the question holds content the answer lacks (w, d) and lacks content the answer holds (a, l). This example works the pure overfit relationship — the fragment — where the underfit is empty: the case with no A-side slot, and so no meeting.
 
 Suppose memory contains:
 
@@ -1369,55 +1344,12 @@ overfit  = {a,l}
 Δ₀       = 2.
 ```
 
-No node of ν_A carries an underfit atom: the per-party decomposition yields no A-side slot. No held correspondence adopts the overfit at any node of ν_A — `o:[m]` read reverse swaps m for o and worsens the mismatch, `all:[o]` and `all:[a,l,l]` occur nowhere in ν_A, and no exactly-witnessed group contracts. Targeting alone is stuck, and under a one-party slot definition the misfit would ask — falsely: `o:[m]` connects the parties.
+No node of ν_A carries an underfit atom: the per-party decomposition yields no A-side slot. No held correspondence adopts the overfit at any node of ν_A — `o:[m]` read reverse swaps m for o and worsens the mismatch, `all:[o]` and `all:[a,l,l]` occur nowhere in ν_A, and no exactly-witnessed group contracts. Targeting alone is stuck.
 
-### Step 1 — Walk from the overfit slot
+### The meeting cannot form
 
-The overfit lives in nodes of ν_B; the overfit slot is the goal's node all. The walk starts at the slot identity:
+Under Definition 15's meeting licence the walk needs both parties: A's descent from an underfit slot, B's from the held value containing the overfit. B's side works — `all` heads `all:[o]`, and `o` heads `o:[m]`, so B's descent delivers m, a node of ν_A — but A has no slot to descend from, and a lone descent is not a meeting. The derivation is stuck; the misfit asks.
 
-```text
-all:[all]
-```
+That `o:[m]` connects the parties is real, but under the meeting licence a connection one party reaches alone licenses no bridge. Whether an **anchor arrival** — B's descent delivering a node of ν_A outright — should count as a meeting is an open licence question: it would answer this fragment, but a descent through the queued kline's own signature would then re-mint its reciprocal (a queued `little:[Mod]` reaching itself backward through `Mod`), the fabrication the meeting licence exists to exclude.
 
-and crosses two correspondences:
-
-| Edge                | Correspondence     | Direction | Occurring side            |
-| ------------------- | ------------------ | --------- | ------------------------- |
-| all:[all] → all:[o] | all:[o] Denotation | forward   | head all occurs as a node |
-| all:[o] → all:[m]   | o:[m] Denotation   | forward   | head o occurs as a node   |
-
-The second edge arrives: content m overlaps σ(ν_A) — the anchor, discovered on arrival. Neither end refines — the anchor is already a node of ν_A, and the departed end is a node of ν_B, at the goal's own witness resolution. The terminal is the arrival state, two edges crossed.
-
-It is written head-ward as the composed correspondence:
-
-```text
-m:[m,all]
-```
-
-an Overfit kline with acquisition depth 2: the head is the anchor, whose atoms shared with the goal are m itself; the witness holds those shared atoms together with the B-side end's node covering the overfit.
-
-### Step 2 — Adopt
-
-The composed correspondence is in reach of the next hop — its content covers the node m of ν_A, so the trawl finds it — and its forward replacement adopts the overfit:
-
-```text
-m ⇉ [m,all]
-```
-
-giving:
-
-```text
-[m,all,h]
-```
-
-whose value is:
-
-```text
-mhall.
-```
-
-The relationship is Canon, so the derivation is done.
-
-The goal was never rewritten: ν_B holds the same three nodes at done as at entry. The overfit content remains sealed in the compound node all — nothing in this memory consumes bare a or l, so the anchor walk's granularity is already the goal's own, and the measurement reads Ĥ = 2/3, γ = 2^(-2/3) ≈ 0.63.
-
-The important point is the mirror of §9's: the system reaches the answer through held correspondences, and which end of the misfit the derivation departs from is a fact about the relationship, not a restriction on the mechanism. The ask is reserved for the case where no route exists from either party.
+The ask is therefore the honest outcome under the current licence: no meeting, no bridge — even though a route exists on one side. The system reaches answers only where held klines meet from both parties.
