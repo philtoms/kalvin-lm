@@ -2,6 +2,13 @@
 
 ## 2026-09-17
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-overfit-walk-licence-fork-tested-mode-a-no-walk-b-strictly-c","title":"Overfit-walk licence fork tested: MODE A (no walk_b) strictly cleaner"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family","title":"STM dedup insufficient: WDMH loop re-routes via bridge family"}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-17-hop-tiering-committed-as-a23d194","title":"Hop tiering committed as a23d194"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-hops-tiered-into-enginestate-stm-flattened-memory-removed","title":"Hops tiered into EngineState.stm; flattened memory removed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-b-walk-bridge-mechanics-det-object-written-with-zero-overlap","title":"ν_B walk bridge mechanics: Det:[Object] written with zero overlap"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-kalvin-vision-md-rewritten-as-september-2026-baseline","title":"kalvin-vision.md rewritten as September 2026 baseline"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-17-wdmh-a-mod-lamb-a-proposal-self-fed-composed-goal-loop-diagn","title":"WDMH [a,Mod,lamb,a] proposal: self-fed composed-goal loop diagnosed"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc","title":"Committed 3ad08b7: significance/complexity split, done by calculation"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit","title":"Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e","title":"CONTEXT.md glossary aligned: Done = saturated calculation; two γ evaluations in Significance/KValue"}

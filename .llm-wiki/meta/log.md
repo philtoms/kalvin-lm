@@ -611,3 +611,24 @@
 ## [2026-09-17T11:29:12.962Z] observe
 - slug: "obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc", title: "Committed 3ad08b7: significance/complexity split, done by calculation", relevance: "medium"
 
+## [2026-09-17T11:59:01.349Z] observe
+- slug: "obs-2026-09-17-wdmh-a-mod-lamb-a-proposal-self-fed-composed-goal-loop-diagn", title: "WDMH [a,Mod,lamb,a] proposal: self-fed composed-goal loop diagnosed", relevance: "high"
+
+## [2026-09-17T11:59:15.760Z] observe
+- slug: "obs-2026-09-17-kalvin-vision-md-rewritten-as-september-2026-baseline", title: "kalvin-vision.md rewritten as September 2026 baseline", relevance: "high"
+
+## [2026-09-17T12:27:11.873Z] observe
+- slug: "obs-2026-09-17-b-walk-bridge-mechanics-det-object-written-with-zero-overlap", title: "ν_B walk bridge mechanics: Det:[Object] written with zero overlap", relevance: "high"
+
+## [2026-09-17T14:09:56.747Z] observe
+- slug: "obs-2026-09-17-hops-tiered-into-enginestate-stm-flattened-memory-removed", title: "Hops tiered into EngineState.stm; flattened memory removed", relevance: "high"
+
+## [2026-09-17T14:12:19.065Z] observe
+- slug: "obs-2026-09-17-hop-tiering-committed-as-a23d194", title: "Hop tiering committed as a23d194", relevance: "low"
+
+## [2026-09-17T14:21:22.815Z] observe
+- slug: "obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family", title: "STM dedup insufficient: WDMH loop re-routes via bridge family", relevance: "high"
+
+## [2026-09-17T14:58:47.789Z] observe
+- slug: "obs-2026-09-17-overfit-walk-licence-fork-tested-mode-a-no-walk-b-strictly-c", title: "Overfit-walk licence fork tested: MODE A (no walk_b) strictly cleaner", relevance: "high"
+

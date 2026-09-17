@@ -11,34 +11,6 @@ trace + the grounded/work_list tails, changing the engine so it does
 better, and re-running. The engine is the target of the work; the
 The script is the lever. The harness is a faithful, non-judging presenter.
 
-## Before you start — read, do not infer
-
-The discipline of this skill: read before you reason. Each artefact below
-exists because a session learned the hard way that guessing costs more
-than reading. Load them every session.
-
-1. **`CONTEXT.md`** — the domain glossary. Every term (kline, rationalise,
-   significance bands, grounding, frame, work-list, terminal, canon,
-   misfit, relationship) has a precise meaning; several are counter-
-   intuitive. Do not infer them.
-2. **`src/dialogue/engine.py`** — the engine under tune.
-3. **`src/dialogue/harness.py`** — the loop. Read to confirm the
-   non-judging contract before changing anything.
-
-See [trace-reading.md](references/trace-reading.md) for the per-step
-vocabulary and a worked reading, and
-[script-reading.md](references/script-reading.md) for what a `.ks` script
-is, how to read it semantically, and how to construct new ones.
-
-## The privileged working mode
-
-**Do not assume existing code is correct.** This contradicts "source is
-the truth document," but here the source is exactly what we are improving.
-Engine behaviour that drops or deadlocks (the fast route dropping unseen
-canons; relationships that couldn't ground) was the bug, not the
-contract. When a trace shows something vanish or stall, treat the engine
-as the suspect first.
-
 ## The three signals
 
 Every run ends with a trace and two lists. Read all before reading code.
@@ -56,6 +28,7 @@ Every run ends with a trace and two lists. Read all before reading code.
 ```bash
 PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks             # the canonical kscript
 PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks -e          # structural supervisor
+PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/wdmh.ks -p data/dialogue/mhall.json # persistent memory
 ```
 
 Each lesson's kscript runs through a shared engine (state persists across
@@ -77,8 +50,7 @@ presents the trace. One linear pass, no waits, no convergence loop.
    spec. Write it down so you can compare later. A near-match (right nodes,
    different signature) is a finding that the engine is on the right track, not a
    failure. Then **report** what you found: did the engine meet the expectation, how
-   was it out, what went wrong — feeding the next step. See trace-reading
-   §Worked example 2 and script-reading §Reading a run (the decode loop).
+   was it out, what went wrong — feeding the next step.
    Judge the decoded prose honestly: if the engine's proposal is semantic
    gibberish, say so — a near-match is only "on the right track" when
    its decoded prose actually means something.
@@ -96,10 +68,12 @@ presents the trace. One linear pass, no waits, no convergence loop.
 a kline vanishes, or grounded/work_list diverge from the trainer
 expectation, suspect the engine and dig there until the engine path is
 genuinely exhausted.
+  See [trace-reading.md](references/trace-reading.md) for the per-step
+  vocabulary and a worked reading, and
 
 **Retreat to script-authoring only when** you are confident a `.ks`
-change can test a theory or bring out a different result. Script
-writing advances the use case for the engine — it is not a workaround for
+change can test a theory or bring out a different result. Script writing
+advances the use case for the engine — it is not a workaround for
 engine bugs. Typical retreats:
 
 - **Prime-before-test ordering.** A question fed before the prime's
@@ -120,6 +94,8 @@ When you do author a `.ks`, it lives in `data/scripts/`. Annotation
 prose (parenthetical lines) is the trainer rationale — the harness
 carries it onto each kline's `KDbg.annotation` and prints it as a section
 header. Always compile the `.ks` to ensure there are no errors.
+  See [script-reading.md](references/script-reading.md) for what a `.ks` script
+  is, how to read it semantically, and how to construct new ones.
 
 ## Discipline (do not violate)
 
@@ -143,7 +119,6 @@ header. Always compile the `.ks` to ensure there are no errors.
 | Harness         | `src/dialogue/harness.py`     | The non-judging compile→feed→present loop + CLI          |
 | Compiler        | `src/ks/`                     | KScript → KValue; carries annotation/scope/labels        |
 | Curricula       | `data/scripts/*.ks`           | `mhall.ks` is canonical                                  |
-| Glossary        | `CONTEXT.md`                  | Domain terms                                             |
 
 ## Stop / ask
 

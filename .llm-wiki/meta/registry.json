@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-17T11:29:13.023Z",
+  "last_updated": "2026-09-17T14:58:47.859Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3519,6 +3519,24 @@
       "created": "2026-09-17",
       "updated": "2026-09-17"
     },
+    "sources/obs-2026-09-17-b-walk-bridge-mechanics-det-object-written-with-zero-overlap": {
+      "type": "source",
+      "title": "Observation: ν_B walk bridge mechanics: Det:[Object] written with zero overlap",
+      "tags": [
+        "dialogue",
+        "engine",
+        "derivation",
+        "slot-walk",
+        "traverse"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-b-walk-bridge-mechanics-det-object-written-with-zero-overlap",
+      "relevance": "high",
+      "observed_at": "2026-09-17T12:27:11.868Z",
+      "source_context": "dialogue-dev: examining finding 1, the Det:[Object] slot-walk bridge",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
     "sources/obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc": {
       "type": "source",
       "title": "Observation: Committed 3ad08b7: significance/complexity split, done by calculation",
@@ -3577,6 +3595,93 @@
       "created": "2026-09-17",
       "updated": "2026-09-17"
     },
+    "sources/obs-2026-09-17-hop-tiering-committed-as-a23d194": {
+      "type": "source",
+      "title": "Observation: Hop tiering committed as a23d194",
+      "tags": [
+        "git",
+        "commit",
+        "hop-tiering"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-hop-tiering-committed-as-a23d194",
+      "relevance": "low",
+      "observed_at": "2026-09-17T14:12:19.062Z",
+      "source_context": "Committing the hop tiering change",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-hops-tiered-into-enginestate-stm-flattened-memory-removed": {
+      "type": "source",
+      "title": "Observation: Hops tiered into EngineState.stm; flattened memory removed",
+      "tags": [
+        "engine-state",
+        "stm",
+        "hop",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-hops-tiered-into-enginestate-stm-flattened-memory-removed",
+      "relevance": "high",
+      "observed_at": "2026-09-17T14:09:56.744Z",
+      "source_context": "Tiering hop memory into EngineState",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-kalvin-vision-md-rewritten-as-september-2026-baseline": {
+      "type": "source",
+      "title": "Observation: kalvin-vision.md rewritten as September 2026 baseline",
+      "tags": [
+        "docs",
+        "vision",
+        "baseline"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-kalvin-vision-md-rewritten-as-september-2026-baseline",
+      "relevance": "high",
+      "observed_at": "2026-09-17T11:59:15.756Z",
+      "source_context": "Rewriting docs/kalvin-vision.md as a new baseline aligned with the algebra and glossary",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-overfit-walk-licence-fork-tested-mode-a-no-walk-b-strictly-c": {
+      "type": "source",
+      "title": "Observation: Overfit-walk licence fork tested: MODE A (no walk_b) strictly cleaner",
+      "tags": [
+        "dialogue",
+        "engine",
+        "walk",
+        "licence",
+        "overfit",
+        "fork"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-overfit-walk-licence-fork-tested-mode-a-no-walk-b-strictly-c",
+      "relevance": "high",
+      "observed_at": "2026-09-17T14:58:47.786Z",
+      "source_context": "dialogue-dev: testing the overfit-walk licence fork",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family": {
+      "type": "source",
+      "title": "Observation: STM dedup insufficient: WDMH loop re-routes via bridge family",
+      "tags": [
+        "dialogue",
+        "engine",
+        "stm",
+        "dedup",
+        "wdmh",
+        "refuted"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family",
+      "relevance": "high",
+      "observed_at": "2026-09-17T14:21:22.812Z",
+      "source_context": "dialogue-dev: verifying the STM dedup fix against the WDMH loop",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
     "sources/obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit": {
       "type": "source",
       "title": "Observation: Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite",
@@ -3594,6 +3699,24 @@
       "relevance": "critical",
       "observed_at": "2026-09-17T11:13:03.633Z",
       "source_context": "Terminology fix: significance vs complexity split; structural significance absorbed",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-17-wdmh-a-mod-lamb-a-proposal-self-fed-composed-goal-loop-diagn": {
+      "type": "source",
+      "title": "Observation: WDMH [a,Mod,lamb,a] proposal: self-fed composed-goal loop diagnosed",
+      "tags": [
+        "dialogue",
+        "engine",
+        "wdmh",
+        "derivation",
+        "bug"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-wdmh-a-mod-lamb-a-proposal-self-fed-composed-goal-loop-diagn",
+      "relevance": "high",
+      "observed_at": "2026-09-17T11:59:01.347Z",
+      "source_context": "dialogue-dev investigation of WDMH run repetition",
       "created": "2026-09-17",
       "updated": "2026-09-17"
     },

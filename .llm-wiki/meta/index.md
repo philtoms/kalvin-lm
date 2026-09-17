@@ -260,10 +260,17 @@
 - [[sources/obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no]] — Observation: Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir *(created: 2026-09-16)*
 - [[sources/obs-2026-09-17-9-adjusted-equality-saturated-calculation-per-step-paragraph]] — Observation: §9 adjusted: equality = saturated calculation; per-step paragraph split into two evaluations *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-9-retitled-what-a-derivation-establishes-significance-is-the]] — Observation: §9 retitled "What a Derivation Establishes" — significance is the result, equality only at S1 *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-b-walk-bridge-mechanics-det-object-written-with-zero-overlap]] — Observation: ν_B walk bridge mechanics: Det:[Object] written with zero overlap *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc]] — Observation: Committed 3ad08b7: significance/complexity split, done by calculation *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e]] — Observation: CONTEXT.md glossary aligned: Done = saturated calculation; two γ evaluations in Significance/KValue *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-done-redefined-as-achieved-significance-1-0-split-into-achie]] — Observation: Done redefined as achieved significance 1.0; γ split into achieved vs journey evaluations *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-hop-tiering-committed-as-a23d194]] — Observation: Hop tiering committed as a23d194 *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-hops-tiered-into-enginestate-stm-flattened-memory-removed]] — Observation: Hops tiered into EngineState.stm; flattened memory removed *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-kalvin-vision-md-rewritten-as-september-2026-baseline]] — Observation: kalvin-vision.md rewritten as September 2026 baseline *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-overfit-walk-licence-fork-tested-mode-a-no-walk-b-strictly-c]] — Observation: Overfit-walk licence fork tested: MODE A (no walk_b) strictly cleaner *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family]] — Observation: STM dedup insufficient: WDMH loop re-routes via bridge family *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit]] — Observation: Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-wdmh-a-mod-lamb-a-proposal-self-fed-composed-goal-loop-diagn]] — Observation: WDMH [a,Mod,lamb,a] proposal: self-fed composed-goal loop diagnosed *(created: 2026-09-17)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -273,4 +280,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-17T11:29:13.023Z* | *Total pages: 261*
+*Last updated: 2026-09-17T14:58:47.859Z* | *Total pages: 268*
