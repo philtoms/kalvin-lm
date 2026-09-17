@@ -9,13 +9,16 @@ relations:
   grounds or is asked about.
 - **frame** — the outgoing kline proposals and identity requests K has emitted.
 - **ltm** — grounded klines: what Kalvin counts on.
+- **stm** — working memory: the hop writes (composed correspondences)
+  later hops trawl. Unratified evidence; empty at session start.
 
 Reads are continuous, layered access points over these stores — the work
 list (attention) first, then the Frame (emissions), then LTM (grounded):
 :meth:`find`, :meth:`find_sig`, :meth:`findCanons`, :meth:`where`,
 :meth:`sig_nodes`, and :meth:`canon_nodes` all span the layers in that
-order. Store-specific predicates (``is_grounded`` = in LTM, ``is_framed``
-= in Frame) keep their single-store meaning.
+order (:meth:`where` spans STM too when flagged). Store-specific
+predicates (``is_grounded`` = in LTM, ``is_framed`` = in Frame) keep their
+single-store meaning.
 
 State is plain nodes (signature + node lists); ``dbg`` is debug-only and dropped
 on save. A saved state is a grounded prior injected into an actor at
@@ -56,6 +59,7 @@ class EngineState:
     - **_signifier** — the structural-significance oracle the state's queries
       dispatch through; set at construction.
     - **work_list** — the entries fed to Kalvin via the slow route. Written by attention.
+    - **stm** — Working Memory. The hop writes later hops trawl.
     - **frame** — Working Memory. Framed klines, keyed by signature. 
     - **ltm** — Long-Term Memory. Grounded klines, keyed by signature.
     - **word_bits** - The word→bit mapping the persisted node values were encoded under.
@@ -63,6 +67,7 @@ class EngineState:
 
     _signifier: KSignifier
     work_list: list[KLine] = field(default_factory=list)
+    stm: list[KLine] = field(default_factory=list)
     ltm: dict[KNode, list[KLine]] = field(default_factory=dict)
     frame: dict[KNode, list[KLine]] = field(default_factory=dict)
     refused: set[tuple[KNode, tuple[KNode, ...]]] = field(default_factory=set)
@@ -107,12 +112,19 @@ class EngineState:
             if is_canon_evidence(item, self.signifier):
                 return item
 
-    def where(self, predicate: Callable[[KLine], bool]) -> list[KLine]:
-        """All klines matching ``predicate`` across the layers, work list first."""
+    def where(
+        self, predicate: Callable[[KLine], bool], include_stm: bool = False
+    ) -> list[KLine]:
+        """All klines matching ``predicate`` across the layers, work list first.
+
+        ``include_stm`` spans STM as the last tier.
+        """
         matches = [kline for kline in self.work_list if predicate(kline)]
         for store in (self.frame, self.ltm):
             for bucket in store.values():
                 matches.extend(kline for kline in bucket if predicate(kline))
+        if include_stm:
+            matches.extend(kline for kline in self.stm if predicate(kline))
         return matches
 
     def sig_nodes(self, signature: KNode) -> list[KNode] | None:
@@ -168,6 +180,21 @@ class EngineState:
             e for e in self.work_list
             if not (e.signature == kline.signature and e.nodes == kline.nodes)
         ]
+
+    # -- stm (working memory) ------------------------------------------
+
+    def add_stm(self, kline: KLine) -> None:
+        """Append ``kline`` to STM if absent — a hop write other hops may trawl."""
+        if not any(
+            e.signature == kline.signature and e.nodes == kline.nodes
+            for e in self.stm
+        ):
+            self.stm.append(kline)
+
+    def extend_stm(self, klines: list[KLine]) -> None:
+        """Append every ``klines`` entry to STM via :meth:`add_stm`."""
+        for kline in klines:
+            self.add_stm(kline)
 
     def refuse(self, kline: KLine) -> None:
         """Record ``kline`` as rejected at S4 — not to be re-proposed."""

@@ -60,7 +60,7 @@ def _atom_bits(value: int) -> Iterator[int]:
 class Derivation:
     """A ⊢_{M,B} … — Defs 12–17 over the memory supplied. The memory is the
     derivation's scope (Def 23): read as given, never extended mid-run;
-    writes leave via result.composed for the reservoir (Def 12)."""
+    writes leave via result.composed for STM (Def 12)."""
 
     def __init__(
         self,

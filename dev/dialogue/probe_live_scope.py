@@ -4,7 +4,7 @@ sys.path.insert(0, "src")
 
 from pathlib import Path
 from kalvin import hop as hop_mod
-from kalvin.kline import is_ask
+from kalvin.kline import is_ask, is_terminal
 
 orig_run = hop_mod.Hop.run
 orig_trawl = hop_mod.trawl
@@ -14,8 +14,8 @@ def render(k):
     m = "?" if is_ask(k.signature) else " "
     return f"{m}{lab}:[{', '.join(getattr(n, 'label', '') or hex(int(n)) for n in k.nodes)}]"
 
-def traced_trawl(memory, a_nodes, b_nodes, *, max_depth=4):
-    scope = orig_trawl(memory, a_nodes, b_nodes, max_depth=max_depth)
+def traced_trawl(state, a_nodes, b_nodes, *, max_depth=4):
+    scope = orig_trawl(state, a_nodes, b_nodes, max_depth=max_depth)
     print(f"      trawl(a={[getattr(n, 'label', n) for n in a_nodes]}, "
           f"b={[getattr(n, 'label', n) for n in b_nodes]}) -> {len(scope)}:")
     for k in scope:
@@ -23,11 +23,12 @@ def traced_trawl(memory, a_nodes, b_nodes, *, max_depth=4):
     return scope
 
 def traced_run(self):
-    goals = hop_mod.candidate_goals(self.memory, self.queued, self.signifier)
+    goals = hop_mod.candidate_goals(self.state, self.queued, self.signifier)
     print(f"\n>> hop on {render(self.queued)}  goals[:4]={[render(g) for g in goals[:4]]}")
     if is_ask(self.queued.signature):
-        print(f"   reservoir ({len(self.memory)}):")
-        for k in self.memory:
+        mem = self.state.where(lambda k: not is_terminal(k), True)
+        print(f"   memory ({len(self.state.stm)} stm writes):")
+        for k in mem:
             print(f"     {render(k)}")
     return orig_run(self)
 

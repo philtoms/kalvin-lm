@@ -7,7 +7,7 @@ overlap. The goal is taken from the top of the list.
 
 Def 23 Scope — a depth-bounded trawl of the correspondence graph, rooted
 at both parties' nodes. The scope is a derivation's memory for its
-duration; writes go to the reservoir, and only later trawls reach them.
+duration; writes go to STM, and only later trawls reach them.
 
 Def 21 Hop — the strategy unit of one queued kline: goals down the list in
 order, each scoped and derived to an ending. A derivation that ends
@@ -29,6 +29,7 @@ from kalvin.kline import ASK_SIG, KLine, is_ask, is_terminal
 from kalvin.significance import WORD_BITS, word_atom_count
 
 if TYPE_CHECKING:
+    from dialogue.engine_state import EngineState
     from kalvin.abstract import KSignifier
 
 #: Def 21 bound — goals a hop takes from its list.
@@ -40,7 +41,7 @@ MAX_HOPS = 8
 
 
 def candidate_goals(
-    memory: list[KLine], queued: KLine, signifier: KSignifier
+    state: EngineState, queued: KLine, signifier: KSignifier
 ) -> list[KLine]:
     """Def 22 — the goal list: coverage pool (Def 8), γ(A, K) order.
 
@@ -55,7 +56,7 @@ def candidate_goals(
         int(queued.signature) & ~ASK_SIG if is_ask(queued.signature) else None
     )
     scored: list[tuple[float, int, KLine]] = []
-    for i, k in enumerate(memory):
+    for i, k in enumerate(state.where(lambda k: not is_terminal(k), True)):
         if k.signature == queued.signature and k.nodes == queued.nodes:
             continue  # the queued kline is not its own goal
         if is_ask(k.signature):
@@ -71,7 +72,7 @@ def candidate_goals(
 
 
 def trawl(
-    memory: list[KLine],
+    state: EngineState,
     a_nodes: list[int],
     b_nodes: list[int],
     *,
@@ -87,7 +88,7 @@ def trawl(
     reach = 0
     for n in list(a_nodes) + list(b_nodes):
         reach |= int(n) & WORD_BITS
-    pending = [k for k in memory if not is_terminal(k)]
+    pending = state.where(lambda k: not is_terminal(k), True)
     scope: list[KLine] = []
     for _ in range(max_depth):
         hit = [
@@ -124,7 +125,7 @@ class Hop:
 
     def __init__(
         self,
-        memory: list[KLine],
+        state: EngineState,
         queued: KLine,
         signifier: KSignifier,
         *,
@@ -132,7 +133,7 @@ class Hop:
         trawl_depth: int = TRAWL_DEPTH,
         **derivation_kwargs,
     ) -> None:
-        self.memory = memory  # the reservoir: writes extend it in place
+        self.state = state  # writes land in its STM tier
         self.queued = queued
         self.signifier = signifier
         self.max_goals = max_goals
@@ -140,11 +141,11 @@ class Hop:
         self.derivation_kwargs = derivation_kwargs
 
     def run(self) -> HopResult:
-        goals = candidate_goals(self.memory, self.queued, self.signifier)
+        goals = candidate_goals(self.state, self.queued, self.signifier)
         res = HopResult(ending="stuck")
         for goal in goals[: self.max_goals]:
             scope = trawl(
-                self.memory,
+                self.state,
                 self.queued.nodes,
                 goal.nodes,
                 max_depth=self.trawl_depth,
@@ -154,7 +155,7 @@ class Hop:
             ).run()
             res.goals.append(goal)
             res.results.append(r)
-            self.memory.extend(r.composed)  # writes go to memory, not the scope
+            self.state.extend_stm(r.composed)  # writes go to STM, not the scope
             res.writes.extend(r.composed)
             if r.ending == "done":
                 res.ending = "done"
@@ -175,7 +176,7 @@ class Hop:
 
 
 def run_hops(
-    memory: list[KLine],
+    state: EngineState,
     queued: KLine,
     signifier: KSignifier,
     *,
@@ -187,7 +188,6 @@ def run_hops(
     Progress is a moved A or a grown memory; a hop that achieves neither
     is the ask. The hop ceiling bounds the chain.
     """
-    reservoir = list(memory)
     a = queued
     results: list[DerivationResult] = []
     writes: list[KLine] = []
@@ -202,7 +202,7 @@ def run_hops(
         return h
 
     for _ in range(max_hops):
-        hop = Hop(reservoir, a, signifier, **hop_kwargs).run()
+        hop = Hop(state, a, signifier, **hop_kwargs).run()
         results += hop.results
         writes += hop.writes
         goals += hop.goals

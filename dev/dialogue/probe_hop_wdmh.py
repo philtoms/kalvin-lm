@@ -12,7 +12,7 @@ from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import compile_source
 from dialogue.harness import make_engine
 from kalvin.hop import Hop, run_hops
-from kalvin.kline import KLine, is_terminal
+from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 
 tok = BPETokenizer()
@@ -36,16 +36,12 @@ wdmh_canon = next(
 )
 print("held WDMH canon nodes:", [str(n) for n in wdmh_canon.nodes])
 
-memory = st.where(lambda k: not is_terminal(k))
 a0 = KLine(wdmh_canon.signature, list(wdmh_canon.nodes))
-# Exclude the trivial self-goal: klines isomorphic to A0 (same signature+nodes)
-# complete at entry and say nothing about derivation toward MHALL.
-memory = [
-    k for k in memory
-    if not (k.signature == a0.signature and k.nodes == a0.nodes)
-]
+# The trivial self-goal need not be excluded by hand: candidate_goals
+# skips klines isomorphic to A0 (same signature+nodes) — they complete
+# at entry and say nothing about derivation toward MHALL.
 
-res = run_hops(memory, a0, sig)
+res = run_hops(st, a0, sig)
 print(f"\nhop ending: {res.ending}")
 print(f"writes ({len(res.writes)}):")
 for w in res.writes:

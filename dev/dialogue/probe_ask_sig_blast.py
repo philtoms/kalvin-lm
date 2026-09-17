@@ -53,8 +53,7 @@ for label, k in (("empty WDMH:[]", empty), ("noded (no bit)", noded), ("WDMH|ASK
         print(f"  classify_misfit: underfit={u} overfit={o}")
     print(f"  is_groundable  : {st.is_groundable(k)}   is_grounded: {st.is_grounded(k)}")
     print(f"  atoms in sig   : {word_atom_count(int(k.signature))}")
-    mem = st.where(lambda x: not is_terminal(x))
-    goals = candidate_goals(mem, k, sig)
+    goals = candidate_goals(st, k, sig)
     print(f"  Def22 candidates ({len(goals)}): {[(render(g), ) for g in goals[:4]]}")
 
 # γ pollution: J between the ask signature and the goal MHALL signature.
@@ -68,7 +67,7 @@ for label, a in (("empty", base_sig), ("bitd", base_sig | ASK_SIG)):
 
 # Self-exclusion: is the pooled WDMH canon itself a candidate of the ask?
 canon_in = any(g.signature == canon.kline.signature and g.nodes == canon.kline.nodes
-               for g in candidate_goals(st.where(lambda x: not is_terminal(x)), bitd, sig))
+               for g in candidate_goals(st, bitd, sig))
 print(f"\nself-exclusion: WDMH canon is candidate of bit'd ask: {canon_in}")
 print(f"                 WDMH canon is candidate of noded ask: "
-      f"{any(g is canon or (g.signature == canon.kline.signature and g.nodes == canon.kline.nodes) for g in candidate_goals(st.where(lambda x: not is_terminal(x)), noded, sig))}")
+      f"{any(g is canon or (g.signature == canon.kline.signature and g.nodes == canon.kline.nodes) for g in candidate_goals(st, noded, sig))}")

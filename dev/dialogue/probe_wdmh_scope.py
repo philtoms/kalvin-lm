@@ -19,21 +19,21 @@ def render(k):
     m = "?" if is_ask(k.signature) else " "
     return f"{m}{name(k.signature)}:[{', '.join(name(n) for n in k.nodes)}]"
 
-reservoir = st.where(lambda k: not is_terminal(k))
+reservoir = st.where(lambda k: not is_terminal(k), True)
 ask = next(k for k in st.work_list if is_ask(k.signature))
 print(f"queued ask: {render(ask)}")
-print(f"reservoir: {len(reservoir)} klines")
+print(f"memory: {len(reservoir)} klines")
 for k in reservoir:
     print(f"  {render(k)}")
 
-goals = candidate_goals(reservoir, ask, sig)
+goals = candidate_goals(st, ask, sig)
 print("\n== goal list (Def 22) ==")
 for g in goals:
     print(f"  {render(g)}")
 
 print("\n== scope per goal (Def 23 trawl, depth 4) ==")
 for g in goals[:3]:
-    scope = trawl(reservoir, ask.nodes, g.nodes)
+    scope = trawl(st, ask.nodes, g.nodes)
     print(f"goal {render(g)} -> {len(scope)} scoped:")
     for k in scope:
         print(f"    {render(k)}")

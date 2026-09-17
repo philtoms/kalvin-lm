@@ -21,7 +21,6 @@ from kalvin.kline import (
     ASK_SIG,
     KLine,
     is_ask,
-    is_terminal,
     sig_level,
     using_resolver,
 )
@@ -51,7 +50,6 @@ class Engine:
 
     def __init__(self, state: EngineState) -> None:
         self._state: EngineState = state
-        self._writes: list[KLine] = []  # hop writes — unratified evidence later hops trawl
 
     @property
     def state(self) -> EngineState:
@@ -180,9 +178,8 @@ class Engine:
         at their significance — J of the final content against the goal
         (Defs 16, 20); γ — significance net of complexity — grades
         effort and never selects the band. The chain's writes extend
-        the reservoir later hops trawl from."""
-        hop = run_hops(self._held(), kline, self.signifier)
-        self._writes.extend(hop.writes)
+        the STM tier later hops trawl."""
+        hop = run_hops(self._state, kline, self.signifier)
         batch: list[KValue] = []
         original = [int(n) for n in kline.nodes]
         for result in hop.results:
@@ -200,8 +197,3 @@ class Engine:
             if not self._state.is_refused(proposal):
                 batch.append(KValue(proposal, gamma_to_byte(result.j1)))
         return batch
-
-    def _held(self) -> list[KLine]:
-        """The reservoir a hop trawls from: held klines plus the writes
-        of earlier hops — the progressive path."""
-        return self._state.where(lambda k: not is_terminal(k)) + self._writes

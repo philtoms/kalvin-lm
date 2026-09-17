@@ -1,4 +1,4 @@
-"""Value-level trace: hex values in the reservoir, trawl rounds for the
+"""Value-level trace: hex values in the memory tiers, trawl rounds for the
 MHALL goal, and the fate of had:[did,have] after its feed."""
 import sys
 sys.path.insert(0, "src")
@@ -30,7 +30,8 @@ def traced_ground(self, kline, store=None):
     return r
 
 def traced_propose(self, kline):
-    had_mem = [k for k in self._held() if getattr(k.signature, "label", "") == "had"]
+    held = self._state.where(lambda k: not is_terminal(k), True)
+    had_mem = [k for k in held if getattr(k.signature, "label", "") == "had"]
     print(f"\n[propose] queued={render(kline)}  had-klines in held: "
           f"{[render(k) for k in had_mem]}  work_list has had: "
           f"{[render(k) for k in self._state.work_list if getattr(k.signature, 'label', '') == 'had']}")
@@ -42,13 +43,13 @@ eng_mod.Engine._propose = traced_propose
 # 2. value-level trawl rounds for the MHALL goal hop
 def traced_run(self):
     if is_ask(self.queued.signature):
-        print(f"\n>> hop on {render(self.queued)}  reservoir:")
-        for k in self.memory:
+        print(f"\n>> hop on {render(self.queued)}  memory (incl. STM):")
+        for k in self.state.where(lambda k: not is_terminal(k), True):
             print(f"     {render(k)}")
-        goals = hop_mod.candidate_goals(self.memory, self.queued, self.signifier)
+        goals = hop_mod.candidate_goals(self.state, self.queued, self.signifier)
         if goals and getattr(goals[0].signature, "label", "") == "MHALL":
             reach = {int(n) for n in self.queued.nodes} | {int(n) for n in goals[0].nodes}
-            pending = [k for k in self.memory if not is_terminal(k)]
+            pending = self.state.where(lambda k: not is_terminal(k), True)
             for rnd in range(1, 5):
                 hit = [k for k in pending
                        if int(k.signature) in reach or any(int(n) in reach for n in k.nodes)]

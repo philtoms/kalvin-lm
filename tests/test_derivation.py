@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from dialogue.engine_state import EngineState
 from kalvin.derivation import Derivation
 from kalvin.hop import run_hops
 from kalvin.kline import KLine, KNode
@@ -37,6 +38,12 @@ def _memory() -> list[KLine]:
     ]
 
 
+def _state(*memory: KLine) -> EngineState:
+    st = EngineState(SIG)
+    st.work_list.extend(memory or _memory())
+    return st
+
+
 def _run() -> object:
     return Derivation(
         _memory(), KLine(WDMH, [W, D, M, H]), KLine(MHALL, [M, H, A, L, L]), SIG
@@ -55,7 +62,7 @@ def test_single_derivation_freezes_scope_and_writes_bridge():
 
 
 def test_hop_derives_documented_example():
-    h = run_hops(_memory(), KLine(WDMH, [W, D, M, H]), SIG)
+    h = run_hops(_state(), KLine(WDMH, [W, D, M, H]), SIG)
     assert h.ending == "done"
     done = h.results[-1]
     assert Counter(map(int, done.trace[-1])) == Counter(map(int, [H, M, A, L, L]))
@@ -79,7 +86,7 @@ def test_subject_identity_is_never_replaced():
 def test_measurement_matches_section_10_example():
     # The done derivation inside the re-entry chain reproduces §10's
     # example: Ĥ = 9/5 on the adopted overfit, γ = 2^(-9/5).
-    h = run_hops(_memory(), KLine(WDMH, [W, D, M, H]), SIG)
+    h = run_hops(_state(), KLine(WDMH, [W, D, M, H]), SIG)
     assert h.ending == "done"
     done = h.results[-1]
     assert abs(done.j0 - 2 / 5) < 1e-9  # [w,h,m] against mhall
@@ -125,7 +132,15 @@ def test_overfit_walk_writes_and_hop_adopts():
     assert r.composed[0].nodes == [M, ALL]
     assert r.composed[0].acq_depth == 2
     h = run_hops(
-        _overfit_memory(), KLine(M | H, [M, H]), SIG
+        _state(
+            KLine(MHALL, [M, H, ALL]),  # B — held canon, overfit sealed in [all]
+            KLine(ALL, [O]),  # denotation
+            KLine(ALL, [A, L, L]),  # canon
+            KLine(O, [M]),  # denotation — the bridge edge
+            KLine(M, [M]),  # identity — inert
+        ),
+        KLine(M | H, [M, H]),
+        SIG,
     )
     assert h.ending == "done"
     assert Counter(map(int, h.results[-1].trace[-1])) == Counter(

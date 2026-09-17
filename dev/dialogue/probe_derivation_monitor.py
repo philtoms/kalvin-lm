@@ -37,9 +37,9 @@ def monitored_hop_run(self):
     if is_ask(self.queued.signature):
         print(f"\n>> hop on {render(self.queued)}")
         print("   memory prior to derivation:")
-        for k in self.memory:
+        for k in self.state.where(lambda k: not is_terminal(k), True):
             print(f"     {render(k)}")
-        goals = hop_mod.candidate_goals(self.memory, self.queued, self.signifier)
+        goals = hop_mod.candidate_goals(self.state, self.queued, self.signifier)
         print(f"   goal list: {[render(g) for g in goals[:5]]}")
     return monitored_hop_run.__wrapped__(self) if False else orig_hop_run(self)
 
