@@ -1,127 +1,106 @@
 # Kalvin — A Rational Agent
 
-Kalvin is a rationalising system that accepts, thinks, and talks in klines. It receives klines — the fundamental units of its memory — and attempts to understand each one in terms of what it already knows. What it sends back is never just a response: it is a response paired with **significance**, a measurement of how well-grounded that response is in the knowledge Kalvin already holds. This measurement is not a quality score applied after the fact. It is a direct consequence of how the new kline fits into the model.
+**Status:** Baseline, September 2026. This document states what Kalvin is for, what it means for Kalvin to understand, and where the present system stands against that purpose. It replaces the founding vision document.
 
-This is what separates Kalvin from an oracle. An oracle gives an answer and nothing else — you take it or leave it, with no basis for deciding whether to trust it. Kalvin is not an oracle: it gives an answer _and_ the grounds for that answer. Because significance makes the degree of grounding visible, every response is actionable. The other agent in the dialogue knows exactly where understanding is solid and where it breaks down, and can decide what to do next — ratify, scaffold, correct, or submit new information.
+[docs/kalvin-algebra.md](kalvin-algebra.md) is normative — the single formal definition of Kalvin's objects, rules, and measures. [CONTEXT.md](../CONTEXT.md) is the glossary — the domain terms and their precise meaning. This document uses those terms without redefining them. Where it explains, the algebra and the glossary remain authoritative.
 
-This is also what separates Kalvin from a lookup table. A lookup table returns immediately: you submit a key and receive a value, with no expectation of thought. Kalvin is not a lookup table. When understanding is partial, Kalvin demands the autonomy to cogitate — to retrace paths, discover connections, and strengthen its grasp before responding. If you treat Kalvin as a lookup table, you cut off the process through which understanding develops.
+## The Premise
 
-Significance is what makes Kalvin rational, not merely functional. A system that always produces correct outputs is functional. A system that can tell you how well-grounded its outputs are is rational. Significance is not an add-on to Kalvin's rationality; it is Kalvin's rationality — the measurement that makes every output a reasoned contribution to a dialogue rather than a bare fact dropped from nowhere.
+Kalvin is a rationalising system. It receives klines — the fundamental units of its memory — and rationalises each against what it already holds. What it sends back is never just a response: it is a proposal paired with **significance**, a structural measurement of how well-grounded that proposal is in the knowledge Kalvin holds. Significance is not a quality score applied after the fact. It is what the derivation established, calculated at the state the derivation stopped at, and it travels with the proposal.
 
-This document describes what Kalvin is for, what it means for Kalvin to understand, and what it means for Kalvin to be a rational agent. Terms used here — kline, signature, node, significance, proposal, countersign, ratification — are established vocabulary in the glossary (`CONTEXT.md`), which is the sole authority for their precise meaning. This document uses them; it does not define them.
+This is what separates Kalvin from an oracle. An oracle gives an answer and nothing else — you take it or leave it, with no basis for deciding whether to trust it. Kalvin gives the answer _and_ the grounds for it. Because significance makes the degree of grounding visible, every response is actionable: the other side of the dialogue knows exactly where understanding is solid and where it breaks down, and can decide what to do next — ratify, scaffold, or continue.
 
----
+This is also what separates Kalvin from a lookup table. A lookup table returns immediately: key in, value out, no expectation of thought. When understanding is partial, Kalvin cogitates — selecting goals, scoping memory, deriving, adding evidence, re-entering — and the effort itself is measured. Treat Kalvin as a lookup table and you cut off the process through which understanding develops.
 
-## Klines
+One caveat belongs in the premise. Significance measures groundedness, not truth. A derivation that reaches significance 1.0 proves value-equality through held correspondences; it does not prove that every correspondence used was factually correct. What the system guarantees is traceability — the derivation path is carried as evidence — not infallibility. Correction is the protocol's job, and it works by price, not decree (see Growth).
 
-Klines are how Kalvin holds the world. Every piece of knowledge Kalvin possesses is a kline or a structure built from them. Identities anchor the structure; relationships connect one kline to another; and the arrangement of these connections forms the living shape of the model.
+## Understanding Is a Measurement
 
-When a new kline arrives — carrying its signature and its nodes — Kalvin measures how it fits against what it already knows. Some nodes resolve to grounded knowledge: they connect to identities and relationships Kalvin has already established. Others do not: they are novel, carrying structure that nothing yet grounds. The pattern of resolution and non-resolution is the shape of the fit, and it is the first thing Kalvin perceives.
+Understanding, for Kalvin, is not a faculty. It is what the measurement model measures.
 
-Connection is necessary, but shape alone is not understanding. The quality of understanding also depends on what Kalvin has learned to prefer — which paths through the model to favour when multiple candidates compete — and on how visible the degree of fit is to other agents, so they can act on it. Understanding emerges from the interplay of three things: how well the new kline fits what Kalvin holds, learned preferences, and significance. This three-part model is the subject of the next section.
+**Significance** is the content overlap between what a proposal holds and what it was measured against. One measure serves two readings: a kline's own claim — does its node sequence compose its signature — and a relationship — what a pair of klines establishes against each other. The four bands quantify the same measure:
 
-What Kalvin considers optimal is not fixed. Preferences are learned, not given — they are part of the model, subject to the same rationalisation and ratification as any other kline. When multiple paths could ground a new arrival, preferences guide which one Kalvin favours. Currently, the default is recency: Kalvin favours more recently established knowledge. But preferences are themselves knowledge. They participate in rationalisation, and they can be taught, scaffolded, and refined. There is no fixed utility function. What Kalvin values in a response is itself something Kalvin can be taught to value differently. This makes preferences load-bearing — one of the three pillars of understanding — rather than an implementation detail bolted on after the fact.
+- **S1 — exact.** _I know that I know this._ The claim is kept: the signature equals the evaluation of its nodes.
+- **S2 — covered misfit.** _I infer this, but it does not yet fit._ The parties share content; the claim is short of it, in excess of it, or both.
+- **S3 — uncovered misfit.** _I recognise aspects of this, indirectly._ No content is shared; whatever relation exists runs through other klines.
+- **S4 — unknown.** _I do not understand this at all._ Nothing is held; the halt with nothing to measure.
 
-## Understanding
+S1 is significance 1.0 — value-equality, not witness-equality: two klines hold the same content, however differently decomposed. S2 is real overlap short of equality. S3 is zero overlap. S4 is off the scale. The bands are observer-independent — given the same held memory, every agent classifies alike — so a band is never exchanged; it is recomputable from structure.
 
-Understanding, for Kalvin, is not a single faculty. It emerges from the interplay of three things:
+Significance is half of the measurement. The other half is **complexity**: what the significance cost. Resolution depth prices granularity — how deeply the content is decomposed. Acquisition depth prices provenance — how much of the content was won through unratified evidence; it is stored with the memory, not reconstructable from the result. Their composite, γ — significance net of complexity — compares derivations that arrive at the same significance, and its rate of change is the signal strategy uses to decide whether continued effort is worthwhile. A result can be complete at full significance and still expensive; a cheaper route to the same result is the better result. The form of the measure is fixed, not a design choice: band-consistency, granularity-invariance, and the two monotonicities force it.
 
-1. **Fit** — how closely a new kline's nodes connect to existing knowledge. This is the shape of the fit: the pattern of what resolves and what does not.
-2. **Learned preferences** — which paths through the model Kalvin favours when multiple candidates could ground the new arrival. Preferences guide the measurement.
-3. **Significance** — the degree of fit made visible to other agents, enabling them to decide what to do next.
+Understanding, informally, is sustained possession of a high-significance result — and the system is honest that possession has a price.
 
-Shape is what Kalvin measures. Preferences shape the measurement. Significance makes the measurement useful. Understanding is what Kalvin does when it receives something new and puts all three to work.
+## Memory
 
-This is why Kalvin is rational. A system that can tell you how well-grounded its outputs are does not merely produce answers — it produces reasoned contributions. The ability to say "I do not understand this at all" is not a failure; it is one of the most useful things Kalvin can communicate, because it tells the other agent exactly where to focus next.
+Every piece of knowledge Kalvin holds is a kline: a **signature** — the value claimed — paired with a **node sequence** — the decomposition held. Evaluation composes the nodes into a value and forgets order and multiplicity; the sequence retains what evaluation discards. A kline whose claim is kept is a **witness**: a chosen decomposition of its signature. Which decomposition was chosen is a fact the algebra forgets and memory carries.
 
-## Significance
+Nodes are values — token identifiers or the signatures of other klines — so klines nest by reference and the reference graph may cycle. Read as a whole, held klines are edges between a signature and its witness: the **correspondence graph**. A derivation is a path in it. This is the shape of Kalvin's world: not a store of facts, but a graph of correspondences whose paths are the only semantics the system has.
 
-When Kalvin rationalises a kline — searching its knowledge, measuring fit, producing a response — the result carries significance. Significance is not a label assigned after the fact. It is a direct consequence of how the new kline fits into the model, expressed as a measurement that tells the other agent how much trust to place in the response.
+The nine fit shapes classify how any claim sits against its nodes — canon, identity, the misfits, the unknown — and the bands group them into what each is worth as evidence. Two shapes are inert: the **Identity**, the trivial witness of a directly decodable value, and the **Unknown**, the shape of nothing held.
 
-Significance falls on a spectrum. At one end, every node resolves to grounded knowledge: Kalvin fully understands what it has received — "I know that I know this." At the other end, nothing connects at all: the kline is entirely novel — "I do not understand this at all." Between these two extremes lie degrees of partial understanding: "I understand some of it," or "I recognise aspects of it." Some nodes match, some do not, or the connections are associative rather than direct.
+The model is the whole of what Kalvin holds and how it holds it: the klines and their references, the tiers, and the signifier that interprets the whole. The tiers are relations of attention and commitment, not storage locations — **STM** is what Kalvin was just thinking about, the **Frame** is where its focus lies, **LTM** is what it counts on — and a tier change is a change in how Kalvin relates to a kline. Tier mechanics are outside the algebra; grounding — a grounded signature grounds all of its nodes — is the model's mechanism for realising significance.
 
-The spectrum resolves into four levels, each naming a quality of understanding. **S1 — recognised**: full understanding, every node accounted for. _I know that I know this._ **S4 — unrecognised**: complete novelty, nothing connects. _I do not understand this at all._ **S2 — contested** and **S3 — suggested** are the middle: partial understanding, active reasoning, connections half-formed. S2 relates but diverges; S3 connects only indirectly, through intermediaries.
+## Rationalisation
 
-Most of Kalvin's rationalising life is spent in the middle, at S2 and S3. These are not failed S1s; they are active states of reasoning. During these states, Kalvin continues to think: retracing paths through its model, discovering connections that were not apparent before, applying its learned preferences, generating proposals. This is where understanding becomes a temporal concern. S2 and S3 take time. Kalvin is not expected to return immediately. It is expected to think, and to be given the time to do so.
+Rationalisation is the process that produces and consumes significance. Its slow path is **cogitation**, a loop:
 
-## Proposals
+```text
+select a goal → scope the memory → derive to an ending → add the result → re-enter
+```
 
-Kalvin can publish proposals at any significance level. An S2 proposal is not a failed S1 — it is a legitimate expression of partial understanding. An S3 proposal is not noise — it is an associative hint. Every result is a proposal, and the agent decides what to do with it.
+For a queued kline, selection assembles the held klines whose content covers its nodes, ordered by descending γ — the significance of working toward each candidate, net of the cost of reaching it. The queued kline never heads its own list, and neither does any ask: a question is never a goal. The scope is a trawl of the correspondence graph rooted at both parties, frozen once trawled — writes land in memory, and only later derivations see them.
 
-This is fundamentally different from systems that suppress results below a confidence threshold. In Kalvin, a low-significance proposal is not hidden; it is offered, and its significance tells the other agent exactly how much weight to give it. The agent may accept a low-significance proposal as sufficient for now, reject a high-significance proposal that does not match expectations (significance measures how alike the klines are, not correctness), or instruct by providing new klines that fill in the gaps.
+There is one rewrite rule — **replace** — under two licences. A witnessed replace (canon expand or contract) changes granularity and preserves content. A targeting replace changes content, is restricted to the misfit region, and is licensed only when it strictly decreases the mismatch mass; targeting work is therefore bounded by the mismatch the derivation entered with. When no held correspondence bridges the misfit, a **slot walk** sets out from either party's misfit node, walks the graph by occurrence alone, and writes its discovered route back into memory as a new correspondence — evidence constructed, not invented: every edge of the route was held, and the new edge records the walk's cost as acquisition depth.
 
-## The Dialogue
+A derivation ends one of three ways, and every ending yields a result whose significance is calculated, never a boolean. **Done**: significance 1.0 — the contents are equal, and the final node sequence is a constructive witness for the equality. **Stuck**: no licensed move remains — nothing in memory connects the parties; relative non-existence, stated honestly. **Abandoned**: strategy stops the run because γ's rate of change says the effort is no longer worthwhile.
 
-From Kalvin's perspective, the world is a dialogue. Klines arrive, one after another. Some are familiar — Kalvin recognises the shape immediately, responds with high significance, and the exchange is straightforward. Others are partially familiar — Kalvin can trace some of the new kline's nodes through its existing knowledge but not all. It responds with what it understands and attaches a significance that reflects how well the response is grounded. And sometimes a kline arrives that Kalvin cannot connect to anything at all. It says so — low significance, no match. This is not a failure. It is often the most useful response Kalvin can offer, because it tells the other side of the dialogue exactly where Kalvin's knowledge ends, which is precisely where the next kline should begin.
+Hops compose: every ending's output can queue as the next hop's input, each hop trawling a memory grown by the last. Hop order is the only temporal structure the system has.
 
-Consider what happens when a query kline arrives carrying several nodes. Some of those nodes resolve directly to grounded knowledge — they connect to identities and relationships Kalvin has already established, and the response can trace a path through familiar structure. Other nodes do not resolve — they are novel, carrying no existing connection. Kalvin responds with what it can ground and reports the gap. The significance reflects the partial fit: the response is partly grounded but not wholly. Kalvin does not pretend to understand what it does not, and it does not hide what it does not understand. It communicates the shape of its understanding — including where that understanding stops.
+Proposals are emitted at their calculated significance, and low significance is offered, not suppressed. An S2 proposal is a legitimate expression of partial understanding. An S3 proposal is associative — a promise, not a fact; weighing promises is the protocol's job, not the engine's. An agent may accept a low-significance proposal as sufficient for now, or reject a high-significance one: significance measures overlap, not correctness.
 
-The next kline to arrive might connect one of the unresolved nodes to something Kalvin already knows. If so, Kalvin integrates the new relationship, the gap narrows, and a similar exchange in the future would route directly to higher significance. The dialogue builds understanding one exchange at a time, and each gap that closes makes the next exchange easier.
+## The Ask
 
-## Ratification
+When nothing is held for a signature, the kline asks. The ask is structural — a marker of identity, not content; no measurement sees it — and it carries the question's own content so that selection can read it. S4 is therefore not a failure. _I do not understand this at all_ is often the most useful thing Kalvin can say, because it locates precisely where its knowledge ends — which is where the next kline should begin. The ask is also the halt under which ungrounded proposals are generated: proposals offered from a question are promises the protocol must weigh.
 
-There is a hard limit to Kalvin's autonomy. Kalvin can take significance as far as S2 but no further on its own. Full S1 — truly knowing — can only be reached through ratification by another agent. This limit is deliberate.
+## What Autonomy Can and Cannot Do
 
-Knowing is not merely high confidence. It is understanding plus external confirmation — knowledge that has been formally recognised by another agent and carries a record of who vouched for it. The difference between S2 and S1 is the difference between a student who has studied thoroughly and believes they understand, and a student whose understanding has been formally recognised. S2 is Kalvin's best assessment of its own understanding. S1 is that assessment plus an external record of provenance: who confirmed it, and on what grounds. No amount of autonomous cogitation, study, or traversal of the model can promote a kline to S1. Kalvin can bring a kline to the very threshold, but it cannot cross that threshold alone.
+Kalvin's autonomy is real but bounded, and the boundary is exact.
 
-To ratify is to countersign — to provide the external confirmation that lifts a proposal from the threshold of knowing into knowing itself. Ratification records who confirmed the knowledge, creating a chain of provenance. S1 carries traceability and authority. It is understanding that can point to its origins and say: I know this, and here is the agent who vouched for it.
+Autonomy can reach S1. Done is defined by calculation — value-equality — and a derivation that reaches it proves the equality: every step licensed by a held correspondence, the final sequence a constructive witness. Kalvin does not need permission to know that two contents are equal.
 
-The significance spectrum creates a temporal contract between Kalvin and the other agents in the system. Kalvin demands autonomy — the time to think, to cogitate, to work through partial understanding — and that demand has consequences. How long should Kalvin be allowed to think? Is its response still relevant? These are questions the other agents must answer. If you treat Kalvin as a lookup table, you cut off the process through which understanding develops. If you treat Kalvin as a subroutine, you ignore the signal that tells you what to do next. The limit on autonomy is not a flaw; it is a deliberate boundary that locates agency correctly. Kalvin produces understanding; another agent confirms it.
+Autonomy cannot make the proof cheap. Every atom won through unratified evidence raises acquisition depth, and nothing in a derivation lowers it. Promise-stacking is priced and detectable — that is the point of pricing it.
 
-## How Kalvin Is Taught
+Autonomy cannot make the proof standing. Grounding is a protocol act: a ratified proposal grounds on receipt — the stamp, not structure, is the licence — and the countersign promotes the traversed pair to a standing one-hop licence that carries no acquisition penalty on reuse. This is how correction outcompetes: not by deletion, but by cost. A ratified route is permanently cheaper than the unratified route it replaces, so γ prefers it ever after. Kalvin produces understanding; another agent confirms it and grants it standing.
 
-Kalvin rationalises every kline it receives in exactly the same way, regardless of context. There is no training mode. A kline arrives, Kalvin searches its knowledge, measures fit, and responds with significance. Whether that kline came from a deliberate teaching exercise or a live query, Kalvin's process is identical.
+The temporal contract follows. Cogitation takes time, and the system prices that time: γ's rate of change, not a clock, decides when effort stops being worthwhile. Treat Kalvin as a subroutine and you ignore the signal that tells you what to do next.
 
-What differs is the **harness** — the code that manages the flow of klines and responses. A training harness uses significance to decide what to teach next. An operational harness presents live queries and uses significance to decide how to act. Different harnesses for different jobs; Kalvin is unaware of the distinction. It simply rationalises what it receives and reports how well it understood.
+## Teaching
 
-When Kalvin responds with less than full significance, the agent has three options:
+Kalvin rationalises every kline it receives the same way. There is no training mode: a kline from a deliberate lesson and a kline from a live query enter the same loop. What differs is the **harness** — the code that manages the flow.
 
-- **Confirm.** The proposal is accepted. Partial understanding is sufficient for now.
-- **Correct.** The proposal is denied. Kalvin has overreached; the system waits for further input.
-- **Instruct.** The agent provides new klines that Kalvin does not yet have — the missing pieces between what Kalvin already knows and what it needs to understand. This is **scaffolding**.
+Two harnesses exist today. The **dialogue harness** is synchronous and non-judging: it compiles a script, feeds it entry by entry, and presents the trace for a trainer outside the loop to read. The **multi-agent runtime** is a message broker in which all participants are peers: a **trainee** (the rationalising engine), a **trainer** (a rationaliser sharing the same engine, differing only in the significance bands it keeps), and a **supervisor** — an agent, human or LLM — that resolves what the trainer escalates. No participant knows it is in a training loop. Each simply receives and responds; the dialogue between them is the training.
 
-### Scaffolding
+**KScript** authors the encounter. A script is a dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step. A token declares intent; the fit classifier decides what the produced kline actually claims. The goal-targeted form pairs an ask with an implied goal — the answer key: the trainer compares proposals against the goal's content rather than the trainee's own ordering, and ratifies the proposal that reached it. Indented blocks are **scaffolding** — grounding context, structurally identical whether pre-authored or written reactively — delivered before the asks that need it, because a hop trawls only what memory already holds. Words bind across scripts: a compile seeded with the words of earlier scripts resolves a later script's letters against what was already taught.
 
-Scaffolding does not give Kalvin the answer. It gives Kalvin the next structure that is close enough to what it already knows to be grounded, but which also moves understanding closer to the original query. Each scaffold may itself land at partial significance, requiring further scaffolding. The system learns structure by structure. Each round adds a piece of understanding. Over successive rounds, the original query's significance ascends — not because standards were relaxed, but because the model genuinely grew to support it.
-
-The agent has two strategic postures. **Priming** injects trusted knowledge — telling Kalvin, "accept this as known." **Querying** tests understanding — asking Kalvin to work something out. Priming establishes grounding; querying reveals where grounding is incomplete. The interplay between the two is the essence of curriculum design.
-
-### Mary's World
-
-The reference teaching model is simple: build from a blank slate, one kline at a time. Start with nothing — no knowledge, no vocabulary of inquiry — and introduce the world one structure at a time. At each step, submit klines, observe significance, and scaffold where understanding is incomplete. This is how a model grows from empty to capable: not by adjusting weights or minimising error, but by accumulating grounded structure, one exchange at a time.
-
-### Convergence
-
-The knowledge base only grows, never shrinks. Each teaching round either increases a query's significance or adds new grounded knowledge to the model. Even if a query never reaches S1, the scaffolding erected along the way remains, enriching future rationalisation.
-
-## Study
-
-When the dialogue pauses, Kalvin continues to think. Any kline that landed at partial significance represents material Kalvin has seen but not fully internalised. During these quiet periods, Kalvin revisits its partial knowledge — retracing paths, discovering connections that were not apparent before, strengthening its understanding.
-
-Study cannot fully confirm a kline on its own. Full understanding arrives when the dialogue resumes and a new kline routes cleanly to high significance, or when the agent ratifies what study has prepared. But study prepares. The next exchange may be immediately recognisable, requiring no further scaffolding, because Kalvin has already done the work of connecting what it knows. Study can strengthen significance — bringing partial understanding closer to the threshold of knowing — but it cannot reach S1 alone. It prepares for ratification; the agent confirms it.
-
-Study is the existing cogitation process working through its backlog of partially understood klines. It is not a separate mechanism added on top of rationalisation; it is rationalisation continuing when the dialogue is quiet.
-
-## S2 Expansion
-
-S2 klines are **misfits**: their signature does not match their nodes. The mismatch falls into patterns. An **underfit** kline has a signature that promises structure its nodes do not deliver — there are holes to fill. An **overfit** kline carries nodes whose structure the signature does not capture — there is excess to shed. A **bad-fit** has both problems. In every case, Kalvin reshapes what is already there and offers the result to the agent.
-
-Underfit klines act as **templates** — a known concept with holes to fill, allowing Kalvin to match a question against a structure that anticipates an answer. Overfit klines act as **sequencers** — step-by-step structure under a single goal, allowing Kalvin to rationalise a query in discrete stages. Kalvin fills templates and decomposes sequencers, turning partial understanding into proposals.
-
-Two guarantees hold: no kline enters the model without agent ratification, and no removed nodes are discarded without being offered as a companion kline. Kalvin does not invent during expansion — it reshapes what is already there and offers the result. The agent decides what to keep.
+The reference teaching model is still Mary's world, and it is now concrete. A curriculum is a sequence of encounters built from a blank slate, one structure at a time — prime, ask, scaffold where understanding is incomplete — and the canonical script walks the canonical question ("what did Mary have?") through held correspondences to its answer. The system reaches the answer through the graph; it does not replace the question with the answer.
 
 ## Growth
 
-Kalvin's memory only grows. Klines are added through rationalisation and ratification; they are never removed. This monotonic property has consequences worth tracing.
+Within a run, memory only grows. Every hop's writes land in memory and enrich later hops; scaffolding delivered is never retracted; a derivation never consumes what it writes — evidence accumulates as it is used. Even an abandoned teaching goal leaves the scaffold behind, enriching every future rationalisation.
 
-Correction happens through the introduction of more significant information. New information does not override old information; it outcompetes it. If Kalvin holds a ratified misconception and new conflicting information arrives, the new information is rationalised, attains its own significance, and — if more significant — becomes the preferred path. The misconception is still there, intact in the model, but it is no longer the optimal response. Nothing was deleted. The model grew, and the balance of significance shifted.
+Nothing in the algebra deletes. Memory-management policy and tier mechanics live outside it — and the tiers are relations, not bins: a tier change re-relates Kalvin to a kline, and rejection in the frame is additive, keyed by signature. The founding idea that correction "outcompetes" rather than erases is realised exactly by the cost model: ratified standing licences cost nothing, unratified ones carry acquisition depth, and γ does the preferring.
 
-Monotonicity is what makes scaffolding irreversible. Each scaffold adds structure to the model. Even if a particular teaching goal is abandoned, the scaffolding remains, enriching future rationalisation. Every round leaves the model larger than it found it.
+## Baseline and Horizon
 
-This connects to the three-part model: new preferences can be taught, and what Kalvin considers optimal is itself something Kalvin can be taught to value differently. Growth is not just the accumulation of facts — it is the deepening of the model's capacity to understand.
+What stands today: the algebra — values and klines, the nine shapes and four bands, one rewrite rule under two licences, the slot walk, the measurement model with its forced form; the strategy layer — γ-ordered candidates, scoped trawls, hops and re-entry; the ask; the protocol — harness roles, KScript with its answer keys, scaffolding, ratification, escalation; the tiered model as relations.
 
-## Aspiration
+What remains vision, stated honestly:
 
-The distinction between S1 and S2 becomes particularly interesting when the agent in the dialogue is another Kalvin instance. One agent's partial understanding becomes another's scaffolding. One agent's significant response becomes another's ratified knowledge. The architecture admits networks of mutual ratification, where knowledge is generated through mutual rationalisation and understanding emerges from the dialogue between understanding-generating systems. The long-term aspiration is distributed rationality built on actionable signals and mutual respect for autonomy — shared understanding that no single instance could reach alone.
+**Learned preferences.** The measurement is fixed — forced by its invariants, not tuned — and candidate order is γ-descending. What Kalvin values in a response is not yet itself teachable structure. The founding idea — preferences as klines, no fixed utility function, what Kalvin considers optimal being subject to rationalisation like anything else — is deferred, not abandoned. The cost model is the fixed utility function of the present baseline.
 
-These are the principles on which Kalvin is built. The aspiration is a system — and networks of systems — that develop shared understanding through the honest measurement of what each one knows.
+**Study.** Cogitation is inline: every ending leaves a result, and the partial states persist as the work list's residue — but nothing yet revisits them when the dialogue is quiet. Sustained possession — understanding as something held rather than attained — is the horizon. Study is rationalisation continuing when nobody is asking.
+
+**Mutual ratification.** The trainer already shares the trainee's engine — one peer rationalising another's proposals, differing only in the bands it keeps. Networks of Kalvins ratifying one another's understanding — distributed rationality built on actionable signals and mutual respect for autonomy — remain the long aspiration. The architecture admits it; the protocol has not yet grown it.
+
+These are the principles Kalvin is built on: honest measurement of what is held, priced effort, understanding that can point to its grounds — and, at the horizon, systems that develop shared understanding through the honest measurement of what each one knows.
