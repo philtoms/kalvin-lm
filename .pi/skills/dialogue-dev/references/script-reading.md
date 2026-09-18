@@ -25,20 +25,23 @@ Significance, Relational Tokens, MTS, Word Binding, Annotation).
 
 ## The relational tokens
 
-| Token  | Name          | Emits                   | Structural meaning                                     |
-| ------ | ------------- | ----------------------- | ------------------------------------------------------ |
-| `==`   | COUNTERSIGNS  | `{A:[]}` + goal `{B:[C,D]}` | goal-targeted training: A is the queued ask (S4), B the implied goal from the `=>` block |
-| `=>`   | CANONICALISES | `{A: [B, C, D]}`        | A canonicalises its block operands into a single kline |
-| `>`    | CONNOTES      | `{AB: [B]}`             | A connotes B. Becomes IDENTITY when same token.        |
-| `<`    | RCONNOTES     | `{BA: [A]}`             | B connotes A, reversed reading (≡ `B > A`).            |
-| `=`    | DENOTES       | `{A: [B]}`              | A denotes B.                                           |
-| (none) | ASK          | `{A\|ASK: [A]}` — one ask structure: marked sig, canon nodes (a single token: itself) | ask, unless word-bound → identity; a sigless annotation's utterance is always the ask |
+| Token  | Name          | Emits                            | Structural meaning                                                                       |
+| ------ | ------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
+| `==`   | COUNTERSIGNS  | `{A\|ASK:[]}` + goal `{B:[C,D]}` | goal-targeted training: A is the queued ask (S4), B the implied goal from the next block |
+| `=>`   | CANONICALISES | `{A: [B, C, D]}`                 | A canonicalises its block operands into a single kline                                   |
+| `>`    | CONNOTES      | `{AB: [B]}`                      | A connotes B. Becomes IDENTITY when same token.                                          |
+| `<`    | RCONNOTES     | `{BA: [A]}`                      | B connotes A, reversed reading (≡ `B > A`).                                              |
+| `=`    | DENOTES       | `{A: [B]}`                       | A denotes B.                                                                             |
+| (none) | ASK           | `{A\|ASK: [A]}`                  | ask: a CANON or an IDENTITY flagged as an ASK                                            |
 
 `MHALL == SVO => ...` literally means: queue `MHALL:[]` — the ask at
-S4 — with `SVO:[block operands]` as the implied goal. No reciprocal
-pair is compiled. The engine still selects its own goals (the goal is
-just another held kline to it); the goal exists so the agent running
-the session can grade Kalvin's proposals against the true answer.
+S4 — with `SVO:[block operands]` as the implied goal. The engine still
+selects its own goals (the goal is just another held kline to it); the
+goal exists so the agent running the session can grade Kalvin's proposals
+against the true answer. Goals don't always have to be Canons:
+
+- `MHALL == N(ursery-rhyme) > S(tory) # goal is CONOTATION`
+- `MHALL == WDMH = O < W # goal is CONNOTATED DENOTATION`
 
 ## MTS and annotations
 

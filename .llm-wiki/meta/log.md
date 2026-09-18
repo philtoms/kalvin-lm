@@ -647,3 +647,9 @@
 ## [2026-09-17T17:48:24.865Z] observe
 - slug: "obs-2026-09-17-hex-node-in-wdmh-trace-was-prior-lesson-mts-form-harness-lab", title: "Hex node in wdmh trace was prior-lesson MTS form; harness label maps now seed from state", relevance: "high"
 
+## [2026-09-17T23:32:19.188Z] observe
+- slug: "obs-2026-09-17-ask-lifecycle-closed-identities-ground-not-propose-answered-", title: "Ask lifecycle closed: identities ground not propose; answered asks leave attention", relevance: "critical"
+
+## [2026-09-18T08:11:07.826Z] observe
+- slug: "obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license", title: "Def 13 evidence inertness: head-carrying klines never licensed — signatures never enter nodes", relevance: "critical"
+

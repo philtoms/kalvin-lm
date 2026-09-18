@@ -38,8 +38,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kalvin.kline import (
+    ASK_SIG,
     KLine,
     KNode,
+    is_ask,
     is_canon,
     is_canon_evidence,
     is_denotation as denotation_shape,
@@ -239,6 +241,24 @@ class EngineState:
             return True
         
         return False if store is self.ltm else self.is_groundable(kline, self.ltm)
+
+    def is_answered(self, kline: KLine) -> bool:
+        """An ask whose answer is grounded: a content answer — a grounded
+        witness at its signature whose content differs — or, for a bare
+        word-resolution ask, any grounded witness. Identities never
+        answer a compound ask (tautological)."""
+        if not is_ask(kline.signature):
+            return False
+        sig = int(kline.signature) & ~ASK_SIG
+        for store in (self.frame, self.ltm):
+            for k in store.get(sig, []):
+                if tuple(k.nodes) == tuple(kline.nodes):
+                    continue  # its own riding canon
+                if not kline.nodes and k.nodes:
+                    return True  # any witness resolves a bare ask
+                if self.signifier.signature_of(k.nodes) != sig:
+                    return True  # a content answer beyond the signature
+        return False
 
     def is_grounded(self, kline: KLine, store=None) -> bool:
         """Is an isomorphic kline (same signature and nodes) in Frame ?"""

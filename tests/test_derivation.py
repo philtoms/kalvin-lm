@@ -188,3 +188,26 @@ def test_two_ended_guard_licenses_adoption():
     assert r.ending == "done"
     assert r.composed == []
     assert Counter(map(int, r.trace[-1])) == Counter(map(int, [M, ALL, H]))
+
+
+def test_evidence_carrying_the_queued_head_is_inert():
+    # Def 13: evidence headed at the queued head never licenses writing
+    # s into its own witness — the contraction option never exists.
+    memory = [
+        KLine(MHALL, [M, H, A, L, L]),  # canon headed at the queued head
+        KLine(W, [O]),
+        KLine(ALL, [O]),
+    ]
+    d = Derivation(
+        memory, KLine(MHALL, [M, H, A, L, L]), KLine(MHALL, [M, H, A, L, L]), SIG
+    )
+    assert not d.usable(KLine(MHALL, [M, H, A, L, L]))  # signature == s
+    assert not d.usable(KLine(DH, [MHALL]))  # s as a witness node
+    assert all(
+        Counter(map(int, new)).get(int(MHALL), 0)
+        <= Counter(map(int, d.nodes)).get(int(MHALL), 0)
+        for _, _, new in d.canonicalisations()
+    )
+    r = d.run()
+    assert r.ending == "done"
+    assert r.trace[-1] != [MHALL]  # the identity is never the result

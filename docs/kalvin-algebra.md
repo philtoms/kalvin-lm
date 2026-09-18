@@ -502,7 +502,7 @@ A ⊢_{M,B} A′.
 
 The subscript names the derivation's parameters: the memory it reads — its scope, fixed as trawled at entry (Definition 23) — and the goal it works toward, fixed for the derivation's duration. Writes go to memory (Definition 7), not to the scope: a derivation never consumes what it writes.
 
-The head s of A does not change during the derivation. Only its node sequence changes. Nothing in §§6–9 reads s: licences, endings, bounds, and grades read only the relationship, whose head σ(ν_A) is exact against ν_A at every state by construction. The queued head rides along inert, mattering only after the hop — in absorption, re-entry (§11), and the claim's grounding (§14).
+The head s of A does not change during the derivation. Only its node sequence changes. Nothing in §§6–9 reads s but well-foundedness: licences, endings, bounds, and grades otherwise read only the relationship, whose head σ(ν_A) is exact against ν_A at every state by construction. The queued head rides along inert, mattering only after the hop — in absorption, re-entry (§11), the claim's grounding (§14), and the one licence that bars it from its own witness (Definition 13).
 
 At every state, the current content is:
 
@@ -544,9 +544,11 @@ The fit of K determines the interpretation of the replacement:
 - **Covered S2:** move content according to the underfit and overfit.
 - **Uncovered S3:** traverse between otherwise disconnected contents.
 
-Unknown has no witness and therefore cannot license a replacement. Identity is inert because replacing its head with its witness leaves the sequence unchanged.
+Unknown has no witness and therefore cannot license a replacement. Identity is inert because replacing its head with its witness leaves the sequence unchanged. Evidence carrying the queued head s — as its signature or as a node of its witness — is inert for the derivation of s: nothing held licenses writing s into ν_A, so the signature never enters node position in the first place.
 
 A replacement never empties the node sequence: both sides of a correspondence carry content.
+
+States are therefore well-founded with respect to s: a derivation never writes its own head into its witness, and the identity s:[s] is unreachable as a derivation result — the identity is the ask's own shape, a fact delivered by grounding, never a derivation's answer. An occurrence of s at entry belongs to the ask's riding canon; none is added.
 
 ### Mirror derivations
 

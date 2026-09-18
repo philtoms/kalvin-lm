@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, product
 
 from kalvin.abstract import KSignifier
-from kalvin.kline import KLine, is_canon, is_terminal, sig_level
+from kalvin.kline import ASK_SIG, KLine, is_canon, is_terminal, sig_level
 from kalvin.significance import (
     DEFAULT_DELTA,
     WORD_BITS,
@@ -117,7 +117,12 @@ class Derivation:
     # ── evidence predicates (Def 13) ───────────────────────────────────────
 
     def usable(self, k: KLine) -> bool:
-        """Unknown has no witness; Identity is inert."""
+        """Unknown has no witness; Identity is inert; evidence carrying
+        the queued head s never licenses writing s into its own witness
+        (Def 13)."""
+        s = int(self.queued.signature) & ~ASK_SIG
+        if int(k.signature) & ~ASK_SIG == s or s in [int(n) for n in k.nodes]:
+            return False
         return not is_terminal(k)
 
     def wellfounded(self, k: KLine) -> bool:
@@ -168,7 +173,8 @@ class Derivation:
         """
         canons = [
             (i, k) for i, k in enumerate(self.memory)
-            if is_canon(k, self.signifier) and 2 <= len(k.nodes) < len(self.nodes)
+            if is_canon(k, self.signifier) and self.usable(k)
+            and 2 <= len(k.nodes) < len(self.nodes)
         ]
         canons.sort(key=lambda t: (len(t[1].nodes), t[0]))
         for _, k in canons:
@@ -318,7 +324,10 @@ class Derivation:
             for n in k.nodes:
                 if excess & int(n) & WORD_BITS == excess:
                     b_values.append(int(n))
-        b_starts = list(dict.fromkeys(b_values))  # first-occurrence order
+        b_starts = [
+            v for v in dict.fromkeys(b_values)  # first-occurrence order
+            if v != int(self.queued.signature) & ~ASK_SIG  # never bridge to s
+        ]
         if not b_starts:
             return False
         return self._meet(path_a, b_starts)

@@ -1,7 +1,12 @@
 # Wiki Update Log
 
+## 2026-09-18
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license","title":"Def 13 evidence inertness: head-carrying klines never licensed — signatures never enter nodes"}
+
 ## 2026-09-17
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-17-ask-lifecycle-closed-identities-ground-not-propose-answered-","title":"Ask lifecycle closed: identities ground not propose; answered asks leave attention"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-17-hex-node-in-wdmh-trace-was-prior-lesson-mts-form-harness-lab","title":"Hex node in wdmh trace was prior-lesson MTS form; harness label maps now seed from state"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-17-meeting-walk-committed-as-3351301-engine-def-15-tests-append","title":"Meeting walk committed as 3351301: engine, Def 15, tests, appendix fork"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-17-expansion-policy-split-lazy-memory-canonical-at-the-proposal","title":"Expansion policy split: lazy memory, canonical at the proposal boundary"}

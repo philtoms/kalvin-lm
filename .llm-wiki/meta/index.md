@@ -260,6 +260,7 @@
 - [[sources/obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no]] — Observation: Word-bit trawl, scaffold-first groups, depth 5 landed; scope now full reservoir *(created: 2026-09-16)*
 - [[sources/obs-2026-09-17-9-adjusted-equality-saturated-calculation-per-step-paragraph]] — Observation: §9 adjusted: equality = saturated calculation; per-step paragraph split into two evaluations *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-9-retitled-what-a-derivation-establishes-significance-is-the]] — Observation: §9 retitled "What a Derivation Establishes" — significance is the result, equality only at S1 *(created: 2026-09-17)*
+- [[sources/obs-2026-09-17-ask-lifecycle-closed-identities-ground-not-propose-answered-]] — Observation: Ask lifecycle closed: identities ground not propose; answered asks leave attention *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-b-walk-bridge-mechanics-det-object-written-with-zero-overlap]] — Observation: ν_B walk bridge mechanics: Det:[Object] written with zero overlap *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-committed-3ad08b7-significance-complexity-split-done-by-calc]] — Observation: Committed 3ad08b7: significance/complexity split, done by calculation *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-context-md-glossary-aligned-done-saturated-calculation-two-e]] — Observation: CONTEXT.md glossary aligned: Done = saturated calculation; two γ evaluations in Significance/KValue *(created: 2026-09-17)*
@@ -276,6 +277,7 @@
 - [[sources/obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family]] — Observation: STM dedup insufficient: WDMH loop re-routes via bridge family *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit]] — Observation: Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-wdmh-a-mod-lamb-a-proposal-self-fed-composed-goal-loop-diagn]] — Observation: WDMH [a,Mod,lamb,a] proposal: self-fed composed-goal loop diagnosed *(created: 2026-09-17)*
+- [[sources/obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license]] — Observation: Def 13 evidence inertness: head-carrying klines never licensed — signatures never enter nodes *(created: 2026-09-18)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -285,4 +287,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-17T17:48:24.930Z* | *Total pages: 273*
+*Last updated: 2026-09-18T08:11:07.931Z* | *Total pages: 275*

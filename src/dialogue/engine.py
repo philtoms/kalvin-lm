@@ -137,6 +137,11 @@ class Engine:
             kline = self._state.work_list[idx]
             if self._state.is_groundable(kline):
                 self._ground(kline)
+            if self._state.is_answered(kline):
+                # The ask's content form is grounded — the question has
+                # its answer; attention leaves.
+                self._state.remove_work_at(idx)
+                continue
 
             batch.extend(self._propose(kline))
 

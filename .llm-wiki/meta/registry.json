@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-17T17:48:24.930Z",
+  "last_updated": "2026-09-18T08:11:07.931Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3519,6 +3519,25 @@
       "created": "2026-09-17",
       "updated": "2026-09-17"
     },
+    "sources/obs-2026-09-17-ask-lifecycle-closed-identities-ground-not-propose-answered-": {
+      "type": "source",
+      "title": "Observation: Ask lifecycle closed: identities ground not propose; answered asks leave attention",
+      "tags": [
+        "dialogue-dev",
+        "engine",
+        "ask-lifecycle",
+        "is_answered",
+        "identity-proposals",
+        "ratification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-17-ask-lifecycle-closed-identities-ground-not-propose-answered-",
+      "relevance": "critical",
+      "observed_at": "2026-09-17T23:32:19.186Z",
+      "source_context": "dialogue-dev: identity proposals + re-proposal after ratification",
+      "created": "2026-09-17",
+      "updated": "2026-09-17"
+    },
     "sources/obs-2026-09-17-b-walk-bridge-mechanics-det-object-written-with-zero-overlap": {
       "type": "source",
       "title": "Observation: ν_B walk bridge mechanics: Det:[Object] written with zero overlap",
@@ -3814,6 +3833,25 @@
       "source_context": "dialogue-dev investigation of WDMH run repetition",
       "created": "2026-09-17",
       "updated": "2026-09-17"
+    },
+    "sources/obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license": {
+      "type": "source",
+      "title": "Observation: Def 13 evidence inertness: head-carrying klines never licensed — signatures never enter nodes",
+      "tags": [
+        "dialogue-dev",
+        "kalvin-algebra",
+        "definition-13",
+        "evidence-inertness",
+        "well-foundedness",
+        "derivation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license",
+      "relevance": "critical",
+      "observed_at": "2026-09-18T08:11:07.819Z",
+      "source_context": "Re-anchoring the identity-proposal fix upstream at evidence licensing",
+      "created": "2026-09-18",
+      "updated": "2026-09-18"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

@@ -10,6 +10,6 @@
 
 ## Coding activity
 
-- read CONTEXT.md when you need to understand the domain.
-- DocStrings and comments should be kept to the barest minimum. No repetition of the code and no historical connotations - just describe what is.
-- Source is the truth document. When changing behaviour, update the source and CONTEXT.md (any affected glossary terms) in the same change.
+- docs/kalvin-algebra.md is the normative document.
+- read CONTEXT.md only when you need to understand the domain.
+- DocStrings should be kept to the barest minimum. Usually a single line referencing a definition
