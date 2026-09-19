@@ -4,14 +4,14 @@ Kalvin is a rationalising system whose entire world is built from klines. This g
 
 ## Structure
 
-The objective shape of a kline and the significance that shape claims on its own — no model, no observer.
+The objective shape of a kline and the claim that shape makes on its own — no model, no observer.
 
 **Atom**:
-The indivisible unit of the value space — one element of a finite set, only its finiteness load-bearing. In the engine, the word-bit space: one bit per distinct word (Def 1).
+The indivisible unit of the reference realisation — one element of a finite set, only its finiteness load-bearing. In the engine, the word-bit space: one bit per distinct word (Def 2).
 _Avoid_: token, subword (a Token ID or BPE token is an encoding, not an atom)
 
 **Value**:
-A set of atoms — what signatures and nodes are made of. Operations: composition `v ∨ w` (union — the whole is the sum of its parts), overlap `v ∧ w` (intersection — what two values share), complement `¬v`. The Boolean laws hold by construction, not as axioms (Def 2).
+What signatures and nodes are made of — opaque: the algebra exercises composition `v ∨ w`, overlap `v ∧ w`, residue `v ∖ w`, the content measure `|v|`, and equality — nothing more (Def 1). A set of atoms in the reference realisation, where the Boolean laws hold by construction (Def 2).
 
 **Node Sequence**:
 A kline's nodes with order and multiplicity retained, no empty nodes (Def 3). Membership, difference, and occurrence are multiset-wise; no rule reads order — arrangement is witness structure alone (Def 12).
@@ -57,13 +57,13 @@ A non-terminal kline that is not exact. Claims S2 when at least one node is cove
 _Avoid_: fabrication, conjecture
 
 **Coverage**:
-A node is covered by a value when they share at least one atom — overlap, not containment: a covered node may carry atoms outside the value (Def 8). The classifier's primary split: covered misfits are S2, uncovered are S3.
+A node is covered by a value when they share content — overlap, not containment: a covered node may carry content outside the value (Def 8). The classifier's primary split: covered misfits are S2, uncovered are S3.
 
 **Fit**:
 The total classifier `fit : V × V* → Shape` — one function, two readings: a kline's own fit (the claim it makes standing alone) and the relationship fit `fit(C(A,B))` (what a pair establishes). Nine shapes, four bands; every pair matches exactly one (Def 10, §10).
 
 **Shape**:
-One of the nine fit cases — Canon, Identity, Underfit, Overfit, Under+over, Connotation, Denotation, No-fit, Unknown. Underfit and Overfit also name the misfit quantities (Def 9): the atoms the signature claims beyond its nodes, and the atoms the nodes carry beyond the signature. Connotation (single-node Underfit) and Denotation (uncovered single-node) are names of convenience for KScript; algebraically they are single-node instances of cases 6 and 4 (Def 10).
+One of the nine fit cases — Canon, Identity, Underfit, Overfit, Under+over, Connotation, Denotation, No-fit, Unknown. Underfit and Overfit also name the misfit quantities (Def 9): the content the signature claims beyond its nodes, and the content the nodes carry beyond the signature. Connotation (single-node Underfit) and Denotation (uncovered single-node) are names of convenience for KScript; algebraically they are single-node instances of cases 6 and 4 (Def 10).
 
 **Band**:
 The quantization of significance — the fit's tier, ordered S1 > S2 > S3 > S4, shapes within a band unordered:
@@ -74,13 +74,6 @@ The quantization of significance — the fit's tier, ordered S1 > S2 > S3 > S4, 
 - **S4** — Unknown. _I do not understand this at all._
 
 Observer-independent — given the same held memory, every agent classifies alike — so a band is never exchanged; it is recomputable from structure (§10).
-
-**Significance**:
-The measure of rational understanding — the value rationalisation produces and consumes; understanding, informally, is high significance attained and held (§12). Formally the content overlap `J(σ(ν_A), σ(ν_B))` (Defs 17, 20): path-independent, 1.0 exactly at value-equality (done), 0 at disjointness; γ at entry depths, where the depths vanish and only overlap remains. The bands are its quantization — S1 = 1.0, S2 = overlap short of equality, S3 = zero overlap, S4 the vacuous halt off the scale — so one measure serves a kline's own claim and a relationship alike. Selects the band; travels with the proposal.
-_Avoid_: confidence, score, weight, grounded; structural significance (redundant — the band is quantized significance)
-
-**Complexity**:
-The measure of work — how much effort arriving at a significance cost: `1 − δ^(D̄ + Ĥ)` (Def 20), the complement of the discount over the mean **resolution depth** at which A's content is held (granularity) and the mean **acquisition depth** of the unratified correspondence edges crossed to win it (provenance). Entry content and ratified standing licences cost nothing: hard-won until it consolidates. Independent of significance — it prices moving between embedded concepts — and never selects a band. The composite `γ = J · δ^(D̄ + Ĥ)`, significance net of complexity, compares derivations of equal significance and steers strategy by its rate of change.
 
 **Relationship**:
 The construction that grades two klines against each other: `C(A,B) = signature_of(A.nodes) : B.nodes` — the head is defined, not claimed, so all misfit comes from B's side. `fit(C(A,B))` is the structural relationship of A and B; Canon iff the two klines hold the same value, differently decomposed (Def 11).
@@ -98,6 +91,20 @@ The nine structures, the band each claims, and the replace licence each doubles 
 | Denotation  | `A:[B]`       | S3   | traverse            | `A = B`        |
 | No-fit      | `AB:[C,D]`    | S3   | traverse            | `AB => C D`    |
 | Unknown     | `A:[]`        | S4   | inert — the ask     | `A`            |
+
+## Measurement
+
+The measures of understanding and of work — significance, complexity, and their composite γ — and the KValue that carries the sender's assessment between participants (§10).
+
+**Significance**:
+The measure of rational understanding — the value rationalisation produces and consumes; understanding, informally, is high significance attained and held (§12). Formally the content overlap `J(σ(ν_A), σ(ν_B))` (Defs 17, 20): path-independent, 1.0 exactly at value-equality (done), 0 at disjointness; γ at entry depths, where the depths vanish and only overlap remains. The bands are its quantization — S1 = 1.0, S2 = overlap short of equality, S3 = zero overlap, S4 the vacuous halt off the scale — so one measure serves a kline's own claim and a relationship alike. Selects the band; travels with the proposal.
+_Avoid_: confidence, score, weight, grounded; structural significance (redundant — the band is quantized significance)
+
+**Complexity**:
+The measure of work — how much effort arriving at a significance cost: `1 − δ^(D̄ + Ĥ)` (Def 20), the complement of the discount over the mean **resolution depth** at which A's content is held (granularity) and the mean **acquisition depth** of the unratified correspondence edges crossed to win it (provenance). Entry content and ratified standing licences cost nothing: hard-won until it consolidates. Independent of significance — it prices moving between embedded concepts — and never selects a band. The composite `γ = J · δ^(D̄ + Ĥ)`, significance net of complexity, compares derivations of equal significance and steers strategy by its rate of change.
+
+**KValue**:
+The unit of exchange between participants — a KLine paired with a significance (the sender's assessment). For a proposal that is its significance — J at entry depths; the complexity stays with the kline as its acquisition record.
 
 ## Rationalisation
 
@@ -132,7 +139,7 @@ _Avoid_: rule (in prose; a kline is not a rule), candidate (a candidate is a cor
 What permits a replace — two kinds on one rule (§7): **witnessed** (canon-mode: expand/contract, licensed by memory alone, blind to any goal) and **evidenced targeting** (licensed by a correspondence and scoped to the misfit region — read on both ends of the move: forward departs the underfit or adopts the overfit, reverse consumes the underfit or lands in the overfit, so an empty underfit bars nothing; targeting-licensed iff it strictly decreases the misfit mass, Def 14).
 
 **Misfit Mass**:
-`|signature_of(A.nodes) Δ signature_of(B.nodes)|` — the atoms the two contents disagree on. The unit of progress: every licensed targeting replace strictly decreases it, and a run from entry is bounded by its initial value (Def 14, T1).
+`|signature_of(A.nodes) Δ signature_of(B.nodes)|` — the content the two sides disagree on. The unit of progress: every licensed targeting replace strictly decreases it, and a run from entry is bounded by its initial value (Def 14, T1).
 
 **Done**:
 The ending where the calculation saturates: **significance 1.0** — the band S1, which states **value-equality**, `signature_of(A.nodes) = signature_of(B.nodes)` — not node-equality. Done may arrive early; pending nodes are witness structure. The final node sequence is a constructive witness for the equality, every step licensed by a held correspondence (Def 16, §9).
@@ -150,10 +157,10 @@ The structural halt condition — no atom, mark, or decree involved. The Unknown
 The held klines that may serve as a derivation's goal, in order. The pool (Def 22): every held kline whose content covers a node of A's node sequence — overlap at the node level (Def 8). The order: descending `γ(A, K)` (Def 20) — the significance of working from A toward the candidate; significance, not band, sets the order. The goal is taken from the top of the list; a derivation ending without done yields the next candidate, so a hop may run several derivations down the list. A new A reselects the list.
 
 **Scope**:
-The derivation's memory for one hop (Def 23): a trawl of the correspondence graph rooted at both parties — every correspondence reachable from A's nodes and B's nodes within a fixed depth. An edge is a shared word bit: a kline joins the scope when its signature or any node shares a word bit with the reached set (token-id bits carry no correspondence) — the same atom-level coverage the candidate pool reads (Def 22). Dual-rooted, so the misfit edges joining the parties are in scope by construction; depth-bounded and unranked — fast but stupid. Frozen for the hop's duration: writes go to memory, and only later hops' trawls reach them.
+The derivation's memory for one hop (Def 23): a trawl of the correspondence graph rooted at both parties — every correspondence reachable from A's nodes and B's nodes within a fixed depth. An edge is a shared word bit: a kline joins the scope when its signature or any node shares a word bit with the reached set (token-id bits carry no correspondence) — the same content-level coverage the candidate pool reads (Def 22). Dual-rooted, so the misfit edges joining the parties are in scope by construction; depth-bounded and unranked — fast but stupid. Frozen for the hop's duration: writes go to memory, and only later hops' trawls reach them.
 
 **Slot**:
-The per-node decomposition of a misfit, carried on both parties: a node of A bearing an underfit atom, and a node of B bearing an overfit atom, are each a slot — one notion read on the two parties (an overfit slot of C(A,B) is an underfit slot of C(B,A)). A slot with a licensed replace fires it; a slot without is **walked** — a meeting of two descents, one from each party, licensed by heading alone: a descent step crosses a held kline its current value heads (signature → witness), and nothing else. A's descent departs its underfit slots; B's departs the held value containing the overfit — the compound the overfit composes into. The **meeting** — a value delivered by distinct klines on the two sides — writes the **bridge**: the composed correspondence `slot_a:[slot_b]` (the A-side departure replaced by the B-side departure), acquisition depth the edges both descents crossed, consumed by the main line (Def 15). A misfit with no slot on either side has no descent to meet; the ask is the honest outcome.
+The per-node decomposition of a misfit, carried on both parties: a node of A bearing underfit content, and a node of B bearing overfit content, are each a slot — one notion read on the two parties (an overfit slot of C(A,B) is an underfit slot of C(B,A)). A slot with a licensed replace fires it; a slot without is **walked** — a meeting of two descents, one from each party, licensed by heading alone: a descent step crosses a held kline its current value heads (signature → witness), and nothing else. A's descent departs its underfit slots; B's departs the held value containing the overfit — the compound the overfit composes into. The **meeting** — a value delivered by distinct klines on the two sides — writes the **bridge**: the composed correspondence `slot_a:[slot_b]` (the A-side departure replaced by the B-side departure), acquisition depth the edges both descents crossed, consumed by the main line (Def 15). A misfit with no slot on either side has no descent to meet; the ask is the honest outcome.
 _Avoid_: subgoal, subroutine, task
 
 **Progressive Path**:
@@ -161,6 +168,10 @@ The evidence-building route from S3 to S2: each hop writes its output to STM, an
 
 **Reentry**:
 Derivations compose: re-entry changes A, and A reselects candidates for B — hop k's end state queues as hop k+1's input, and the new A takes its goal from the top of the fresh list (possibly the same kline again). Each derivation trawls its scope from memory as it stands, grown by every earlier hop. The reentry arm proposes from a proposal, one hop further out, bounded by the **hop ceiling**. Hop order is the only time the system has (§11).
+
+## Memory
+
+What Kalvin holds and how it holds it — the klines, their references, and the tiers as relations of attention and commitment. Tier mechanics are properties of the memory system rather than the algebra (§14).
 
 **Model**:
 The whole of what Kalvin holds and how it holds it: the klines, their signature/node references, the memory tiers as relations of attention and commitment, and the signifier's compositional interpretation that makes the whole traversable.
@@ -184,9 +195,6 @@ _Avoid_: persistent store, knowledge base
 **Grounding**:
 The model's mechanism for realising significance: if a signature is grounded, all of its nodes are grounded. Frame-grounded klines are available to cogitation; LTM grounding is a frame promotion Kalvin deems important enough to remember.
 
-**KValue**:
-The unit of exchange between participants — a KLine paired with a significance (the sender's assessment). For a proposal that is its significance — J at entry depths; the complexity stays with the kline as its acquisition record.
-
 ## KScript
 
 The language that authors training material. A script is an encounter in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step.
@@ -201,7 +209,7 @@ The closed set of written tokens that declare how a kline is produced. A token d
 - `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
 - `>` / `<` **CONNOTES** — the compound-signature shape `A > B` ⇒ `{AB:[B]}`, `A < B` ⇒ `{BA:[A]}` (reading order, `A < B ≡ B > A`): the signature is the compound of both operands, the node the connoted value. Self-reference collapses to Identity
 - `=` **DENOTES** — `{A:[B]}`: the signature denotes each node. Self-denote collapses to Identity
-- (none) **ASK** — a bare signature: unbound compiles to `{A|ASK:[A]}` (the ask — the identity shape, marked); word-bound to Identity `{A:[A]}` — except a sigless annotation's own utterance, always the ask with its binding resolving the nodes. The ASK op is the one op for every ask — a sigless annotation compiles to `{ABC|ASK:[a,big,cat]}` (the annotation's words as nodes), a `==` entry to the queued ask, a bare compound to its canon-noded ask. One ask structure: the signature carries the ASK marker OR-ed in and the canon's nodes ride along (`WDMH|ASK_SIG:[what,did,Mary,have]`) — the marker manufactures the ask's distinctiveness from its canon (identity, store keys, and lookups see it; every atom-space measurement — signifies, residual, γ — masks it out) and the nodes are what candidate selection (Def 22) reads. S4
+- (none) **ASK** — a bare signature: unbound compiles to `{A|ASK:[A]}` (the ask — the identity shape, marked); word-bound to Identity `{A:[A]}` — except a sigless annotation's own utterance, always the ask with its binding resolving the nodes. The ASK op is the one op for every ask — a sigless annotation compiles to `{ABC|ASK:[a,big,cat]}` (the annotation's words as nodes), a `==` entry to the queued ask, a bare compound to its canon-noded ask. One ask structure: the signature carries the ASK marker OR-ed in and the canon's nodes ride along (`WDMH|ASK_SIG:[what,did,Mary,have]`) — the marker manufactures the ask's distinctiveness from its canon (identity, store keys, and lookups see it; every content measurement — signifies, residual, γ — masks it out) and the nodes are what candidate selection (Def 22) reads. S4
 
 **Comment**:
 A leading `#` — the rest of the line is dropped by the lexer and never reaches binding or klines.

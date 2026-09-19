@@ -653,3 +653,15 @@
 ## [2026-09-18T08:11:07.826Z] observe
 - slug: "obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license", title: "Def 13 evidence inertness: head-carrying klines never licensed — signatures never enter nodes", relevance: "critical"
 
+## [2026-09-18T08:21:22.479Z] observe
+- slug: "obs-2026-09-18-def-13-mirror-clause-only-canonicalisation-exercised-s3-inst", title: "Def 13 mirror clause: only canonicalisation exercised; S3 instance contradicted", relevance: "high"
+
+## [2026-09-18T08:44:48.409Z] observe
+- slug: "obs-2026-09-18-context-md-glossary-regrouped-measurement-and-memory-section", title: "CONTEXT.md glossary regrouped: Measurement and Memory sections added", relevance: "high"
+
+## [2026-09-19T06:22:16.722Z] observe
+- slug: "obs-2026-09-19-1-rewritten-opaque-value-space-def-1-reference-realisation-d", title: "§1 rewritten: opaque value space (Def 1) + reference realisation (Def 2)", relevance: "critical"
+
+## [2026-09-19T06:37:02.200Z] observe
+- slug: "obs-2026-09-19-committed-879f3b8-opaque-value-space-1-glossary-regroup", title: "Committed 879f3b8: opaque value space §1 + glossary regroup", relevance: "medium"
+

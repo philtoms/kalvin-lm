@@ -277,7 +277,11 @@
 - [[sources/obs-2026-09-17-stm-dedup-insufficient-wdmh-loop-re-routes-via-bridge-family]] — Observation: STM dedup insufficient: WDMH loop re-routes via bridge family *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-terminology-fixed-significance-j-bands-quantize-it-complexit]] — Observation: Terminology fixed: significance = J (bands quantize it); complexity = 1−δ^(D̄+Ĥ); γ = composite *(created: 2026-09-17)*
 - [[sources/obs-2026-09-17-wdmh-a-mod-lamb-a-proposal-self-fed-composed-goal-loop-diagn]] — Observation: WDMH [a,Mod,lamb,a] proposal: self-fed composed-goal loop diagnosed *(created: 2026-09-17)*
+- [[sources/obs-2026-09-18-context-md-glossary-regrouped-measurement-and-memory-section]] — Observation: CONTEXT.md glossary regrouped: Measurement and Memory sections added *(created: 2026-09-18)*
 - [[sources/obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license]] — Observation: Def 13 evidence inertness: head-carrying klines never licensed — signatures never enter nodes *(created: 2026-09-18)*
+- [[sources/obs-2026-09-18-def-13-mirror-clause-only-canonicalisation-exercised-s3-inst]] — Observation: Def 13 mirror clause: only canonicalisation exercised; S3 instance contradicted *(created: 2026-09-18)*
+- [[sources/obs-2026-09-19-1-rewritten-opaque-value-space-def-1-reference-realisation-d]] — Observation: §1 rewritten: opaque value space (Def 1) + reference realisation (Def 2) *(created: 2026-09-19)*
+- [[sources/obs-2026-09-19-committed-879f3b8-opaque-value-space-1-glossary-regroup]] — Observation: Committed 879f3b8: opaque value space §1 + glossary regroup *(created: 2026-09-19)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -287,4 +291,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-18T08:11:07.931Z* | *Total pages: 275*
+*Last updated: 2026-09-19T06:37:02.265Z* | *Total pages: 279*

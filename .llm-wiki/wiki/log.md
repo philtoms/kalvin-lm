@@ -1,7 +1,14 @@
 # Wiki Update Log
 
+## 2026-09-19
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-19-committed-879f3b8-opaque-value-space-1-glossary-regroup","title":"Committed 879f3b8: opaque value space §1 + glossary regroup"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-19-1-rewritten-opaque-value-space-def-1-reference-realisation-d","title":"§1 rewritten: opaque value space (Def 1) + reference realisation (Def 2)"}
+
 ## 2026-09-18
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-18-context-md-glossary-regrouped-measurement-and-memory-section","title":"CONTEXT.md glossary regrouped: Measurement and Memory sections added"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-18-def-13-mirror-clause-only-canonicalisation-exercised-s3-inst","title":"Def 13 mirror clause: only canonicalisation exercised; S3 instance contradicted"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license","title":"Def 13 evidence inertness: head-carrying klines never licensed — signatures never enter nodes"}
 
 ## 2026-09-17

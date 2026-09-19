@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-18T08:11:07.931Z",
+  "last_updated": "2026-09-19T06:37:02.265Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3834,6 +3834,22 @@
       "created": "2026-09-17",
       "updated": "2026-09-17"
     },
+    "sources/obs-2026-09-18-context-md-glossary-regrouped-measurement-and-memory-section": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md glossary regrouped: Measurement and Memory sections added",
+      "tags": [
+        "docs",
+        "context",
+        "glossary"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-18-context-md-glossary-regrouped-measurement-and-memory-section",
+      "relevance": "high",
+      "observed_at": "2026-09-18T08:44:48.406Z",
+      "source_context": "Evaluating and reorganising CONTEXT.md glossary grouping",
+      "created": "2026-09-18",
+      "updated": "2026-09-18"
+    },
     "sources/obs-2026-09-18-def-13-evidence-inertness-head-carrying-klines-never-license": {
       "type": "source",
       "title": "Observation: Def 13 evidence inertness: head-carrying klines never licensed — signatures never enter nodes",
@@ -3852,6 +3868,59 @@
       "source_context": "Re-anchoring the identity-proposal fix upstream at evidence licensing",
       "created": "2026-09-18",
       "updated": "2026-09-18"
+    },
+    "sources/obs-2026-09-18-def-13-mirror-clause-only-canonicalisation-exercised-s3-inst": {
+      "type": "source",
+      "title": "Observation: Def 13 mirror clause: only canonicalisation exercised; S3 instance contradicted",
+      "tags": [
+        "kalvin-algebra",
+        "def13",
+        "mirror",
+        "canonicalisation",
+        "targeting",
+        "traversal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-18-def-13-mirror-clause-only-canonicalisation-exercised-s3-inst",
+      "relevance": "high",
+      "observed_at": "2026-09-18T08:21:22.476Z",
+      "source_context": "Auditing docs/kalvin-algebra.md Def 13 mirror clause usage across doc and code",
+      "created": "2026-09-18",
+      "updated": "2026-09-18"
+    },
+    "sources/obs-2026-09-19-1-rewritten-opaque-value-space-def-1-reference-realisation-d": {
+      "type": "source",
+      "title": "Observation: §1 rewritten: opaque value space (Def 1) + reference realisation (Def 2)",
+      "tags": [
+        "algebra",
+        "docs",
+        "values",
+        "scaling",
+        "decision"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-19-1-rewritten-opaque-value-space-def-1-reference-realisation-d",
+      "relevance": "critical",
+      "observed_at": "2026-09-19T06:22:16.720Z",
+      "source_context": "Rewriting kalvin-algebra.md §1 to opaque value space for vocabulary scaling",
+      "created": "2026-09-19",
+      "updated": "2026-09-19"
+    },
+    "sources/obs-2026-09-19-committed-879f3b8-opaque-value-space-1-glossary-regroup": {
+      "type": "source",
+      "title": "Observation: Committed 879f3b8: opaque value space §1 + glossary regroup",
+      "tags": [
+        "git",
+        "commit",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-19-committed-879f3b8-opaque-value-space-1-glossary-regroup",
+      "relevance": "medium",
+      "observed_at": "2026-09-19T06:37:02.199Z",
+      "source_context": "Committing session work",
+      "created": "2026-09-19",
+      "updated": "2026-09-19"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

@@ -46,29 +46,27 @@ The formal system is divided as follows:
 
 ## 0. Notation
 
-### 0.1 Sets and values
+### 0.1 Values
 
-The atom set is A. A value is a subset of A.
+The value space (Definition 1) supplies the operations; the right-hand column reads them in the reference realisation (Definition 2).
 
-| Symbol      | Meaning                       | Implementation |
-| ----------- | ----------------------------- | -------------- |
-| `a`, `abc`  | `{a}`, `{a,b,c}`              | bitmasks       |
-| `v ∨ w`     | union                         | `v \| w`       |
-| `v ∧ w`     | intersection                  | `v & w`        |
-| `¬v`        | complement within A           | `~v & MASK`    |
-| `∅`         | empty value                   | `0`            |
-| `σ(ν)`      | evaluation of node sequence ν | `fold_or(nu)`  |
-| `x Δ y`     | symmetric difference          | `x ^ y`        |
-| `v ∖ w`     | set difference                | `v & ~w`       |
-| `[n₁ … nₖ]` | node sequence                 | list           |
-| `x ∈ y`     | membership                    | `x in y`       |
-| `\|x\|`     | number of atoms in x          | `popcount(x)`  |
+| Symbol      | Meaning                                     | Reference realisation |
+| ----------- | ------------------------------------------- | --------------------- |
+| `v ∨ w`     | composition                                 | `v \| w`              |
+| `v ∧ w`     | overlap                                     | `v & w`               |
+| `v ∖ w`     | residue — v beyond w                        | `v & ~w`              |
+| `\|v\|`     | μ(v) — the content measure                  | `popcount(v)`         |
+| `\|x Δ y\|` | misfit mass: `\|x ∨ y\| − \|x ∧ y\|`        | `popcount(x ^ y)`     |
+| `∅`         | the empty value, composition's unit         | `0`                   |
+| `a`, `abc`  | values, written as their atoms              | `{a}`, `{a,b,c}`      |
+| `σ(ν)`      | evaluation of node sequence ν               | `fold_or(nu)`         |
+| `[n₁ … nₖ]` | node sequence                               | list                  |
 
-The formalisation also uses V\* for sequences of values and 2^A for the set of all values.
+The formalisation also uses V\* for sequences of values, and n ∈ ν for a node's multiset membership in a sequence.
 
-A excludes the ASK marker — a value bit that marks a kline as the question
-(§13). The marker is identity, not content: σ, γ, and every set operation
-range over A only; no measurement sees it.
+The ASK marker is a value tag marking a kline as the question (§13). The
+marker is identity, not content: σ, γ, and every measure ignore it; identity,
+store keys, and lookups see it.
 
 ### 0.2 Klines and derivations
 
@@ -142,47 +140,76 @@ D̄ is mean resolution depth and Ĥ is mean acquisition depth.
 
 ---
 
-# 1. Atoms and Values
+# 1. The Value Space
 
-## Definition 1 — Atoms
+## Definition 1 — Value space
 
-The atom set is a finite set:
+Kalvin is parameterised over a value space:
+
+```text
+(V, ∅, ∨, ∧, ∖, μ)
+```
+
+whose elements are **values**. A value is opaque: the algebra assumes nothing
+about its inside and exercises five capabilities only.
+
+- **Composition** `v ∨ w` — commutative, associative, idempotent; unit `∅`.
+- **Overlap** `v ∧ w` — commutative; the content two values share;
+  `v ∧ ∅ = ∅`.
+- **Residue** `v ∖ w` — the content `v` carries beyond `w`:
+  `(v ∖ w) ∨ (v ∧ w) = v` and `(v ∖ w) ∧ w = ∅`.
+- **Measure** `μ(v)`, written `|v|` — how much content a value carries:
+  `|∅| = 0`; `|v| = 0` only when `v = ∅`; and `u ≤ v` with `|u| = |v|`
+  implies `u = v` (no ghost content).
+- **Decidable equality** of values.
+
+Write `u ≤ v` for `u ∨ v = v` (u's content is contained in v's). Two derived
+forms are used throughout:
+
+```text
+misfit mass   |x Δ y| = |x ∨ y| − |x ∧ y|
+Jaccard       J(x,y)  = |x ∧ y| / |x ∨ y|
+```
+
+Every result holds for any structure satisfying these laws; realisations are
+interchangeable. The measure is exact by requirement: licensing (Definition 14)
+and the measurement invariants (§10) read strict inequalities in `|·|`, so a
+realisation may scale the universe but must not approximate μ.
+
+Decomposition is not a capability. The algebra never looks inside a value; the
+only decomposition it ever sees is a held witness (Definition 6).
+
+## Definition 2 — Reference realisation
+
+The reference realisation is the word-bit space. The atom set A is finite:
 
 ```text
 A = {a₀ … a₃₀}.
-```
-
-Only finiteness is required by the algebra.
-
-In the implementation, atoms correspond to the available bit positions. The encoding used by the engine is an implementation detail and is not itself part of the algebra.
-
-## Definition 2 — Values
-
-A value is a subset of the atom set:
-
-```text
 V = 2^A.
 ```
 
-For an atom a, the corresponding singleton value is also written a. The empty value is ∅, and the full value is A.
-
-The basic operations are:
-
-```text
-v ∨ w = v ∪ w
-v ∧ w = v ∩ w
-¬v = A ∖ v.
-```
-
-These operations satisfy the usual Boolean laws because they are ordinary set operations.
-
-For example:
+An atom is the indivisible unit of this realisation — in the engine, one bit
+per distinct word. Values are sets of atoms; `∨ ∧ ∖` are union, intersection,
+difference; `|v|` is the number of atoms in v; and `¬v = A ∖ v`. The Boolean
+laws hold here by construction, because these are ordinary set operations:
 
 ```text
 ab ∨ ac = abc
 ab ∧ ac = a
-¬a = bc.
+¬a = bc
 ```
+
+Two facts of this realisation are often mistaken for the algebra:
+
+- a value is a machine word, so the vocabulary is bounded by its bits
+  (31 words);
+- a value is its own address — the store key and the content coincide.
+
+A realisation at scale drops both: each distinct word receives an integer id
+(first-encountered, unbounded), a value is the exact set of its ids, and the
+signifier interns values under a content key, so equal content shares one
+address and nesting-by-reference is unchanged. The atoms and their bits are
+gloss for this realisation, not primitives of the algebra.
 
 ---
 
@@ -318,20 +345,20 @@ A node n is **covered** by a value s when:
 n ∧ s ≠ ∅.
 ```
 
-Coverage means that the node shares at least one atom with the value. It does not require the node to be a subset of the value.
+Coverage is overlap: the node and the value share content. It does not require the node to be contained in the value (n ≤ s).
 
 ## Definition 9 — Underfit and overfit
 
 For a pair (s, ν), let:
 
 ```text
-u = s ∧ ¬σ(ν)
-o = σ(ν) ∧ ¬s.
+u = s ∖ σ(ν)
+o = σ(ν) ∖ s.
 ```
 
-The **underfit** u contains atoms claimed by the head but not supplied by the nodes.
+The **underfit** u is the content claimed by the head but not supplied by the nodes.
 
-The **overfit** o contains atoms supplied by the nodes but not claimed by the head.
+The **overfit** o is the content supplied by the nodes but not claimed by the head.
 
 Therefore:
 
@@ -629,13 +656,13 @@ Canon expansion and contraction are different: they preserve the current content
 
 A targeting relationship can be decomposed into slots.
 
-The misfit is carried on both parties: the underfit by nodes of ν_A, the overfit by nodes of ν_B. A node is a **slot** when it carries a misfit atom — an underfit slot of ν_A, an overfit slot of ν_B. The notion is one, read on the two parties: an overfit slot of C(A,B) is an underfit slot of C(B,A).
+The misfit is carried on both parties: the underfit by nodes of ν_A, the overfit by nodes of ν_B. A node is a **slot** when it carries misfit content — an underfit slot of ν_A, an overfit slot of ν_B. The notion is one, read on the two parties: an overfit slot of C(A,B) is an underfit slot of C(B,A).
 
 For an underfit slot, strategy first looks for a licensed replacement at the slot. For the overfit, an adoptive replacement is sought by selection, at any node of ν_A. If none exists, the slot is walked: a **meeting** of two descents, one from each party.
 
 A descent is licensed by heading alone: a step crosses a held kline its current value heads, from its signature to its witness. A value with no headed kline is a descent's end. No other licence is permitted — occurrence of a witness licenses nothing, and a kline's direction is a property of the walk, not of arrival.
 
-A's descent departs its underfit slots — the nodes of ν_A carrying gap atoms. B's descent departs the held value containing the overfit, the compound the overfit composes into. Both parties descend through their own klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
+A's descent departs its underfit slots — the nodes of ν_A carrying the gap. B's descent departs the held value containing the overfit, the compound the overfit composes into. Both parties descend through their own klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
 
 The meeting is written into memory as the **bridge** — a composed correspondence `slot_a:[slot_b]` with acquisition depth equal to the edges both descents crossed, which the main derivation may then consume: the A-side departure value is replaced by the B-side departure value. The goal is never rewritten; ν_B's klines are descent material, read and never changed.
 
@@ -742,7 +769,7 @@ and the run has at most Δ₀ targeting steps.
 
 Each targeting step strictly reduces the mismatch mass, so infinite or cyclic targeting is impossible: a replacement that does not shrink the mismatch is not a targeting move.
 
-A replacement may remove or introduce several atoms in one step. The bound is expressed in atoms, while the run itself proceeds in evidence-sized steps.
+A replacement may remove or introduce several units of content in one step. The bound is expressed in content, while the run itself proceeds in evidence-sized steps.
 
 #### T2 — Witnessed and traversal cycles
 
@@ -766,7 +793,7 @@ Different derivation paths may ground different correspondences first and may th
 
 ### Decidability
 
-Because the atom set is finite and well-founded Canon expansion terminates, the set of reachable derivation states is finite in principle. Reachability and non-reachability are therefore decidable in principle, although an exhaustive search may be impractical.
+Because the value space may be taken finite and well-founded Canon expansion terminates, the set of reachable derivation states is finite in principle. Reachability and non-reachability are therefore decidable in principle, although an exhaustive search may be impractical.
 
 ---
 
@@ -956,11 +983,11 @@ Jaccard is forced rather than chosen. Score each node by its accountedness with 
 α(n) = |n ∧ σ(ν_B)| / |n|,
 ```
 
-and compose atom-weighted: the result is A's coverage fraction, |σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A)|. That fraction reads 1 whenever A's content sits wholly inside B's — an Underfit, still S2. A measure that scores perfect on a misfit is band-inconsistent. Weighing B's overfit as well yields the symmetric form, which is Jaccard.
+and compose content-weighted: the result is A's coverage fraction, |σ(ν_A) ∧ σ(ν_B)| / |σ(ν_A)|. That fraction reads 1 whenever A's content sits wholly inside B's — an Underfit, still S2. A measure that scores perfect on a misfit is band-inconsistent. Weighing B's overfit as well yields the symmetric form, which is Jaccard.
 
 ## Definition 18 — Resolution depth
 
-D̄ is the atom-weighted mean resolution depth of the current content.
+D̄ is the content-weighted mean resolution depth of the current content.
 
 Content held at its own resolution has depth 0. Expansion increases depth; contraction decreases it.
 
@@ -968,7 +995,7 @@ Depth is well-defined because licensed Canon expansion terminates (§6).
 
 ## Definition 19 — Acquisition depth
 
-Ĥ is the atom-weighted mean acquisition depth of the current content.
+Ĥ is the content-weighted mean acquisition depth of the current content.
 
 Content present at entry has acquisition depth 0.
 
@@ -980,7 +1007,7 @@ Canon-mode rewrites do not change acquisition depth because they do not introduc
 
 Klines written into memory carry their recorded depths; consuming one composes its depth with the current one.
 
-Acquisition depth is stored provenance. It cannot in general be reconstructed from the current node sequence alone, because the sequence does not record the path by which its atoms were acquired: consumption leaves no trace in ν_A.
+Acquisition depth is stored provenance. It cannot in general be reconstructed from the current node sequence alone, because the sequence does not record the path by which its content was acquired: consumption leaves no trace in ν_A.
 
 ## Definition 20 — Significance and complexity
 
@@ -1027,7 +1054,7 @@ For non-vacuous pairs the band is the quantization of significance: S1 is signif
 Four properties of the measure:
 
 1. **Band-consistency.** Significance is 0 exactly at content-disjointness and 1 exactly at value-equality — the band's two ends. The depths only scale γ down.
-2. **Granularity-invariance.** Witnessed moves change complexity only through D̄, never through recomposition. Atom-weighted composition is blind to how content is sliced into nodes. An unweighted per-slot mean violates this: expansion alone can raise it at constant content and constant depth.
+2. **Granularity-invariance.** Witnessed moves change complexity only through D̄, never through recomposition. Content-weighted composition is blind to how content is sliced into nodes. An unweighted per-slot mean violates this: expansion alone can raise it at constant content and constant depth.
 3. **Granularity-monotonicity.** Expand strictly increases D̄, so strictly increases complexity; contract strictly decreases it. This makes gratuitous expansion detectable.
 4. **Provenance-monotonicity.** Unratified acquisition strictly increases Ĥ, and nothing in a derivation lowers it — only ratification or re-derivation through ratified licences does. This makes promise-stacking detectable.
 
@@ -1200,7 +1227,7 @@ The syntax specifies an intended structure; the algebra then determines the actu
 | ask-annotated   | any signature carrying the ASK marker   | S4                                 |
 
 `ASK` is the ASK marker (word-word bit 31): it marks identity, never
-content — every atom-space measurement masks it out — and the ask's canon
+content — every content measurement masks it out — and the ask's canon
 nodes ride along so selection sees the question's content. An ask never
 heads a goal list, nor does its canon.
 
@@ -1272,7 +1299,7 @@ a|ASK:[a]
 — the identity shape, marked. There is one ask structure: `s|ASK:[nodes]`
 — the question with its canon's nodes (a single token's own value) riding
 along. The ask is structural — the marker is read from the kline's value,
-not decreed — and it is outside the atom space: no measurement weighs it,
+not decreed — and it is outside the content measure: no measurement weighs it,
 and selection (Definition 22) reads the question's content through the
 nodes.
 
@@ -1346,7 +1373,7 @@ overfit  = {a,l}
 Δ₀       = 2.
 ```
 
-No node of ν_A carries an underfit atom: the per-party decomposition yields no A-side slot. No held correspondence adopts the overfit at any node of ν_A — `o:[m]` read reverse swaps m for o and worsens the mismatch, `all:[o]` and `all:[a,l,l]` occur nowhere in ν_A, and no exactly-witnessed group contracts. Targeting alone is stuck.
+No node of ν_A carries underfit content: the per-party decomposition yields no A-side slot. No held correspondence adopts the overfit at any node of ν_A — `o:[m]` read reverse swaps m for o and worsens the mismatch, `all:[o]` and `all:[a,l,l]` occur nowhere in ν_A, and no exactly-witnessed group contracts. Targeting alone is stuck.
 
 ### The meeting cannot form
 
