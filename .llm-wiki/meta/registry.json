@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-19T06:37:02.265Z",
+  "last_updated": "2026-09-20T18:42:35.442Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3921,6 +3921,23 @@
       "source_context": "Committing session work",
       "created": "2026-09-19",
       "updated": "2026-09-19"
+    },
+    "sources/obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta": {
+      "type": "source",
+      "title": "Observation: Appendix added: the word-bit realisation in construction detail",
+      "tags": [
+        "algebra",
+        "docs",
+        "appendix",
+        "realisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta",
+      "relevance": "high",
+      "observed_at": "2026-09-20T18:42:35.366Z",
+      "source_context": "Adding word-bit realisation appendix to kalvin-algebra.md",
+      "created": "2026-09-20",
+      "updated": "2026-09-20"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

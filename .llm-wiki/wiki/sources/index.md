@@ -203,6 +203,7 @@
 - [Observation: Def 13 mirror clause: only canonicalisation exercised; S3 instance contradicted](obs-2026-09-18-def-13-mirror-clause-only-canonicalisation-exercised-s3-inst.md)
 - [Observation: §1 rewritten: opaque value space (Def 1) + reference realisation (Def 2)](obs-2026-09-19-1-rewritten-opaque-value-space-def-1-reference-realisation-d.md)
 - [Observation: Committed 879f3b8: opaque value space §1 + glossary regroup](obs-2026-09-19-committed-879f3b8-opaque-value-space-1-glossary-regroup.md)
+- [Observation: Appendix added: the word-bit realisation in construction detail](obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta.md)
 - [Operator semantics swaps: move shapes or move names — the countersign test decides](shape-swap-vs-name-swap-operator-semantics.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)

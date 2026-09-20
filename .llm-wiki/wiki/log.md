@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-09-20
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta","title":"Appendix added: the word-bit realisation in construction detail"}
+
 ## 2026-09-19
 
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-19-committed-879f3b8-opaque-value-space-1-glossary-regroup","title":"Committed 879f3b8: opaque value space §1 + glossary regroup"}

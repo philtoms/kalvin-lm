@@ -181,7 +181,7 @@ only decomposition it ever sees is a held witness (Definition 6).
 
 ## Definition 2 — Reference realisation
 
-The reference realisation is the word-bit space. The atom set A is finite:
+The reference realisation is the word-bit space, constructed in detail in the appendix. The atom set A is finite:
 
 ```text
 A = {a₀ … a₃₀}.
@@ -1382,3 +1382,64 @@ Under Definition 15's meeting licence the walk needs both parties: A's descent f
 That `o:[m]` connects the parties is real, but under the meeting licence a connection one party reaches alone licenses no bridge. Whether an **anchor arrival** — B's descent delivering a node of ν_A outright — should count as a meeting is an open licence question: it would answer this fragment, but a descent through the queued kline's own signature would then re-mint its reciprocal (a queued `little:[Mod]` reaching itself backward through `Mod`), the fabrication the meeting licence exists to exclude.
 
 The ask is therefore the honest outcome under the current licence: no meeting, no bridge — even though a route exists on one side. The system reaches answers only where held klines meet from both parties.
+
+---
+
+# Appendix — The word-bit realisation
+
+How the reference realisation (Definition 2) populates the value space (Definition 1): the 1-bit atomic scheme in construction detail, each law checked. Nothing here is algebra — it is one way of making the five capabilities true.
+
+### The bit basis
+
+One bit per distinct word. A multi-subword word (`Mary` → `[mar, y]`) is one word and one bit — the subword token ids OR together into the token half, and the shared bit does the work a decomposition would: no kline is needed to know a word is one.
+
+Bits are assigned on a first-encountered basis at half-positions 0–30, by the ks compiler; a compile seeded with the prior state's known words carries the basis across scripts (word binding; CONTEXT.md). A compound — an MTS signature, a CONNOTES concatenation — takes no bit of its own: its value is the OR-reduction of its component words' values.
+
+Half-position 31 is reserved: the ASK marker. No word ever carries it.
+
+The basis holds 31 words; the 32nd distinct word is an error — word size overflow. The realisation fails loudly rather than silently widening a word: exhaustion is a property of the scheme, not of the algebra.
+
+### The layout
+
+A value is a 64-bit word:
+
+```text
+[63    | 62 … 32     | 31 … 0       ]
+[ASK   | word word   | bpe token id ]
+
+node = (word_bit << 32) | bpe_token_id
+```
+
+The word word is the value the algebra reads. The token half — the OR of the word's subword token ids — is encoding provenance: inert cargo that rides along and is masked off at every content read. The content mask is the word word without the marker:
+
+```text
+MASK = 0x7FFF_FFFF_0000_0000
+```
+
+### The capabilities realised
+
+| Definition 1        | realisation                                                  |
+| ------------------- | ------------------------------------------------------------ |
+| `v ∨ w`             | `a \| b` — full-word OR (token cargo may accumulate; inert)  |
+| `v ∧ w`             | `(a & b) & MASK`                                             |
+| `v ∖ w`             | `(a & ~b) & MASK`                                            |
+| `\|v\|`             | `popcount(a & MASK)`                                         |
+| content equality    | equality under the mask                                      |
+
+Derived forms are exact: `|x Δ y| = popcount((x ^ y) & MASK)`; `J(x,y) = popcount((x ∧ y) & MASK) / popcount((x ∨ y) & MASK)`.
+
+### The laws
+
+Each axiom of Definition 1 is an ordinary fact about bit sets under the mask: OR is commutative, associative, idempotent, with unit 0; the residue laws are set difference; μ is popcount — zero exactly at the empty mask, and a masked subset of equal count is equal (no ghost content). The measure is exact, so the strict inequalities of licensing (Definition 14) and the invariants of §10 hold as written.
+
+### The marker discipline
+
+The ASK marker is OR-ed into an ask's signature at compile time. No node carries it, and a derivation never changes the signature (Definition 12), so the marker rides untouched: only compilation mints it. Every content read masks it out; identity reads — store keys, lookups, kline equality — see it, which is what keeps an ask distinct from its canon at the same content.
+
+### Address resolution
+
+A value is its own address: the store keys klines by the word, and a node references another kline by holding its signature — no indirection, no lookup table, one machine word per reference. This and the 31-word basis are the two engine facts Definition 2 names; a realisation at scale replaces both with integer word ids, exact id sets, and interned content keys.
+
+### Costs
+
+Every capability is one machine-word operation; μ, misfit mass, and J are exact integer arithmetic. The depth accounting of Definitions 18–19 is kept per word bit — the accounting granularity matches the measurement granularity, which is what granularity-invariance expects.
