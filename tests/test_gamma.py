@@ -202,7 +202,7 @@ def test_acq_depth_ignored_for_identity():
 
 
 def test_acq_depth_round_trips_through_state_snapshot():
-    from dialogue.engine_state import EngineState
+    from kalvin.engine_state import EngineState
 
     state = EngineState(NLPSignifier())
     won = KLine(A, [A], acq_depth=2)

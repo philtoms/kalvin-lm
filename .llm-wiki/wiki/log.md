@@ -2,6 +2,9 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution","title":"All live doc references updated for the dialogue dissolution"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl","title":"Probe sys.path bootstraps were off-by-one; two probe run styles"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d","title":"src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti","title":"KDbg.scope aligned to BindingScope frames — one scope definition in the compiler"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr","title":"KDbg.scope now carries AST nesting depth; scope-0 = root constructs"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g","title":"Harness sub-script delineation simplified to scope-0 entry groups"}

@@ -18,8 +18,11 @@ from pathlib import Path
 _SYS_SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SYS_SRC) not in sys.path:
     sys.path.insert(0, str(_SYS_SRC))
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
-from dialogue.harness import make_engine  # noqa: E402
+from dev.dialogue.harness import make_engine  # noqa: E402
 from kalvin.kline import sig_level  # noqa: E402
 from kalvin.bpe_tokenizer import BPETokenizer  # noqa: E402
 from kalvin.significance import BandLayout  # noqa: E402

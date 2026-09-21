@@ -24,7 +24,7 @@ State is plain nodes (signature + node lists); ``dbg`` is debug-only and dropped
 on save. A saved state is a grounded prior injected into an actor at
 construction.
 
-The :class:`dialogue.engine.Engine` is stateless about its own emissions; all
+The :class:`kalvin.engine.Engine` is stateless about its own emissions; all
 per-turn memory lives here, owned by the actor and mutated in place.
 """
 

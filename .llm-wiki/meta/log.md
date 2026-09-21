@@ -734,3 +734,12 @@
 ## [2026-09-21T14:43:11.369Z] observe
 - slug: "obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti", title: "KDbg.scope aligned to BindingScope frames — one scope definition in the compiler", relevance: "high"
 
+## [2026-09-21T15:16:42.157Z] observe
+- slug: "obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d", title: "src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue", relevance: "critical"
+
+## [2026-09-21T15:16:42.158Z] observe
+- slug: "obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl", title: "Probe sys.path bootstraps were off-by-one; two probe run styles", relevance: "medium"
+
+## [2026-09-21T15:21:47.552Z] observe
+- slug: "obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution", title: "All live doc references updated for the dialogue dissolution", relevance: "medium"
+

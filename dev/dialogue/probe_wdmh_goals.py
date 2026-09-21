@@ -1,6 +1,7 @@
 """Instrument candidate_goals + Derivation to expose the little:[Mod] hop."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from kalvin import hop as hop_mod
 from kalvin.derivation import Derivation
@@ -44,9 +45,9 @@ def run(self):
 Derivation.run = run
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue import engine as eng_mod
+from kalvin import engine as eng_mod
 eng_mod.run_hops.__globals__["Hop"] = hop_mod.Hop
 
 sys.argv = ["harness", "data/scripts/wdmh.ks", "-p", "data/dialogue/mhall.json"]
-from dialogue.harness import main
+from dev.dialogue.harness import main
 main()

@@ -1,10 +1,11 @@
 """Per-node consumption trace of expand for the WDMH vs MHALL pair."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 from pathlib import Path
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_engine
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue.cogitator import Cogitator
+from kalvin.cogitator import Cogitator
 from kalvin.kline import is_terminal
 
 tok = BPETokenizer()

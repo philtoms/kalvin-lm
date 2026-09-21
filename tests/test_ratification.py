@@ -16,9 +16,9 @@ from kalvin.kline import ASK_SIG, KLine, KNode
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, gamma_to_byte
 from kalvin.signifier import NLPSignifier
-from dialogue.engine import Engine
-from dialogue.engine_state import EngineState
-from dialogue.harness import Harness
+from kalvin.engine import Engine
+from kalvin.engine_state import EngineState
+from dev.dialogue.harness import Harness
 
 
 def bit(n: int) -> KNode:

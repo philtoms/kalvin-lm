@@ -285,6 +285,7 @@
 - [[sources/obs-2026-09-20-all-value-space-leaks-fixed-bits-confined-to-kline-signifier]] — Observation: All value-space leaks fixed: bits confined to kline/signifier/tokenizer/compiler homes *(created: 2026-09-20)*
 - [[sources/obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta]] — Observation: Appendix added: the word-bit realisation in construction detail *(created: 2026-09-20)*
 - [[sources/obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni]] — Observation: Def 1 honored in engine: measure/units/same_content on KSignifier; derivation.py fully seam-routed *(created: 2026-09-20)*
+- [[sources/obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution]] — Observation: All live doc references updated for the dialogue dissolution *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-]] — Observation: Attraction refined to uppercase-only: lowercase single chars are literal words *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl]] — Observation: Bracket audit: required for lowercase/digit/case-control, stylistic otherwise *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests]] — Observation: Case rule implemented: expansion hooks + sig-case gate, 83 tests green *(created: 2026-09-21)*
@@ -300,8 +301,10 @@
 - [[sources/obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-]] — Observation: MTS retired (85083f5): compound/expansion/canon triple aligned everywhere *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test]] — Observation: Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is]] — Observation: Optional bracket syntax analyzed: klines invariant, binding is the delta *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl]] — Observation: Probe sys.path bootstraps were off-by-one; two probe run styles *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model]] — Observation: script-reading.md rewritten around three-layer model *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill]] — Observation: script-reading.md three-layer revision settled via grill *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d]] — Observation: src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar]] — Observation: Symbol range committed (4d1bbb9): caseless words + MTS alnum guard *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme]] — Observation: Tetrad completed: single char is the pure attractor (environmental reading) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-]] — Observation: Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails *(created: 2026-09-21)*
@@ -314,4 +317,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T14:43:11.437Z* | *Total pages: 302*
+*Last updated: 2026-09-21T15:21:47.606Z* | *Total pages: 305*

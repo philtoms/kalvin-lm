@@ -5,7 +5,7 @@ from pathlib import Path
 
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
-from dialogue.engine_state import EngineState
+from kalvin.engine_state import EngineState
 from ks.compiler import compile_source
 
 

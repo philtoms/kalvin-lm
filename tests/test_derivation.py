@@ -5,8 +5,8 @@ from __future__ import annotations
 
 from collections import Counter
 
-from dialogue.engine_state import EngineState
 from kalvin.derivation import Derivation
+from kalvin.engine_state import EngineState
 from kalvin.hop import run_hops
 from kalvin.kline import KLine, KNode
 from kalvin.signifier import NLPSignifier

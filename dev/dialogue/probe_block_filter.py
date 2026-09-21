@@ -1,6 +1,6 @@
 
-from dialogue.engine import Engine
-from dialogue.engine_state import EngineState
+from kalvin.engine import Engine
+from kalvin.engine_state import EngineState
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, SIG_S3
 from kalvin.signifier import NLPSignifier

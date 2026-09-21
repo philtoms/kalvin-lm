@@ -8,13 +8,14 @@ and self-exclusion between the three forms:
 """
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.kline import KLine, is_terminal, is_canon, is_exact, sig_level, classify_misfit
 from kalvin.significance import word_atom_count, misfit_mass
 from kalvin.hop import candidate_goals
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_engine
 
 ASK_SIG = 1 << 63  # bit 31 of the word word
 

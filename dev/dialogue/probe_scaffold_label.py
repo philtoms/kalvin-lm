@@ -1,7 +1,8 @@
 import sys
 sys.path.insert(0, 'src')
+sys.path.insert(0, '.')
 from pathlib import Path
-from dialogue.harness import make_engine
+from dev.dialogue.harness import make_engine
 from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import Compiler
 from ks.lexer import Lexer

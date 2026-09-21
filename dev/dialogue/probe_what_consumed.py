@@ -1,10 +1,11 @@
 """Which kline consumes 'what' in the WDMH vs MHALL expansion."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 from pathlib import Path
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_engine
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue.cogitator import Cogitator
+from kalvin.cogitator import Cogitator
 from kalvin.kline import KLine, is_terminal, is_identity
 
 tok = BPETokenizer()

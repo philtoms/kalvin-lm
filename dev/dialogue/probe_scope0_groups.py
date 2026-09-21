@@ -1,6 +1,12 @@
 # Verify scope-0 delineation: isolated annotation shorthand, multi-root scripts.
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue.harness import make_engine
+from dev.dialogue.harness import make_engine
 
 CASES = {
     "isolated annotation (shorthand for (ann)compound)":

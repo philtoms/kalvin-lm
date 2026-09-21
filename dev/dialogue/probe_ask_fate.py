@@ -1,11 +1,12 @@
 """Feed the compiled WDMH ask directly to the engine; inspect its fate."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
-from dialogue.harness import make_engine
+from dev.dialogue.harness import make_engine
 from kalvin.kvalue import KValue
 
 tok = BPETokenizer()

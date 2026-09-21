@@ -28,8 +28,8 @@ from kalvin.derivation import Derivation, DerivationResult
 from kalvin.kline import KLine, canon_key, is_ask, is_terminal
 
 if TYPE_CHECKING:
-    from dialogue.engine_state import EngineState
     from kalvin.abstract import KSignifier
+    from kalvin.engine_state import EngineState
 
 #: Def 21 bound — goals a hop takes from its list.
 MAX_GOALS = 8

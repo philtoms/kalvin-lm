@@ -13,12 +13,15 @@ from pathlib import Path
 _SYS_SRC = Path(__file__).resolve().parent.parent / "src"
 if str(_SYS_SRC) not in sys.path:
     sys.path.insert(0, str(_SYS_SRC))
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 from kalvin.significance import SIG_S1, SIG_S2, SIG_S3, SIG_S4
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source
-from dialogue import decode, load_script
+from dev.dialogue.decoder import decode, load_script
 from dialogue.actors import RationalisingTrainee
 
 _BAND = {SIG_S1: "S1", SIG_S2: "S2", SIG_S3: "S3", SIG_S4: "S4"}

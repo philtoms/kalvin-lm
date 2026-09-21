@@ -1,6 +1,6 @@
 ---
 name: dialogue-dev
-description: Drives the dialogue harness (src/dialogue/harness.py + engine.py) — the synchronous, non-judging compile→feed→present loop — to tune Kalvin's rationalising engine against .ks scripts, and to author scripts that test engine theory or bring out new behaviour. Use when the user says "/dialogue-dev".
+description: Drives the dialogue harness (dev/dialogue/harness.py + src/kalvin/engine.py) — the synchronous, non-judging compile→feed→present loop — to tune Kalvin's rationalising engine against .ks scripts, and to author scripts that test engine theory or bring out new behaviour. Use when the user says "/dialogue-dev".
 ---
 
 # Dialogue Harness
@@ -26,9 +26,9 @@ Every run ends with a trace and two lists. Read all before reading code.
 ## Run
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks             # the canonical kscript
-PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/mhall.ks -e          # structural supervisor
-PYTHONPATH=src .venv/bin/python -m dialogue.harness data/scripts/wdmh.ks -p data/dialogue/mhall.json # persistent memory
+PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness data/scripts/mhall.ks             # the canonical kscript
+PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness data/scripts/mhall.ks -e          # structural supervisor
+PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness data/scripts/wdmh.ks -p data/dialogue/mhall.json # persistent memory
 ```
 
 Each lesson's kscript runs through a shared engine (state persists across
@@ -115,8 +115,8 @@ header. Always compile the `.ks` to ensure there are no errors.
 
 | Artefact        | Path                          | Role                                                     |
 | --------------- | ----------------------------- | -------------------------------------------------------- |
-| Engine          | `src/dialogue/engine.py`      | The fork under tune                                      |
-| Harness         | `src/dialogue/harness.py`     | The non-judging compile→feed→present loop + CLI          |
+| Engine          | `src/kalvin/engine.py`        | The fork under tune                                      |
+| Harness         | `dev/dialogue/harness.py`     | The non-judging compile→feed→present loop + CLI          |
 | Compiler        | `src/ks/`                     | KScript → KValue; carries annotation/scope/labels        |
 | Curricula       | `data/scripts/*.ks`           | `mhall.ks` is canonical                                  |
 

@@ -31,8 +31,12 @@ uv run pytest
 ```
 src/
 ├── kalvin/               # Core rationalisation engine
+│   ├── engine.py         #   Rationalising engine: (state, incoming) → batch
+│   ├── engine_state.py   #   EngineState — engine-held memory
 │   ├── kline.py          #   KLine structure + predicates (is_canon/is_misfit/…)
 │   ├── kvalue.py         #   KValue — the value a node/signature carries
+│   ├── derivation.py     #   Derivation — the algebra core (§6–10)
+│   ├── hop.py            #   Hop + run_hops — the strategy unit over derivations
 │   ├── abstract.py       #   Abstract interfaces (KSignifier, …)
 │   ├── agent_codec.py    #   Agent (de)serialisation codec
 │   ├── cogitator.py      #   Cogitation — model-traversal slow path
@@ -40,12 +44,14 @@ src/
 │   ├── proposals.py      #   Proposal construction for ratification
 │   ├── significance.py   #   Significance levels (S1–S4) + normalisation
 │   ├── signifier.py      #   NLPSignifier — NLP-backed signifier
+│   ├── tokenizer.py      #   Tokenizer interface
+│   ├── bpe_tokenizer.py  #   BPE tokenizer (production)
+│   ├── nlp_tokenizer.py  #   NLP-backed tokenizer
+│   ├── mod_tokenizer.py  #   Modular bit-packed tokenizer
 │   ├── stm.py            #   Short-term memory
 │   ├── model.py          #   Tiered memory
 │   ├── rationaliser.py   #   Rationaliser pipeline + Cogitator wiring
 │   ├── events.py         #   Event definitions + EventBus
-│   ├── tokenizer.py      #   Tokenizer interface
-│   ├── nlp_tokenizer.py  #   NLP-backed tokenizer
 │   └── paths.py          #   Resolved filesystem paths
 ├── ks/                   # KScript DSL
 │   ├── lexer.py          #   Lexer (source → tokens)
@@ -56,16 +62,6 @@ src/
 │   ├── binding_scope.py  #   Word binding resolution
 │   ├── token_encoder.py  #   TokenEncoder (symbolic → encoded KLines)
 │   └── compiler.py       #   Compiler (orchestrator; source → KLines)
-├── dialogue/             # Dialogue harness + rationalising engine
-│   ├── engine.py         #   Stateless engine: (state, incoming) → (batch, observations)
-│   ├── engine_state.py   #   EngineState — engine-held memory
-│   ├── harness.py        #   Harness: compile → feed → present
-│   ├── runner.py         #   Coverage-tracking wildcard subscriber over the bus
-│   ├── actors.py         #   Actor base + role impls
-│   ├── rationalise.py    #   Rationaliser + RationaliserState
-│   ├── synthesize.py     #   Synthesizer (real-actor side of the triad)
-│   ├── decoder.py        #   Turn decoding (DecodedTurn)
-│   └── pivot_fill.py     #   Expand-fit misfit strategy
 └── training/             # Multi-agent training runtime
     ├── harness/          #   Harness server
     │   ├── __main__.py   #     CLI entry point
@@ -98,6 +94,13 @@ src/
         ├── orchestrate.py #     Session orchestration
         ├── session.py    #     Session state
         └── snapshots.py  #     Code/config snapshots across runs
+
+dev/
+└── dialogue/             # Development harness (engine tuning)
+    ├── harness.py        #   The non-judging compile→feed→present loop + CLI
+    ├── structural.py     #   Structural supervisor (harness escalation seam)
+    ├── decoder.py        #   Dialogue-table decoder (table → DecodedTurns)
+    └── probe_*.py        #   Ad-hoc investigative scripts (kept)
 ```
 
 ## Documentation

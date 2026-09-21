@@ -187,7 +187,7 @@ The language that authors training material. A script is an encounter in dialogu
 A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`, where the word word carries one bit per distinct word (first-encountered at bits 0–30, bit 31 the ASK marker) and a compound composes no bit of its own — layout and encoding rules in `src/ks/token_encoder.py`.
 
 **Relational Tokens**:
-The closed set of written tokens declaring how a kline is produced — `==` COUNTERSIGNS, `=>` CANONICALISES, `>`/`<` CONNOTES, `=` DENOTES, none ASK; a token declares an intent the fit classification of the produced kline may or may not satisfy (§13) — compilation semantics in `src/ks/ast_emitter.py`, band claims in `src/ks/token_encoder.py`, the `==` grading protocol in `src/dialogue/harness.py`.
+The closed set of written tokens declaring how a kline is produced — `==` COUNTERSIGNS, `=>` CANONICALISES, `>`/`<` CONNOTES, `=` DENOTES, none ASK; a token declares an intent the fit classification of the produced kline may or may not satisfy (§13) — compilation semantics in `src/ks/ast_emitter.py`, band claims in `src/ks/token_encoder.py`, the `==` grading protocol in `dev/dialogue/harness.py`.
 
 **Comment**:
 A leading `#` — the rest of the line is dropped by the lexer and never reaches binding or klines.
@@ -229,7 +229,7 @@ An agent that resolves what the Trainer escalates — deciding ratify, scaffold,
 _Avoid_: UI, human
 
 **Scaffolding**:
-KScript entries that provide grounding context for other entries — structurally identical whether pre-compiled by the author or reactive from the supervisor, delivered batch or on-demand (`src/dialogue/harness.py`).
+KScript entries that provide grounding context for other entries — structurally identical whether pre-compiled by the author or reactive from the supervisor, delivered batch or on-demand (`dev/dialogue/harness.py`).
 
 **Proposal**:
 A KLine emitted by a trainee during rationalisation. Ungrounded when generated under the ask — S3 evidence is a promise, not a fact; weighing promises is protocol.
@@ -242,7 +242,7 @@ The Trainer deferring a proposal to the supervisor when its cogitation yields no
 _Avoid_: auto-ratify failure
 
 **Semantic Evidence**:
-The correspondences a KScript's entries hold collectively but no single kline declares — the canon index and the connotation/denotation edges, emitted by compilation as derived structure (`src/dialogue/structural.py`).
+The correspondences a KScript's entries hold collectively but no single kline declares — the canon index and the connotation/denotation edges, emitted by compilation as derived structure (`dev/dialogue/structural.py`).
 
 **Target Significance**:
 The band a KScript production op declares — the answer key a trainee must learn to derive, not a measurement of any one kline (`band_significance` in `src/ks/token_encoder.py`).

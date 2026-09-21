@@ -1,9 +1,10 @@
 """Decode the 0x1c00001efd proposal node: words, token, and who holds it."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_engine
 
 tok = BPETokenizer()
 

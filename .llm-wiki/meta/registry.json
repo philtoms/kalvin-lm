@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T14:43:11.437Z",
+  "last_updated": "2026-09-21T15:21:47.606Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3973,6 +3973,22 @@
       "created": "2026-09-20",
       "updated": "2026-09-20"
     },
+    "sources/obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution": {
+      "type": "source",
+      "title": "Observation: All live doc references updated for the dialogue dissolution",
+      "tags": [
+        "docs",
+        "refactor",
+        "verification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T15:21:47.550Z",
+      "source_context": "Updating document references after src/dialogue refactor",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-": {
       "type": "source",
       "title": "Observation: Attraction refined to uppercase-only: lowercase single chars are literal words",
@@ -4243,6 +4259,22 @@
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
+    "sources/obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl": {
+      "type": "source",
+      "title": "Observation: Probe sys.path bootstraps were off-by-one; two probe run styles",
+      "tags": [
+        "probes",
+        "tooling",
+        "gotcha"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T15:16:42.157Z",
+      "source_context": "Refactoring src/dialogue into main code lines",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model": {
       "type": "source",
       "title": "Observation: script-reading.md rewritten around three-layer model",
@@ -4275,6 +4307,22 @@
       "relevance": "high",
       "observed_at": "2026-09-21T10:34:31.360Z",
       "source_context": "Grilling revision of script-reading.md (dialogue-dev skill reference)",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d": {
+      "type": "source",
+      "title": "Observation: src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue",
+      "tags": [
+        "refactor",
+        "architecture",
+        "layout"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d",
+      "relevance": "critical",
+      "observed_at": "2026-09-21T15:16:42.155Z",
+      "source_context": "Refactoring src/dialogue into main code lines",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

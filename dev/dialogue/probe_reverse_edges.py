@@ -1,10 +1,11 @@
 """Prototype a reverse-edge denotate and test WDMH=>MHALL expansion."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 from pathlib import Path
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_engine
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue.cogitator import Cogitator
+from kalvin.cogitator import Cogitator
 from kalvin.kline import KLine, is_terminal, is_identity
 from kalvin.signifier import _TYPE_MASK
 

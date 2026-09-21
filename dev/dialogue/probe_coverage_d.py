@@ -3,10 +3,11 @@
 only builds the proposal. Any unsatisfied node => empty proposal."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 from pathlib import Path
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_engine
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue.cogitator import Cogitator
+from kalvin.cogitator import Cogitator
 from kalvin.kline import KLine, is_terminal, is_identity
 
 tok = BPETokenizer()
@@ -63,7 +64,7 @@ for qn, w in {"WDMH:[wdmh]": w_full[0], "WDMH:[DH]": w_full[1]}.items():
             print(f"  vs {cand_label}:{[n.label for n in m.nodes]} -> {[p.label for p in prop]} d={dist}")
 
 # variant D: denotate yields the original kline (signature intact)
-from dialogue.cogitator import Cogitator as _C
+from kalvin.cogitator import Cogitator as _C
 def denotate_orig(self, s, depth=100):
     state = self._state
     signifier = state.signifier

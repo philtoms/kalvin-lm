@@ -7,7 +7,7 @@ re-entry changes A and reselects.
 
 from __future__ import annotations
 
-from dialogue.engine_state import EngineState
+from kalvin.engine_state import EngineState
 from kalvin.hop import Hop, candidate_goals, run_hops, trawl
 from kalvin.kline import KLine, KNode
 from kalvin.signifier import NLPSignifier

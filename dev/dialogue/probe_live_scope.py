@@ -1,6 +1,7 @@
 """Instrument the live wdmh run: print each hop's goal and its Def 23 scope."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin import hop as hop_mod
@@ -36,10 +37,10 @@ hop_mod.trawl = traced_trawl
 hop_mod.Hop.run = traced_run
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue import engine as eng_mod
+from kalvin import engine as eng_mod
 
 eng_mod.Hop = hop_mod.Hop  # engine imported Hop by name
 
 sys.argv = ["harness", "data/scripts/wdmh-underfit.ks", "-p", "data/dialogue/mhall.json"]
-from dialogue.harness import main
+from dev.dialogue.harness import main
 main()

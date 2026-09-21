@@ -1,10 +1,11 @@
 """Decode the [a, Mod, lamb, a] proposal: values, labels, goal, why done."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import compile_source
-from dialogue.harness import make_engine, load_engine
+from dev.dialogue.harness import make_engine, load_engine
 from kalvin.kline import KLine, is_ask, is_terminal
 from kalvin import hop as hop_mod
 

@@ -8,8 +8,8 @@ the trace, makes decisions, edits the engine and/or the source, and re-runs.
 
 Usage::
 
-    PYTHONPATH=src python -m dialogue.harness path/to/script.ks
-    PYTHONPATH=src python -m dialogue.harness path/to/script.ks -v
+    PYTHONPATH=src:. python -m dev.dialogue.harness path/to/script.ks
+    PYTHONPATH=src:. python -m dev.dialogue.harness path/to/script.ks -v
 """
 
 from __future__ import annotations
@@ -23,8 +23,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, cast
 
-from dialogue.engine import Engine
-from dialogue.engine_state import EngineState
+from kalvin.engine import Engine
+from kalvin.engine_state import EngineState
 from kalvin.kline import (
     KLine,
     KNode,
@@ -1179,7 +1179,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             harness = make_engine(tok, scaffolding=scaffolding)
         if args.structural:
-            from dialogue.structural import SemanticEvidence, StructuralSupervisor
+            from dev.dialogue.structural import SemanticEvidence, StructuralSupervisor
 
             labels = _sig_to_label(source, tok, harness.signifier,
                                    harness.word_bits, harness.state)

@@ -14,7 +14,7 @@ from kalvin.kline import ASK_SIG, KLine, is_ask, is_canon, is_exact, sig_level
 from kalvin.significance import misfit_mass, word_atom_count
 from kalvin.signifier import NLPSignifier
 from kalvin.hop import candidate_goals
-from dialogue.engine_state import EngineState
+from kalvin.engine_state import EngineState
 from ks.compiler import compile_source
 
 SCRIPT = """\

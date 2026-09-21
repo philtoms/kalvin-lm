@@ -28,7 +28,7 @@ never cogitates, never submits reactive scaffolding, and never escalates. Those
 are decider concerns owned by the supervisor.
 
 _Avoid_: auto-agent, training bot, the deterministic ratifier of the earlier
-path (it now rationalises; see `src/dialogue/`).
+path (it now rationalises; see `src/kalvin/engine.py`).
 
 ## Links
 

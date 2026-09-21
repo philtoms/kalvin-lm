@@ -7,7 +7,7 @@ actor.
 
 The engine is pure mechanism: it holds an :class:`EngineState` and
 mutates it in place. The factories that
-assemble signifier, state, and engine live in :mod:`dialogue.harness`.
+assemble signifier, state, and engine live in :mod:`dev.dialogue.harness`.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from dialogue.engine_state import EngineState
+from kalvin.engine_state import EngineState
 from kalvin.hop import run_hops
 from kalvin.kline import (
     KLine,

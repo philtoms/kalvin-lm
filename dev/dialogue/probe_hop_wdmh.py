@@ -6,11 +6,12 @@ fresh engine holds after running mhall.ks (frame) + the wdmh scaffolding.
 """
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import compile_source
-from dialogue.harness import make_engine
+from dev.dialogue.harness import make_engine
 from kalvin.hop import Hop, run_hops
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue

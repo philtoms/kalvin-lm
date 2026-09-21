@@ -1,10 +1,11 @@
 """Dump the compiled wdmh.ks entries — where does the ask signature come from."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import compile_source
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_engine
 
 tok = BPETokenizer()
 h = load_engine("data/dialogue/mhall.json", tok)

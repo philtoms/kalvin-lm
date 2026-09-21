@@ -1,6 +1,7 @@
 """Monitor the ask's derivations: memory prior, per-goal endings + traces."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin import hop as hop_mod
@@ -47,9 +48,9 @@ orig_hop_run = hop_mod.Hop.run
 hop_mod.Hop.run = monitored_hop_run
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue import engine as eng_mod
+from kalvin import engine as eng_mod
 eng_mod.Hop = hop_mod.Hop
 
 sys.argv = ["harness", "data/scripts/wdmh.ks", "-p", "data/dialogue/mhall.json"]
-from dialogue.harness import main
+from dev.dialogue.harness import main
 main()

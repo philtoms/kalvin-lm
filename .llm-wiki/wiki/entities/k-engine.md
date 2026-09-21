@@ -34,7 +34,7 @@ lives in the actor (see [[concepts/per-turn-scoping]]).
 - **`frame`** — the outgoing kline proposals and identity requests K has emitted.
 
 The factories that assemble the engine (signifier, state, strategy, engine) live
-in `dialogue.harness`. Routing is done by [[entities/route|route()]];
+in `dev.dialogue.harness`. Routing is done by [[entities/route|route()]];
 [[concepts/cogitation]] by [[entities/cogitate|cogitate()]];
 [[concepts/grounding]] resolution by [[entities/isgroundable|_is_groundable]]
 and [[entities/promote|_promote]].

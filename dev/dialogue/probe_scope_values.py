@@ -2,13 +2,14 @@
 MHALL goal, and the fate of had:[did,have] after its feed."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin import hop as hop_mod
 from kalvin.kline import ASK_SIG, is_ask, is_terminal
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue import engine as eng_mod
-from dialogue.engine_state import EngineState
+from kalvin import engine as eng_mod
+from kalvin.engine_state import EngineState
 
 def nm(v):
     lab = getattr(v, "label", "")
@@ -73,5 +74,5 @@ hop_mod.Hop.run = passive_run
 eng_mod.Hop = hop_mod.Hop
 
 sys.argv = ["harness", "data/scripts/wdmh-underfit.ks", "-p", "data/dialogue/mhall.json"]
-from dialogue.harness import main
+from dev.dialogue.harness import main
 main()
