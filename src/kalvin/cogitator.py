@@ -2,13 +2,15 @@
 
 The rationaliser feeds memory: directly on the fast path, or indirectly by
 queuing on the work list. :func:`cogitate` is the second half of the turn —
-it drains that attention. The harness runs rationalise, then cogitate.
+a single oldest-first pass over that attention. A pass that changes the
+work list can unblock further entries; callers re-enter cogitate until a
+pass changes nothing.
 """
 
 from __future__ import annotations
 
 from kalvin.hop import run_hops
-from kalvin.kline import KLine, canon_key, using_resolver
+from kalvin.kline import KLine, canon_key
 from kalvin.kvalue import KValue
 from kalvin.memory import Memory
 from kalvin.significance import gamma_to_byte
@@ -22,18 +24,12 @@ def cogitate(state: Memory) -> list[KValue]:
     Per entry, in priority order: a groundable entry grounds; a misfit
     entry draws proposals from the strategy; a grounded entry leaves
     attention. Entries that match no path persist for a later turn.
-    The pass repeats until stable — grounding can unblock further
-    entries.
+    A pass that changes the work list can unblock further entries —
+    the caller re-enters until a pass changes nothing.
     """
-    with using_resolver(state.find):
-        return _pass(state)
-
-
-def _pass(state: Memory) -> list[KValue]:
     batch: list[KValue] = []
 
     idx = 0
-    count = len(state.work_list)
     while idx < len(state.work_list):
         # Re-check the index each iteration: the ground cascade (via the
         # S2 strategy's ground callback, or the countersign/groundable
@@ -58,9 +54,6 @@ def _pass(state: Memory) -> list[KValue]:
             continue
 
         idx += 1
-
-    if count != len(state.work_list):
-        batch.extend(_pass(state))
 
     return batch
 

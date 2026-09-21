@@ -38,6 +38,7 @@ from kalvin.kline import (
     is_identity,
     is_relationship,
     is_unknown,
+    using_resolver,
 )
 from kalvin.kvalue import KValue
 from kalvin.bpe_tokenizer import BPETokenizer
@@ -301,8 +302,14 @@ class Harness:
         while queue:
             feeds = queue.pop(0)
             before = _grounded_snapshot(self.state)
-            self._rationaliser.rationalise(feeds)
-            batch = cogitate(self.state)
+            with using_resolver(self.state.find):
+                self._rationaliser.rationalise(feeds)
+                batch: list[KValue] = []
+                while True:
+                    size = len(self.state.work_list)
+                    batch.extend(cogitate(self.state))
+                    if len(self.state.work_list) == size:
+                        break
             deduped = _dedup(batch)
             after = _grounded_snapshot(self.state)
             grounds = [

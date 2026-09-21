@@ -7,7 +7,7 @@ from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.cogitator import cogitate
 from ks.compiler import compile_source
 from dev.dialogue.harness import make_rationaliser, load_rationaliser
-from kalvin.kline import KLine, is_ask, is_terminal
+from kalvin.kline import KLine, is_ask, is_terminal, using_resolver
 from kalvin import hop as hop_mod
 
 tok = BPETokenizer()
@@ -27,8 +27,13 @@ bits = h.word_bits
 mhall_src = open("data/scripts/mhall.ks").read()
 entries = compile_source(mhall_src, tokenizer=tok, signifier=sig, dev=True,
                          word_bits=bits, known_words=h.known_words)
-h.rationaliser.rationalise(entries)
-cogitate(h.state)
+with using_resolver(h.state.find):
+    h.rationaliser.rationalise(entries)
+    while True:
+        size = len(h.state.work_list)
+        cogitate(h.state)
+        if len(h.state.work_list) == size:
+            break
 
 print("word bits table (word -> bit, sig):")
 for w, b in bits.items():

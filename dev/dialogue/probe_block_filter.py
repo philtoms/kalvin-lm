@@ -11,23 +11,32 @@ from kalvin.bpe_tokenizer import BPETokenizer
 src = open("data/scripts/mhall.ks").read()
 tok = BPETokenizer(); sign = NLPSignifier()
 entries = compile_source(src, tokenizer=tok, signifier=sign, dev=True)
-from kalvin.kline import is_identity, is_canon
+from kalvin.kline import is_identity, is_canon, using_resolver
 
 def run(filter_primed):
     st = Memory(NLPSignifier())
     en = Rationaliser(st)
+
+    def turn(feeds):
+        with using_resolver(st.find):
+            en.rationalise(feeds)
+            batch = []
+            while True:
+                size = len(st.work_list)
+                batch.extend(cogitate(st))
+                if len(st.work_list) == size:
+                    break
+            return batch
+
     priming = [e for e in entries if (is_identity(e.kline) or is_canon(e.kline, st.signifier)) and not st.is_grounded(e.kline)]
-    en.rationalise([KValue(e.kline, SIG_S1) for e in priming])
-    cogitate(st)
+    turn([KValue(e.kline, SIG_S1) for e in priming])
     primed = {(e.kline.signature, tuple(e.kline.nodes)) for e in priming if st.is_grounded(e.kline)}
     g1 = entries[:12]
     feed = [e for e in g1 if (e.kline.signature, tuple(e.kline.nodes)) not in primed] if filter_primed else list(g1)
-    en.rationalise(feed)
-    b1 = cogitate(st)
+    b1 = turn(feed)
     # find Mary:[Subject] entry
     ms = next(e for e in entries if e.kline.nodes and len(e.kline.nodes)==1 and e.kline.dbg and e.kline.dbg.annotation=="Subject" and e.kline.dbg.scope==0)
-    en.rationalise([ms])
-    b2 = cogitate(st)
+    b2 = turn([ms])
     print("filtered" if filter_primed else "unfiltered", "| step2 batch:", len(b2), "| grounded Mary:[Subject]:", st.is_grounded(ms.kline))
     print("  ltm Mary sig:", [str(k) for k in st.ltm.get(ms.kline.signature, [])])
 

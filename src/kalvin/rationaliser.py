@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from kalvin.kline import is_ask, sig_level, using_resolver
+from kalvin.kline import is_ask, sig_level
 from kalvin.kvalue import KValue
 from kalvin.memory import Memory
 from kalvin.significance import BandLayout
@@ -54,11 +54,9 @@ class Rationaliser:
         """Feed memory: ground every incoming query on the fast path, queue the rest."""
         self._state._dbg_step += 1
 
-        resolver = self._state.find
-        with using_resolver(resolver):
-            for query in incoming:
-                if not self._fast_route(query):
-                    self._slow_route(query)
+        for query in incoming:
+            if not self._fast_route(query):
+                self._slow_route(query)
 
     # ── Routing ──────────────────────────────────────────────────────
 

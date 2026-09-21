@@ -14,7 +14,7 @@ from ks.compiler import compile_source
 from dev.dialogue.harness import make_rationaliser
 from kalvin.hop import Hop, run_hops
 from kalvin.cogitator import cogitate
-from kalvin.kline import KLine
+from kalvin.kline import KLine, using_resolver
 from kalvin.kvalue import KValue
 
 tok = BPETokenizer()
@@ -25,8 +25,13 @@ bits: dict[str, int] = {}
 for path in ("data/scripts/mhall.ks", "data/scripts/wdmh-underfit.ks"):
     entries = compile_source(open(path).read(), tokenizer=tok, signifier=sig,
                              dev=True, word_bits=bits)
-    h.rationaliser.rationalise(entries)
-    cogitate(h.state)
+    with using_resolver(h.state.find):
+        h.rationaliser.rationalise(entries)
+        while True:
+            size = len(h.state.work_list)
+            cogitate(h.state)
+            if len(h.state.work_list) == size:
+                break
 
 st = h.state
 print("frame entries:", sum(len(b) for b in st.frame.values()),

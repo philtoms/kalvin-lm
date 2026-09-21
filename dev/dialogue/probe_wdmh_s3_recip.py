@@ -3,6 +3,7 @@ sys.path.insert(0, "src")
 sys.path.insert(0, ".")
 from collections import deque
 from kalvin.cogitator import cogitate
+from kalvin.kline import using_resolver
 from kalvin.derivation import Derivation, KLine
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1
@@ -79,12 +80,24 @@ h = load_rationaliser('data/dialogue/mhall.json', tok)
 src = open('data/scripts/wdmh.ks').read()
 entries = compile_source(src, tokenizer=tok, signifier=h.signifier, dev=True,
                          word_bits=h.word_bits, known_words=h.known_words)
-h.rationaliser.rationalise(entries)
-cogitate(h.state)
+
+
+def turn(feeds):
+    with using_resolver(h.state.find):
+        h.rationaliser.rationalise(feeds)
+        batch = []
+        while True:
+            size = len(h.state.work_list)
+            batch.extend(cogitate(h.state))
+            if len(h.state.work_list) == size:
+                break
+        return batch
+
+
+turn(entries)
 den = next(k for b in h.state.frame.values() for k in b
            if getattr(k.signature, 'label', '') == 'what' and getattr(k.nodes[0], 'label', '') == 'Object')
-h.rationaliser.rationalise([KValue(KLine(den.nodes[0], [den.signature]), SIG_S1)])
-cogitate(h.state)
+turn([KValue(KLine(den.nodes[0], [den.signature]), SIG_S1)])
 h.run(src)
 print("held WDMH:", [f"{nm(k.signature)}:[{', '.join(nm(n) for n in k.nodes)}]"
                      for b in h.state.frame.values() for k in b
