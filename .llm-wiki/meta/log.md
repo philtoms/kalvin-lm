@@ -677,3 +677,18 @@
 ## [2026-09-21T05:57:43.679Z] observe
 - slug: "obs-2026-09-21-committed-3932429-def-1-seam-migration-complete", title: "Committed 3932429: Def 1 seam migration complete", relevance: "medium"
 
+## [2026-09-21T08:58:54.981Z] observe
+- slug: "obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is", title: "Optional bracket syntax analyzed: klines invariant, binding is the delta", relevance: "high"
+
+## [2026-09-21T09:13:18.856Z] observe
+- slug: "obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial", title: "Case-triad rule sketched: Capitalized words expand as Initial(tail)", relevance: "high"
+
+## [2026-09-21T09:34:41.189Z] observe
+- slug: "obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme", title: "Tetrad completed: single char is the pure attractor (environmental reading)", relevance: "high"
+
+## [2026-09-21T09:40:30.981Z] observe
+- slug: "obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-", title: "Attraction refined to uppercase-only: lowercase single chars are literal words", relevance: "high"
+
+## [2026-09-21T09:50:00.072Z] observe
+- slug: "obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests", title: "Case rule implemented: expansion hooks + sig-case gate, 83 tests green", relevance: "high"
+

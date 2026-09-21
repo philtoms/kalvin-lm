@@ -738,7 +738,9 @@ class ASTEmitter:
 
         Word Binding (top-level): a signature-prefix annotation binds
         fill-if-empty — it takes effect only when the character is currently
-        unbound in the scope. If ``sig`` is already bound (e.g. H bound to
+        unbound in the scope. For a lowercase sig there is no ambient
+        binding to respect (attraction is sig-case-gated), so an authored
+        witness always fires. If ``sig`` is already bound (e.g. H bound to
         'had' by an outer scope), the annotation is inert and the existing
         binding stands. This guarantees each identity is bound once, with no
         competing token.

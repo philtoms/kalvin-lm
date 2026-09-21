@@ -2,6 +2,11 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests","title":"Case rule implemented: expansion hooks + sig-case gate, 83 tests green"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-","title":"Attraction refined to uppercase-only: lowercase single chars are literal words"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme","title":"Tetrad completed: single char is the pure attractor (environmental reading)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial","title":"Case-triad rule sketched: Capitalized words expand as Initial(tail)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is","title":"Optional bracket syntax analyzed: klines invariant, binding is the delta"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-committed-3932429-def-1-seam-migration-complete","title":"Committed 3932429: Def 1 seam migration complete"}
 
 ## 2026-09-20

@@ -14,6 +14,12 @@ Resolution algorithm:
   - If unambiguous (len(matches) == 1): do NOT increment counter.
   - Return the matched word, or None if no match in any scope.
 
+Sig-case gate: ambient attraction (word lists, resolved memory) applies
+only to uppercase single chars. A lowercase single char is a literal
+word (the article 'a') and never attracts — a previously declared word
+list word cannot rebind it. Explicit overrides still apply to any case
+(an authored witness binds its char regardless of case).
+
 Rules B1 (once-bound immutability) and B4 (inline override) are
 enforced by the ASTEmitter, not by BindingScope.
 
@@ -77,8 +83,9 @@ class BindingScope:
         scope.push_scope()
         scope.add_words(["Mary", "had", "a", "little", "lamb"])
         assert scope.resolve("M") == "Mary"
-        assert scope.resolve("m") == "Mary"  # case-insensitive
         assert scope.resolve("L") == "little"
+        assert scope.resolve("a") is None  # lowercase: literal word,
+                                            # never attracts
 
     The caller must call ``push_scope()`` to create the root scope
     before adding word lists or resolving.
@@ -178,9 +185,21 @@ class BindingScope:
             char: Single character to resolve.
 
         Returns:
-            The matched word, or ``None`` if unbound.
+            The matched word, or ``None`` if unbound. A lowercase char
+            never resolves through the ambient tiers (word lists,
+            resolved memory) — only through explicit overrides.
         """
         key = char.lower()
+        if not char.isupper():
+            # Sig-case gate: ambient attraction is uppercase-only. A
+            # lowercase single char is a literal word (the article 'a');
+            # word lists and resolved memory must not rebind it.
+            # Explicit overrides remain visible to any case (an authored
+            # witness binds its char regardless of case).
+            for scope in reversed(self._stack):
+                if key in scope.overrides:
+                    return scope.overrides[key]
+            return None
         for scope in reversed(self._stack):
             # Inline (item) bindings override word-list bindings for this char
             # (Word Binding rule: inline binds tighter than top-level). Checked

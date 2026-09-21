@@ -215,7 +215,7 @@ The closed set of written tokens that declare how a kline is produced. A token d
 A leading `#` — the rest of the line is dropped by the lexer and never reaches binding or klines.
 
 **Annotation**:
-The semantic layer of KScript: parenthetical prose instructing the agent running the session what the surrounding structure means, and resolving **Word Binding**. Exists for the agent, not the trainee; absence is a missed opportunity, never a compilation error.
+The semantic layer of KScript: parenthetical prose instructing the agent running the session what the surrounding structure means, and resolving **Word Binding**. Exists for the agent, not the trainee; absence is a missed opportunity, never a compilation error. Brackets are optional when the word carries them in its case: a Capitalized identifier reads exactly as its bracketed form (`Mood` ≡ `M(ood)`; an explicit annotation suppresses the expansion), while ALL-UPPER stays a compound (`MHALL`) and lowercase-first stays a literal word (`had`).
 _Avoid_: comment
 
 **MTS (Multi-Token Signature)**:
@@ -223,7 +223,7 @@ A device for representing a multi-token signature on the LHS: the compiler expan
 _Avoid_: decomposition (a Canon decomposes into nodes; an MTS expands a signature into characters)
 
 **Word Binding**:
-The association of a single-character signature with a word, resolved through annotations. The letter binds, not its case — an authored witness `h(ad)` binds the compound char `H` as readily as `H(ad)` (the sig char's case is typographic; the word's case is the word). Precedence: inline annotation (nearest, overrides all others, also binds its immediate parent scope), then top-level annotations by scope, then resolved bindings (the char→word memory of earlier resolutions). Within a tier, the most recent match wins; each identity occurrence binds exactly once. A compile seeded with the prior state's known words (acquisition order) carries the binding across scripts: the seed is the outermost word list, binding chars the script cannot bind itself — an underfit question script's answer chars resolve to the earlier script's words instead of minting fresh.
+The association of a single-character signature with a word, resolved through annotations. An authored binding is case-blind — a witness `h(ad)` binds the compound char `H` as readily as `H(ad)` (the sig char's case is typographic; the word's case is the word) — but ambient attraction is sig-case-gated: a bare single character in sig case attracts the nearest scope's most recent word-list word with matching initial (occurrence-counted), while a lowercase single character is the literal word (the article `a`) and never attracts. An identifier's case frames its reading everywhere: ALL-UPPER is a compound (`MHALL`), Capitalized carries its own expansion (`Mood` ≡ `M(ood)`), lowercase-first is a literal word (`had`). Precedence: inline annotation (nearest, overrides all others, also binds its immediate parent scope), then top-level annotations by scope, then resolved bindings (the char→word memory of earlier resolutions). Within a tier, the most recent match wins; each identity occurrence binds exactly once. A compile seeded with the prior state's known words (acquisition order) carries the binding across scripts: the seed is the outermost word list, binding chars the script cannot bind itself — an underfit question script's answer chars resolve to the earlier script's words instead of minting fresh.
 _Avoid_: comment mapping, rebind
 
 ## Training and Runtime

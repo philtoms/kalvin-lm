@@ -33,6 +33,11 @@ Inline annotations:
     Sig-side   S(ubject) = M   →  OperatorScope.inline_annotation
     Node-side  A = D(et)       →  Signature.inline_annotation (per-item)
 
+    Brackets are optional for a Capitalized multi-char word not followed
+    by an explicit annotation: Mood ≡ M(ood) — see _is_word_expansion.
+    ALL-UPPER stays a compound (MHALL), lowercase-first stays a literal
+    word (had).
+
 NEWLINE tokens are insignificant — skipped between constructs.
 Bare signature (no operator) produces OperatorScope with op=None.
 Empty source produces KScriptFile(constructs=[]).
@@ -67,6 +72,32 @@ _OPERATOR_TYPES: frozenset[TokenType] = frozenset(
         TokenType.DENOTES,
     }
 )
+
+
+def _is_word_expansion(name: str) -> bool:
+    """True for a Capitalized multi-char word read as Initial(tail).
+
+    ``Mood`` ≡ ``M(ood)``: initial upper, at least one lower. ALL-UPPER
+    (MHALL — MTS compound) and lowercase-first (had — literal word) do
+    not qualify.
+    """
+    return len(name) > 1 and name[0].isupper() and not name.isupper()
+
+
+def _expand_word(sig: Signature) -> Signature:
+    """A Capitalized word rewritten as its initial plus tail annotation.
+
+    ``Mood`` → ``Signature('M')`` with ``inline_annotation '(ood)'`` —
+    the exact AST the bracketed form produces.
+    """
+    return Signature(
+        id=sig.id[0],
+        line=sig.line,
+        column=sig.column,
+        inline_annotation=Annotation(
+            text=f"({sig.id[1:]})", line=sig.line, column=sig.column
+        ),
+    )
 
 
 class ParseError(Exception):
@@ -200,7 +231,8 @@ class Parser:
         sig_token = self._expect(TokenType.SIGNATURE)
         sig = Signature(id=sig_token.value, line=sig_token.line, column=sig_token.column)
 
-        # Sig-side inline annotation: S(ubject) = M
+        # Sig-side inline annotation: S(ubject) = M — explicit, or
+        # synthesized from a Capitalized word (Mood ≡ M(ood)).
         inline_ann: Annotation | None = None
         if not self._at_end() and self._peek().type == TokenType.ANNOTATION:
             ann_tok = self._advance()
@@ -209,6 +241,9 @@ class Parser:
                 line=ann_tok.line,
                 column=ann_tok.column,
             )
+        elif _is_word_expansion(sig.id):
+            sig = _expand_word(sig)
+            inline_ann = sig.inline_annotation
 
         return self._parse_operator_scope_rest(sig, inline_ann)
 
@@ -286,6 +321,13 @@ class Parser:
                         line=sig_tok.line,
                         column=sig_tok.column,
                     )
+                    # A Capitalized word with no explicit annotation
+                    # following expands: Mod ≡ M(od). Explicit beats
+                    # implicit — Mood(x) stays the literal word Mood.
+                    if _is_word_expansion(sig_item.id) and (
+                        self._at_end() or self._peek().type != TokenType.ANNOTATION
+                    ):
+                        sig_item = _expand_word(sig_item)
                     items.append(sig_item)
 
                     # Inline annotation on this item: D(et) — attach to the

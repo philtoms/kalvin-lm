@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T05:57:43.724Z",
+  "last_updated": "2026-09-21T09:50:00.142Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3973,6 +3973,66 @@
       "created": "2026-09-20",
       "updated": "2026-09-20"
     },
+    "sources/obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-": {
+      "type": "source",
+      "title": "Observation: Attraction refined to uppercase-only: lowercase single chars are literal words",
+      "tags": [
+        "kscript",
+        "ks",
+        "word-binding",
+        "binding-scope",
+        "annotations",
+        "syntax",
+        "design"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-",
+      "relevance": "high",
+      "observed_at": "2026-09-21T09:40:30.980Z",
+      "source_context": "Refining single-char attraction after user pushback on lowercase article miss-binding",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests": {
+      "type": "source",
+      "title": "Observation: Case rule implemented: expansion hooks + sig-case gate, 83 tests green",
+      "tags": [
+        "kscript",
+        "ks",
+        "parser",
+        "word-binding",
+        "binding-scope",
+        "implementation",
+        "tests"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests",
+      "relevance": "high",
+      "observed_at": "2026-09-21T09:50:00.069Z",
+      "source_context": "Implementing the case rule: parser expansion + sig-case attraction gate",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial": {
+      "type": "source",
+      "title": "Observation: Case-triad rule sketched: Capitalized words expand as Initial(tail)",
+      "tags": [
+        "kscript",
+        "ks",
+        "parser",
+        "word-binding",
+        "annotations",
+        "syntax",
+        "design"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial",
+      "relevance": "high",
+      "observed_at": "2026-09-21T09:13:18.853Z",
+      "source_context": "Sketching the case-triad disambiguation rule for optional bracket syntax",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete": {
       "type": "source",
       "title": "Observation: Committed 3932429: Def 1 seam migration complete",
@@ -3987,6 +4047,46 @@
       "relevance": "medium",
       "observed_at": "2026-09-21T05:57:43.678Z",
       "source_context": "Committing the Def 1 seam migration",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is": {
+      "type": "source",
+      "title": "Observation: Optional bracket syntax analyzed: klines invariant, binding is the delta",
+      "tags": [
+        "kscript",
+        "ks",
+        "lexer",
+        "parser",
+        "word-binding",
+        "annotations",
+        "syntax"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is",
+      "relevance": "high",
+      "observed_at": "2026-09-21T08:58:54.978Z",
+      "source_context": "Design review of optional bracket syntax for KS inline annotations",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme": {
+      "type": "source",
+      "title": "Observation: Tetrad completed: single char is the pure attractor (environmental reading)",
+      "tags": [
+        "kscript",
+        "ks",
+        "word-binding",
+        "binding-scope",
+        "annotations",
+        "syntax",
+        "design"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme",
+      "relevance": "high",
+      "observed_at": "2026-09-21T09:34:41.187Z",
+      "source_context": "Extending the case-triad to a tetrad: single-char attraction as the fourth rule case",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

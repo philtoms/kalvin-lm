@@ -97,16 +97,22 @@ def test_one_ask_structure_every_ask_is_noded_and_marked(tokenizer):
 
 def test_word_bound_bare_token_is_identity_synthetic_is_ask(tokenizer):
     sig = NLPSignifier()
-    # an authored bare char bound by the word list to a different word:
-    # identity
+    # an authored bare char in sig case, bound by the word list to a
+    # different word: identity. (A lowercase single char is a literal
+    # word and never attracts — it stays the ask.)
     entries = compile_source(
-        "(cat)\nc\n", tokenizer=tokenizer, signifier=sig, dev=True
+        "(cat)\nC\n", tokenizer=tokenizer, signifier=sig, dev=True
     )
     bound = [e for e in entries if e.kline.dbg and e.kline.dbg.op != "ASK"]
     assert any(
         e.kline.dbg.op == "IDENTITY" and not is_ask(e.kline.signature)
         for e in bound
     )
+    entries = compile_source(
+        "(cat)\nc\n", tokenizer=tokenizer, signifier=sig, dev=True
+    )
+    asks = [e for e in entries if e.kline.dbg and e.kline.dbg.op == "ASK"]
+    assert any(e.kline.dbg.decoded == "c:[c]" for e in asks)
     # the sigless annotation's own utterance: the ask, binding resolving nodes
     entries = compile_source(
         "(cat)\n", tokenizer=tokenizer, signifier=sig, dev=True
