@@ -249,7 +249,7 @@ def main() -> None:
 
         if not done_event.wait(timeout=args.timeout):
             print(f"\nWARNING: no 'done' event after {args.timeout:.1f}s.")
-        agent.cogitate_join()
+        agent.runner_join()
     except DeadlineExceededError:
         deadline_hit = True
     finally:

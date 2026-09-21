@@ -5,7 +5,7 @@ sys.path.insert(0, ".")
 from pathlib import Path
 from dev.dialogue.harness import load_rationaliser
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin.cogitator import Cogitator
+from kalvin.work_runner import WorkRunner
 from kalvin.kline import is_terminal
 
 tok = BPETokenizer()
@@ -21,7 +21,7 @@ m = [k for k in by_label("MHALL") if not is_terminal(k) and k.nodes != [k.signat
 q_set, c_set = set(w.nodes), set(m.nodes)
 u, o, f = list(q_set - c_set), list(c_set - q_set), list(q_set & c_set)
 
-cog = Cogitator(state)
+cog = WorkRunner(state)
 for m1, m2 in [(u, o), (o, [])]:
     while m1:
         n = m1.pop(0)

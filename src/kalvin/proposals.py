@@ -4,7 +4,7 @@ This module owns the *misfit-comprehension* layer: classifying a candidate
 kline whose signature and nodes' signature disagree, and proposing reshapes
 that bring them back into agreement. A kline is a misfit when its
 signature (what it promises) and its nodes' signature (what it delivers)
-diverge — ``propose_expansions`` is the entry point the cogitator calls.
+diverge — ``propose_expansions`` is the entry point the work runner calls.
 
 The proposals never invent and never leave orphans:
   - No invention: every signature used exists in the model.

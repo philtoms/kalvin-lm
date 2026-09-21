@@ -2,9 +2,9 @@
 
 The Engine rationalises KLines against the Model using a fast/slow split:
   - Fast path: routing (node membership) — no model calls. S1/S4 resolve instantly.
-  - Slow path: cogitation — expand() per work item in a background thread.
+  - Slow path: the work runner — expand() per work item in a background thread.
 
-The Cogitator (slow path) lives in :mod:`kalvin.cogitator`; this module
+The WorkRunner (slow path) lives in :mod:`kalvin.work_runner`; this module
 imports and wires it. All significance computation lives in
 :mod:`kalvin.significance`; graph expansion in :mod:`kalvin.expand`; and
 expansion-proposal logic in :mod:`kalvin.proposals`.
@@ -21,9 +21,9 @@ from typing import Any, Literal, Protocol, runtime_checkable
 
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.agent_codec import AgentCodec
-from kalvin.cogitator import (
-    CogitationHandler,
-    Cogitator,
+from kalvin.work_runner import (
+    WorkHandler,
+    WorkRunner,
     WorkItem,
 )
 from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
@@ -41,10 +41,10 @@ from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.tokenizer import TiktokenNotInstalledError
 
 __all__ = [
-    # CogitationHandler, Cogitator, WorkItem are re-exported from
-    # kalvin.cogitator (their canonical import location).
-    "CogitationHandler",
-    "Cogitator",
+    # WorkHandler, WorkRunner, WorkItem are re-exported from
+    # kalvin.work_runner (their canonical import location).
+    "WorkHandler",
+    "WorkRunner",
     "WorkItem",
     "Engine",
     "EngineAdapter",
@@ -135,7 +135,7 @@ class Engine:
 
         self._adapter: EngineAdapter = adapter
 
-        self._cogitator = Cogitator(
+        self._runner = WorkRunner(
             model=self._model,
             adapter=self._adapter,
             handler=self,
@@ -163,8 +163,8 @@ class Engine:
         return self._adapter
 
     @property
-    def cogitator(self) -> Cogitator:
-        return self._cogitator
+    def runner(self) -> WorkRunner:
+        return self._runner
 
     # Routing
 
@@ -172,7 +172,7 @@ class Engine:
     def _route(query: KLine, candidate: KLine) -> str:
         """Fast classification — node-membership test only. No model call.
 
-        Routes cogitated candidates between S2 and S3 only:
+        Routes slow-path candidates between S2 and S3 only:
           - S2: at least one query node is a candidate node (partial or
             full overlap).
           - S3: no node overlap.
@@ -181,7 +181,7 @@ class Engine:
         structural property established by ``expand()`` / ``model.grounded()``, not
         by node membership. S4 (empty query) never reaches routing because
         Unknown klines are resolved on the fast path in ``rationalise``
-        before any candidate is submitted to the cogitator.
+        before any candidate is submitted to the work runner.
         """
         candidate_nodes = set(candidate.nodes)
         match_count = sum(1 for n in query.nodes if n in candidate_nodes)
@@ -204,7 +204,7 @@ class Engine:
         published events also carries it.
 
         Fast path: routing (no model calls). S1/S4 resolve instantly.
-        Slow path: S2/S3 queued as individual work items for cogitation.
+        Slow path: S2/S3 queued as individual work items for background processing.
 
         Returns True if significant (S1, S4), False if rational (S2, S3).
         """
@@ -301,9 +301,9 @@ class Engine:
 
         for candidate in candidates:
             level = self._route(kline, candidate)
-            # The query KValue flows into the cogitator so the declared
+            # The query KValue flows into the work runner so the declared
             # significance rides the slow path's published events.
-            self._cogitator.submit(WorkItem(value, candidate, level))
+            self._runner.submit(WorkItem(value, candidate, level))
 
         return False
 
@@ -319,7 +319,7 @@ class Engine:
            non-literal node (countersign/denote pair), or a canonical
            composition (canonization entry).
 
-        Does NOT promote cogitator expansion proposals (multi-node non-
+        Does NOT promote work runner expansion proposals (multi-node non-
         canonical klines) that merely share signature bits.
         """
         model = self._model
@@ -363,10 +363,10 @@ class Engine:
 
     # Graph Expansion Resolution
 
-    # CogitationHandler protocol
+    # WorkHandler protocol
 
     def on_s1(self, query_value: KValue, candidate: KLine) -> None:
-        """CogitationHandler.on_s1: promote, publish frame event.
+        """WorkHandler.on_s1: promote, publish frame event.
 
         ``query_value`` is the original inbound KValue; its kline is the
         query voice for promotion. The candidate kline becomes the proposal,
@@ -383,13 +383,13 @@ class Engine:
         significance: int,
         original_candidate: KLine | None = None,
     ) -> None:
-        """CogitationHandler.on_expansion: write proposal to Frame, publish frame event.
+        """WorkHandler.on_expansion: write proposal to Frame, publish frame event.
 
         The proposal kline carries the ``expand()``-computed significance,
         not a band-representative value. ``query_value`` is the original inbound
         KValue.
 
-        ``original_candidate`` is retained on the signature for the cogitator's
+        ``original_candidate`` is retained on the signature for the work runner's
         dispatch but is no longer carried onto the event (the ``candidate``
         field is gone). It is intentionally unused here.
         """
@@ -397,16 +397,16 @@ class Engine:
         self._model.add_to_frame(proposal)
         self._publish("frame", query_value, KValue(proposal, significance))
 
-    def cogitate_join(self, timeout: float | None = None) -> None:
-        """Stop the cogitate thread and wait for it to finish."""
-        self._cogitator.join(timeout)
+    def runner_join(self, timeout: float | None = None) -> None:
+        """Stop the work runner and wait for it to finish."""
+        self._runner.join(timeout)
 
-    def cogitate_drain(self, timeout: float | None = None) -> bool:
-        """Drain pending cogitation work items without stopping the thread.
+    def runner_drain(self, timeout: float | None = None) -> bool:
+        """Drain pending work items without stopping the thread.
 
         Returns True if drained within *timeout*, False if timed out.
         """
-        return self._cogitator.drain(timeout)
+        return self._runner.drain(timeout)
 
     # Events
 

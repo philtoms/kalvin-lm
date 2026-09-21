@@ -448,7 +448,7 @@ class Aggregator:
 
 
 #: Module-level default aggregator: default layout, asymptotic decay (k=50),
-#: mean compose. cogitator uses this unless constructed otherwise.
+#: mean compose. The work runner uses this unless constructed otherwise.
 DEFAULT_AGGREGATOR = Aggregator()
 
 

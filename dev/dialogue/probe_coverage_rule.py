@@ -6,7 +6,7 @@ sys.path.insert(0, ".")
 from pathlib import Path
 from dev.dialogue.harness import load_rationaliser
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin.cogitator import Cogitator
+from kalvin.work_runner import WorkRunner
 from kalvin.kline import is_terminal
 
 tok = BPETokenizer()
@@ -47,8 +47,8 @@ def expand_cov(self, underfit, overfit, fit):
         return [], 0
     return proposal, distance
 
-Cogitator.expand = expand_cov
-cog = Cogitator(state)
+WorkRunner.expand = expand_cov
+cog = WorkRunner(state)
 
 def by_label(label):
     return [k for k in state.where(lambda k: getattr(k.signature, "label", None) == label)]

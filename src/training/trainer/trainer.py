@@ -422,7 +422,7 @@ class Trainer:
     # Cogitator drain
 
     def _handle_drained(self, msg: Message) -> None:
-        """Handle the drained response: all previous-lesson cogitation work
+        """Handle the drained response: all previous-lesson work
         is done, so submit the next lesson."""
         if not self._drain_pending:
             logger.debug("Ignoring unexpected drained event")

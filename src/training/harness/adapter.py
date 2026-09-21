@@ -37,7 +37,7 @@ explicitly **out of scope**.
 Thread model
 ------------
 ``on_message`` executes on the bus dispatch thread.
-``on_event`` is called from the Cogitator background thread via
+``on_event`` is called from the WorkRunner background thread via
 ``Engine._publish`` → ``adapter.on_event``.
 
 Model access: :class:`~kalvin.model.Model` and :class:`~kalvin.stm.STM` are
@@ -167,7 +167,7 @@ class EngineAdapter:
         self._signifier: KSignifier | None = signifier
 
         # Sender map: (signature, frozen_nodes) → sender role. Written in
-        # on_message (bus thread), read in on_event (cogitator thread).
+        # on_message (bus thread), read in on_event (work-runner thread).
         self._sender_map: dict[EntryKey, str] = {}
 
         bus.subscribe(self._role, self.on_message)
@@ -276,14 +276,14 @@ class EngineAdapter:
     # Internal handlers
 
     def drain(self, timeout: float | None = None) -> bool:
-        """Drain pending cogitation work items from the Engine.
+        """Drain pending work items from the Engine.
 
         Returns True if drained within *timeout*, False if timed out.
         No-op if no Engine is bound.
         """
         if self._engine is None:
             return True
-        return self._engine.cogitate_drain(timeout)
+        return self._engine.runner_drain(timeout)
 
     def _handle_submit(self, msg: Message) -> None:
         """Compile KScript source and submit each entry to Engine."""
@@ -422,7 +422,7 @@ class EngineAdapter:
 
             self._engine._model = model
             self._engine._activity = activity
-            self._engine._cogitator._model = model  # rebind cogitator's model ref
+            self._engine._runner._model = model  # rebind the work runner's model ref
 
             logger.info("Kalvin model loaded from %s", path)
             self._bus.send(
@@ -443,7 +443,7 @@ class EngineAdapter:
             )
 
     def _handle_drain(self, msg: Message) -> None:
-        """Drain pending cogitation work items.
+        """Drain pending work items.
 
         Waits for the Cogitator to finish processing all queued work items,
         then responds with a confirmation. This ensures that events from
@@ -453,8 +453,8 @@ class EngineAdapter:
         if self._engine is None:
             logger.debug("Drain: no Engine bound — responding immediately")
         else:
-            logger.info("Draining cogitator...")
-            drained = self._engine.cogitate_drain(timeout=timeout or 30.0)
+            logger.info("Draining the work runner...")
+            drained = self._engine.runner_drain(timeout=timeout or 30.0)
             if drained:
                 logger.info("Cogitator drained")
             else:
