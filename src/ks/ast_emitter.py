@@ -163,10 +163,6 @@ class ASTEmitter:
         # Scope/annotation tracking for KDbg.annotation and KDbg.scope.
         self._scope_annotation: str = ""
         self._pending_annotation: str = ""
-        # Nesting depth for KDbg.scope: a scope's own constructs emit at its
-        # depth (root 0), each nested scope's one deeper. Expansion entries
-        # sit one below their spawning scope — never scope-0.
-        self._scope_depth: int = 0
 
     # Public API
 
@@ -194,6 +190,12 @@ class ASTEmitter:
                     self._emit_ask(self._pending_annotation)
             elif isinstance(construct, Block):
                 self._process_constructs(construct.constructs)
+
+    def _scope_level(self) -> int:
+        """The binding frame an entry resides in (KDbg.scope): the root
+        (global) frame is 0, each pushed subscript one deeper. 0 when no
+        BindingScope is attached."""
+        return self._scope.depth if self._scope is not None else 0
 
     def _emit_ask(self, text: str) -> None:
         """Emit a sigless annotation as an ask kline: ``ABC:[a big cat]``.
@@ -293,7 +295,7 @@ class ASTEmitter:
                 # not the cached compound canon's.
                 ask = canon._replace(
                     op="ASK", is_ask=True, is_expansion=False,
-                    scope=self._scope_depth,
+                    scope=self._scope_level(),
                     annotation=self._scope_annotation,
                 )
                 if canon_created:
@@ -606,7 +608,7 @@ class ASTEmitter:
             sig=sig, nodes=nodes, op=op, is_expansion=is_expansion, is_ask=is_ask,
             concat=concat,
             annotation=self._scope_annotation,
-            scope=self._scope_depth + 1 if is_expansion else self._scope_depth,
+            scope=self._scope_level() + 1 if is_expansion else self._scope_level(),
             goal=goal,
         ))
 
@@ -692,9 +694,6 @@ class ASTEmitter:
             if has_recursive_content and canon_idx is None:
                 self._in_canonicalise_subscript = True
 
-        # Nested constructs sit one scope deeper (KDbg.scope depth).
-        saved_depth = self._scope_depth
-        self._scope_depth += 1
         for item in scope.items:
             if isinstance(item, OperatorScope):
                 self._process_scope(item)
@@ -719,8 +718,6 @@ class ASTEmitter:
                     continue
                 # Bare scopes (op=None) emit ASK in _process_scope.
                 self._process_constructs([construct])
-
-        self._scope_depth = saved_depth
 
         if pushed_scope and self._scope is not None:
             self._scope.pop_scope()

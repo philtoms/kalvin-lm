@@ -731,3 +731,6 @@
 ## [2026-09-21T14:11:42.276Z] observe
 - slug: "obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr", title: "KDbg.scope now carries AST nesting depth; scope-0 = root constructs", relevance: "high"
 
+## [2026-09-21T14:43:11.369Z] observe
+- slug: "obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti", title: "KDbg.scope aligned to BindingScope frames — one scope definition in the compiler", relevance: "high"
+

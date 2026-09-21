@@ -294,6 +294,7 @@
 - [[sources/obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin]] — Observation: CONTEXT.md KScript entries collapsed to code-pointer one-liners *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s]] — Observation: dev/ks/compile.py now takes script path and optional --model state *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g]] — Observation: Harness sub-script delineation simplified to scope-0 entry groups *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti]] — Observation: KDbg.scope aligned to BindingScope frames — one scope definition in the compiler *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr]] — Observation: KDbg.scope now carries AST nesting depth; scope-0 = root constructs *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha]] — Observation: KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-]] — Observation: MTS retired (85083f5): compound/expansion/canon triple aligned everywhere *(created: 2026-09-21)*
@@ -313,4 +314,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T14:11:42.352Z* | *Total pages: 301*
+*Last updated: 2026-09-21T14:43:11.437Z* | *Total pages: 302*

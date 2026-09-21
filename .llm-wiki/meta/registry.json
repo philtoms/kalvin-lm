@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T14:11:42.352Z",
+  "last_updated": "2026-09-21T14:43:11.437Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4130,6 +4130,23 @@
       "relevance": "high",
       "observed_at": "2026-09-21T14:01:41.968Z",
       "source_context": "Simplifying sub-script delineation in src/dialogue/harness.py",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti": {
+      "type": "source",
+      "title": "Observation: KDbg.scope aligned to BindingScope frames — one scope definition in the compiler",
+      "tags": [
+        "domain",
+        "kscript",
+        "scope",
+        "binding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti",
+      "relevance": "high",
+      "observed_at": "2026-09-21T14:43:11.366Z",
+      "source_context": "Aligning KDbg.scope with BindingScope frames after scope-terminology discussion",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

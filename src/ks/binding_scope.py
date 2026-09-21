@@ -101,6 +101,11 @@ class BindingScope:
         """File-level char → word memory of every successful resolution."""
         return self._resolved
 
+    @property
+    def depth(self) -> int:
+        """The current frame's nesting level — the root (global) frame is 0."""
+        return len(self._stack) - 1
+
     def push_scope(self) -> None:
         """Push a new scope onto the stack.
 
