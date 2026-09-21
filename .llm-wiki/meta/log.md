@@ -695,3 +695,12 @@
 ## [2026-09-21T09:54:53.239Z] observe
 - slug: "obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl", title: "Bracket audit: required for lowercase/digit/case-control, stylistic otherwise", relevance: "low"
 
+## [2026-09-21T10:16:13.089Z] observe
+- slug: "obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar", title: "Symbol range committed (4d1bbb9): caseless words + MTS alnum guard", relevance: "high"
+
+## [2026-09-21T10:34:31.362Z] observe
+- slug: "obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill", title: "script-reading.md three-layer revision settled via grill", relevance: "high"
+
+## [2026-09-21T10:37:44.082Z] observe
+- slug: "obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model", title: "script-reading.md rewritten around three-layer model", relevance: "medium"
+

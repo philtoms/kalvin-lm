@@ -101,3 +101,9 @@ class TestReservedSymbols:
         for ch in "?!,:;":
             with pytest.raises(LexerError):
                 Lexer(f"A = x{ch}\n").tokenize()
+
+    def test_reserved_punctuated_word_via_bracketed_witness(self):
+        # `? ! ,` stay reserved: punctuated words are written bracketed
+        # (the tail is free-form text), and attraction already matches them.
+        assert _decoded("w(hat?) = Q\n") == ["DENOTES | what?:[Q]"]
+        assert _decoded("(what? yes!)\nW = X\n") == ["DENOTES | what?:[X]"]

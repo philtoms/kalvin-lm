@@ -2,6 +2,9 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model","title":"script-reading.md rewritten around three-layer model"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill","title":"script-reading.md three-layer revision settled via grill"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar","title":"Symbol range committed (4d1bbb9): caseless words + MTS alnum guard"}
 - **observe**: {"relevance":"low","slug":"obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl","title":"Bracket audit: required for lowercase/digit/case-control, stylistic otherwise"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests","title":"Case rule implemented: expansion hooks + sig-case gate, 83 tests green"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-","title":"Attraction refined to uppercase-only: lowercase single chars are literal words"}

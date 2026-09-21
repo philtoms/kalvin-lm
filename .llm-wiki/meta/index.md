@@ -291,6 +291,9 @@
 - [[sources/obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial]] — Observation: Case-triad rule sketched: Capitalized words expand as Initial(tail) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete]] — Observation: Committed 3932429: Def 1 seam migration complete *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is]] — Observation: Optional bracket syntax analyzed: klines invariant, binding is the delta *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model]] — Observation: script-reading.md rewritten around three-layer model *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill]] — Observation: script-reading.md three-layer revision settled via grill *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar]] — Observation: Symbol range committed (4d1bbb9): caseless words + MTS alnum guard *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme]] — Observation: Tetrad completed: single char is the pure attractor (environmental reading) *(created: 2026-09-21)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
@@ -301,4 +304,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T09:54:53.295Z* | *Total pages: 289*
+*Last updated: 2026-09-21T10:37:44.147Z* | *Total pages: 292*
