@@ -2,10 +2,12 @@
 
 Handles:
   - Multi-character operators (==, =>) before single-char (=, >)
-  - Signatures [a-zA-Z][a-zA-Z0-9]* with optional inline annotation
+  - Signatures — alphanumerics plus the word-internal punctuation
+    allowlist `- . _ '` — with optional inline annotation
   - Annotations (...) with nested paren handling
   - Python-style INDENT/DEDENT tokens
-  - Unknown characters raise LexerError
+  - Unknown characters (including operator and structural marks:
+    = > < ( ) #) raise LexerError
 
 Key difference from v2: COMMENT tokens are now ANNOTATION tokens,
 reflecting their semantic purpose in BPE encoding.
@@ -14,6 +16,12 @@ reflecting their semantic purpose in BPE encoding.
 from __future__ import annotations
 
 from .token import Token, TokenType
+
+#: Word-internal punctuation admitted in identifiers. An allowlist, not a
+#: denylist: operator and structural marks (= > < ( ) #, whitespace) never
+#: enter it, so current and future operators stay protected. `? ! ,` are
+#: deliberately held back as reserved-syntax candidates.
+_IDENT_PUNCT = frozenset("-._'")
 
 
 class LexerError(Exception):
@@ -35,7 +43,8 @@ class Lexer:
     """Tokenizes KScript source code with indentation tracking.
 
     The lexer produces a flat list of Token objects from a source string.
-    Only SIGNATURE tokens ([a-zA-Z][a-zA-Z0-9]*) can be construct owners in the grammar.
+    Only SIGNATURE tokens (alphanumerics plus `- . _ '`) can be construct
+    owners in the grammar.
 
     Usage::
 
@@ -137,7 +146,7 @@ class Lexer:
         if ch == "<":
             return self._make_token(TokenType.RCONNOTES, "<")
 
-        if ch.isalpha():
+        if ch.isalpha() or ch.isdigit() or ch in _IDENT_PUNCT:
             return self._read_identifier()
 
         if ch == "(":
@@ -184,14 +193,13 @@ class Lexer:
         return Token(TokenType.NEWLINE, "\n", line, col)
 
     def _read_identifier(self) -> Token:
-        """Read an identifier [a-zA-Z][a-zA-Z0-9]*.
+        """Read an identifier: alphanumerics plus `- . _ '`.
 
-        Returns SIGNATURE for any alphabetic identifier (case-insensitive).
-        Signatures may be uppercase (MHALL), lowercase words (had, did), or
-        mixed — the uppercase-only rule was redundant once Mod32 token support
-        was dropped, and prevented the lowercase-word identifiers Word Binding
-        needs. Case is not a disambiguator: operators are matched before
-        identifiers, and there are no keywords.
+        Returns SIGNATURE for any admitted identifier. Case is not a
+        disambiguator here — it frames the reading downstream (compound /
+        expansion / literal word; see CONTEXT.md, Word Binding) — and a
+        caseless first character (a digit or punctuation mark) starts a
+        literal word just as a lowercase letter does.
 
         When '(' immediately follows the identifier (e.g., S(ubject)),
         reads the annotation and queues it as a pending ANNOTATION token.
@@ -206,18 +214,18 @@ class Lexer:
         if self.pos < len(self.source) and self.source[self.pos] == "(":
             self.pending_tokens.append(self._read_annotation())
 
-        if name and name[0].isalpha():
+        if name and (name[0].isalnum() or name[0] in _IDENT_PUNCT):
             return Token(TokenType.SIGNATURE, name, start_line, start_col)
 
         raise LexerError(
-            f"Invalid identifier '{name}': identifiers must start with a letter.",
+            f"Invalid identifier '{name}'",
             start_line,
             start_col,
         )
 
     def _is_ident_char(self, ch: str) -> bool:
-        """Check if character is valid in an identifier (alphanumeric)."""
-        return ch.isalnum()
+        """Check if character is valid in an identifier."""
+        return ch.isalnum() or ch in _IDENT_PUNCT
 
     def _read_annotation(self) -> Token:
         """Read an annotation (...) — multi-line, handles nested parens.

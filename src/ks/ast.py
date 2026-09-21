@@ -15,7 +15,9 @@ from .token import TokenType
 
 @dataclass
 class Signature:
-    """An identifier [a-zA-Z][a-zA-Z0-9]* (case-insensitive).
+    """An identifier: alphanumerics plus the word-internal punctuation
+    `- . _ '`. Case frames the reading (compound / expansion / literal
+    word; see CONTEXT.md, Word Binding).
 
     Can appear as a scope's signature or as a bare node within a scope's items.
     When used as an item, may carry an ``inline_annotation`` — an annotation

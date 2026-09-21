@@ -692,3 +692,6 @@
 ## [2026-09-21T09:50:00.072Z] observe
 - slug: "obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests", title: "Case rule implemented: expansion hooks + sig-case gate, 83 tests green", relevance: "high"
 
+## [2026-09-21T09:54:53.239Z] observe
+- slug: "obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl", title: "Bracket audit: required for lowercase/digit/case-control, stylistic otherwise", relevance: "low"
+

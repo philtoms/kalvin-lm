@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T09:50:00.142Z",
+  "last_updated": "2026-09-21T09:54:53.295Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3990,6 +3990,24 @@
       "relevance": "high",
       "observed_at": "2026-09-21T09:40:30.980Z",
       "source_context": "Refining single-char attraction after user pushback on lowercase article miss-binding",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl": {
+      "type": "source",
+      "title": "Observation: Bracket audit: required for lowercase/digit/case-control, stylistic otherwise",
+      "tags": [
+        "kscript",
+        "ks",
+        "annotations",
+        "syntax",
+        "design"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl",
+      "relevance": "low",
+      "observed_at": "2026-09-21T09:54:53.237Z",
+      "source_context": "Auditing bracket purpose after the case-rule implementation",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

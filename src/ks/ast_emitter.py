@@ -519,11 +519,13 @@ class ASTEmitter:
         if no MTS was emitted (single-char or non-uppercase identifier).
         """
         # MTS character-decomposition applies only to all-uppercase
-        # multi-character identifiers (compounds: MHALL, SVO, ALL). A
-        # lowercase/mixed-case multi-char identifier is a single word
-        # (had, did, all) admitted by the case-insensitive SIGNATURE rule;
-        # decomposing it by character would be wrong.
-        if len(sig) <= 1 or not sig.isupper():
+        # multi-character identifiers (compounds: MHALL, SVO, ALL), and
+        # compounds are alnum-only: a punctured identifier (A-1) is a word,
+        # not a compound — its characters do not decompose. A
+        # lowercase/mixed-case/caseless multi-char identifier is a single
+        # word (had, did, all, 7up, 3.14) admitted by the case-framed
+        # SIGNATURE rule; decomposing it by character would be wrong.
+        if len(sig) <= 1 or not sig.isupper() or not sig.isalnum():
             return None
 
         # Resolve once on first expansion; reuse the cached list so

@@ -2,6 +2,7 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"low","slug":"obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl","title":"Bracket audit: required for lowercase/digit/case-control, stylistic otherwise"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests","title":"Case rule implemented: expansion hooks + sig-case gate, 83 tests green"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-","title":"Attraction refined to uppercase-only: lowercase single chars are literal words"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme","title":"Tetrad completed: single char is the pure attractor (environmental reading)"}

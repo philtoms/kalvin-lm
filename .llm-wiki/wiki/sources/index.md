@@ -207,6 +207,7 @@
 - [Observation: Appendix added: the word-bit realisation in construction detail](obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta.md)
 - [Observation: Def 1 honored in engine: measure/units/same_content on KSignifier; derivation.py fully seam-routed](obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni.md)
 - [Observation: Attraction refined to uppercase-only: lowercase single chars are literal words](obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-.md)
+- [Observation: Bracket audit: required for lowercase/digit/case-control, stylistic otherwise](obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl.md)
 - [Observation: Case rule implemented: expansion hooks + sig-case gate, 83 tests green](obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests.md)
 - [Observation: Case-triad rule sketched: Capitalized words expand as Initial(tail)](obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial.md)
 - [Observation: Committed 3932429: Def 1 seam migration complete](obs-2026-09-21-committed-3932429-def-1-seam-migration-complete.md)

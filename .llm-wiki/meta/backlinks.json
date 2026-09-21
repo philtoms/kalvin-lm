@@ -989,6 +989,7 @@
   "sources/obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta": [],
   "sources/obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni": [],
   "sources/obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-": [],
+  "sources/obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl": [],
   "sources/obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests": [],
   "sources/obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial": [],
   "sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete": [],

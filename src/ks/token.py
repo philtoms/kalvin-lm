@@ -16,7 +16,7 @@ class TokenType(Enum):
         DENOTES:      =   (denotation)
 
     Node types:
-        SIGNATURE: [a-zA-Z][a-zA-Z0-9]*    (identifier — case-insensitive; can be construct owner)
+        SIGNATURE: [A-Za-z0-9-._']+ continues [A-Za-z0-9-._']    (identifier — case frames the reading; can be construct owner)
 
     Structure:
         ANNOTATION: (...)    (parenthesized annotation)
@@ -34,7 +34,7 @@ class TokenType(Enum):
     DENOTES = auto()  # =
 
     # Node types
-    SIGNATURE = auto()  # [a-zA-Z][a-zA-Z0-9]*
+    SIGNATURE = auto()  # [A-Za-z0-9-._'] (operators/structure =><()# excluded)
 
     # Structure
     ANNOTATION = auto()  # (...)
