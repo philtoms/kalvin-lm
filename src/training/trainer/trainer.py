@@ -1,6 +1,6 @@
 """Trainer participant — embedded harness component that drives the training loop.
 
-The Trainer submits curriculum lessons to the Rationaliser and manages session
+The Trainer submits curriculum lessons to the Engine and manages session
 lifecycle (start/stop/pause, curriculum loading, file polling, progress
 emission, message routing). Reactive decisions — what to do when a proposal
 cannot be auto-ratified — are owned by a supervisor participant; the Trainer
@@ -132,7 +132,7 @@ class Trainer:
         self._drain_pending: bool = False
 
         # Decision gate. When a ratify_request is emitted
-        # the Trainer holds subsequent Rationaliser events until the supervisor
+        # the Trainer holds subsequent Engine events until the supervisor
         # replies (``supervisor_decision`` action). This makes the supervisor
         # the gating decision-maker: the lesson cannot advance
         # (``_check_lesson_complete`` / next-lesson submit are among the held
@@ -232,7 +232,7 @@ class Trainer:
     def on_message(self, msg: Message) -> None:
         """Route incoming messages by action.
 
-        Routed by ``msg.action`` (not ``sender``) because the RationaliserAdapter
+        Routed by ``msg.action`` (not ``sender``) because the EngineAdapter
         forwards event messages without setting ``sender``.
         """
         action = msg.action
@@ -243,7 +243,7 @@ class Trainer:
             self._handle_supervisor_decision(msg)
             return
 
-        # While a decision is pending, hold Rationaliser events until the
+        # While a decision is pending, hold Engine events until the
         # supervisor replies. This is what makes the supervisor gating: the
         # run cannot advance past the pending proposal. ``supervisor_decision``
         # above bypasses the hold so the reply is always processed immediately.
@@ -261,11 +261,11 @@ class Trainer:
             if not self._session_active:
                 logger.debug("Ignoring %s event — no active session", action)
                 return
-            self._handle_rationaliser_event(msg)
+            self._handle_engine_event(msg)
         elif action == "error":
             if not self._session_active:
                 return
-            self._handle_rationaliser_error(msg)
+            self._handle_engine_error(msg)
         elif action == "drained":
             self._handle_drained(msg)
         elif action == "input":
@@ -273,10 +273,10 @@ class Trainer:
         else:
             logger.warning("Unknown action %r from %s", action, msg.sender)
 
-    # Rationaliser event handling
+    # Engine event handling
 
-    def _handle_rationaliser_event(self, msg: Message) -> None:
-        """Process a Rationaliser ground or frame event."""
+    def _handle_engine_event(self, msg: Message) -> None:
+        """Process a Engine ground or frame event."""
         event: RationaliseEvent = msg.message
 
         _log_tok = _display_tokenizer()
@@ -404,15 +404,15 @@ class Trainer:
 
         self._check_lesson_complete()
 
-    def _handle_rationaliser_error(self, msg: Message) -> None:
-        """Log Rationaliser error and abandon the current lesson.
+    def _handle_engine_error(self, msg: Message) -> None:
+        """Log Engine error and abandon the current lesson.
 
         An error means the lesson source could not be processed (e.g.
         ParseError). Mark every submitted-but-unsatisfied entry as
         satisfied so the lesson completes — errors must not stall the
         curriculum.
         """
-        self._state.log_event("rationaliser_error", {"message": str(msg.message)})
+        self._state.log_event("engine_error", {"message": str(msg.message)})
         # Satisfy all pending entries so _check_lesson_complete can fire.
         unsatisfied = self._state.submitted - self._state.satisfied
         for key in unsatisfied:
@@ -454,7 +454,7 @@ class Trainer:
         self._pending_decision = None
 
         if decision == "ratify":
-            # Accept the pending proposal: countersign via Rationaliser.
+            # Accept the pending proposal: countersign via Engine.
             self._bus.send(
                 Message(
                     role=TRAINEE_ROLE,

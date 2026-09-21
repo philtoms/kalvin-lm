@@ -1,11 +1,11 @@
-"""Probe the engine turn-by-turn on the MHALL opening.
+"""Probe the rationaliser turn-by-turn on the MHALL opening.
 
-Feeds the first T queries by hand through the dialogue harness's engine and
+Feeds the first T queries by hand through the dialogue harness's rationaliser and
 prints K's batch + observations, so we can verify the expected behaviour:
   - After `MHALL COUNTERSIGNS SVO` (S2 proposal), K emits identity asks
     for the unrecognised signatures.
   - After `MHALL CANONICALISES [Mary, had, a, little, lamb]` (an S2-stamped
-    canon), the engine ignores the subjective S2 stamp, treats it as the
+    canon), the rationaliser ignores the subjective S2 stamp, treats it as the
     canon it structurally is, and the next batch is a run of identity
     asks for the unrecognised canon nodes.
 """
@@ -22,7 +22,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from dev.dialogue.harness import make_engine  # noqa: E402
+from dev.dialogue.harness import make_rationaliser  # noqa: E402
 from kalvin.kline import sig_level  # noqa: E402
 from kalvin.bpe_tokenizer import BPETokenizer  # noqa: E402
 from kalvin.significance import BandLayout  # noqa: E402
@@ -74,13 +74,13 @@ def _show_obs(obs, labels):
 
 def main() -> None:
     tok = BPETokenizer()
-    harness = make_engine(tok)
+    harness = make_rationaliser(tok)
     entries = compile_source(
         "(Mary had a little lamb)MHALL == SVO",
         tokenizer=tok, signifier=harness.signifier, dev=True,
     )
     labels = _label_map(entries)
-    engine, state = harness.engine, harness.state
+    rationaliser, state = harness.rationaliser, harness.state
 
     def step(tag, query):
         print(f"\n----- T query: {tag} -----")
@@ -92,7 +92,7 @@ def main() -> None:
         print(f"  incoming: {op:12s} {lab!s:20s} nodes={nodes}  "
               f"declared={_LAYOUT.classify(query.significance)}  "
               f"structural={struct}")
-        batch = engine.rationalise([query])
+        batch = rationaliser.rationalise([query])
         _show_batch("K batch", batch, labels)
         print(f"  work_list depth: {len(state.work_list)}")
         for e in state.work_list:

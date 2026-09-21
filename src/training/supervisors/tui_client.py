@@ -5,7 +5,7 @@ Provides:
 - **HarnessClient**: async WebSocket client that handles registration
   (``{"register": "supervisor"}``) and bidirectional JSON message send/receive
   via asyncio queues.
-- **TUIApp**: Textual application that renders Rationaliser events and provides
+- **TUIApp**: Textual application that renders Engine events and provides
   ratification (countersign) controls.
 """
 
@@ -166,7 +166,7 @@ class HarnessClient:
 class TUIApp(App):
     """Textual TUI for the harness participant.
 
-    Displays Rationaliser events routed from the harness via ``EventLog`` and
+    Displays Engine events routed from the harness via ``EventLog`` and
     provides ratification (countersign) controls via ``RatifyBar``.
 
     On mount: creates a ``HarnessClient``, connects to the harness, and

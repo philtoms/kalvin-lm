@@ -1,11 +1,11 @@
-"""Event bus for Rationaliser pub/sub pattern.
+"""Event bus for Engine pub/sub pattern.
 
-EventBus is a test-friendly adapter that satisfies the RationaliserAdapter protocol
-(defined in ``kalvin.rationaliser``).  It provides ``on_event(event)`` for the
+EventBus is a test-friendly adapter that satisfies the EngineAdapter protocol
+(defined in ``kalvin.engine``).  It provides ``on_event(event)`` for the
 adapter contract plus ``subscribe(callback)`` / ``publish(event)`` for
 pub/sub use in tests and the TUI dev mode.
 
-For production wiring, use ``RationaliserAdapter`` from ``harness.adapter`` instead.
+For production wiring, use ``EngineAdapter`` from ``harness.adapter`` instead.
 """
 
 from __future__ import annotations

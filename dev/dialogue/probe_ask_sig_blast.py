@@ -15,12 +15,12 @@ from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.kline import KLine, is_terminal, is_canon, is_exact, sig_level, classify_misfit
 from kalvin.significance import word_atom_count, misfit_mass
 from kalvin.hop import candidate_goals
-from dev.dialogue.harness import load_engine
+from dev.dialogue.harness import load_rationaliser
 
 ASK_SIG = 1 << 63  # bit 31 of the word word
 
 tok = BPETokenizer()
-h = load_engine(Path("data/dialogue/wdmh-underfit.json"), tok)
+h = load_rationaliser(Path("data/dialogue/wdmh-underfit.json"), tok)
 st, sig = h.state, h.signifier
 
 def name(v):

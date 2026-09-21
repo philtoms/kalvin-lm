@@ -6,6 +6,6 @@ from kalvin.events import EventBus, RationaliseEvent
 from kalvin.kvalue import KValue
 
 # EventBus is kept as a test/dev utility adapter implementing the
-# RationaliserAdapter protocol.  Production code should use the RationaliserAdapter
+# EngineAdapter protocol.  Production code should use the EngineAdapter
 # from harness.adapter instead.
 __all__ = ["EventBus", "KValue", "RationaliseEvent", "__version__"]

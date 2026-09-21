@@ -4,7 +4,7 @@ sys.path.insert(0, "src")
 sys.path.insert(0, ".")
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from dev.dialogue.harness import load_engine
+from dev.dialogue.harness import load_rationaliser
 
 tok = BPETokenizer()
 
@@ -30,7 +30,7 @@ def decode(v):
         return f"(undecodable token {tok_id})"
 
 
-h = load_engine("data/dialogue/mhall.json", tok)
+h = load_rationaliser("data/dialogue/mhall.json", tok)
 
 print("word bits (word -> bit):")
 for w, b in sorted(h.word_bits.items(), key=lambda kv: kv[1]):

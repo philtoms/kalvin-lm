@@ -8,10 +8,10 @@ from pathlib import Path
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.kline import KLine, is_terminal
 from kalvin.hop import candidate_goals
-from dev.dialogue.harness import load_engine
+from dev.dialogue.harness import load_rationaliser
 
 tok = BPETokenizer()
-h = load_engine(Path("data/dialogue/wdmh-underfit.json"), tok)
+h = load_rationaliser(Path("data/dialogue/wdmh-underfit.json"), tok)
 st = h.state
 sig = h.signifier
 

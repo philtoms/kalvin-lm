@@ -2,7 +2,7 @@
 
 The script compiles to structure plus an *intended* significance — what the
 script's klines prove when every declared kline is held. This module derives
-that intent with the same structural predicates the engine applies to itself
+that intent with the same structural predicates the rationaliser applies to itself
 (:func:`kalvin.kline.is_canon`, :meth:`signifier.residual`, ``signature_of``)
 and grades a proposal against it:
 

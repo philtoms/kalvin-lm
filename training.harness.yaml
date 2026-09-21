@@ -23,7 +23,7 @@ trainer:
 participants:
   - role: trainee
     type: embedded
-    class: Rationaliser
+    class: Engine
 
   - role: trainer
     type: embedded

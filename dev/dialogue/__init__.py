@@ -1,1 +1,1 @@
-"""Development harness and probes for tuning the kalvin engine."""
+"""Development harness and probes for tuning the kalvin rationaliser."""

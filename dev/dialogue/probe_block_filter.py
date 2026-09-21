@@ -1,5 +1,5 @@
 
-from kalvin.engine import Engine
+from kalvin.rationaliser import Rationaliser
 from kalvin.memory import Memory
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, SIG_S3
@@ -14,7 +14,7 @@ from kalvin.kline import is_identity, is_canon
 
 def run(filter_primed):
     st = Memory(NLPSignifier())
-    en = Engine(st)
+    en = Rationaliser(st)
     priming = [e for e in entries if (is_identity(e.kline) or is_canon(e.kline, st.signifier)) and not st.is_grounded(e.kline)]
     en.rationalise([KValue(e.kline, SIG_S1) for e in priming])
     primed = {(e.kline.signature, tuple(e.kline.nodes)) for e in priming if st.is_grounded(e.kline)}

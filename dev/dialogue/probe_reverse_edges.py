@@ -3,14 +3,14 @@ import sys
 sys.path.insert(0, "src")
 sys.path.insert(0, ".")
 from pathlib import Path
-from dev.dialogue.harness import load_engine
+from dev.dialogue.harness import load_rationaliser
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.cogitator import Cogitator
 from kalvin.kline import KLine, is_terminal, is_identity
 from kalvin.signifier import _TYPE_MASK
 
 tok = BPETokenizer()
-h = load_engine(Path("data/dialogue/mhall.json"), tok)
+h = load_rationaliser(Path("data/dialogue/mhall.json"), tok)
 h.run(Path("data/scripts/wdmh-underfit.ks").read_text())
 state, sig = h.state, h.state.signifier
 

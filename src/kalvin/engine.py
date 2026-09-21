@@ -1,203 +1,482 @@
-r"""The rationalising engine.
+"""Engine — orchestrator of the rationalisation pipeline.
 
-A :class:`Engine` derives one turn from ``(state, incoming)`` and returns
-the batch — the dialogue emissions. The engine is stateless about its own
-emissions; dedup lives in the
-actor.
+The Engine rationalises KLines against the Model using a fast/slow split:
+  - Fast path: routing (node membership) — no model calls. S1/S4 resolve instantly.
+  - Slow path: cogitation — expand() per work item in a background thread.
 
-The engine is pure mechanism: it holds an :class:`Memory` and
-mutates it in place. The factories that
-assemble signifier, state, and engine live in :mod:`dev.dialogue.harness`.
+The Cogitator (slow path) lives in :mod:`kalvin.cogitator`; this module
+imports and wires it. All significance computation lives in
+:mod:`kalvin.significance`; graph expansion in :mod:`kalvin.expand`; and
+expansion-proposal logic in :mod:`kalvin.proposals`.
+
+Serialization is delegated to the AgentCodec module (see agent_codec.py).
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+import logging
+from collections import Counter
+from pathlib import Path
+from typing import Any, Literal, Protocol, runtime_checkable
 
-from kalvin.hop import run_hops
-from kalvin.kline import (
-    KLine,
-    canon_key,
-    is_ask,
-    sig_level,
-    using_resolver,
+from kalvin.abstract import KSignifier, KTokenizer
+from kalvin.agent_codec import AgentCodec
+from kalvin.cogitator import (
+    CogitationHandler,
+    Cogitator,
+    WorkItem,
 )
-from kalvin.kvalue import KValue
-from kalvin.memory import Memory
+from kalvin.events import EventBus, RationaliseEvent  # EventBus: test/dev fallback
 from kalvin.significance import (
-    BandLayout,
-    gamma_to_byte,
+    SIG_S1,
+    SIG_S2,
+    SIG_S4,
+    structural_sig,
 )
+from kalvin.kline import KLine, is_canon, is_identity, sig_level
+from kalvin.kvalue import KValue
+from kalvin.model import Model
+from kalvin.signifier import NLPSignifier
+from kalvin.bpe_tokenizer import BPETokenizer
+from kalvin.tokenizer import TiktokenNotInstalledError
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
-    from kalvin.abstract import KSignifier
+__all__ = [
+    # CogitationHandler, Cogitator, WorkItem are re-exported from
+    # kalvin.cogitator (their canonical import location).
+    "CogitationHandler",
+    "Cogitator",
+    "WorkItem",
+    "Engine",
+    "EngineAdapter",
+    "Agent",
+]
 
-__all__ = ["Engine", "Memory"]
+_log = logging.getLogger(__name__)
 
-# Default band layout, used to classify a query's stamped significance byte
-# into a structural level for routing.
-_LAYOUT = BandLayout()
+# Default tokenizer factory
+
+
+def _default_tokenizer() -> KTokenizer:
+    """Create the default kalvin tokenizer (the sole production tokenizer).
+
+    The kalvin tokenizer is mandatory — there is no fallback.  If the data
+    files are missing, the BPE backend (tiktoken/rustbpe) cannot be loaded,
+    or the data files are unreadable, this raises :class:`RuntimeError`
+    instructing the user to regenerate the data via
+    ``scripts/rebuild-tokenizer-data.sh``.
+    """
+    try:
+        return BPETokenizer()
+    except (FileNotFoundError, ImportError, OSError, TiktokenNotInstalledError) as exc:
+        raise RuntimeError(
+            "Tokenizer data is required but unavailable. "
+            "Run `bash scripts/rebuild-tokenizer-data.sh` to generate data/tokenizer/."
+        ) from exc
+
+
+# Default signifier factory
+
+
+def _default_signifier() -> KSignifier:
+    """Create the default kalvin signifier (the sole production signifier)."""
+    return NLPSignifier()
+
+
+# EngineAdapter Protocol
+
+
+@runtime_checkable
+class EngineAdapter(Protocol):
+    """Protocol for receiving rationalisation events from Engine.
+
+    Any object with an ``on_event(RationaliseEvent)`` method satisfies this
+    protocol.  The concrete ``EngineAdapter`` in ``harness/adapter.py`` is
+    the canonical production implementation; ``EventBus`` (in ``events.py``)
+    is the standard test/dev adapter.
+
+    Note: the name ``EngineAdapter`` intentionally mirrors the concrete class
+    in ``harness/adapter.py`` — that class satisfies this protocol implicitly.
+    """
+
+    def on_event(self, event: RationaliseEvent) -> None: ...
+
+
+# Engine
 
 
 class Engine:
-    """Derives one turn from ``incoming``.
+    """Orchestrator of the rationalisation pipeline.
 
-    Holds the :class:`Memory` it mutates in place. The signifier is
-    read off the state.
+    Parameters
+    ----------
+    tokenizer:
+        Tokenizer instance. Defaults to the kalvin BPETokenizer (the sole
+        production tokenizer). Used for encoding text to nodes.
+    model:
+        Model instance serving as base memory. Defaults to empty Model.
+    adapter:
+        Adapter for receiving events. Must implement ``on_event(event)``.
+        Required — pass an ``EventBus`` for test/dev use, or a
+        ``EngineAdapter`` (from ``harness.adapter``) for production.
     """
 
-    def __init__(self, state: Memory) -> None:
-        self._state: Memory = state
+    def __init__(
+        self,
+        tokenizer: Any = None,
+        model: Model | None = None,
+        signifier: KSignifier | None = None,
+        *,
+        adapter: EngineAdapter,
+    ):
+        self._tokenizer = tokenizer if tokenizer else _default_tokenizer()
+        self._signifier = signifier if signifier is not None else _default_signifier()
+        self._model = model if model is not None else Model(signifier=self._signifier)
+        self._activity: Counter = Counter()
+
+        self._adapter: EngineAdapter = adapter
+
+        self._cogitator = Cogitator(
+            model=self._model,
+            adapter=self._adapter,
+            handler=self,
+            signifier=self._signifier,
+            timeout=2.0,
+        )
+
+    # Properties
 
     @property
-    def state(self) -> Memory:
-        """The engine's mutable memory, mutated in place each turn."""
-        return self._state
+    def model(self) -> Model:
+        return self._model
+
+    @property
+    def tokenizer(self):
+        return self._tokenizer
 
     @property
     def signifier(self) -> KSignifier:
-        """The state's signifier (the single source of truth)."""
-        return self._state.signifier
+        return self._signifier
 
-    def rationalise(
-        self, incoming: Sequence[KValue]
-    ) -> list[KValue]:
-        """Route every incoming query, then cogitate. Returns the dialogue batch."""
-        self._state._dbg_step += 1
+    @property
+    def events(self) -> EngineAdapter:
+        """The adapter, exposed for event inspection (e.g. ``.subscribe()`` on EventBus)."""
+        return self._adapter
 
-        resolver = self._state.find
-        with using_resolver(resolver):
-            batch: list[KValue] = []
-            for query in incoming:
-                if not self._fast_route(query):
-                    self._slow_route(query)
-            batch.extend(self.cogitate())
-            return batch
+    @property
+    def cogitator(self) -> Cogitator:
+        return self._cogitator
 
+    # Routing
 
-    # ── Routing ──────────────────────────────────────────────────────
+    @staticmethod
+    def _route(query: KLine, candidate: KLine) -> str:
+        """Fast classification — node-membership test only. No model call.
 
-    def _fast_route(self, query: KValue) -> bool:
-        kline = query.kline
-        structural_sig = sig_level(kline, self._state.signifier)
-        query_sig = _LAYOUT.classify(query.significance)
+        Routes cogitated candidates between S2 and S3 only:
+          - S2: at least one query node is a candidate node (partial or
+            full overlap).
+          - S3: no node overlap.
 
-        if query_sig == "S4":
-            self._state.refuse(kline)
-            self._state.remove_work(kline)
+        S1 (full overlap) is intentionally NOT routed here — true S1 is a
+        structural property established by ``expand()`` / ``model.grounded()``, not
+        by node membership. S4 (empty query) never reaches routing because
+        Unknown klines are resolved on the fast path in ``rationalise``
+        before any candidate is submitted to the cogitator.
+        """
+        candidate_nodes = set(candidate.nodes)
+        match_count = sum(1 for n in query.nodes if n in candidate_nodes)
+
+        if match_count > 0:
+            return "S2"
+        return "S3"
+
+    # Rationalisation
+
+    def rationalise(self, value: KValue) -> bool:
+        """Rationalise a KValue into the model.
+
+        Operates on ``value.kline`` (the objective structure) for every model
+        call and routing decision — the Model API stays KLine-based (plan D2).
+        ``value.significance`` (the sender's declared assessment) is the
+        counterpart to Kalvin's own assessment in a two-way significance
+        dialog. It is consumed by the significance-comparison gate below
+        (MVP: an S4 disagreement drops the query). The query voice on
+        published events also carries it.
+
+        Fast path: routing (no model calls). S1/S4 resolve instantly.
+        Slow path: S2/S3 queued as individual work items for cogitation.
+
+        Returns True if significant (S1, S4), False if rational (S2, S3).
+        """
+        kline = value.kline
+        # Prepare — callers must provide a set signature. This is a presence
+        # check, not a value-test: 0 is an ordinary signature value (the
+        # empty node set's signature).
+        assert kline.signature is not None, (
+            "KLine.signature must be set before rationalise; callers compute "
+            "it via signifier.signature_of(nodes)."
+        )
+
+        # Significance-comparison gate — Kalvin compares its own derived
+        # significance to the sender's declared significance. MVP: when the
+        # sender declares S4 and Kalvin derives otherwise, Kalvin drops the
+        # query (returns True, no STM write, no event). This sits before the
+        # ground check because a recurring proposal is already in Frame, so a
+        # post-ground gate would be inert against its target.
+        #
+        # S4 is the sentinel SIG_S4 (= 0), detected by value: classify()
+        # collapses the S3|S4 boundary (0 classifies as S3), so the band
+        # function cannot be used to detect S4. The derived band is the
+        # structural band (sig_level → structural_sig) with the one model-state
+        # fork: a structurally-S2 misfit whose reciprocal countersigner is
+        # present upgrades to S1. Only an Unknown ask (empty-nodes Unknown)
+        # derives SIG_S4, so an Unknown kline declared S4 agrees here and is
+        # never dropped.
+        derived_sig = structural_sig(sig_level(kline, self._signifier))
+        if derived_sig == SIG_S2 and self._model.is_countersigned(kline):
+            derived_sig = SIG_S1
+        if value.significance == SIG_S4 and derived_sig != SIG_S4:
+            return True  # drop — sender declares S4; Kalvin derives otherwise
+
+        # Ground check (Frame/LTM/Base only — not STM)
+        if self._model.grounded(kline):
+            self._model.add_to_stm(kline)
+            self._publish("ground", value, KValue(kline, SIG_S1))
             return True
 
-        # A stamped-S1 query is a ratification: ground on receipt, before
-        # any answering — the ratified kline is the answer just granted.
-        # The stamp, not structure, is the licence: the reached-goal
-        # answer is a misfit in the question's head, never groundable
-        # structurally. An ask never grounds however stamped (a question
-        # is not an answer), nor an empty unknown.
-        if query_sig == "S1" or (
-            structural_sig == query_sig and structural_sig == "S1"
-        ):
-            if not is_ask(kline.signature) and kline.nodes:
-                self._ground(kline)
+        if not kline.nodes:
+            self._model.add_to_ltm(kline)
+            self._publish("frame", value, KValue(kline, SIG_S4))  # S4
+            return True
+
+        if is_identity(kline):
+            self._model.add_to_ltm(kline)
+            self._publish("frame", value, KValue(kline, SIG_S1))  # S1
+            return True
+
+        expected_sig = self._signifier.signature_of(kline.nodes)
+        if kline.signature == expected_sig:
+            all_resolved = all(
+                (node_kl := self._model.find(n)) is not None and self._model.grounded(node_kl)
+                for n in kline.nodes
+            )
+            if all_resolved:
+                self._model.add_to_ltm(kline)
+                self._publish("frame", value, KValue(kline, SIG_S1))  # S1
                 return True
+
+        # Register in STM before the ratification check so sequential
+        # countersign pairs (from the runtime countersign action, which
+        # builds the reciprocal) can find each other via
+        # model.is_countersigned.
+        self._model.add_to_stm(kline)
+
+        # Ratification — countersigned in the model → S1. Only countersign
+        # produces reciprocal klines; denote/connote share a structure
+        # (a single node entry in opposite directions) and are handled below.
+        if self._model.is_countersigned(kline):
+            self._model.add_to_ltm(kline)
+            self._publish("frame", value, KValue(kline, SIG_S1))  # S1
+            return True
+
+        # Retrieve candidates (exclude self to prevent trivial match)
+        candidates = [
+            kl
+            for kl in self._model.where(kline.signature)
+            if kl is not kline and (kl.signature != kline.signature or kl.nodes != kline.nodes)
+        ]
+
+        if not candidates:
+            self._model.add_to_ltm(kline)
+            self._publish("frame", value, KValue(kline, SIG_S4))  # S4 — novel
+            return True
+
+        # DEVELOPMENT-ONLY — candidate fan-out cap.
+        # rationalise→expand is exponential by design; the internal logic
+        # that bounds expansion is still being refined. 
+        # Remove it entirely once expansion is bounded internally.
+        _DEV_MAX_CANDIDATES = 8
+        if len(candidates) > _DEV_MAX_CANDIDATES:
+            candidates = candidates[:_DEV_MAX_CANDIDATES]
+
+        for candidate in candidates:
+            level = self._route(kline, candidate)
+            # The query KValue flows into the cogitator so the declared
+            # significance rides the slow path's published events.
+            self._cogitator.submit(WorkItem(value, candidate, level))
 
         return False
 
-    def _slow_route(self, query: KValue) -> None:
-        """Attend to the query: append it and its unknown parts to the work list.
+    # Promotion
 
+    def _promote_participating(self, query: KLine, candidate: KLine) -> None:
+        """Promote klines that structurally participated in a ratification event.
+
+        After S1 ratification between query and candidate, promote:
+        1. The query and candidate themselves (always)
+        2. Any STM kline whose signature is a node value in the query or
+           candidate AND whose nodes are empty (Unknown frame), a single
+           non-literal node (countersign/denote pair), or a canonical
+           composition (canonization entry).
+
+        Does NOT promote cogitator expansion proposals (multi-node non-
+        canonical klines) that merely share signature bits.
         """
-        kline = query.kline
-        self._state.add_work(kline)
+        model = self._model
+        signifier = self._signifier
 
-    # ── Cogitation ───────────────────────────────────────────────────
+        # Signatures of node values participating in query/candidate.
+        node_sigs: set[int] = set()
+        for n in query.nodes:
+            node_sigs.add(n)
+        for n in candidate.nodes:
+            node_sigs.add(n)
+        node_sigs.add(query.signature)
+        node_sigs.add(candidate.signature)
 
-    def cogitate(self) -> list[KValue]:
-        """One oldest-first pass over the work list: ask, propose, or ground.
+        to_promote: list[KLine] = []
+        for kl in model.iter_stm():
+            if kl.signature not in node_sigs:
+                continue
+            # Promote structural klines: Unknown frames, single-node entries,
+            # or canonical compositions.
+            if not kl.nodes:
+                to_promote.append(kl)
+            elif isinstance(kl.nodes, int):
+                to_promote.append(kl)
+            elif isinstance(kl.nodes, list) and len(kl.nodes) == 1:
+                to_promote.append(kl)
+            elif is_canon(kl, signifier):
+                to_promote.append(kl)
 
-        Per entry, in priority order: a groundable entry grounds; a misfit
-        entry draws proposals from the strategy; a grounded entry leaves
-        attention. Entries that match no path persist for a later turn.
-        The pass repeats until stable — grounding can unblock further
-        entries.
+        _log.info(
+            "_promote_participating: query=%#x candidate=%#x promoting %d structural + 2",
+            query.signature,
+            candidate.signature,
+            len(to_promote),
+        )
+
+        to_promote.extend([query, candidate])
+
+        for kl in to_promote:
+            model.add_to_ltm(kl)
+
+    # Graph Expansion Resolution
+
+    # CogitationHandler protocol
+
+    def on_s1(self, query_value: KValue, candidate: KLine) -> None:
+        """CogitationHandler.on_s1: promote, publish frame event.
+
+        ``query_value`` is the original inbound KValue; its kline is the
+        query voice for promotion. The candidate kline becomes the proposal,
+        wrapped at ``SIG_S1`` (S1 ratification).
         """
-        batch: list[KValue] = []
+        query = query_value.kline
+        self._promote_participating(query, candidate)
+        self._publish("frame", query_value, KValue(candidate, SIG_S1))
 
-        idx = 0
-        count = len(self._state.work_list)
-        while idx < len(self._state.work_list):
-            # Re-check the index each iteration: the _promote cascade (via the
-            # S2 strategy's ground callback, or the countersign/groundable
-            # arms) can remove arbitrary work-list entries, shrinking the list
-            # below the index this loop intends to visit.
-            if idx >= len(self._state.work_list):
-                break
+    def on_expansion(
+        self,
+        query_value: KValue,
+        proposal: KLine,
+        significance: int,
+        original_candidate: KLine | None = None,
+    ) -> None:
+        """CogitationHandler.on_expansion: write proposal to Frame, publish frame event.
 
-            kline = self._state.work_list[idx]
-            if self._state.is_groundable(kline):
-                self._ground(kline)
-            if self._state.is_answered(kline):
-                # The ask's content form is grounded — the question has
-                # its answer; attention leaves.
-                self._state.remove_work_at(idx)
-                continue
+        The proposal kline carries the ``expand()``-computed significance,
+        not a band-representative value. ``query_value`` is the original inbound
+        KValue.
 
-            batch.extend(self._propose(kline))
-
-            if self._state.is_grounded(kline):
-                self._state.remove_work_at(idx)
-                continue
-
-            idx += 1
-
-        if count != len(self._state.work_list):
-            batch.extend(self.cogitate())
-
-        return batch
-
-    def _ground(self, kline: KLine) -> None:
-        """ground ``kline`` at S1, then cascade any node-resolution it unblocks.
-
-        A grounding may make other work-list entries groundable (an identity
-        whose signature just landed, a canon whose nodes are now all seen, a
-        relationship whose reciprocal just grounded). Cascade until fixed point.
+        ``original_candidate`` is retained on the signature for the cogitator's
+        dispatch but is no longer carried onto the event (the ``candidate``
+        field is gone). It is intentionally unused here.
         """
-        self._state.ground(kline)
-        sweep = True
-        while sweep:
-            sweep = False
-            for entry in self._state.work_list:
-                if self._state.is_groundable(entry):
-                    if self._state.ground(entry):
-                        sweep = True
-                        break
+        del original_candidate  # retained for dispatch compatibility; not on the event
+        self._model.add_to_frame(proposal)
+        self._publish("frame", query_value, KValue(proposal, significance))
 
-    def _propose(self, kline: KLine) -> list[KValue]:
-        """The re-entry chain over the held memory (Defs 21–23): goals
-        from the selection list in order, each scoped and derived to an
-        ending; a hop that ends without done re-enters at the ending
-        state of the derivation that wrote — the evidence-building
-        route — so a composed correspondence is consumed by a later
-        derivation of the same queued kline. Done derivations propose
-        at their significance — J of the final content against the goal
-        (Defs 16, 20); γ — significance net of complexity — grades
-        effort and never selects the band. The chain's writes extend
-        the STM tier later hops trawl."""
-        hop = run_hops(self._state, kline, self.signifier)
-        batch: list[KValue] = []
-        original = [int(n) for n in kline.nodes]
-        for result in hop.results:
-            if result.ending != "done":
-                # Stuck and abandoned ask; done at entry is the ground
-                # path's, not a proposal.
-                continue
-            if result.trace[-1] == original:
-                # Done without moving — the queued kline as held: the
-                # ground path's done, not a derivation's answer.
-                continue
-            proposal = KLine(
-                canon_key(kline.signature), result.trace[-1]
-            )
-            if not self._state.is_refused(proposal):
-                batch.append(KValue(proposal, gamma_to_byte(result.j1)))
-        return batch
+    def cogitate_join(self, timeout: float | None = None) -> None:
+        """Stop the cogitate thread and wait for it to finish."""
+        self._cogitator.join(timeout)
+
+    def cogitate_drain(self, timeout: float | None = None) -> bool:
+        """Drain pending cogitation work items without stopping the thread.
+
+        Returns True if drained within *timeout*, False if timed out.
+        """
+        return self._cogitator.drain(timeout)
+
+    # Events
+
+    def _publish(self, kind: str, query_value: KValue, proposal_value: KValue) -> None:
+        """Publish a rationalisation event via the adapter.
+
+        ``query_value`` is the inbound KValue (the sender's declared
+        assessment); ``proposal_value`` is Kalvin's assessment of it. On the
+        fast path both wrap the same immutable KLine.
+        """
+        self._adapter.on_event(RationaliseEvent(kind, query_value, proposal_value))
+
+    def countersign(self, value: KValue) -> bool:
+        """Generate the reciprocal kline ({Q:[V]} → {V:[Q]}) and rationalise it.
+
+        The reciprocal kline is wrapped in a KValue at ``SIG_S1`` — the act of
+        countersigning is an S1 ratification. Requires non-empty nodes;
+        returns the result of ``rationalise``.
+        """
+        kline = value.kline
+        reciprocal_sig = self._signifier.signature_of(kline.nodes)
+        reciprocal = KLine(reciprocal_sig, [kline.signature])
+        reciprocal_value = KValue(reciprocal, SIG_S1)
+        return self.rationalise(reciprocal_value)
+
+    # Frame info
+
+    def frame_size(self) -> int:
+        return len(self._model)
+
+    def codec(self) -> AgentCodec:
+        return AgentCodec(self._model, self._activity)
+
+    # Serialization — all delegate to AgentCodec.
+
+    def to_bytes(self) -> bytes:
+        return self.codec().to_bytes()
+
+    @classmethod
+    def from_bytes(cls, data: bytes, adapter: EngineAdapter | None = None) -> Engine:
+        model, activity = AgentCodec.from_bytes(data)
+        agent = cls(model=model, adapter=adapter or EventBus())
+        agent._activity = activity
+        return agent
+
+    def to_dict(self) -> dict:
+        return self.codec().to_dict()
+
+    @classmethod
+    def from_dict(cls, data: dict, adapter: EngineAdapter | None = None) -> Engine:
+        model, activity = AgentCodec.from_dict(data)
+        agent = cls(model=model, adapter=adapter or EventBus())
+        agent._activity = activity
+        return agent
+
+    def save(self, path: str | Path, format: Literal["bin", "json"] | None = None) -> None:
+        self.codec().save(path, format)
+
+    @classmethod
+    def load(
+        cls,
+        path: str | Path | None = None,
+        format: Literal["bin", "json"] | None = None,
+        adapter: EngineAdapter | None = None,
+    ) -> Engine:
+        model, activity = AgentCodec.load(path, format)
+        agent = cls(model=model, adapter=adapter or EventBus())
+        agent._activity = activity
+        return agent
+
+
+# Backward-compatible alias
+Agent = Engine

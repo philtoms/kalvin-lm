@@ -8,7 +8,7 @@ from pathlib import Path
 from kalvin import hop as hop_mod
 from kalvin.kline import ASK_SIG, is_ask, is_terminal
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin import engine as eng_mod
+from kalvin import rationaliser as rat_mod
 from kalvin.memory import Memory
 
 def nm(v):
@@ -19,10 +19,10 @@ def render(k):
     m = "?" if is_ask(k.signature) else " "
     return f"{m}{nm(k.signature)}:[{', '.join(nm(n) for n in k.nodes)}]"
 
-# 1. trace the ask-marked kline + had:[did,have] through the engine state
+# 1. trace the ask-marked kline + had:[did,have] through the rationaliser state
 orig_ground = Memory.ground
 orig_add = Memory.add_work
-orig_propose = eng_mod.Engine._propose
+orig_propose = rat_mod.Rationaliser._propose
 
 def traced_ground(self, kline, store=None):
     r = orig_ground(self, kline, store) if store is not None else orig_ground(self, kline)
@@ -39,7 +39,7 @@ def traced_propose(self, kline):
     return orig_propose(self, kline)
 
 Memory.ground = traced_ground
-eng_mod.Engine._propose = traced_propose
+rat_mod.Rationaliser._propose = traced_propose
 
 # 2. value-level trawl rounds for the MHALL goal hop
 def traced_run(self):
@@ -71,7 +71,7 @@ def passive_run(self):
     traced_run(self)
     return orig_run(self)
 hop_mod.Hop.run = passive_run
-eng_mod.Hop = hop_mod.Hop
+rat_mod.Hop = hop_mod.Hop
 
 sys.argv = ["harness", "data/scripts/wdmh-underfit.ks", "-p", "data/dialogue/mhall.json"]
 from dev.dialogue.harness import main

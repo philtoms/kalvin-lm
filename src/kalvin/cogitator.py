@@ -8,9 +8,9 @@ significance computation lives in :mod:`kalvin.significance`; graph expansion
 in :mod:`kalvin.expand`; and expansion-proposal logic in
 :mod:`kalvin.proposals`.
 
-Split out of the Rationaliser module so the fast-path (Rationaliser routing)
+Split out of the Engine module so the fast-path (Engine routing)
 and slow-path (cogitation) live in their own modules while sharing the seam
-defined here: the Rationaliser submits work items and is the primary
+defined here: the Engine submits work items and is the primary
 ``CogitationHandler``.
 """
 
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
 
 if TYPE_CHECKING:
-    from kalvin.rationaliser import RationaliserAdapter
+    from kalvin.engine import EngineAdapter
 
 
 # Cogitation Handler Protocol
@@ -103,7 +103,7 @@ class Cogitator:
     handler:
         CogitationHandler implementation. Called when cogitation discovers
         significant results (S1 matches and S2/S3 expansion proposals).
-        The Rationaliser is the primary implementation.
+        The Engine is the primary implementation.
     timeout:
         Idle seconds before emitting "done" so subscribers can realign.
         Does not halt the thread. Default 2.0.
@@ -112,7 +112,7 @@ class Cogitator:
     def __init__(
         self,
         model: Model,
-        adapter: RationaliserAdapter,
+        adapter: EngineAdapter,
         handler: CogitationHandler,
         signifier: KSignifier,
         timeout: float = 2.0,
@@ -192,7 +192,7 @@ class Cogitator:
     def _run_work_item(self, item: WorkItem) -> None:
         """Expand a work item, classifying each yield against boundaries.
 
-        Work items arrive routed as S2 or S3 only (see Rationaliser._route). The
+        Work items arrive routed as S2 or S3 only (see Engine._route). The
         pair is expanded and each yield classified; a terminal S1 (distance
         1) discovered during expansion is a genuine structural exact match
         and triggers ``on_s1``.

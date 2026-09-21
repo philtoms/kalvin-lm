@@ -1,6 +1,6 @@
 """Minimal Textual widgets for the TUI harness participant.
 
-- **EventLog**: scrollable list displaying incoming Rationaliser events as text lines.
+- **EventLog**: scrollable list displaying incoming Engine events as text lines.
 - **InputBar**: horizontal bar with a text input field and Send button for
   composing free-form messages to the Trainer.
 - **RatifyBar**: horizontal bar with a Ratify button (disabled by default) and
@@ -42,7 +42,7 @@ class EventItem(ListItem):
 
 
 class EventLog(Vertical):
-    """Scrollable list displaying incoming Rationaliser events as text lines.
+    """Scrollable list displaying incoming Engine events as text lines.
 
     Each line shows timestamp, action, and a summary of the message payload.
     """

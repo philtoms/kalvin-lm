@@ -1,10 +1,10 @@
 """The dialogue training harness.
 
 A minimal, synchronous, non-judging loop. Compile a KScript source, feed
-compiled entry to the engine one block at a time, and present the engine's
+compiled entry to the rationaliser one block at a time, and present the rationaliser's
 response. The harness is feeder, driver, and
 presenter — it never judges. The trainer (a pi agent, outside the loop) reads
-the trace, makes decisions, edits the engine and/or the source, and re-runs.
+the trace, makes decisions, edits the rationaliser and/or the source, and re-runs.
 
 Usage::
 
@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, cast
 
-from kalvin.engine import Engine
+from kalvin.rationaliser import Rationaliser
 from kalvin.memory import Memory
 from kalvin.kline import (
     KLine,
@@ -64,7 +64,7 @@ _LAYOUT = BandLayout()
 
 @dataclass
 class Turn:
-    """One engine call within a step: the feeds and its response."""
+    """One rationaliser call within a step: the feeds and its response."""
 
     feeds: list[KValue]
     grounds: list[KValue] = field(default_factory=list)
@@ -76,7 +76,7 @@ class Turn:
 
 @dataclass
 class StepResult:
-    """One loop iteration: the input entry, the engine's asks, and the
+    """One loop iteration: the input entry, the rationaliser's asks, and the
     ratifying answers the harness fed back. """
 
     index: int
@@ -87,25 +87,25 @@ class StepResult:
 
 
 class Harness:
-    """Compile a source, then feed each compiled entry to the engine in turn.
+    """Compile a source, then feed each compiled entry to the rationaliser in turn.
 
-    The engine and its state are the only participants. The harness holds no
-    verdict logic — it records what the engine returned and hands it to the
-    presenter. Both ``tokenizer`` and ``engine`` are supplied fully
-    constructed; see :func:`make_engine` / :func:`load_engine` for the
+    The rationaliser and its state are the only participants. The harness holds no
+    verdict logic — it records what the rationaliser returned and hands it to the
+    presenter. Both ``tokenizer`` and ``rationaliser`` are supplied fully
+    constructed; see :func:`make_rationaliser` / :func:`load_rationaliser` for the
     single construction path.
     """
 
     def __init__(
         self,
         tokenizer: BPETokenizer,
-        engine: Engine,
+        rationaliser: Rationaliser,
         escalate: Callable[[KValue], KValue] | None = None,
         scaffolding: Literal["batch", "on-demand"] = "batch",
     ) -> None:
         self._tokenizer = tokenizer
-        self._engine = engine
-        # How a group's scaffolding reaches the engine: "batch" delivers
+        self._rationaliser = rationaliser
+        # How a group's scaffolding reaches the rationaliser: "batch" delivers
         # all compiled klines with the opening entry (current); "on-demand"
         # feeds only the opener and releases scaffolding as K asks for it.
         self.scaffolding = scaffolding
@@ -121,29 +121,29 @@ class Harness:
         self.known_words: list[str] = []
 
     @property
-    def engine(self) -> Engine:
-        return self._engine
+    def rationaliser(self) -> Rationaliser:
+        return self._rationaliser
 
     @property
     def state(self) -> Memory:
-        return self._engine.state
+        return self._rationaliser.state
 
     @property
     def signifier(self) -> NLPSignifier:
-        # make_engine/load_engine store an NLPSignifier; the state types it as
+        # make_rationaliser/load_rationaliser store an NLPSignifier; the state types it as
         # KSignifier.
-        return cast(NLPSignifier, self._engine.state.signifier)
+        return cast(NLPSignifier, self._rationaliser.state.signifier)
 
     def run(self, source: str) -> list[StepResult]:
         """Compile ``source``, open each sub-script's dialogue, and let the
-        engine drive.
+        rationaliser drive.
 
         A sub-script is a root-level (scope-0) entry plus the nested and
         expansion entries that follow it; it opens with the scope-0 entry. In
         ``"batch"`` scaffolding the group's remaining entries are fed first,
         priming K, and the opener follows once their asks have settled; in
         ``"on-demand"`` only the opener is fed and the group's remaining
-        entries answer the engine's asks. From there the engine asks; the
+        entries answer the rationaliser's asks. From there the rationaliser asks; the
         harness answers each ask from the script or the run stops.
         """
         entries = compile_source(
@@ -153,7 +153,7 @@ class Harness:
         # A `==` ask feeds at its subjective significance toward the goal
         # (Def 20): fresh content carries zero depths, so γ(A, B) = J of the
         # two contents. The structural band (the ask's S4 shape) is
-        # recomputed from structure by the engine — never the fed byte.
+        # recomputed from structure by the rationaliser — never the fed byte.
         # The ask signature carries the ASK marker; goals key on the marked
         # out base so the ask and its canon look up the same goal.
         goals: dict[int, KValue] = {}
@@ -186,7 +186,7 @@ class Harness:
         def is_ask_content(entry: KValue) -> bool:
             """The ask's content form (its canon) — the answer to the
             question, never the feed. It still joins the answering
-            pools: the harness releases it when the engine asks."""
+            pools: the harness releases it when the rationaliser asks."""
             return (
                 bool(entry.kline.nodes)
                 and not is_ask(entry.kline.signature)
@@ -299,7 +299,7 @@ class Harness:
         while queue:
             feeds = queue.pop(0)
             before = _grounded_snapshot(self.state)
-            batch = self._engine.rationalise(feeds)
+            batch = self._rationaliser.rationalise(feeds)
             deduped = _dedup(batch)
             after = _grounded_snapshot(self.state)
             grounds = [
@@ -445,19 +445,19 @@ class Harness:
 
 # ── Construction (single source of truth) ────────────────────────────────
 #
-# The factories wire signifier → state → engine → harness so the signifier
+# The factories wire signifier → state → rationaliser → harness so the signifier
 # lives in one place (the Memory).
 
-def make_engine(
+def make_rationaliser(
     tokenizer: BPETokenizer,
     scaffolding: Literal["batch", "on-demand"] = "batch",
 ) -> Harness:
-    """Build a harness over a fresh state: new signifier → state → engine."""
+    """Build a harness over a fresh state: new signifier → state → rationaliser."""
     state = Memory(NLPSignifier())
-    return Harness(tokenizer, Engine(state), scaffolding=scaffolding)
+    return Harness(tokenizer, Rationaliser(state), scaffolding=scaffolding)
 
 
-def load_engine(
+def load_rationaliser(
     path: str | Path,
     tokenizer: BPETokenizer,
     scaffolding: Literal["batch", "on-demand"] = "batch",
@@ -465,7 +465,7 @@ def load_engine(
     """Build a harness over a loaded prior state (reusing its signifier)."""
     signifier = NLPSignifier()
     state = Memory.load(signifier, path)
-    harness = Harness(tokenizer, Engine(state), scaffolding=scaffolding)
+    harness = Harness(tokenizer, Rationaliser(state), scaffolding=scaffolding)
     # Compiles must continue the loaded state's word→bit mapping.
     harness.word_bits = dict(state.word_bits or {})
     # And its word binding: the state's words bind chars the script
@@ -1111,7 +1111,7 @@ def _interactive_supervisor(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Run a script (markdown plan) or KScript source through the "
-             "engine and present the trace.",
+             "rationaliser and present the trace.",
     )
     parser.add_argument("source", help="Path to a markdown plan file or a .ks KScript file")
     parser.add_argument(
@@ -1135,7 +1135,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--scaffolding", choices=("batch", "on-demand"), default="batch",
-        help="How a group's scaffolding reaches the engine: 'batch' (default) "
+        help="How a group's scaffolding reaches the rationaliser: 'batch' (default) "
              "delivers all compiled klines with the opening entry; 'on-demand' "
              "feeds only the opener and withholds scaffolding until K asks.",
     )
@@ -1150,7 +1150,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.add_argument(
         "-p", "--persist", nargs="?", const="auto", default=None, metavar="PATH",
-        help="Load engine state before the run and save it after. PATH "
+        help="Load rationaliser state before the run and save it after. PATH "
              "defaults to data/dialogue/{script_name}.json. Also writes a "
              "graph of the end-of-run state next to the saved file (as .dot, "
              "or .mmd with --graph mermaid) for VSCode preview extensions.",
@@ -1172,12 +1172,12 @@ def main(argv: list[str] | None = None) -> int:
             else Path(args.persist) if args.persist else None
         )
         if state_path is not None and state_path.exists():
-            harness = load_engine(state_path, tok, scaffolding=scaffolding)
+            harness = load_rationaliser(state_path, tok, scaffolding=scaffolding)
             n = sum(len(b) for b in harness.state.ltm.values())
             print(f"── running on reloaded state: {n} grounded klines "
                   f"from {state_path} ──")
         else:
-            harness = make_engine(tok, scaffolding=scaffolding)
+            harness = make_rationaliser(tok, scaffolding=scaffolding)
         if args.structural:
             from dev.dialogue.structural import SemanticEvidence, StructuralSupervisor
 
@@ -1227,7 +1227,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     tok = BPETokenizer()
-    harness = make_engine(tok)
+    harness = make_rationaliser(tok)
     cumulative = ""
     for lesson in document.lessons:
         source = "\n".join(lesson.kscript)

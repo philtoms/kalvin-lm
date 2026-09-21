@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from dev.dialogue.harness import make_engine
+from dev.dialogue.harness import make_rationaliser
 
 CASES = {
     "isolated annotation (shorthand for (ann)compound)":
@@ -18,7 +18,7 @@ CASES = {
 }
 
 for name, src in CASES.items():
-    h = make_engine(BPETokenizer())
+    h = make_rationaliser(BPETokenizer())
     results = h.run(src)
     print(f"── {name}: {len(results)} step(s)")
     for r in results:

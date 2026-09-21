@@ -134,7 +134,7 @@ class HarnessServer:
     Usage::
 
         server = HarnessServer("training.harness.yaml", bus)
-        server.register_participant_class("Rationaliser", rationaliser_factory)
+        server.register_participant_class("Engine", engine_factory)
         server.run_sync(host="localhost", port=8765)
     """
 

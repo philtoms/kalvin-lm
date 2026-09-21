@@ -70,18 +70,18 @@ def run(self):
     return r
 Derivation.run = run
 
-from dev.dialogue.harness import load_engine
+from dev.dialogue.harness import load_rationaliser
 from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import compile_source
 tok = BPETokenizer()
-h = load_engine('data/dialogue/mhall.json', tok)
+h = load_rationaliser('data/dialogue/mhall.json', tok)
 src = open('data/scripts/wdmh.ks').read()
 entries = compile_source(src, tokenizer=tok, signifier=h.signifier, dev=True,
                          word_bits=h.word_bits, known_words=h.known_words)
-h.engine.rationalise(entries)
+h.rationaliser.rationalise(entries)
 den = next(k for b in h.state.frame.values() for k in b
            if getattr(k.signature, 'label', '') == 'what' and getattr(k.nodes[0], 'label', '') == 'Object')
-h.engine.rationalise([KValue(KLine(den.nodes[0], [den.signature]), SIG_S1)])
+h.rationaliser.rationalise([KValue(KLine(den.nodes[0], [den.signature]), SIG_S1)])
 h.run(src)
 print("held WDMH:", [f"{nm(k.signature)}:[{', '.join(nm(n) for n in k.nodes)}]"
                      for b in h.state.frame.values() for k in b

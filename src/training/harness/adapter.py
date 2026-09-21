@@ -1,11 +1,11 @@
-"""Rationaliser adapter — bridge between the Rationaliser pipeline and the message bus.
+"""Engine adapter — bridge between the Engine pipeline and the message bus.
 
 Receives harness messages sent to role ``trainee``, compiles KScript source
-into entries, submits them one at a time to :meth:`Rationaliser.rationalise`, and
-routes Rationaliser callbacks back to the original sender via the bus.
+into entries, submits them one at a time to :meth:`Engine.rationalise`, and
+routes Engine callbacks back to the original sender via the bus.
 
 The adapter implements the :class:`Participant` protocol (to receive bus
-messages) and provides ``on_event()`` so Rationaliser can call it directly as
+messages) and provides ``on_event()`` so Engine can call it directly as
 its adapter callback (replacing the internal EventBus).
 
 KValue exchange
@@ -15,11 +15,11 @@ assessment — not bare KLines:
 
 - ``submit`` compiles KScript source via :func:`compile_source` (which now
   returns ``list[KValue]``) and forwards each KValue to
-  :meth:`Rationaliser.rationalise`. The Model API stays KLine-based (plan D2):
+  :meth:`Engine.rationalise`. The Model API stays KLine-based (plan D2):
   STM pre-registration and the sender-map key read ``entry.kline``.
 - ``countersign`` materialises the inbound bus payload to a :class:`KValue`
   (see :func:`_materialise_kvalue`) and forwards it to
-  :meth:`Rationaliser.countersign`.
+  :meth:`Engine.countersign`.
 - ``on_event`` reads the sender-map key off ``event.query.kline``. The
   event's ``query``/``proposal`` are KValues that carry their own
   significance; there is no top-level significance field.
@@ -38,7 +38,7 @@ Thread model
 ------------
 ``on_message`` executes on the bus dispatch thread.
 ``on_event`` is called from the Cogitator background thread via
-``Rationaliser._publish`` → ``adapter.on_event``.
+``Engine._publish`` → ``adapter.on_event``.
 
 Model access: :class:`~kalvin.model.Model` and :class:`~kalvin.stm.STM` are
 internally guarded by re-entrant locks, so any model read performed
@@ -73,9 +73,9 @@ if TYPE_CHECKING:
     pass
 
 
-# Protocol for the rationaliser parameter — avoids importing Rationaliser (circular dep)
+# Protocol for the engine parameter — avoids importing Engine (circular dep)
 # while giving mypy the methods we actually call.
-class _RationaliserLike(Protocol):
+class _EngineLike(Protocol):
     def rationalise(self, value: KValue) -> bool: ...
     def countersign(self, value: KValue) -> bool: ...
     def save(self, path, format=None) -> None: ...
@@ -136,8 +136,8 @@ def _materialise_kvalue(obj: object) -> KValue:
     )
 
 
-class RationaliserAdapter:
-    """Thin integration layer between Rationaliser and the role-based message bus.
+class EngineAdapter:
+    """Thin integration layer between Engine and the role-based message bus.
 
     Parameters
     ----------
@@ -145,24 +145,24 @@ class RationaliserAdapter:
         The message bus to subscribe to and send responses on.
     role:
         The role to subscribe to on the bus (default ``"trainee"``).
-    rationaliser:
-        Optional Rationaliser instance.  Can also be set later via :meth:`bind`.
+    engine:
+        Optional Engine instance.  Can also be set later via :meth:`bind`.
         This two-phase wiring avoids a circular construction dependency:
-        ``adapter = RationaliserAdapter(bus)`` → ``rationaliser = Rationaliser(adapter=adapter)``
-        → ``adapter.bind(rationaliser)``.
+        ``adapter = EngineAdapter(bus)`` → ``engine = Engine(adapter=adapter)``
+        → ``adapter.bind(engine)``.
     """
 
     def __init__(
         self,
         bus: MessageBus,
         role: str = TRAINEE_ROLE,
-        rationaliser: _RationaliserLike | None = None,
+        engine: _EngineLike | None = None,
         tokenizer: KTokenizer | None = None,
         signifier: KSignifier | None = None,
     ):
         self._bus = bus
         self._role = role
-        self._rationaliser: _RationaliserLike | None = rationaliser
+        self._engine: _EngineLike | None = engine
         self._tokenizer: KTokenizer | None = tokenizer
         self._signifier: KSignifier | None = signifier
 
@@ -180,9 +180,9 @@ class RationaliserAdapter:
         return self._role
 
     @property
-    def rationaliser(self) -> _RationaliserLike | None:
-        """The Rationaliser instance, or ``None`` if not yet bound."""
-        return self._rationaliser
+    def engine(self) -> _EngineLike | None:
+        """The Engine instance, or ``None`` if not yet bound."""
+        return self._engine
 
     @property
     def tokenizer(self) -> KTokenizer | None:
@@ -191,13 +191,13 @@ class RationaliserAdapter:
 
     # Late binding
 
-    def bind(self, rationaliser: _RationaliserLike) -> None:
-        """Bind a Rationaliser instance after construction.
+    def bind(self, engine: _EngineLike) -> None:
+        """Bind a Engine instance after construction.
 
-        Use this when the Rationaliser needs the adapter as its callback during
+        Use this when the Engine needs the adapter as its callback during
         its own construction, creating a circular dependency.
         """
-        self._rationaliser = rationaliser
+        self._engine = engine
 
     # Participant protocol
 
@@ -208,15 +208,15 @@ class RationaliserAdapter:
         -------
         submit:
             Compile KScript source from ``msg.message``, record sender per
-            entry in the sender map, and call ``rationaliser.rationalise(entry)``
+            entry in the sender map, and call ``engine.rationalise(entry)``
             for each compiled entry.
         countersign:
-            Call ``rationaliser.countersign(kvalue)``. The payload in ``msg.message``
+            Call ``engine.countersign(kvalue)``. The payload in ``msg.message``
             is materialised to a :class:`KValue` at this inbound boundary
             (see :func:`_materialise_kvalue`) — it may arrive as a live
             KValue, a wire dict, or a legacy bare KLine.
         rationalise:
-            Call ``rationaliser.rationalise(kvalue)``. The payload is materialised
+            Call ``engine.rationalise(kvalue)``. The payload is materialised
             to a :class:`KValue` and delivered straight to rationalisation —
             no recompile, no reciprocal, no forced significance. This is the
             path a participant uses to hand Kalvin a KValue with its own
@@ -241,12 +241,12 @@ class RationaliserAdapter:
         else:
             logger.warning("Unknown action %r from %s", msg.action, msg.sender)
 
-    # Adapter callback (Rationaliser → adapter)
+    # Adapter callback (Engine → adapter)
 
     def on_event(self, event: RationaliseEvent) -> None:
-        """Receive a rationalisation event from the Rationaliser.
+        """Receive a rationalisation event from the Engine.
 
-        The Rationaliser calls this directly (via ``_publish``) instead of using
+        The Engine calls this directly (via ``_publish``) instead of using
         an internal EventBus.  The event is wrapped into a :class:`Message`
         routed to the original sender (looked up in the sender map) and
         sent via the bus.
@@ -276,19 +276,19 @@ class RationaliserAdapter:
     # Internal handlers
 
     def drain(self, timeout: float | None = None) -> bool:
-        """Drain pending cogitation work items from the Rationaliser.
+        """Drain pending cogitation work items from the Engine.
 
         Returns True if drained within *timeout*, False if timed out.
-        No-op if no Rationaliser is bound.
+        No-op if no Engine is bound.
         """
-        if self._rationaliser is None:
+        if self._engine is None:
             return True
-        return self._rationaliser.cogitate_drain(timeout)
+        return self._engine.cogitate_drain(timeout)
 
     def _handle_submit(self, msg: Message) -> None:
-        """Compile KScript source and submit each entry to Rationaliser."""
-        if self._rationaliser is None:
-            logger.error("No Rationaliser bound; cannot submit")
+        """Compile KScript source and submit each entry to Engine."""
+        if self._engine is None:
+            logger.error("No Engine bound; cannot submit")
             return
 
         try:
@@ -306,45 +306,45 @@ class RationaliserAdapter:
             self._bus.send(error_msg)
             return
 
-        logger.info("Submitting %d compiled entries to Rationaliser", len(entries))
+        logger.info("Submitting %d compiled entries to Engine", len(entries))
         # Pre-register all entries in STM so countersign pairs (e.g. from
         # `M == H` compiling to {M: H} and {H: M}) can find each other
         # during rationalise(). The Model API stays KLine-based (D2): pass
         # ``entry.kline`` at the boundary, never the KValue.
-        if hasattr(self._rationaliser, "model"):
+        if hasattr(self._engine, "model"):
             for entry in entries:
-                self._rationaliser.model.add_to_stm(entry.kline)
+                self._engine.model.add_to_stm(entry.kline)
         for entry in entries:
             key: EntryKey = (entry.kline.signature, tuple(entry.kline.nodes))
             self._sender_map[key] = msg.sender or ""
-            # rationalise takes a KValue; the Rationaliser reads value.kline.
-            self._rationaliser.rationalise(entry)  # fire-and-forget; events come via on_event
+            # rationalise takes a KValue; the Engine reads value.kline.
+            self._engine.rationalise(entry)  # fire-and-forget; events come via on_event
 
     def _handle_countersign(self, msg: Message) -> None:
-        """Forward a countersign request to the Rationaliser.
+        """Forward a countersign request to the Engine.
 
         The payload in ``msg.message`` is materialised to a :class:`KValue`
         via :func:`_materialise_kvalue` and handed to
-        :meth:`Rationaliser.countersign`, which consumes a KValue. Three payload
+        :meth:`Engine.countersign`, which consumes a KValue. Three payload
         forms are accepted (see :func:`_materialise_kvalue`): a live
         :class:`KValue` (the in-process auto-countersign path), a canonical
         wire dict ``{"signature", "nodes", "significance"}``, or a legacy
         bare :class:`KLine` (wrapped at :data:`SIG_S1`).
         """
-        if self._rationaliser is None:
-            logger.error("No Rationaliser bound; cannot countersign")
+        if self._engine is None:
+            logger.error("No Engine bound; cannot countersign")
             return
 
         kvalue = _materialise_kvalue(msg.message)
         logger.info("Countersign: %s", kvalue)
-        self._rationaliser.countersign(kvalue)
+        self._engine.countersign(kvalue)
 
     def _handle_rationalise(self, msg: Message) -> None:
         """Deliver a participant-constructed KValue straight to rationalisation.
 
         The payload in ``msg.message`` is materialised to a :class:`KValue`
         via :func:`_materialise_kvalue` and handed to
-        :meth:`Rationaliser.rationalise`. Unlike ``submit`` (which recompiles
+        :meth:`Engine.rationalise`. Unlike ``submit`` (which recompiles
         KScript source, re-deriving significance from structure) and
         ``countersign`` (which builds the reciprocal kline at SIG_S1), this
         action delivers the KValue as-is — the significance on the KValue is
@@ -356,8 +356,8 @@ class RationaliserAdapter:
         ``{"signature", "nodes", "significance"}``, or a legacy bare
         :class:`KLine` (wrapped at SIG_S1).
         """
-        if self._rationaliser is None:
-            logger.error("No Rationaliser bound; cannot rationalise")
+        if self._engine is None:
+            logger.error("No Engine bound; cannot rationalise")
             return
 
         kvalue = _materialise_kvalue(msg.message)
@@ -365,12 +365,12 @@ class RationaliserAdapter:
         # back to the participant that handed it in. Mirrors ``_handle_submit``;
         # without this, a paced KValue submission's events would be orphaned
         # (on_event drops anything absent from the sender map). The recurrence
-        # drop-signal path is unaffected: the Rationaliser drops those (no events),
+        # drop-signal path is unaffected: the Engine drops those (no events),
         # so the extra entry is simply unused.
         key: EntryKey = (kvalue.kline.signature, tuple(kvalue.kline.nodes))
         self._sender_map[key] = msg.sender or ""
         logger.info("Rationalise (direct): %s", kvalue)
-        self._rationaliser.rationalise(kvalue)  # fire-and-forget; events via on_event
+        self._engine.rationalise(kvalue)  # fire-and-forget; events via on_event
 
     def _handle_save(self, msg: Message) -> None:
         """Persist Kalvin's model to disk via agent_codec.
@@ -378,13 +378,13 @@ class RationaliserAdapter:
         ``msg.message`` is the file path (or None for default).
         Sends a confirmation or error back to the sender.
         """
-        if self._rationaliser is None:
-            logger.error("No Rationaliser bound; cannot save")
+        if self._engine is None:
+            logger.error("No Engine bound; cannot save")
             return
 
         path = msg.message or str(agent_bin())
         try:
-            self._rationaliser.save(path)
+            self._engine.save(path)
             logger.info("Kalvin model saved to %s", path)
             self._bus.send(
                 Message(
@@ -407,11 +407,11 @@ class RationaliserAdapter:
         """Load Kalvin's model from disk via agent_codec.
 
         ``msg.message`` is the file path (or None for default).
-        Reconstructs the Rationaliser with the loaded model, replacing the
+        Reconstructs the Engine with the loaded model, replacing the
         current one. Sends a confirmation or error back to the sender.
         """
-        if self._rationaliser is None:
-            logger.error("No Rationaliser bound; cannot load")
+        if self._engine is None:
+            logger.error("No Engine bound; cannot load")
             return
 
         path = msg.message or str(agent_bin())
@@ -420,9 +420,9 @@ class RationaliserAdapter:
 
             model, activity = AgentCodec.load(path)
 
-            self._rationaliser._model = model
-            self._rationaliser._activity = activity
-            self._rationaliser._cogitator._model = model  # rebind cogitator's model ref
+            self._engine._model = model
+            self._engine._activity = activity
+            self._engine._cogitator._model = model  # rebind cogitator's model ref
 
             logger.info("Kalvin model loaded from %s", path)
             self._bus.send(
@@ -450,11 +450,11 @@ class RationaliserAdapter:
         previous lessons are fully processed before a new lesson starts.
         """
         timeout = msg.message if isinstance(msg.message, (int, float)) else None
-        if self._rationaliser is None:
-            logger.debug("Drain: no Rationaliser bound — responding immediately")
+        if self._engine is None:
+            logger.debug("Drain: no Engine bound — responding immediately")
         else:
             logger.info("Draining cogitator...")
-            drained = self._rationaliser.cogitate_drain(timeout=timeout or 30.0)
+            drained = self._engine.cogitate_drain(timeout=timeout or 30.0)
             if drained:
                 logger.info("Cogitator drained")
             else:

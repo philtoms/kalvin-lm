@@ -15,8 +15,8 @@ Model indexes and retrieves; Expand walks the graph.
 Misfit-comprehension (generating expansion proposals for candidates whose
 signature and nodes' signature disagree) lives in its own module,
 :mod:`kalvin.proposals`. Promotion of structurally-participating klines
-after ratification is the Rationaliser's responsibility (see
-:attr:`Rationaliser._promote_participating`).
+after ratification is the Engine's responsibility (see
+:attr:`Engine._promote_participating`).
 
 Module-level constants and types:
   MAX_HOP, edge_hops, expand
