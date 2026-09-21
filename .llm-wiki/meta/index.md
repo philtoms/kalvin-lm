@@ -290,7 +290,9 @@
 - [[sources/obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests]] — Observation: Case rule implemented: expansion hooks + sig-case gate, 83 tests green *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial]] — Observation: Case-triad rule sketched: Capitalized words expand as Initial(tail) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete]] — Observation: Committed 3932429: Def 1 seam migration complete *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners]] — Observation: CONTEXT.md algebraic entries reduced to normative one-liners *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha]] — Observation: KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-]] — Observation: MTS retired (85083f5): compound/expansion/canon triple aligned everywhere *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is]] — Observation: Optional bracket syntax analyzed: klines invariant, binding is the delta *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model]] — Observation: script-reading.md rewritten around three-layer model *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill]] — Observation: script-reading.md three-layer revision settled via grill *(created: 2026-09-21)*
@@ -306,4 +308,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T11:54:13.615Z* | *Total pages: 294*
+*Last updated: 2026-09-21T12:18:09.902Z* | *Total pages: 296*

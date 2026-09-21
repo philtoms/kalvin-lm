@@ -5,8 +5,8 @@ the batch — the dialogue emissions. The engine is stateless about its own
 emissions; dedup lives in the
 actor.
 
-The engine is pure mechanism: it holds an :class:`EngineState`, constructing
-the S2 strategy (:class:`ExpandFit`) over it itself. The factories that
+The engine is pure mechanism: it holds an :class:`EngineState` and
+mutates it in place. The factories that
 assemble signifier, state, and engine live in :mod:`dialogue.harness`.
 """
 
@@ -43,9 +43,8 @@ _LAYOUT = BandLayout()
 class Engine:
     """Derives one turn from ``incoming``.
 
-    Holds the :class:`EngineState` it mutates in place and constructs the
-    :class:`ExpandFit` S2 strategy over it. The signifier is read off the
-    state.
+    Holds the :class:`EngineState` it mutates in place. The signifier is
+    read off the state.
     """
 
     def __init__(self, state: EngineState) -> None:

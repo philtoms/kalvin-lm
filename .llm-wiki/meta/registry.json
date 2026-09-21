@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T11:54:13.615Z",
+  "last_updated": "2026-09-21T12:18:09.902Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4068,6 +4068,22 @@
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
+    "sources/obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md algebraic entries reduced to normative one-liners",
+      "tags": [
+        "docs",
+        "domain-modeling",
+        "kalvin"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners",
+      "relevance": "high",
+      "observed_at": "2026-09-21T12:18:09.826Z",
+      "source_context": "De-overlapping docs/kalvin-algebra.md and CONTEXT.md normative definitions",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha": {
       "type": "source",
       "title": "Observation: KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented",
@@ -4085,6 +4101,25 @@
       "relevance": "high",
       "observed_at": "2026-09-21T11:54:13.552Z",
       "source_context": "Auditing KS/BPE cooperation for multi-subword exotic words",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-": {
+      "type": "source",
+      "title": "Observation: MTS retired (85083f5): compound/expansion/canon triple aligned everywhere",
+      "tags": [
+        "domain-modeling",
+        "glossary",
+        "kscript",
+        "ks",
+        "terminology",
+        "committed"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-",
+      "relevance": "high",
+      "observed_at": "2026-09-21T12:13:25.656Z",
+      "source_context": "Committing the MTS retirement and vocabulary alignment",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

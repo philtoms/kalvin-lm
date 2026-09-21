@@ -710,3 +710,9 @@
 ## [2026-09-21T11:54:13.554Z] observe
 - slug: "obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha", title: "KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented", relevance: "high"
 
+## [2026-09-21T12:13:25.658Z] observe
+- slug: "obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-", title: "MTS retired (85083f5): compound/expansion/canon triple aligned everywhere", relevance: "high"
+
+## [2026-09-21T12:18:09.828Z] observe
+- slug: "obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners", title: "CONTEXT.md algebraic entries reduced to normative one-liners", relevance: "high"
+

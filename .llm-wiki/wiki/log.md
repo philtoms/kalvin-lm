@@ -2,6 +2,8 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners","title":"CONTEXT.md algebraic entries reduced to normative one-liners"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-","title":"MTS retired (85083f5): compound/expansion/canon triple aligned everywhere"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha","title":"KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-","title":"Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model","title":"script-reading.md rewritten around three-layer model"}

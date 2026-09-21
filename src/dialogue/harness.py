@@ -493,8 +493,7 @@ class Harness:
 # ── Construction (single source of truth) ────────────────────────────────
 #
 # The factories wire signifier → state → engine → harness so the signifier
-# lives in one place (the EngineState). The engine constructs its own S2
-# strategy (ExpandFit) over the state.
+# lives in one place (the EngineState).
 
 def make_engine(
     tokenizer: BPETokenizer,
