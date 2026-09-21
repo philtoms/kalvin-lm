@@ -1,6 +1,6 @@
 
 from kalvin.engine import Engine
-from kalvin.engine_state import EngineState
+from kalvin.memory import Memory
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, SIG_S3
 from kalvin.signifier import NLPSignifier
@@ -13,7 +13,7 @@ entries = compile_source(src, tokenizer=tok, signifier=sign, dev=True)
 from kalvin.kline import is_identity, is_canon
 
 def run(filter_primed):
-    st = EngineState(NLPSignifier())
+    st = Memory(NLPSignifier())
     en = Engine(st)
     priming = [e for e in entries if (is_identity(e.kline) or is_canon(e.kline, st.signifier)) and not st.is_grounded(e.kline)]
     en.rationalise([KValue(e.kline, SIG_S1) for e in priming])

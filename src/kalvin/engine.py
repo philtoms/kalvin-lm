@@ -5,7 +5,7 @@ the batch — the dialogue emissions. The engine is stateless about its own
 emissions; dedup lives in the
 actor.
 
-The engine is pure mechanism: it holds an :class:`EngineState` and
+The engine is pure mechanism: it holds an :class:`Memory` and
 mutates it in place. The factories that
 assemble signifier, state, and engine live in :mod:`dev.dialogue.harness`.
 """
@@ -15,7 +15,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from kalvin.engine_state import EngineState
 from kalvin.hop import run_hops
 from kalvin.kline import (
     KLine,
@@ -25,6 +24,7 @@ from kalvin.kline import (
     using_resolver,
 )
 from kalvin.kvalue import KValue
+from kalvin.memory import Memory
 from kalvin.significance import (
     BandLayout,
     gamma_to_byte,
@@ -33,7 +33,7 @@ from kalvin.significance import (
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
-__all__ = ["Engine", "EngineState"]
+__all__ = ["Engine", "Memory"]
 
 # Default band layout, used to classify a query's stamped significance byte
 # into a structural level for routing.
@@ -43,15 +43,15 @@ _LAYOUT = BandLayout()
 class Engine:
     """Derives one turn from ``incoming``.
 
-    Holds the :class:`EngineState` it mutates in place. The signifier is
+    Holds the :class:`Memory` it mutates in place. The signifier is
     read off the state.
     """
 
-    def __init__(self, state: EngineState) -> None:
-        self._state: EngineState = state
+    def __init__(self, state: Memory) -> None:
+        self._state: Memory = state
 
     @property
-    def state(self) -> EngineState:
+    def state(self) -> Memory:
         """The engine's mutable memory, mutated in place each turn."""
         return self._state
 

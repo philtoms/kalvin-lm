@@ -202,15 +202,15 @@ def test_acq_depth_ignored_for_identity():
 
 
 def test_acq_depth_round_trips_through_state_snapshot():
-    from kalvin.engine_state import EngineState
+    from kalvin.memory import Memory
 
-    state = EngineState(NLPSignifier())
+    state = Memory(NLPSignifier())
     won = KLine(A, [A], acq_depth=2)
     state.work_list.append(won)
     data = state.to_dict()
     assert data["work_list"][0][2] == 2
-    rebuilt = EngineState.from_dict(NLPSignifier(), data)
+    rebuilt = Memory.from_dict(NLPSignifier(), data)
     assert rebuilt.work_list[0].acq_depth == 2
     # Legacy two-element snapshots still load.
     legacy = {"work_list": [[int(A), [int(A)]], ]}
-    assert EngineState.from_dict(NLPSignifier(), legacy).work_list[0].acq_depth == 0
+    assert Memory.from_dict(NLPSignifier(), legacy).work_list[0].acq_depth == 0

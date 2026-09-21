@@ -215,6 +215,7 @@
 - [Observation: CONTEXT.md algebraic entries reduced to normative one-liners](obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners.md)
 - [Observation: CONTEXT.md KScript entries collapsed to code-pointer one-liners](obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin.md)
 - [Observation: dev/ks/compile.py now takes script path and optional --model state](obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s.md)
+- [Observation: EngineState renamed to Memory (kalvin.memory)](obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory.md)
 - [Observation: Harness sub-script delineation simplified to scope-0 entry groups](obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g.md)
 - [Observation: KDbg.scope aligned to BindingScope frames — one scope definition in the compiler](obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti.md)
 - [Observation: KDbg.scope now carries AST nesting depth; scope-0 = root constructs](obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr.md)

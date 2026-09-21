@@ -17,7 +17,7 @@ from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, gamma_to_byte
 from kalvin.signifier import NLPSignifier
 from kalvin.engine import Engine
-from kalvin.engine_state import EngineState
+from kalvin.memory import Memory
 from dev.dialogue.harness import Harness
 
 
@@ -31,7 +31,7 @@ WDMH = int(bit(4)) | int(M) | int(H)  # the question's head
 
 
 def _harness() -> Harness:
-    return Harness(BPETokenizer(), Engine(EngineState(NLPSignifier())))
+    return Harness(BPETokenizer(), Engine(Memory(NLPSignifier())))
 
 
 def test_goal_reached_proposal_ratifies_at_s1():
@@ -56,14 +56,14 @@ def test_unpaired_proposal_has_no_grade():
 
 
 def test_stamped_s1_grounds_on_receipt():
-    e = Engine(EngineState(NLPSignifier()))
+    e = Engine(Memory(NLPSignifier()))
     prop = KLine(WDMH, [M, H, A, L, L])  # misfit head — never structural
     e.rationalise([KValue(prop, SIG_S1)])
     assert e.state.is_grounded(prop)
 
 
 def test_stamped_s1_ask_never_grounds():
-    e = Engine(EngineState(NLPSignifier()))
+    e = Engine(Memory(NLPSignifier()))
     ask = KLine(WDMH | ASK_SIG, [M, H])
     e.rationalise([KValue(ask, SIG_S1)])
     assert not e.state.is_grounded(ask)

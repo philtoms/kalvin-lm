@@ -14,7 +14,7 @@ from kalvin.kline import ASK_SIG, KLine, is_ask, is_canon, is_exact, sig_level
 from kalvin.significance import misfit_mass, word_atom_count
 from kalvin.signifier import NLPSignifier
 from kalvin.hop import candidate_goals
-from kalvin.engine_state import EngineState
+from kalvin.memory import Memory
 from ks.compiler import compile_source
 
 SCRIPT = """\
@@ -134,7 +134,7 @@ def test_ask_never_heads_a_goal_list_not_even_via_its_canon():
     canon_kl = KLine(wdmh, [W, D, M, H])
     held = KLine(H, [D, H])
     # canon released into memory: the ask's own content is not its goal
-    st = EngineState(sig)
+    st = Memory(sig)
     st.work_list.extend([canon_kl, held, ask])
     goals = candidate_goals(st, ask, sig)
     assert [int(k.signature) for k in goals] == [int(H)]

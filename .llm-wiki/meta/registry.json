@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T15:21:47.606Z",
+  "last_updated": "2026-09-21T15:37:34.006Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4130,6 +4130,21 @@
       "relevance": "medium",
       "observed_at": "2026-09-21T13:36:38.418Z",
       "source_context": "Adding CLI args to dev/ks/compile.py",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory": {
+      "type": "source",
+      "title": "Observation: EngineState renamed to Memory (kalvin.memory)",
+      "tags": [
+        "rename",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory",
+      "relevance": "high",
+      "observed_at": "2026-09-21T15:37:33.930Z",
+      "source_context": "Renaming EngineState to Memory after the dialogue dissolution",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

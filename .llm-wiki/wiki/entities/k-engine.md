@@ -16,13 +16,13 @@ improved.
 
 ## Overview
 
-The engine is pure mechanism: it holds an `EngineState` and a `MisfitStrategy`,
+The engine is pure mechanism: it holds an `Memory` and a `MisfitStrategy`,
 both fully constructed by the caller. A turn derives from `(state, incoming)`
 and returns `(batch, observations)` — dialogue emissions and K's internal S1
 groundings this turn. The engine is stateless about its own emissions; dedup
 lives in the actor (see [[concepts/per-turn-scoping]]).
 
-`EngineState` holds three stores realising the kalvin memory relations (see
+`Memory` holds three stores realising the kalvin memory relations (see
 [[concepts/memory]]):
 
 - **`stm`** — Short-Term Memory: what cogitation is attending to — incoming

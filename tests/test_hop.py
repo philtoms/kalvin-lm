@@ -7,9 +7,9 @@ re-entry changes A and reselects.
 
 from __future__ import annotations
 
-from kalvin.engine_state import EngineState
 from kalvin.hop import Hop, candidate_goals, run_hops, trawl
 from kalvin.kline import KLine, KNode
+from kalvin.memory import Memory
 from kalvin.signifier import NLPSignifier
 
 
@@ -39,8 +39,8 @@ def _memory() -> list[KLine]:
     ]
 
 
-def _state(*memory: KLine) -> EngineState:
-    st = EngineState(SIG)
+def _state(*memory: KLine) -> Memory:
+    st = Memory(SIG)
     st.work_list.extend(memory or _memory())
     return st
 

@@ -1,6 +1,6 @@
 r"""The engine's mutable memory.
 
-:class:`EngineState` holds three stores that mirror the kalvin memory
+:class:`Memory` holds three stores that mirror the kalvin memory
 relations:
 
 - **work_list** — the entries fed to Kalvin via the slow route, plus the
@@ -51,11 +51,11 @@ from kalvin.kline import (
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from kalvin.abstract import KSignifier
 
-__all__ = ["EngineState"]
+__all__ = ["Memory"]
 
 
 @dataclass
-class EngineState:
+class Memory:
     """The engine's mutable memory, owned by the actor.
 
     - **_signifier** — the structural-significance oracle the state's queries
@@ -301,7 +301,7 @@ class EngineState:
         return out
 
     @classmethod
-    def from_dict(cls, signifier: KSignifier, data: dict) -> EngineState:
+    def from_dict(cls, signifier: KSignifier, data: dict) -> Memory:
         """Rebuild a state from :meth:`to_dict` output."""
         def _n(p) -> KNode:
             if isinstance(p, list):
@@ -332,6 +332,6 @@ class EngineState:
         p.write_text(json.dumps(self.to_dict()))
 
     @classmethod
-    def load(cls, signifier: KSignifier, path: str | Path) -> EngineState:
+    def load(cls, signifier: KSignifier, path: str | Path) -> Memory:
         """Load a state snapshot from ``path`` (JSON)."""
         return cls.from_dict(signifier, json.loads(Path(path).read_text()))

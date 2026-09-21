@@ -294,6 +294,7 @@
 - [[sources/obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners]] — Observation: CONTEXT.md algebraic entries reduced to normative one-liners *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin]] — Observation: CONTEXT.md KScript entries collapsed to code-pointer one-liners *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s]] — Observation: dev/ks/compile.py now takes script path and optional --model state *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory]] — Observation: EngineState renamed to Memory (kalvin.memory) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g]] — Observation: Harness sub-script delineation simplified to scope-0 entry groups *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti]] — Observation: KDbg.scope aligned to BindingScope frames — one scope definition in the compiler *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr]] — Observation: KDbg.scope now carries AST nesting depth; scope-0 = root constructs *(created: 2026-09-21)*
@@ -317,4 +318,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T15:21:47.606Z* | *Total pages: 305*
+*Last updated: 2026-09-21T15:37:34.006Z* | *Total pages: 306*

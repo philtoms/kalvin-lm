@@ -9,7 +9,7 @@ from kalvin import hop as hop_mod
 from kalvin.kline import ASK_SIG, is_ask, is_terminal
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin import engine as eng_mod
-from kalvin.engine_state import EngineState
+from kalvin.memory import Memory
 
 def nm(v):
     lab = getattr(v, "label", "")
@@ -20,8 +20,8 @@ def render(k):
     return f"{m}{nm(k.signature)}:[{', '.join(nm(n) for n in k.nodes)}]"
 
 # 1. trace the ask-marked kline + had:[did,have] through the engine state
-orig_ground = EngineState.ground
-orig_add = EngineState.add_work
+orig_ground = Memory.ground
+orig_add = Memory.add_work
 orig_propose = eng_mod.Engine._propose
 
 def traced_ground(self, kline, store=None):
@@ -38,7 +38,7 @@ def traced_propose(self, kline):
           f"{[render(k) for k in self._state.work_list if getattr(k.signature, 'label', '') == 'had']}")
     return orig_propose(self, kline)
 
-EngineState.ground = traced_ground
+Memory.ground = traced_ground
 eng_mod.Engine._propose = traced_propose
 
 # 2. value-level trawl rounds for the MHALL goal hop

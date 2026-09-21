@@ -997,6 +997,7 @@
   "sources/obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners": [],
   "sources/obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin": [],
   "sources/obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s": [],
+  "sources/obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory": [],
   "sources/obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g": [],
   "sources/obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti": [],
   "sources/obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr": [],

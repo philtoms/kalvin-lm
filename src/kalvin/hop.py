@@ -29,7 +29,7 @@ from kalvin.kline import KLine, canon_key, is_ask, is_terminal
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
-    from kalvin.engine_state import EngineState
+    from kalvin.memory import Memory
 
 #: Def 21 bound — goals a hop takes from its list.
 MAX_GOALS = 8
@@ -40,7 +40,7 @@ MAX_HOPS = 8
 
 
 def candidate_goals(
-    state: EngineState, queued: KLine, signifier: KSignifier
+    state: Memory, queued: KLine, signifier: KSignifier
 ) -> list[KLine]:
     """Def 22 — the goal list: coverage pool (Def 8), γ(A, K) order.
 
@@ -71,7 +71,7 @@ def candidate_goals(
 
 
 def trawl(
-    state: EngineState,
+    state: Memory,
     a_nodes: list[int],
     b_nodes: list[int],
     signifier: KSignifier,
@@ -125,7 +125,7 @@ class Hop:
 
     def __init__(
         self,
-        state: EngineState,
+        state: Memory,
         queued: KLine,
         signifier: KSignifier,
         *,
@@ -177,7 +177,7 @@ class Hop:
 
 
 def run_hops(
-    state: EngineState,
+    state: Memory,
     queued: KLine,
     signifier: KSignifier,
     *,

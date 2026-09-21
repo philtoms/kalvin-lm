@@ -245,3 +245,4 @@
 {"slug":"obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d","title":"src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue","relevance":"critical","timestamp":"2026-09-21T15:16:42.157Z","kind":"observe"}
 {"slug":"obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl","title":"Probe sys.path bootstraps were off-by-one; two probe run styles","relevance":"medium","timestamp":"2026-09-21T15:16:42.158Z","kind":"observe"}
 {"slug":"obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution","title":"All live doc references updated for the dialogue dissolution","relevance":"medium","timestamp":"2026-09-21T15:21:47.552Z","kind":"observe"}
+{"slug":"obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory","title":"EngineState renamed to Memory (kalvin.memory)","relevance":"high","timestamp":"2026-09-21T15:37:33.933Z","kind":"observe"}

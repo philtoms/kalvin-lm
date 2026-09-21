@@ -743,3 +743,6 @@
 ## [2026-09-21T15:21:47.552Z] observe
 - slug: "obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution", title: "All live doc references updated for the dialogue dissolution", relevance: "medium"
 
+## [2026-09-21T15:37:33.933Z] observe
+- slug: "obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory", title: "EngineState renamed to Memory (kalvin.memory)", relevance: "high"
+

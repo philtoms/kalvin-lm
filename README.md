@@ -32,7 +32,7 @@ uv run pytest
 src/
 ├── kalvin/               # Core rationalisation engine
 │   ├── engine.py         #   Rationalising engine: (state, incoming) → batch
-│   ├── engine_state.py   #   EngineState — engine-held memory
+│   ├── memory.py         #   Memory — the engine-held memory
 │   ├── kline.py          #   KLine structure + predicates (is_canon/is_misfit/…)
 │   ├── kvalue.py         #   KValue — the value a node/signature carries
 │   ├── derivation.py     #   Derivation — the algebra core (§6–10)

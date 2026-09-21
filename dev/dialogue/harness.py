@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Literal, cast
 
 from kalvin.engine import Engine
-from kalvin.engine_state import EngineState
+from kalvin.memory import Memory
 from kalvin.kline import (
     KLine,
     KNode,
@@ -125,7 +125,7 @@ class Harness:
         return self._engine
 
     @property
-    def state(self) -> EngineState:
+    def state(self) -> Memory:
         return self._engine.state
 
     @property
@@ -446,14 +446,14 @@ class Harness:
 # ── Construction (single source of truth) ────────────────────────────────
 #
 # The factories wire signifier → state → engine → harness so the signifier
-# lives in one place (the EngineState).
+# lives in one place (the Memory).
 
 def make_engine(
     tokenizer: BPETokenizer,
     scaffolding: Literal["batch", "on-demand"] = "batch",
 ) -> Harness:
     """Build a harness over a fresh state: new signifier → state → engine."""
-    state = EngineState(NLPSignifier())
+    state = Memory(NLPSignifier())
     return Harness(tokenizer, Engine(state), scaffolding=scaffolding)
 
 
@@ -464,7 +464,7 @@ def load_engine(
 ) -> Harness:
     """Build a harness over a loaded prior state (reusing its signifier)."""
     signifier = NLPSignifier()
-    state = EngineState.load(signifier, path)
+    state = Memory.load(signifier, path)
     harness = Harness(tokenizer, Engine(state), scaffolding=scaffolding)
     # Compiles must continue the loaded state's word→bit mapping.
     harness.word_bits = dict(state.word_bits or {})
@@ -517,7 +517,7 @@ def _sig_display(value: KValue) -> str:
     return f"{_band(value)} {value.significance & SIG_MASK}"
 
 
-def _state_labels(state: EngineState) -> dict[int, str]:
+def _state_labels(state: Memory) -> dict[int, str]:
     """{value: label} off held klines — prior-lesson compound forms and word
     bindings the current script never names."""
     out: dict[int, str] = {}
@@ -542,7 +542,7 @@ def _state_labels(state: EngineState) -> dict[int, str]:
 
 def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
                   word_bits: dict[str, int] | None = None,
-                  state: EngineState | None = None) -> dict[int, str]:
+                  state: Memory | None = None) -> dict[int, str]:
     """Recompile once to recover ``{signature: scripted label}`` for display.
 
     Compiled-entry labels are authoritative; the encoder's ``node_labels``
@@ -601,7 +601,7 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
     return "\n".join(lines)
 
 
-def _grounded_snapshot(state: EngineState) -> dict[tuple[KNode, tuple[KNode, ...]], KLine]:
+def _grounded_snapshot(state: Memory) -> dict[tuple[KNode, tuple[KNode, ...]], KLine]:
     """Every grounded kline in frame and LTM, keyed by (signature, nodes)."""
     snap: dict[tuple[KNode, tuple[KNode, ...]], KLine] = {}
     for store in (state.frame, state.ltm):
@@ -611,7 +611,7 @@ def _grounded_snapshot(state: EngineState) -> dict[tuple[KNode, tuple[KNode, ...
     return snap
 
 
-def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool,
+def _render_grounded(state: Memory, labels: dict[int, str], verbose: bool,
                         pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
     if not state.ltm:
         return "  (grounded nothing)"
@@ -632,7 +632,7 @@ def _render_grounded(state: EngineState, labels: dict[int, str], verbose: bool,
     return "\n".join(lines)
 
 
-def _render_frame(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
+def _render_frame(state: Memory, labels: dict[int, str], verbose: bool) -> str:
     """Frame entries with no isomorphic (signature, nodes) entry in LTM."""
     lines: list[str] = []
     for signature in sorted(state.frame, key=lambda s: (s.bit_length(), s)):
@@ -647,7 +647,7 @@ def _render_frame(state: EngineState, labels: dict[int, str], verbose: bool) -> 
     return "\n".join(lines) if lines else "  (empty)"
 
 
-def _render_work_list(state: EngineState, labels: dict[int, str], verbose: bool) -> str:
+def _render_work_list(state: Memory, labels: dict[int, str], verbose: bool) -> str:
     if not state.work_list:
         return "  (empty)"
     return "\n".join(
@@ -694,7 +694,7 @@ def _structure_class(kline: KLine, signifier: NLPSignifier) -> str:
 
 
 def _model_graph(
-    state: EngineState,
+    state: Memory,
 ) -> tuple[dict[tuple[KNode, tuple[KNode, ...]], tuple[str, KLine]],
            dict[KNode, set[str]]]:
     """The model across all layers as ``(klines, values)``.
@@ -775,7 +775,7 @@ def _graph_heads(
     return heads, identities, compound_members
 
 
-def _render_model_graph(state: EngineState, labels: dict[int, str],
+def _render_model_graph(state: Memory, labels: dict[int, str],
                         verbose: bool) -> str:
     signifier = state.signifier
     klines, values = _model_graph(state)
@@ -858,7 +858,7 @@ def _graph_class(layers: str | set[str]) -> str:
     ]
 
 
-def _render_model_graph_dot(state: EngineState, labels: dict[int, str],
+def _render_model_graph_dot(state: Memory, labels: dict[int, str],
                             verbose: bool) -> str:
     signifier = state.signifier
     klines, values = _model_graph(state)
@@ -943,7 +943,7 @@ def _render_model_graph_dot(state: EngineState, labels: dict[int, str],
     return "\n".join(lines)
 
 
-def _render_model_graph_mermaid(state: EngineState, labels: dict[int, str],
+def _render_model_graph_mermaid(state: Memory, labels: dict[int, str],
                                 verbose: bool) -> str:
     signifier = state.signifier
     klines, values = _model_graph(state)
@@ -1005,7 +1005,7 @@ _GRAPH_RENDERERS = {
 }
 
 
-def _render_summary(results: list[StepResult], state: EngineState,
+def _render_summary(results: list[StepResult], state: Memory,
                     labels: dict[int, str], verbose: bool,
                     pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
     bands: Counter = Counter()
@@ -1024,7 +1024,7 @@ def _render_summary(results: list[StepResult], state: EngineState,
     )
 
 
-def present(results: list[StepResult], state: EngineState, source: str,
+def present(results: list[StepResult], state: Memory, source: str,
             tokenizer: BPETokenizer, signifier: NLPSignifier, *, verbose: bool,
             pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None,
             word_bits: dict[str, int] | None = None,
