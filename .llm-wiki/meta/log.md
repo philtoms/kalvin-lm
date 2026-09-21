@@ -725,3 +725,9 @@
 ## [2026-09-21T13:36:38.421Z] observe
 - slug: "obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s", title: "dev/ks/compile.py now takes script path and optional --model state", relevance: "medium"
 
+## [2026-09-21T14:01:41.971Z] observe
+- slug: "obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g", title: "Harness sub-script delineation simplified to scope-0 entry groups", relevance: "high"
+
+## [2026-09-21T14:11:42.276Z] observe
+- slug: "obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr", title: "KDbg.scope now carries AST nesting depth; scope-0 = root constructs", relevance: "high"
+

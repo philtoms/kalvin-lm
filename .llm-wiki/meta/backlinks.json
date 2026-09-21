@@ -996,6 +996,8 @@
   "sources/obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners": [],
   "sources/obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin": [],
   "sources/obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s": [],
+  "sources/obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g": [],
+  "sources/obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr": [],
   "sources/obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha": [],
   "sources/obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-": [],
   "sources/obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test": [],

@@ -138,7 +138,8 @@ class Harness:
         """Compile ``source``, open each sub-script's dialogue, and let the
         engine drive.
 
-        Each sub-script (annotation group) opens with its opener. In
+        A sub-script is a root-level (scope-0) entry plus the nested and
+        expansion entries that follow it; it opens with the scope-0 entry. In
         ``"batch"`` scaffolding the group's remaining entries are fed first,
         priming K, and the opener follows once their asks have settled; in
         ``"on-demand"`` only the opener is fed and the group's remaining
@@ -195,35 +196,14 @@ class Harness:
             sig: word
             for sig, word in self._single_token_labels(source).items()
         }
-        # Authored sub-scripts: a group is delimited by an entry annotation
-        # (or EOF) — a new group opens at any authored (scope-0) entry whose
-        # annotation differs from the current group's; '' entries join the
-        # current group. expansion entries follow positionally (they carry their
-        # scope's annotation), but dedup globally: an expansion entry joins the
-        # first group of its annotation, never a later duplicate — the
-        # encoder's source-before-expansion partition would otherwise re-open
-        # every earlier annotation as a trailing group.
-        groups: list[tuple[str, list[KValue]]] = []
-        first_by_ann: dict[str, list[KValue]] = {}
-        current: list[KValue] | None = None
-        current_ann: str | None = None
+        # Sub-scripts: a group opens at every root-level (scope-0) entry;
+        # nested and expansion entries join the current group positionally.
+        groups: list[list[KValue]] = []
         for entry in entries:
-            annotation = entry.kline.dbg.annotation if entry.kline.dbg else ""
             scope = entry.kline.dbg.scope if entry.kline.dbg else 0
-            if scope != 0 and annotation and annotation in first_by_ann:
-                first_by_ann[annotation].append(entry)
-                continue
-            if current is None or (annotation and annotation != current_ann):
-                occurrence = sum(
-                    1 for k, _ in groups if k.rsplit("#", 1)[0] == annotation
-                )
-                key = f"{annotation}#{occurrence}"
-                groups.append((key, []))
-                current = groups[-1][1]
-                current_ann = annotation
-                if annotation:
-                    first_by_ann.setdefault(annotation, current)
-            current.append(entry)
+            if not groups or scope == 0:
+                groups.append([])
+            groups[-1].append(entry)
         # The answering pools grow as groups open — the harness never answers
         # from a sub-script the dialogue has not reached (no look-ahead).
         heads: dict[int, list[KValue]] = {}
@@ -231,42 +211,15 @@ class Harness:
         words: set[int] = set(tokens)
         # An opening group is a step; its entries join the answering pools
         # when it opens (cumulative — past and current groups only).
-        steps: list[tuple[str, list[KValue], KValue]] = []
-        for key, group in groups:
-            # The opener is the group's question: a scope-0 authored ask,
-            # else a scope-0 authored entry, else the canon itself (a bare
-            # annotated sig's compound canon) — never an identity. An identity is
-            # an answer, not a question; opening with it grounds the group's
-            # words before the question is ever asked.
-            opener = next(
-                (
-                    e for e in group
-                    if e.kline.dbg and e.kline.dbg.scope == 0
-                    and e.kline.dbg.op == "ASK"
-                ),
-                next(
-                    (e for e in group if e.kline.dbg and e.kline.dbg.scope == 0),
-                    next(
-                        (
-                            e for e in group
-                            if e.kline.dbg and e.kline.dbg.op == "CANONICALISES"
-                        ),
-                        group[0],
-                    ),
-                ),
-            )
-            annotation = opener.kline.dbg.annotation if opener.kline.dbg else ""
-            if not annotation and not (
-                opener.kline.dbg and opener.kline.dbg.op == "ASK"
-            ):
-                continue
-            steps.append((key, group, opener))
+        steps: list[tuple[list[KValue], KValue]] = []
+        for group in groups:
+            steps.append((group, group[0]))
         # Scaffold groups open before ask groups: the trainer primes K
         # before asking, so the ask's hops trawl the scaffold from memory.
         # Stable within each class — authored order preserved.
-        steps.sort(key=lambda s: bool(s[2].kline.dbg and s[2].kline.dbg.op == "ASK"))
+        steps.sort(key=lambda s: bool(s[1].kline.dbg and s[1].kline.dbg.op == "ASK"))
         results: list[StepResult] = []
-        for i, (key, group, opener) in enumerate(steps):
+        for i, (group, opener) in enumerate(steps):
             # Fresh answers per authored group: a repeated group is a second
             # ask, not a replay of the first one's dedup ledger.
             answered: set[tuple[int, tuple[int, ...]]] = set()

@@ -214,6 +214,8 @@
 - [Observation: CONTEXT.md algebraic entries reduced to normative one-liners](obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners.md)
 - [Observation: CONTEXT.md KScript entries collapsed to code-pointer one-liners](obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin.md)
 - [Observation: dev/ks/compile.py now takes script path and optional --model state](obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s.md)
+- [Observation: Harness sub-script delineation simplified to scope-0 entry groups](obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g.md)
+- [Observation: KDbg.scope now carries AST nesting depth; scope-0 = root constructs](obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr.md)
 - [Observation: KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented](obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha.md)
 - [Observation: MTS retired (85083f5): compound/expansion/canon triple aligned everywhere](obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-.md)
 - [Observation: Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green](obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test.md)

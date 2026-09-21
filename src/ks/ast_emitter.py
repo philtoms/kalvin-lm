@@ -163,6 +163,10 @@ class ASTEmitter:
         # Scope/annotation tracking for KDbg.annotation and KDbg.scope.
         self._scope_annotation: str = ""
         self._pending_annotation: str = ""
+        # Nesting depth for KDbg.scope: a scope's own constructs emit at its
+        # depth (root 0), each nested scope's one deeper. Expansion entries
+        # sit one below their spawning scope — never scope-0.
+        self._scope_depth: int = 0
 
     # Public API
 
@@ -288,7 +292,8 @@ class ASTEmitter:
                 # the current scope's annotation and authored provenance,
                 # not the cached compound canon's.
                 ask = canon._replace(
-                    op="ASK", is_ask=True, is_expansion=False, scope=0,
+                    op="ASK", is_ask=True, is_expansion=False,
+                    scope=self._scope_depth,
                     annotation=self._scope_annotation,
                 )
                 if canon_created:
@@ -601,7 +606,7 @@ class ASTEmitter:
             sig=sig, nodes=nodes, op=op, is_expansion=is_expansion, is_ask=is_ask,
             concat=concat,
             annotation=self._scope_annotation,
-            scope=1 if is_expansion else 0,
+            scope=self._scope_depth + 1 if is_expansion else self._scope_depth,
             goal=goal,
         ))
 
@@ -687,6 +692,9 @@ class ASTEmitter:
             if has_recursive_content and canon_idx is None:
                 self._in_canonicalise_subscript = True
 
+        # Nested constructs sit one scope deeper (KDbg.scope depth).
+        saved_depth = self._scope_depth
+        self._scope_depth += 1
         for item in scope.items:
             if isinstance(item, OperatorScope):
                 self._process_scope(item)
@@ -711,6 +719,8 @@ class ASTEmitter:
                     continue
                 # Bare scopes (op=None) emit ASK in _process_scope.
                 self._process_constructs([construct])
+
+        self._scope_depth = saved_depth
 
         if pushed_scope and self._scope is not None:
             self._scope.pop_scope()

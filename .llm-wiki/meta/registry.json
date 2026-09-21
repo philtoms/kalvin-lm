@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T13:36:38.496Z",
+  "last_updated": "2026-09-21T14:11:42.352Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4114,6 +4114,39 @@
       "relevance": "medium",
       "observed_at": "2026-09-21T13:36:38.418Z",
       "source_context": "Adding CLI args to dev/ks/compile.py",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g": {
+      "type": "source",
+      "title": "Observation: Harness sub-script delineation simplified to scope-0 entry groups",
+      "tags": [
+        "dialogue",
+        "harness",
+        "kscript"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g",
+      "relevance": "high",
+      "observed_at": "2026-09-21T14:01:41.968Z",
+      "source_context": "Simplifying sub-script delineation in src/dialogue/harness.py",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr": {
+      "type": "source",
+      "title": "Observation: KDbg.scope now carries AST nesting depth; scope-0 = root constructs",
+      "tags": [
+        "kscript",
+        "compiler",
+        "harness",
+        "scope"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr",
+      "relevance": "high",
+      "observed_at": "2026-09-21T14:11:42.273Z",
+      "source_context": "Making KDbg.scope carry nesting depth for harness step delineation",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

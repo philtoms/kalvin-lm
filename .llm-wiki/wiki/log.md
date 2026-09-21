@@ -2,6 +2,8 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr","title":"KDbg.scope now carries AST nesting depth; scope-0 = root constructs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g","title":"Harness sub-script delineation simplified to scope-0 entry groups"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s","title":"dev/ks/compile.py now takes script path and optional --model state"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin","title":"CONTEXT.md KScript entries collapsed to code-pointer one-liners"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test","title":"Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green"}
