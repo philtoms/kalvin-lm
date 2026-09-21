@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T10:48:04.980Z",
+  "last_updated": "2026-09-21T11:54:13.615Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4065,6 +4065,26 @@
       "relevance": "medium",
       "observed_at": "2026-09-21T05:57:43.678Z",
       "source_context": "Committing the Def 1 seam migration",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha": {
+      "type": "source",
+      "title": "Observation: KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented",
+      "tags": [
+        "kscript",
+        "ks",
+        "bpe",
+        "token-encoder",
+        "word-bits",
+        "encoding",
+        "audit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha",
+      "relevance": "high",
+      "observed_at": "2026-09-21T11:54:13.552Z",
+      "source_context": "Auditing KS/BPE cooperation for multi-subword exotic words",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

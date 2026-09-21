@@ -7,7 +7,7 @@ Grammar::
     block           ::= INDENT construct+ DEDENT
     annotation      ::= ANNOTATION
     operator_scope  ::= sig ( operator items )?
-                     |  ANNOTATION operator items   (sigless — synthesized MTS)
+                     |  ANNOTATION operator items   (sigless — synthesized compound)
     items           ::= item*
     item            ::= sig | annotation | operator_scope
     sig             ::= SIGNATURE
@@ -24,7 +24,7 @@ Sigless operator scope (single-line annotation):
 
     (did Fred pet a sheep) =>
 
-    An annotation followed directly by an operator synthesizes the MTS
+    An annotation followed directly by an operator synthesizes the compound
     signature from the annotation words' initials (DFPAS), so large texts
     can be chunked without hand-writing compounds.
 
@@ -79,7 +79,7 @@ def _is_word_expansion(name: str) -> bool:
     """True for a Capitalized multi-char word read as Initial(tail).
 
     ``Mood`` ≡ ``M(ood)``: initial upper, at least one lower. ALL-UPPER
-    (MHALL — MTS compound) and lowercase-first (had — literal word) do
+    (MHALL — compound) and lowercase-first (had — literal word) do
     not qualify.
     """
     return len(name) > 1 and name[0].isupper() and not name.isupper()
@@ -188,7 +188,7 @@ class Parser:
         """An ANNOTATION at construct position: loose, or a sigless scope.
 
         An annotation synthesizes the operator scope whose signature is
-        its words' initials (the MTS convention): ``(did Fred pet a sheep)
+        its words' initials (the compound convention): ``(did Fred pet a sheep)
         =>`` is ``(did Fred pet a sheep)DFPAS =>``, and a bare
         ``(did Fred pet a sheep)`` is the bare annotated sig. The
         annotation remains the scope's annotation, so Word Binding

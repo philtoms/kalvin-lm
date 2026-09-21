@@ -707,3 +707,6 @@
 ## [2026-09-21T10:48:04.906Z] observe
 - slug: "obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-", title: "Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails", relevance: "high"
 
+## [2026-09-21T11:54:13.554Z] observe
+- slug: "obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha", title: "KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented", relevance: "high"
+

@@ -1393,7 +1393,7 @@ How the reference realisation (Definition 2) populates the value space (Definiti
 
 One bit per distinct word. A multi-subword word (`Mary` → `[mar, y]`) is one word and one bit — the subword token ids OR together into the token half, and the shared bit does the work a decomposition would: no kline is needed to know a word is one.
 
-Bits are assigned on a first-encountered basis at half-positions 0–30, by the ks compiler; a compile seeded with the prior state's known words carries the basis across scripts (word binding; CONTEXT.md). A compound — an MTS signature, a CONNOTES concatenation — takes no bit of its own: its value is the OR-reduction of its component words' values.
+Bits are assigned on a first-encountered basis at half-positions 0–30, by the ks compiler; a compile seeded with the prior state's known words carries the basis across scripts (word binding; CONTEXT.md). A compound — expansion-introduced or a CONNOTES concatenation — takes no bit of its own: its value is the OR-reduction of its component words' values.
 
 Half-position 31 is reserved: the ASK marker. No word ever carries it.
 

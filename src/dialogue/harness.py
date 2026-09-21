@@ -198,10 +198,10 @@ class Harness:
         # Authored sub-scripts: a group is delimited by an entry annotation
         # (or EOF) — a new group opens at any authored (scope-0) entry whose
         # annotation differs from the current group's; '' entries join the
-        # current group. MTS entries follow positionally (they carry their
-        # scope's annotation), but dedup globally: an MTS entry joins the
+        # current group. expansion entries follow positionally (they carry their
+        # scope's annotation), but dedup globally: an expansion entry joins the
         # first group of its annotation, never a later duplicate — the
-        # encoder's source-before-MTS partition would otherwise re-open
+        # encoder's source-before-expansion partition would otherwise re-open
         # every earlier annotation as a trailing group.
         groups: list[tuple[str, list[KValue]]] = []
         first_by_ann: dict[str, list[KValue]] = {}
@@ -235,7 +235,7 @@ class Harness:
         for key, group in groups:
             # The opener is the group's question: a scope-0 authored ask,
             # else a scope-0 authored entry, else the canon itself (a bare
-            # annotated sig's MTS canon) — never an identity. An identity is
+            # annotated sig's compound canon) — never an identity. An identity is
             # an answer, not a question; opening with it grounds the group's
             # words before the question is ever asked.
             opener = next(
@@ -566,7 +566,7 @@ def _sig_display(value: KValue) -> str:
 
 
 def _state_labels(state: EngineState) -> dict[int, str]:
-    """{value: label} off held klines — prior-lesson MTS forms and word
+    """{value: label} off held klines — prior-lesson compound forms and word
     bindings the current script never names."""
     out: dict[int, str] = {}
 
@@ -595,7 +595,7 @@ def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
 
     Compiled-entry labels are authoritative; the encoder's ``node_labels``
     supplies words for single-token node values that never head an entry
-    (e.g. MTS-expanded words like ``did``/``have``).
+    (e.g. compound-expanded words like ``did``/``have``).
     """
     from ks.compiler import Compiler
     from ks.lexer import Lexer

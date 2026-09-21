@@ -50,7 +50,7 @@ _Avoid_: unsigned, treating the empty kline as an Identity
 
 **Canon**:
 An exact kline whose witness carries decomposition content: the signature stands for its nodes and is safe to use in their place. Claims S1. As evidence a canon must be well-founded — identities and self-containing canons are the two inert witness classes (Def 13).
-_Avoid_: canonical; treating `=>` as synonymous (the token declares intent to compose; the result need not be a Canon); MTS (an example, not the concept)
+_Avoid_: canonical; treating `=>` as synonymous (the token declares intent to compose; the result need not be a Canon); expansion (an example, not the concept)
 
 **Misfit**:
 A non-terminal kline that is not exact. Claims S2 when at least one node is covered by the signature, S3 when none is (Def 10, cases 4–8).
@@ -200,7 +200,7 @@ The model's mechanism for realising significance: if a signature is grounded, al
 The language that authors training material. A script is an encounter in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step.
 
 **Token ID**:
-A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word half (upper 32 bits) carries one bit per distinct word — the atoms' engine realisation — assigned first-encountered at bits 0–30; bit 31 is the ASK marker (`ASK_SIG`), reserved — no word ever carries it. A multi-subword word is one word and one bit; a compound (MTS signature, CONNOTES concatenation) composes no bit of its own — it is the OR-reduction of its component words' values.
+A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word half (upper 32 bits) carries one bit per distinct word — the atoms' engine realisation — assigned first-encountered at bits 0–30; bit 31 is the ASK marker (`ASK_SIG`), reserved — no word ever carries it. A multi-subword word is one word and one bit; a compound (expansion-introduced, or a CONNOTES concatenation) composes no bit of its own — it is the OR-reduction of its component words' values.
 
 **Relational Tokens**:
 The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
@@ -218,9 +218,9 @@ A leading `#` — the rest of the line is dropped by the lexer and never reaches
 The semantic layer of KScript: parenthetical prose instructing the agent running the session what the surrounding structure means, and resolving **Word Binding**. Exists for the agent, not the trainee; absence is a missed opportunity, never a compilation error. Brackets are optional when the word carries them in its case: a Capitalized identifier reads exactly as its bracketed form (`Mood` ≡ `M(ood)`) — a Capitalized word declares its binding — while ALL-UPPER stays a compound (`MHALL`) and lowercase-first stays a literal word (`had`). An inline annotation attaches to a single character's tail and witnesses one word: `Word(x)` and a whitespace-bearing tail (`M(ary had)`) are parse errors, not literals or concatenations — phrasal content belongs in a prefix annotation.
 _Avoid_: comment
 
-**MTS (Multi-Token Signature)**:
-A device for representing a multi-token signature on the LHS: the compiler expands a multi-character identifier into one MTS canon relationship plus a self-identity per word-bound token. An omitted identifier is synthesized from the preceding annotation's word initials — the capability large texts are chunked through.
-_Avoid_: decomposition (a Canon decomposes into nodes; an MTS expands a signature into characters)
+**Compound**:
+A signature composed of multiple words: its value is the OR-reduction of its component words' values, so it takes no word bit of its own. Introduced two ways: by expansion — an ALL-UPPER identifier (`MHALL`) resolves each character via Word Binding, the resolved words becoming one canon kline's nodes — or by CONNOTES concatenation (`A > B` ⇒ `AB`). An omitted identifier is synthesized from the preceding annotation's word initials — the capability large texts are chunked through.
+_Avoid_: decomposition (a Canon decomposes into nodes; an expansion introduces a compound's words); MTS (superseded name for the expansion)
 
 **Word Binding**:
 The association of a single-character signature with a word, resolved through annotations. An authored binding is case-blind — a witness `h(ad)` binds the compound char `H` as readily as `H(ad)` (the sig char's case is typographic; the word's case is the word) — but ambient attraction is sig-case-gated: a bare single character in sig case attracts the nearest scope's most recent word-list word with matching initial (occurrence-counted), while a lowercase single character is the literal word (the article `a`) and never attracts. An identifier's case frames its reading everywhere: ALL-UPPER is a compound (`MHALL`, alnum-only — a punctured identifier is a word), Capitalized carries its own expansion (`Mood` ≡ `M(ood)`), lowercase-first is a literal word (`had`), and so is a caseless first character — a digit or a word-internal punctuation mark (`42`, `3.14`, `don't`): identifiers admit `- . _ '` beyond alphanumerics, while the relational and structural marks (`= > < ( ) #`) are reserved and never part of an identifier, as are `? ! ,` (reserved syntax candidates); a word needing a reserved character is written bracketed — `w(hat?)` → `what?`. Precedence: inline annotation (nearest, overrides all others, also binds its immediate parent scope), then top-level annotations by scope, then resolved bindings (the char→word memory of earlier resolutions). Within a tier, the most recent match wins; each identity occurrence binds exactly once. A compile seeded with the prior state's known words (acquisition order) carries the binding across scripts: the seed is the outermost word list, binding chars the script cannot bind itself — an underfit question script's answer chars resolve to the earlier script's words instead of minting fresh.

@@ -2,6 +2,7 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha","title":"KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-","title":"Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model","title":"script-reading.md rewritten around three-layer model"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill","title":"script-reading.md three-layer revision settled via grill"}

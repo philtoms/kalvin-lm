@@ -118,7 +118,7 @@ _OP_TO_SIG: dict[str, int] = {
     "CONNOTES": SIG_S2,
     "IDENTITY": SIG_S1,
     "ASK": SIG_S4,
-    "MTS": SIG_S1,
+    "EXPANSION": SIG_S1,
 }
 
 
