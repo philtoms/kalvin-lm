@@ -141,7 +141,7 @@ The structural halt condition: the Unknown shape is the ask's form, and a misfit
 The held klines that may serve as a derivation's goal — the coverage pool ordered by descending γ(A, K) (Def 22).
 
 **Scope**:
-A derivation's memory for one hop: a dual-rooted, depth-bounded trawl of the correspondence graph, frozen for the hop's duration (Def 23). Engine realisation: a kline joins the scope when its signature or any node shares a word bit with the reached set — token-id bits carry no correspondence.
+A derivation's memory for one hop: a dual-rooted, depth-bounded trawl of the correspondence graph, frozen for the hop's duration (Def 23; the engine's word-bit edge rule in `src/kalvin/hop.py`).
 
 **Slot**:
 A node carrying misfit content on either party of a relationship — an underfit node of A, an overfit node of B. A slot without a licensed replace is walked: a **meeting** of two **descents** (one from each party, licensed by heading alone) writes a **bridge** — the composed correspondence the main derivation consumes (Def 15).
@@ -184,30 +184,24 @@ The model's mechanism for realising significance: if a signature is grounded, al
 The language that authors training material. A script is an encounter in dialogue form: klines and relational tokens declaring the structure the trainee will meet, step by step.
 
 **Token ID**:
-A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`. The word half (upper 32 bits) carries one bit per distinct word — the atoms' engine realisation — assigned first-encountered at bits 0–30; bit 31 is the ASK marker (`ASK_SIG`), reserved — no word ever carries it. A multi-subword word is one word and one bit; a compound (expansion-introduced, or a CONNOTES concatenation) composes no bit of its own — it is the OR-reduction of its component words' values.
+A value produced by the tokenizer: `(word_bit << 32) | bpe_token_id`, where the word word carries one bit per distinct word (first-encountered at bits 0–30, bit 31 the ASK marker) and a compound composes no bit of its own — layout and encoding rules in `src/ks/token_encoder.py`.
 
 **Relational Tokens**:
-The closed set of written tokens that declare how a kline is produced. A token declares an intent; the fit classification of the produced kline may or may not satisfy it (§13).
-
-- `==` **COUNTERSIGNS** — goal-targeted training: `A == B => C D` compiles to the queued ask `{A:[]}` (S4, the entry) and the implied goal `{B:[C,D]}` (a Canon or covered misfit per the block's scaffolding). No reciprocal pair is emitted; the engine's own selection is unchanged — the goal is the trainer's answer key. The harness feeds the ask at its subjective significance γ(A, B) (Def 20 — fresh content carries zero depths, so γ = J, the significance of the two contents); the structural S4 shape is never the exchanged byte. The engine's proposals under the goal grade the same way — the proposal's content against the goal's target (its signature value): the proposal that reached its goal is ratified at S1 and grounds on receipt (the stamp, not structure, is the licence); one off the goal grades low and refuses on re-feed
-- `=>` **CANONICALISES** — intent to aggregate `{A:[B,C,D]}`; the result need not be a Canon
-- `>` / `<` **CONNOTES** — the compound-signature shape `A > B` ⇒ `{AB:[B]}`, `A < B` ⇒ `{BA:[A]}` (reading order, `A < B ≡ B > A`): the signature is the compound of both operands, the node the connoted value. Self-reference collapses to Identity
-- `=` **DENOTES** — `{A:[B]}`: the signature denotes each node. Self-denote collapses to Identity
-- (none) **ASK** — a bare signature: unbound compiles to `{A|ASK:[A]}` (the ask — the identity shape, marked); word-bound to Identity `{A:[A]}` — except a sigless annotation's own utterance, always the ask with its binding resolving the nodes. The ASK op is the one op for every ask — a sigless annotation compiles to `{ABC|ASK:[a,big,cat]}` (the annotation's words as nodes), a `==` entry to the queued ask, a bare compound to its canon-noded ask. One ask structure: the signature carries the ASK marker OR-ed in and the canon's nodes ride along (`WDMH|ASK_SIG:[what,did,Mary,have]`) — the marker manufactures the ask's distinctiveness from its canon (identity, store keys, and lookups see it; every content measurement — signifies, residual, γ — masks it out) and the nodes are what candidate selection (Def 22) reads. S4
+The closed set of written tokens declaring how a kline is produced — `==` COUNTERSIGNS, `=>` CANONICALISES, `>`/`<` CONNOTES, `=` DENOTES, none ASK; a token declares an intent the fit classification of the produced kline may or may not satisfy (§13) — compilation semantics in `src/ks/ast_emitter.py`, band claims in `src/ks/token_encoder.py`, the `==` grading protocol in `src/dialogue/harness.py`.
 
 **Comment**:
 A leading `#` — the rest of the line is dropped by the lexer and never reaches binding or klines.
 
 **Annotation**:
-The semantic layer of KScript: parenthetical prose instructing the agent running the session what the surrounding structure means, and resolving **Word Binding**. Exists for the agent, not the trainee; absence is a missed opportunity, never a compilation error. Brackets are optional when the word carries them in its case: a Capitalized identifier reads exactly as its bracketed form (`Mood` ≡ `M(ood)`) — a Capitalized word declares its binding — while ALL-UPPER stays a compound (`MHALL`) and lowercase-first stays a literal word (`had`). An inline annotation attaches to a single character's tail and witnesses one word: `Word(x)` and a whitespace-bearing tail (`M(ary had)`) are parse errors, not literals or concatenations — phrasal content belongs in a prefix annotation.
+The semantic layer of KScript — parenthetical prose instructing the agent running the session what the surrounding structure means, and resolving **Word Binding**; it exists for the agent, not the trainee, so absence is a missed opportunity, never a compilation error (case and bracket rules: `src/ks/lexer.py`, `src/ks/parser.py`).
 _Avoid_: comment
 
 **Compound**:
-A signature composed of multiple words: its value is the OR-reduction of its component words' values, so it takes no word bit of its own. Introduced two ways: by expansion — an ALL-UPPER identifier (`MHALL`) resolves each character via Word Binding, the resolved words becoming one canon kline's nodes — or by CONNOTES concatenation (`A > B` ⇒ `AB`). An omitted identifier is synthesized from the preceding annotation's word initials — the capability large texts are chunked through.
+A signature composed of multiple words — introduced by expansion (an ALL-UPPER identifier), CONNOTES concatenation, or synthesis from a sigless annotation's initials — whose value is the OR-reduction of its component words' values, taking no word bit of its own (`src/ks/ast_emitter.py`, `src/ks/token_encoder.py`).
 _Avoid_: decomposition (a Canon decomposes into nodes; an expansion introduces a compound's words); MTS (superseded name for the expansion)
 
 **Word Binding**:
-The association of a single-character signature with a word, resolved through annotations. An authored binding is case-blind — a witness `h(ad)` binds the compound char `H` as readily as `H(ad)` (the sig char's case is typographic; the word's case is the word) — but ambient attraction is sig-case-gated: a bare single character in sig case attracts the nearest scope's most recent word-list word with matching initial (occurrence-counted), while a lowercase single character is the literal word (the article `a`) and never attracts. An identifier's case frames its reading everywhere: ALL-UPPER is a compound (`MHALL`, alnum-only — a punctured identifier is a word), Capitalized carries its own expansion (`Mood` ≡ `M(ood)`), lowercase-first is a literal word (`had`), and so is a caseless first character — a digit or a word-internal punctuation mark (`42`, `3.14`, `don't`): identifiers admit `- . _ '` beyond alphanumerics, while the relational and structural marks (`= > < ( ) #`) are reserved and never part of an identifier, as are `? ! ,` (reserved syntax candidates); a word needing a reserved character is written bracketed — `w(hat?)` → `what?`. Precedence: inline annotation (nearest, overrides all others, also binds its immediate parent scope), then top-level annotations by scope, then resolved bindings (the char→word memory of earlier resolutions). Within a tier, the most recent match wins; each identity occurrence binds exactly once. A compile seeded with the prior state's known words (acquisition order) carries the binding across scripts: the seed is the outermost word list, binding chars the script cannot bind itself — an underfit question script's answer chars resolve to the earlier script's words instead of minting fresh.
+The association of a single-character signature with a word, resolved through annotations — inline annotation over word lists over resolved bindings, ambient attraction sig-case-gated, and acquisition-order seeding across scripts (the full algorithm: `src/ks/binding_scope.py`; case framing: `src/ks/lexer.py`).
 _Avoid_: comment mapping, rebind
 
 ## Training and Runtime
@@ -235,20 +229,20 @@ An agent that resolves what the Trainer escalates — deciding ratify, scaffold,
 _Avoid_: UI, human
 
 **Scaffolding**:
-KScript entries that provide grounding context for other entries — structurally identical regardless of origin (pre-compiled by the author, or reactive from the supervisor). Delivery is a harness mode: batch (all before the group's opening entry) or on-demand (released as the trainee asks). Scaffold groups open before ask groups: the trainer primes K before asking, so the ask's hops trawl the scaffold from memory.
+KScript entries that provide grounding context for other entries — structurally identical whether pre-compiled by the author or reactive from the supervisor, delivered batch or on-demand (`src/dialogue/harness.py`).
 
 **Proposal**:
 A KLine emitted by a trainee during rationalisation. Ungrounded when generated under the ask — S3 evidence is a promise, not a fact; weighing promises is protocol.
 
 **Ratify**:
-The action of countersigning a selected proposal — usually performed by the Trainer while running a script. Its effect is a tier relation over memory: a ratified correspondence edge costs nothing in acquisition depth, and ratifying a traversed pair promotes it to a standing one-hop licence (§10–11, §14).
+The action of countersigning a selected proposal — a ratified correspondence edge costs nothing in acquisition depth, and ratifying a traversed pair promotes it to a standing one-hop licence (§14).
 
 **Escalation**:
 The Trainer deferring a proposal to the supervisor when its cogitation yields no reply.
 _Avoid_: auto-ratify failure
 
 **Semantic Evidence**:
-The correspondences a KScript's entries hold collectively but no single kline declares: the canon index and the connotation/denotation edges. Emitted by compilation as derived structure, it carries the script's intended significance.
+The correspondences a KScript's entries hold collectively but no single kline declares — the canon index and the connotation/denotation edges, emitted by compilation as derived structure (`src/dialogue/structural.py`).
 
 **Target Significance**:
-The band a KScript production op declares — the answer key a trainee must learn to derive, not a measurement of any one kline.
+The band a KScript production op declares — the answer key a trainee must learn to derive, not a measurement of any one kline (`band_significance` in `src/ks/token_encoder.py`).

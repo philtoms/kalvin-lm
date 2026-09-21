@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T12:18:09.902Z",
+  "last_updated": "2026-09-21T13:36:38.496Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4084,6 +4084,39 @@
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
+    "sources/obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md KScript entries collapsed to code-pointer one-liners",
+      "tags": [
+        "docs",
+        "kscript",
+        "glossary",
+        "kalvin"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T12:28:06.107Z",
+      "source_context": "Slimming CONTEXT.md glossary entries to single sentences",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s": {
+      "type": "source",
+      "title": "Observation: dev/ks/compile.py now takes script path and optional --model state",
+      "tags": [
+        "kscript",
+        "dev-tools",
+        "compile"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T13:36:38.418Z",
+      "source_context": "Adding CLI args to dev/ks/compile.py",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha": {
       "type": "source",
       "title": "Observation: KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented",
@@ -4120,6 +4153,23 @@
       "relevance": "high",
       "observed_at": "2026-09-21T12:13:25.656Z",
       "source_context": "Committing the MTS retirement and vocabulary alignment",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test": {
+      "type": "source",
+      "title": "Observation: Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green",
+      "tags": [
+        "dialogue",
+        "cleanup",
+        "committed",
+        "modules"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T12:20:59.606Z",
+      "source_context": "Committing obsolete dialogue module removal",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

@@ -113,9 +113,9 @@ COUNTERSIGNS row above). The engine still selects its own goals; the
 scaffold arranges the true answer for grading, it does not prescribe the
 route.
 
-## MTS and annotations
+## Compounds and annotations
 
-A multi-character signature like `MHALL` or `DMHAL` is an **MTS**: the
+A multi-character signature like `MHALL` or `DMHAL` is a **Compound**: the
 compiler expands it into its constituent single-char identities plus one
 MTS relationship. A signature that spells its annotation — `DMHAL` under
 `(did Mary have a lamb)` — is easy for the agent to decode; `DGI` under

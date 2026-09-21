@@ -2,69 +2,6 @@
 
 A rationalising system whose entire world is built from **klines** — node-like structures with a signature (identity) and nodes (relationships). Kalvin receives new information, rationalises it against existing knowledge, and produces a response with a **significance** measurement indicating how well it understood.
 
-## What Kalvin Does
-
-Kalvin is not an oracle. Every response carries significance — a structural measurement of how grounded the response is in what Kalvin already knows:
-
-| Level  | Meaning              | Kalvin says                     |
-| ------ | -------------------- | ------------------------------- |
-| **S1** | Fully grounded       | "I know this."                  |
-| **S2** | Partially understood | "I understand some of it."      |
-| **S3** | Recognised aspects   | "This reminds me of something." |
-| **S4** | Completely novel     | "I've never seen this before."  |
-
-This makes every response actionable. The other agent in the dialogue knows exactly where understanding is strong and where it breaks down.
-
-## The Multi-Agent System
-
-Kalvin operates inside a **harness** — a persistent server that loads agents and routes messages between them. All participants are equal: each has a unique address, sends addressed messages through the harness, and receives messages addressed to it.
-
-```
-Harness Server
-  ├── Kalvin (the rationalisation engine)
-  ├── Trainer (drives the training loop, generates scaffolding)
-  ├── Slack agent (human-in-the-loop via Slack)
-  └── TUI agent (human-in-the-loop via terminal)
-```
-
-No participant knows it's in a training loop. Each simply receives and responds. The dialogue between them is the training.
-
-### How Training Works
-
-1. The **human** provides a goal and initial KScript via Slack.
-2. The **Trainer** breaks the goal into scripts and submits them to Kalvin, lesson by lesson.
-3. **Kalvin** rationalises each lesson, emitting events with significance.
-4. If lessons land at S1, the Trainer advances. If S2/S3, the Trainer enters reactive mode:
-   - Cogitates (via LLM agent) on what scaffolding to write.
-   - Submits reactive scaffolding to Kalvin.
-   - Auto-countersigns proposals that structurally match expectations.
-5. If stuck after N rounds, the Trainer **escalates** to the human via Slack.
-
-## KScript — The Language of Teaching
-
-KScript is a DSL for writing structured klines. It compiles declarative scripts into klines that Kalvin rationalises.
-
-```kscript
-(Mary had a little lamb)
-MHALL = SVO =>
-   S(ubject) = M
-   V(erb) = H
-   O(bject) = ALL =>
-     A > D(et)
-     L > M(od)
-     L > O
-```
-
-| Operator     | Syntax     | Significance | Meaning                             |
-| ------------ | ---------- | ------------ | ----------------------------------- |
-| Countersign  | `A == B`   | S1           | Mutual / bidirectional              |
-| Denote       | `A = B`    | S3           | Objective — A denotes B (B is an A) |
-| Canonicalise | `A => B C` | S2           | Canonical                           |
-| Connote      | `A > B`    | S2           | Connotative — A connotes B          |
-| Undefined    | `A`        | S4           | Identity only                       |
-
-Indented blocks are **scaffolding** — context that steers Kalvin toward understanding the parent line.
-
 ## Getting Started
 
 ### Install
@@ -88,41 +25,6 @@ uv run pytest
 > ```bash
 > bash scripts/rebuild-tokenizer-data.sh
 > ```
-
-### Dialogue Harness
-
-The dialogue harness compiles a KScript script, feeds each entry to the
-rationalising engine one at a time, and presents the resulting trace. It is
-synchronous and non-judging — the trainer (a pi agent, outside the loop)
-reads the trace and decides what to edit.
-
-```bash
-PYTHONPATH=src python -m dialogue.harness path/to/script.ks
-PYTHONPATH=src python -m dialogue.harness path/to/script.ks -v   # show hex signatures
-PYTHONPATH=src python -m dialogue.harness path/to/script.ks -s expand  # cogitation strategy
-```
-
-KScript itself is a library (`ks.compiler.compile_source`); there is no
-standalone compiler CLI. Compiled klines are produced in-process by the
-harness, the multi-agent runtime, or directly:
-
-```python
-from ks.compiler import compile_source
-entries = compile_source("(hello world)\nHW = HELLO WORLD")
-```
-
-### Multi-Agent Harness Server
-
-```bash
-uv run python -m training.harness --config training.harness.yaml
-uv run python -m training.harness --host 0.0.0.0 --port 9000   # overrides
-```
-
-### Auto-Tune
-
-```bash
-uv run python -m training.auto_tune --help
-```
 
 ## Project Structure
 
@@ -200,13 +102,13 @@ src/
 
 ## Documentation
 
-| Document                   | Purpose                  |
-| -------------------------- | ------------------------ |
-| [`CONTEXT.md`](CONTEXT.md) | domain glossary          |
-| [`.llm-wiki/`](.llm-wiki)  | LLM Wiki knowledge vault |
+| Document                                     | Purpose                  |
+| -------------------------------------------- | ------------------------ |
+| [`docs/kalvin-algebra.md`](kalvin-algbra.md) | normative definition     |
+| [`CONTEXT.md`](CONTEXT.md)                   | domain glossary          |
+| [`.llm-wiki/`](.llm-wiki)                    | LLM Wiki knowledge vault |
 
-Source is the truth document for behaviour. `CONTEXT.md`'s **Project
-Navigation** section maps the source tree to its concerns. The LLM Wiki
+Source is the truth document for implemented behaviour. The LLM Wiki
 (`.llm-wiki/wiki/`) holds distilled entity/concept pages derived from the
 glossary and from captured sources.
 

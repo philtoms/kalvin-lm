@@ -716,3 +716,12 @@
 ## [2026-09-21T12:18:09.828Z] observe
 - slug: "obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners", title: "CONTEXT.md algebraic entries reduced to normative one-liners", relevance: "high"
 
+## [2026-09-21T12:20:59.608Z] observe
+- slug: "obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test", title: "Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green", relevance: "medium"
+
+## [2026-09-21T12:28:06.111Z] observe
+- slug: "obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin", title: "CONTEXT.md KScript entries collapsed to code-pointer one-liners", relevance: "medium"
+
+## [2026-09-21T13:36:38.421Z] observe
+- slug: "obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s", title: "dev/ks/compile.py now takes script path and optional --model state", relevance: "medium"
+
