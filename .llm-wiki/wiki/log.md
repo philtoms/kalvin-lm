@@ -2,6 +2,7 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-","title":"Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model","title":"script-reading.md rewritten around three-layer model"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill","title":"script-reading.md three-layer revision settled via grill"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar","title":"Symbol range committed (4d1bbb9): caseless words + MTS alnum guard"}

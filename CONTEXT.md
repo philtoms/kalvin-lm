@@ -215,7 +215,7 @@ The closed set of written tokens that declare how a kline is produced. A token d
 A leading `#` — the rest of the line is dropped by the lexer and never reaches binding or klines.
 
 **Annotation**:
-The semantic layer of KScript: parenthetical prose instructing the agent running the session what the surrounding structure means, and resolving **Word Binding**. Exists for the agent, not the trainee; absence is a missed opportunity, never a compilation error. Brackets are optional when the word carries them in its case: a Capitalized identifier reads exactly as its bracketed form (`Mood` ≡ `M(ood)`; an explicit annotation suppresses the expansion), while ALL-UPPER stays a compound (`MHALL`) and lowercase-first stays a literal word (`had`).
+The semantic layer of KScript: parenthetical prose instructing the agent running the session what the surrounding structure means, and resolving **Word Binding**. Exists for the agent, not the trainee; absence is a missed opportunity, never a compilation error. Brackets are optional when the word carries them in its case: a Capitalized identifier reads exactly as its bracketed form (`Mood` ≡ `M(ood)`) — a Capitalized word declares its binding — while ALL-UPPER stays a compound (`MHALL`) and lowercase-first stays a literal word (`had`). An inline annotation attaches to a single character's tail and witnesses one word: `Word(x)` and a whitespace-bearing tail (`M(ary had)`) are parse errors, not literals or concatenations — phrasal content belongs in a prefix annotation.
 _Avoid_: comment
 
 **MTS (Multi-Token Signature)**:

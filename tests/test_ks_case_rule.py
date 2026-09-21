@@ -10,7 +10,10 @@ literal word (the article ``a``) and never attracts.
 
 from __future__ import annotations
 
+import pytest
+
 from ks.compiler import compile_source
+from ks.parser import ParseError
 
 
 def _decoded(source: str) -> list[str]:
@@ -39,12 +42,25 @@ class TestWordExpansion:
             "DENOTES | Mood:[X]",
         ]
 
-    def test_explicit_annotation_suppresses_expansion(self):
-        # Mood(x) stays the literal word Mood; M is never bound.
-        assert _decoded("Mood(x) = Y\nM = Z\n") == [
-            "DENOTES | Mood:[Y]",
-            "DENOTES | M:[Z]",
-        ]
+    def test_multichar_annotation_is_an_error(self):
+        # An inline annotation attaches to a single character's tail —
+        # Word(x) is an authoring error (once a silent literal sig-side,
+        # a mangled concatenation node-side).
+        with pytest.raises(ParseError):
+            compile_source("Subject(x) = Y\n", dev=True)
+        with pytest.raises(ParseError):
+            compile_source("A = had(x)\n", dev=True)
+
+    def test_single_char_annotation_still_attaches(self):
+        assert _decoded("M(2) = X\n") == ["DENOTES | M2:[X]"]
+
+    def test_whitespace_tail_is_an_error(self):
+        # A spaced "word" can never match a list word (lists are
+        # whitespace-split) — phrasal content belongs in a prefix annotation.
+        with pytest.raises(ParseError):
+            compile_source("M(ary had) = X\n", dev=True)
+        with pytest.raises(ParseError):
+            compile_source("A = M(ary\nhad)\n", dev=True)
 
     def test_all_upper_stays_compound(self):
         assert "CANONICALISES | MHALL:[M, H, A, L, L]" in _decoded("MHALL = X\n")

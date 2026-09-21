@@ -295,6 +295,7 @@
 - [[sources/obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill]] — Observation: script-reading.md three-layer revision settled via grill *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar]] — Observation: Symbol range committed (4d1bbb9): caseless words + MTS alnum guard *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme]] — Observation: Tetrad completed: single char is the pure attractor (environmental reading) *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-]] — Observation: Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails *(created: 2026-09-21)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -304,4 +305,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T10:37:44.147Z* | *Total pages: 292*
+*Last updated: 2026-09-21T10:48:04.980Z* | *Total pages: 293*

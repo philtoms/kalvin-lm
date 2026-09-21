@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T10:37:44.147Z",
+  "last_updated": "2026-09-21T10:48:04.980Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4159,6 +4159,25 @@
       "relevance": "high",
       "observed_at": "2026-09-21T09:34:41.187Z",
       "source_context": "Extending the case-triad to a tetrad: single-char attraction as the fourth rule case",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-": {
+      "type": "source",
+      "title": "Observation: Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails",
+      "tags": [
+        "kscript",
+        "ks",
+        "parser",
+        "syntax",
+        "design",
+        "committed"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-",
+      "relevance": "high",
+      "observed_at": "2026-09-21T10:48:04.903Z",
+      "source_context": "Committing the three-thread closure",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

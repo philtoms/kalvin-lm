@@ -216,6 +216,7 @@
 - [Observation: script-reading.md three-layer revision settled via grill](obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill.md)
 - [Observation: Symbol range committed (4d1bbb9): caseless words + MTS alnum guard](obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar.md)
 - [Observation: Tetrad completed: single char is the pure attractor (environmental reading)](obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme.md)
+- [Observation: Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails](obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-.md)
 - [Operator semantics swaps: move shapes or move names — the countersign test decides](shape-swap-vs-name-swap-operator-semantics.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)

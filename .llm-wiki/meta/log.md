@@ -704,3 +704,6 @@
 ## [2026-09-21T10:37:44.082Z] observe
 - slug: "obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model", title: "script-reading.md rewritten around three-layer model", relevance: "medium"
 
+## [2026-09-21T10:48:04.906Z] observe
+- slug: "obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-", title: "Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails", relevance: "high"
+

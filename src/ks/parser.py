@@ -33,10 +33,11 @@ Inline annotations:
     Sig-side   S(ubject) = M   →  OperatorScope.inline_annotation
     Node-side  A = D(et)       →  Signature.inline_annotation (per-item)
 
-    Brackets are optional for a Capitalized multi-char word not followed
-    by an explicit annotation: Mood ≡ M(ood) — see _is_word_expansion.
-    ALL-UPPER stays a compound (MHALL), lowercase-first stays a literal
-    word (had).
+    Brackets are optional for a Capitalized multi-char word: Mood ≡ M(ood)
+    — see _is_word_expansion. An inline annotation attaches a single
+    character to one word: Word(x) and a whitespace-bearing tail
+    (M(ary had)) are parse errors. ALL-UPPER stays a compound (MHALL),
+    lowercase-first stays a literal word (had).
 
 NEWLINE tokens are insignificant — skipped between constructs.
 Bare signature (no operator) produces OperatorScope with op=None.
@@ -235,6 +236,7 @@ class Parser:
         # synthesized from a Capitalized word (Mood ≡ M(ood)).
         inline_ann: Annotation | None = None
         if not self._at_end() and self._peek().type == TokenType.ANNOTATION:
+            self._check_inline_annotation(sig.id, self._peek())
             ann_tok = self._advance()
             inline_ann = Annotation(
                 text=ann_tok.value,
@@ -322,8 +324,7 @@ class Parser:
                         column=sig_tok.column,
                     )
                     # A Capitalized word with no explicit annotation
-                    # following expands: Mod ≡ M(od). Explicit beats
-                    # implicit — Mood(x) stays the literal word Mood.
+                    # following expands: Mod ≡ M(od).
                     if _is_word_expansion(sig_item.id) and (
                         self._at_end() or self._peek().type != TokenType.ANNOTATION
                     ):
@@ -333,6 +334,7 @@ class Parser:
                     # Inline annotation on this item: D(et) — attach to the
                     # Signature (bound unconditionally to it per Word Binding).
                     if not self._at_end() and self._peek().type == TokenType.ANNOTATION:
+                        self._check_inline_annotation(sig_item.id, self._peek())
                         ann_tok = self._advance()
                         sig_item.inline_annotation = Annotation(
                             text=ann_tok.value,
@@ -360,6 +362,30 @@ class Parser:
         while i < len(self.tokens) and self.tokens[i].type == TokenType.ANNOTATION:
             i += 1
         return i < len(self.tokens) and self.tokens[i].type in _OPERATOR_TYPES
+
+    def _check_inline_annotation(self, name: str, tok: Token) -> None:
+        """An inline annotation attaches a single character to one word.
+
+        ``Word(x)`` has no coherent reading — an annotation is a binding
+        tail for an initial — and a whitespace-bearing tail (``M(ary had)``)
+        would mint a spaced "word" no list word can ever match. Phrasal
+        content belongs in a prefix annotation (the word list).
+        """
+        text = tok.value
+        if len(text) >= 2 and text[0] == "(" and text[-1] == ")":
+            text = text[1:-1]
+        if len(name) > 1:
+            raise ParseError(
+                "an inline annotation attaches to a single character's tail; "
+                f"write {name[0]}({name[1:]}) or the bare word",
+                tok,
+            )
+        if any(c.isspace() for c in text):
+            raise ParseError(
+                "an inline annotation witnesses one word — phrasal content "
+                "belongs in a prefix annotation",
+                tok,
+            )
 
     # Token-level helpers
 
