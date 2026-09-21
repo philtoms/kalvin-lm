@@ -48,10 +48,6 @@ __all__ = ["PivotFill"]
 # Upper bound on edge hop chain depth (_edge_hops's traversal bound).
 _MAX_HOP = 100
 
-# The BPE token ID occupies the lower 32 bits of a node value; distance
-# calculations match word identity on this half (see NLPSignifier's packing).
-_BPE_MASK = 0xFFFF_FFFF
-
 
 class PivotFill:
     """The S2 strategy: grade every candidate, emit the most significant proposal."""

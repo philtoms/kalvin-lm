@@ -38,9 +38,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from kalvin.kline import (
-    ASK_SIG,
     KLine,
     KNode,
+    canon_key,
     is_ask,
     is_canon,
     is_canon_evidence,
@@ -249,7 +249,7 @@ class EngineState:
         answer a compound ask (tautological)."""
         if not is_ask(kline.signature):
             return False
-        sig = int(kline.signature) & ~ASK_SIG
+        sig = canon_key(kline.signature)
         for store in (self.frame, self.ltm):
             for k in store.get(sig, []):
                 if tuple(k.nodes) == tuple(kline.nodes):

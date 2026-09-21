@@ -668,3 +668,12 @@
 ## [2026-09-20T18:42:35.370Z] observe
 - slug: "obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta", title: "Appendix added: the word-bit realisation in construction detail", relevance: "high"
 
+## [2026-09-20T19:06:14.527Z] observe
+- slug: "obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni", title: "Def 1 honored in engine: measure/units/same_content on KSignifier; derivation.py fully seam-routed", relevance: "critical"
+
+## [2026-09-20T22:24:10.056Z] observe
+- slug: "obs-2026-09-20-all-value-space-leaks-fixed-bits-confined-to-kline-signifier", title: "All value-space leaks fixed: bits confined to kline/signifier/tokenizer/compiler homes", relevance: "critical"
+
+## [2026-09-21T05:57:43.679Z] observe
+- slug: "obs-2026-09-21-committed-3932429-def-1-seam-migration-complete", title: "Committed 3932429: Def 1 seam migration complete", relevance: "medium"
+

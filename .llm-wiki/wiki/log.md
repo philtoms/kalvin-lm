@@ -1,7 +1,13 @@
 # Wiki Update Log
 
+## 2026-09-21
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-committed-3932429-def-1-seam-migration-complete","title":"Committed 3932429: Def 1 seam migration complete"}
+
 ## 2026-09-20
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-20-all-value-space-leaks-fixed-bits-confined-to-kline-signifier","title":"All value-space leaks fixed: bits confined to kline/signifier/tokenizer/compiler homes"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni","title":"Def 1 honored in engine: measure/units/same_content on KSignifier; derivation.py fully seam-routed"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta","title":"Appendix added: the word-bit realisation in construction detail"}
 
 ## 2026-09-19

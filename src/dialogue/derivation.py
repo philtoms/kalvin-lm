@@ -22,9 +22,7 @@ from kalvin.abstract import KSignifier
 from kalvin.kline import KLine, KNode, KSig, is_canon, is_terminal, sig_level
 from kalvin.significance import (
     DEFAULT_DELTA,
-    WORD_BITS,
     misfit_mass,
-    word_atom_count,
 )
 from dialogue.engine_state import EngineState
 
@@ -48,14 +46,6 @@ class DerivationResult:
     dbar: float = 0.0
     hbar: float = 0.0
     gamma: float = 0.0
-
-
-def _atom_bits(value: int) -> Iterator[int]:
-    v = value & WORD_BITS
-    while v:
-        b = v & -v
-        v ^= b
-        yield b
 
 
 class Derivation:
@@ -288,7 +278,7 @@ class Derivation:
         self.goal = goal
         self.nodes: list[KNode] = list(queued.nodes)
         self.composed: list[KLine] = []
-        self.acq: dict[int, int] = {}  # atom bit -> acquisition depth (§11)
+        self.acq: dict[int, int] = {}  # unit value -> acquisition depth (§11)
         self._composed_keys: set[tuple[int, tuple[int, ...]]] = set()
         result = DerivationResult(ending="abandoned", trace=[list(self.nodes)])
         result.j0 = self._jaccard()
@@ -429,19 +419,22 @@ class Derivation:
             if sig_level(k, self.signifier) == "S1"
             else 1
         )
-        for b in _atom_bits(arriving):
-            self.acq[b] = cost
+        for u in self.signifier.units(arriving):
+            self.acq[int(u)] = cost
 
     def _jaccard(self) -> float:
         cur, goal = self.content(), self.goal_content()
-        union = word_atom_count(cur | goal)
-        return word_atom_count(cur & goal) / union if union else 1.0
+        union = self.signifier.measure(cur | goal)
+        return self.signifier.measure(cur & goal) / union if union else 1.0
 
     def _finish(self, result: DerivationResult, ending: str) -> DerivationResult:
         result.ending = ending
         result.j1 = self._jaccard()
         node_depths = [
-            max((self.acq[b] for b in _atom_bits(n) if b in self.acq), default=0)
+            max(
+                (self.acq[int(u)] for u in self.signifier.units(n) if int(u) in self.acq),
+                default=0,
+            )
             for n in self.nodes
         ]
         result.hbar = sum(node_depths) / len(node_depths) if node_depths else 0.0

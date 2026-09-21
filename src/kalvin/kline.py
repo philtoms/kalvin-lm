@@ -18,16 +18,27 @@ if TYPE_CHECKING:
 
 #: The ASK marker: bit 31 of the word word (uint64 bit 63). OR-ed into a
 #: kline signature it marks the kline as an ask — any signature can be one.
-#: Identity-only: equality, store keys, and lookups see it; every atom-space
-#: measurement masks it out (signifier residual/signifies, significance
-#: word_atom_count). No word is ever allocated the bit (TokenEncoder bits
-#: 0–30), so it manufactures the ask's distinctiveness from its canon.
+#: Identity-only: equality, store keys, and lookups see it; every content
+#: measurement masks it out (signifier residual/signifies/measure,
+#: significance word_atom_count). No word is ever allocated the bit
+#: (TokenEncoder bits 0–30), so it manufactures the ask's distinctiveness
+#: from its canon.
 ASK_SIG = 1 << 63
 
 
 def is_ask(signature: int) -> bool:
     """Does ``signature`` carry the ASK marker?"""
     return (int(signature) & ASK_SIG) != 0
+
+
+def canon_key(signature: int) -> int:
+    """Identity key with the ASK marker cleared — the canon an ask rides on."""
+    return int(signature) & ~ASK_SIG
+
+
+def mark_ask(signature: int) -> int:
+    """Identity key with the ASK marker set — the ask riding on a canon."""
+    return int(signature) | ASK_SIG
 
 
 

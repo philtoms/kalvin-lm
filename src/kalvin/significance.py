@@ -49,6 +49,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from kalvin.kline import KLine
+from kalvin.signifier import NLPSignifier
 
 if TYPE_CHECKING:
     from kalvin.abstract import KSignifier
@@ -330,31 +331,29 @@ def mean_compose(slot_values: Sequence[float]) -> float:
 # ── Canonical γ (kalvin-algebra.md §11) ─────────────────────────────────────────
 #
 # γ = J · δ^(mean depth): the accounted fraction over the content union,
-# discounted once by the atom-weighted mean hop depth. The aggregation form
-# is fixed, not free — atom-weighted (granularity-invariance), union
+# discounted once by the content-weighted mean hop depth. The aggregation form
+# is fixed, not free — content-weighted (granularity-invariance), union
 # denominator (band-consistency: full A-inside-B coverage still grades below
 # 1), decay of the mean, geometric, one knob (δ ∈ (0,1), edges the unit).
-
-#: The word word — the atom space of the algebra (the BPE half never
-#: weighs; the ASK marker is masked with it — it marks identity, not
-#: content; mirrors ``signifier.NLPSignifier._TYPE_MASK``).
-WORD_BITS: int = 0x7FFF_FFFF_0000_0000
 
 #: The strategy's knob, the only one. 0.5: each hop halves.
 DEFAULT_DELTA: float = 0.5
 
-#: A slot's contribution to γ: (atom weight, hop depth). ``None`` — unaccounted.
+#: A slot's contribution to γ: (content weight, hop depth). ``None`` — unaccounted.
 SlotRecord = tuple[int, int | None]
+
+#: The realisation the free-function measurement layer reads (Def 1 seam).
+_SIGNIFIER = NLPSignifier()
 
 
 def word_atom_count(value: int) -> int:
-    """Atoms (word bits) carried by a value. The ASK marker is not an atom."""
-    return (value & WORD_BITS).bit_count()
+    """μ(value) via the signifier seam (kalvin-algebra Def 1)."""
+    return _SIGNIFIER.measure(value)
 
 
 def misfit_mass(a_sig: int, b_sig: int) -> int:
-    """The misfit mass |σ(ν_A) Δ σ(ν_B)| — the scoping measure (kalvin-algebra Def 14)."""
-    return word_atom_count((a_sig | b_sig) & ~(a_sig & b_sig))
+    """|σ(ν_A) Δ σ(ν_B)| = μ(a ∨ b) − μ(a ∧ b) (Def 14 over Def 1)."""
+    return word_atom_count(a_sig | b_sig) - word_atom_count(a_sig & b_sig)
 
 
 def geometric_decay(hops: int, delta: float = DEFAULT_DELTA) -> float:
@@ -372,12 +371,12 @@ def gamma_aggregate(
     b_sig: int,
     delta: float = DEFAULT_DELTA,
 ) -> float:
-    """γ = J · δ^(mean depth) over the atom space.
+    """γ = J · δ^(mean depth) over the content measure.
 
-    J = accounted atoms / union atoms: a slot counts as accounted when it
+    J = accounted content / union content: a slot counts as accounted when it
     carries a defined depth (matched, or resolved to the other side); the
     union denominator weighs the other side's excess. Depth is the
-    atom-weighted mean of slot hop depths; unaccounted slots carry no
+    content-weighted mean of slot hop depths; unaccounted slots carry no
     depth (their cost is already J's). Vacuous — empty union — is 1.0;
     nothing accounted is 0.0.
     """

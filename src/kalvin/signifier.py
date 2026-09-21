@@ -21,6 +21,8 @@ first-encountered basis); bit 31 carries the ASK marker.
   upper 32 bits (the word word); non-zero means overlap.
 - :meth:`residual` — masked set-difference: the word-word bits of *a* not
   in *b*.
+- :meth:`measure` — μ: popcount over the word word (kalvin-algebra Def 1).
+- :meth:`units` — the ledger granularity: one unit per word bit (Defs 18–19).
 
 The lower 32 bits (BPE token IDs) are masked off in :meth:`signifies` so two
 values are compared by word-bit overlap, not by token-ID collision. The ASK
@@ -36,7 +38,7 @@ its masking stay here).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
 from kalvin.abstract import KSignifier
 from kalvin.kline import ASK_SIG, KNode, KSig
@@ -103,3 +105,15 @@ class NLPSignifier(KSignifier):
     def node_in(self, node: KNode, signature: KSig) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         return (node & signature) == node
+
+    def measure(self, value: KSig) -> int:
+        """μ(value) — the content measure (Def 1): word bits carried."""
+        return (value & _TYPE_MASK).bit_count()
+
+    def units(self, value: KSig) -> Iterator[KSig]:
+        """The ledger granularity (Defs 18–19): one unit per word bit."""
+        v = value & _TYPE_MASK
+        while v:
+            b = v & -v
+            v ^= b
+            yield KNode(b)

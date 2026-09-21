@@ -25,8 +25,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from kalvin.derivation import Derivation, DerivationResult
-from kalvin.kline import ASK_SIG, KLine, is_ask, is_terminal
-from kalvin.significance import WORD_BITS, word_atom_count
+from kalvin.kline import KLine, canon_key, is_ask, is_terminal
 
 if TYPE_CHECKING:
     from dialogue.engine_state import EngineState
@@ -53,7 +52,7 @@ def candidate_goals(
     """
     content = int(signifier.signature_of(queued.nodes))
     ask_base = (
-        int(queued.signature) & ~ASK_SIG if is_ask(queued.signature) else None
+        canon_key(queued.signature) if is_ask(queued.signature) else None
     )
     scored: list[tuple[float, int, KLine]] = []
     for i, k in enumerate(state.where(lambda k: not is_terminal(k), True)):
@@ -61,13 +60,13 @@ def candidate_goals(
             continue  # the queued kline is not its own goal
         if is_ask(k.signature):
             continue  # a question is never a goal
-        if ask_base is not None and (int(k.signature) & ~ASK_SIG) == ask_base:
+        if ask_base is not None and canon_key(k.signature) == ask_base:
             continue  # an ask never heads its own goal list — nor its canon
         kc = int(signifier.signature_of(k.nodes))
-        if not any(int(n) & kc for n in queued.nodes):
+        if not any(signifier.signifies(n, kc) for n in queued.nodes):
             continue  # covers no node of ν_A — not a candidate
-        union = word_atom_count(content | kc)
-        scored.append((word_atom_count(content & kc) / union, i, k))
+        union = signifier.measure(content | kc)
+        scored.append((signifier.measure(content & kc) / union, i, k))
     return [k for _, _, k in sorted(scored, key=lambda t: (-t[0], t[1]))]
 
 
@@ -75,36 +74,37 @@ def trawl(
     state: EngineState,
     a_nodes: list[int],
     b_nodes: list[int],
+    signifier: KSignifier,
     *,
     max_depth: int = TRAWL_DEPTH,
 ) -> list[KLine]:
     """Def 23 — dual-rooted, depth-bounded correspondence-graph trawl.
 
     A kline touches the reached set when its signature or any node
-    shares a word bit with it — the same atom-level coverage Def 22
+    shares content with it — the same content-level coverage Def 22
     reads (token-id bits carry no correspondence). The reached set is
-    the OR of every root's and scoped kline's word bits.
+    the composition of every root's and scoped kline's values.
     """
     reach = 0
     for n in list(a_nodes) + list(b_nodes):
-        reach |= int(n) & WORD_BITS
+        reach |= int(n)
     pending = state.where(lambda k: not is_terminal(k), True)
     scope: list[KLine] = []
     for _ in range(max_depth):
         hit = [
             k
             for k in pending
-            if int(k.signature) & reach
-            or any(int(n) & reach for n in k.nodes)
+            if signifier.signifies(k.signature, reach)
+            or any(signifier.signifies(n, reach) for n in k.nodes)
         ]
         if not hit:
             break
         taken = {id(k) for k in hit}
         for k in hit:
             scope.append(k)
-            reach |= int(k.signature) & WORD_BITS
+            reach |= int(k.signature)
             for n in k.nodes:
-                reach |= int(n) & WORD_BITS
+                reach |= int(n)
         pending = [k for k in pending if id(k) not in taken]
     return scope
 
@@ -148,6 +148,7 @@ class Hop:
                 self.state,
                 self.queued.nodes,
                 goal.nodes,
+                self.signifier,
                 max_depth=self.trawl_depth,
             )
             r = Derivation(

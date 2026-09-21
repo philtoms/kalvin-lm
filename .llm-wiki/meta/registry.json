@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-20T18:42:35.442Z",
+  "last_updated": "2026-09-21T05:57:43.724Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3922,6 +3922,23 @@
       "created": "2026-09-19",
       "updated": "2026-09-19"
     },
+    "sources/obs-2026-09-20-all-value-space-leaks-fixed-bits-confined-to-kline-signifier": {
+      "type": "source",
+      "title": "Observation: All value-space leaks fixed: bits confined to kline/signifier/tokenizer/compiler homes",
+      "tags": [
+        "engine",
+        "refactoring",
+        "values",
+        "seam"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-20-all-value-space-leaks-fixed-bits-confined-to-kline-signifier",
+      "relevance": "critical",
+      "observed_at": "2026-09-20T22:24:10.054Z",
+      "source_context": "Fixing remaining value-space leaks in hop.py and dialogue modules",
+      "created": "2026-09-20",
+      "updated": "2026-09-20"
+    },
     "sources/obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta": {
       "type": "source",
       "title": "Observation: Appendix added: the word-bit realisation in construction detail",
@@ -3938,6 +3955,40 @@
       "source_context": "Adding word-bit realisation appendix to kalvin-algebra.md",
       "created": "2026-09-20",
       "updated": "2026-09-20"
+    },
+    "sources/obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni": {
+      "type": "source",
+      "title": "Observation: Def 1 honored in engine: measure/units/same_content on KSignifier; derivation.py fully seam-routed",
+      "tags": [
+        "engine",
+        "refactoring",
+        "values",
+        "seam"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni",
+      "relevance": "critical",
+      "observed_at": "2026-09-20T19:06:14.525Z",
+      "source_context": "Routing WORD_BITS/_atom_bits through the KSignifier seam",
+      "created": "2026-09-20",
+      "updated": "2026-09-20"
+    },
+    "sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete": {
+      "type": "source",
+      "title": "Observation: Committed 3932429: Def 1 seam migration complete",
+      "tags": [
+        "git",
+        "commit",
+        "engine",
+        "seam"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-committed-3932429-def-1-seam-migration-complete",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T05:57:43.678Z",
+      "source_context": "Committing the Def 1 seam migration",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

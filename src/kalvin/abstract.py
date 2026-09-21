@@ -10,7 +10,7 @@ implementation (NLPSignifier).
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
 from kalvin.kline import KLine, KNode, KSig
 
@@ -110,3 +110,17 @@ class KSignifier(ABC):
     def node_in(self, node: KNode, signature: KSig) -> bool:
         """Does ``node``'s bit pattern sit inside ``signature``?"""
         ...
+
+    @abstractmethod
+    def measure(self, value: KSig) -> int:
+        """μ(value) — the content measure (kalvin-algebra Def 1)."""
+        ...
+
+    @abstractmethod
+    def units(self, value: KSig) -> Iterator[KSig]:
+        """The ledger granularity (Defs 18–19): disjoint unit values composing to value."""
+        ...
+
+    def same_content(self, a: KSig, b: KSig) -> bool:
+        """Content equality (Def 1): neither side carries content beyond the other."""
+        return int(self.residual(a, b)) == 0 and int(self.residual(b, a)) == 0

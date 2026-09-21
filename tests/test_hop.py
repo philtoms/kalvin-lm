@@ -59,30 +59,30 @@ def test_trawl_is_dual_rooted_and_depth_bounded():
     mem = _state()
     # roots w (A-side) and m,h,a,l,l (B-side): the o-bridge is reached in
     # one round — w:[o] touches w, all:[o] touches a,l,l
-    scope = trawl(mem, [W, D, M, H], [M, H, A, L, L], max_depth=1)
+    scope = trawl(mem, [W, D, M, H], [M, H, A, L, L], SIG, max_depth=1)
     sigs = {int(k.signature) for k in scope}
     assert {int(W), int(ALL)} <= sigs
     # depth 0 trawls nothing
-    assert trawl(mem, [W, D, M, H], [M, H, A, L, L], max_depth=0) == []
+    assert trawl(mem, [W, D, M, H], [M, H, A, L, L], SIG, max_depth=0) == []
 
 
 def test_trawl_excludes_terminals():
-    scope = trawl(_state(), [M, H], [M, H, A, L, L])
+    scope = trawl(_state(), [M, H], [M, H, A, L, L], SIG)
     assert int(M) not in {int(k.signature) for k in scope}
 
 
-def test_trawl_touches_at_word_bits():
-    # A connoted compound shares a word bit with the roots — it scopes,
+def test_trawl_touches_at_content():
+    # A connoted compound shares content with the roots — it scopes,
     # even though its whole value never equals a root's value.
     ws = bit(7)  # w|s compound, root w
-    scope = trawl(_state(KLine(ws, [W])), [W, D, M, H], [M, H, A, L, L], max_depth=1)
+    scope = trawl(_state(KLine(ws, [W])), [W, D, M, H], [M, H, A, L, L], SIG, max_depth=1)
     assert int(ws) in {int(k.signature) for k in scope}
     # Token-id bits alone carry no correspondence: values sharing only
     # low bits never touch.
     root = (1 << (32 + 9)) | 0xFF
     sig = (1 << (32 + 8)) | 0xFF
     node = (1 << (32 + 10)) | 0xFF  # shares 0xFF with root, no word bit
-    assert trawl(_state(KLine(sig, [node])), [root], [root], max_depth=5) == []
+    assert trawl(_state(KLine(sig, [node])), [root], [root], SIG, max_depth=5) == []
 
 
 def test_hop_ends_abandoned_at_the_goal_bound():

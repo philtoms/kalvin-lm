@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING
 from dialogue.engine_state import EngineState
 from kalvin.hop import run_hops
 from kalvin.kline import (
-    ASK_SIG,
     KLine,
+    canon_key,
     is_ask,
     sig_level,
     using_resolver,
@@ -197,7 +197,7 @@ class Engine:
                 # ground path's done, not a derivation's answer.
                 continue
             proposal = KLine(
-                int(kline.signature) & ~ASK_SIG, result.trace[-1]
+                canon_key(kline.signature), result.trace[-1]
             )
             if not self._state.is_refused(proposal):
                 batch.append(KValue(proposal, gamma_to_byte(result.j1)))

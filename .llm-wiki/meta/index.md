@@ -282,7 +282,10 @@
 - [[sources/obs-2026-09-18-def-13-mirror-clause-only-canonicalisation-exercised-s3-inst]] — Observation: Def 13 mirror clause: only canonicalisation exercised; S3 instance contradicted *(created: 2026-09-18)*
 - [[sources/obs-2026-09-19-1-rewritten-opaque-value-space-def-1-reference-realisation-d]] — Observation: §1 rewritten: opaque value space (Def 1) + reference realisation (Def 2) *(created: 2026-09-19)*
 - [[sources/obs-2026-09-19-committed-879f3b8-opaque-value-space-1-glossary-regroup]] — Observation: Committed 879f3b8: opaque value space §1 + glossary regroup *(created: 2026-09-19)*
+- [[sources/obs-2026-09-20-all-value-space-leaks-fixed-bits-confined-to-kline-signifier]] — Observation: All value-space leaks fixed: bits confined to kline/signifier/tokenizer/compiler homes *(created: 2026-09-20)*
 - [[sources/obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta]] — Observation: Appendix added: the word-bit realisation in construction detail *(created: 2026-09-20)*
+- [[sources/obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni]] — Observation: Def 1 honored in engine: measure/units/same_content on KSignifier; derivation.py fully seam-routed *(created: 2026-09-20)*
+- [[sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete]] — Observation: Committed 3932429: Def 1 seam migration complete *(created: 2026-09-21)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -292,4 +295,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-20T18:42:35.442Z* | *Total pages: 280*
+*Last updated: 2026-09-21T05:57:43.724Z* | *Total pages: 283*

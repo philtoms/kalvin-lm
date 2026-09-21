@@ -26,9 +26,9 @@ from typing import Literal, cast
 from dialogue.engine import Engine
 from dialogue.engine_state import EngineState
 from kalvin.kline import (
-    ASK_SIG,
     KLine,
     KNode,
+    canon_key,
     classify_misfit,
     is_ask,
     is_canon,
@@ -169,11 +169,11 @@ class Harness:
                 None,
             )
             if goal is not None:
-                goals[int(e.kline.signature) & ~ASK_SIG] = goal
+                goals[canon_key(e.kline.signature)] = goal
 
         def graded(entry: KValue) -> KValue:
             """The ask, graded; every other entry feeds as compiled."""
-            base = int(entry.kline.signature) & ~ASK_SIG
+            base = canon_key(entry.kline.signature)
             if not is_ask(entry.kline.signature) or base not in goals:
                 return entry
             goal = goals[base]
@@ -189,7 +189,7 @@ class Harness:
             return (
                 bool(entry.kline.nodes)
                 and not is_ask(entry.kline.signature)
-                and int(entry.kline.signature) & ~ASK_SIG in goals
+                and canon_key(entry.kline.signature) in goals
             )
         tokens = {
             sig: word
@@ -394,7 +394,7 @@ class Harness:
         ratified at S1 — the answer just granted; one off the goal grades
         low and refuses on re-feed. ``None`` when no goal pairs with the
         proposal's head."""
-        base = int(ask.kline.signature) & ~ASK_SIG
+        base = canon_key(ask.kline.signature)
         goal = goals.get(base)
         if goal is None or not ask.kline.nodes:
             return None
@@ -448,7 +448,7 @@ class Harness:
         if is_ask(kline.signature):
             # The ASK marker is not an atom: the question and its canon
             # share the unmarked base — the release pools key on it.
-            base = int(kline.signature) & ~ASK_SIG
+            base = canon_key(kline.signature)
             script_klines = [
                 e for e in heads.get(base, [])
                 if e.kline.nodes != [base]
