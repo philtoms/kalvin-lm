@@ -4,6 +4,7 @@ sys.path.insert(0, "src")
 sys.path.insert(0, ".")
 
 from kalvin.bpe_tokenizer import BPETokenizer
+from kalvin.cogitator import cogitate
 from ks.compiler import compile_source
 from dev.dialogue.harness import make_rationaliser, load_rationaliser
 from kalvin.kline import KLine, is_ask, is_terminal
@@ -27,6 +28,7 @@ mhall_src = open("data/scripts/mhall.ks").read()
 entries = compile_source(mhall_src, tokenizer=tok, signifier=sig, dev=True,
                          word_bits=bits, known_words=h.known_words)
 h.rationaliser.rationalise(entries)
+cogitate(h.state)
 
 print("word bits table (word -> bit, sig):")
 for w, b in bits.items():

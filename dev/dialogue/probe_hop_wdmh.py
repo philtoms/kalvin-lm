@@ -13,6 +13,7 @@ from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import compile_source
 from dev.dialogue.harness import make_rationaliser
 from kalvin.hop import Hop, run_hops
+from kalvin.cogitator import cogitate
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
 
@@ -25,6 +26,7 @@ for path in ("data/scripts/mhall.ks", "data/scripts/wdmh-underfit.ks"):
     entries = compile_source(open(path).read(), tokenizer=tok, signifier=sig,
                              dev=True, word_bits=bits)
     h.rationaliser.rationalise(entries)
+    cogitate(h.state)
 
 st = h.state
 print("frame entries:", sum(len(b) for b in st.frame.values()),

@@ -25,6 +25,7 @@ if str(_ROOT) not in sys.path:
 from dev.dialogue.harness import make_rationaliser  # noqa: E402
 from kalvin.kline import sig_level  # noqa: E402
 from kalvin.bpe_tokenizer import BPETokenizer  # noqa: E402
+from kalvin.cogitator import cogitate  # noqa: E402
 from kalvin.significance import BandLayout  # noqa: E402
 from ks.compiler import compile_source  # noqa: E402
 
@@ -92,7 +93,8 @@ def main() -> None:
         print(f"  incoming: {op:12s} {lab!s:20s} nodes={nodes}  "
               f"declared={_LAYOUT.classify(query.significance)}  "
               f"structural={struct}")
-        batch = rationaliser.rationalise([query])
+        rationaliser.rationalise([query])
+        batch = cogitate(state)
         _show_batch("K batch", batch, labels)
         print(f"  work_list depth: {len(state.work_list)}")
         for e in state.work_list:

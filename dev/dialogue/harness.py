@@ -1,8 +1,8 @@
 """The dialogue training harness.
 
 A minimal, synchronous, non-judging loop. Compile a KScript source, feed
-compiled entry to the rationaliser one block at a time, and present the rationaliser's
-response. The harness is feeder, driver, and
+compiled entry to the rationaliser one block at a time, cogitate, and present
+the batch. The harness is feeder, driver, and
 presenter — it never judges. The trainer (a pi agent, outside the loop) reads
 the trace, makes decisions, edits the rationaliser and/or the source, and re-runs.
 
@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, cast
 
+from kalvin.cogitator import cogitate
 from kalvin.rationaliser import Rationaliser
 from kalvin.memory import Memory
 from kalvin.kline import (
@@ -64,7 +65,7 @@ _LAYOUT = BandLayout()
 
 @dataclass
 class Turn:
-    """One rationaliser call within a step: the feeds and its response."""
+    """One rationalise→cogitate call within a step: the feeds and its response."""
 
     feeds: list[KValue]
     grounds: list[KValue] = field(default_factory=list)
@@ -87,10 +88,11 @@ class StepResult:
 
 
 class Harness:
-    """Compile a source, then feed each compiled entry to the rationaliser in turn.
+    """Compile a source, then feed each compiled entry to the rationaliser in turn
+    and cogitate.
 
     The rationaliser and its state are the only participants. The harness holds no
-    verdict logic — it records what the rationaliser returned and hands it to the
+    verdict logic — it records what the turn returned and hands it to the
     presenter. Both ``tokenizer`` and ``rationaliser`` are supplied fully
     constructed; see :func:`make_rationaliser` / :func:`load_rationaliser` for the
     single construction path.
@@ -136,7 +138,7 @@ class Harness:
 
     def run(self, source: str) -> list[StepResult]:
         """Compile ``source``, open each sub-script's dialogue, and let the
-        rationaliser drive.
+        rationaliser→cogitator drive.
 
         A sub-script is a root-level (scope-0) entry plus the nested and
         expansion entries that follow it; it opens with the scope-0 entry. In
@@ -299,7 +301,8 @@ class Harness:
         while queue:
             feeds = queue.pop(0)
             before = _grounded_snapshot(self.state)
-            batch = self._rationaliser.rationalise(feeds)
+            self._rationaliser.rationalise(feeds)
+            batch = cogitate(self.state)
             deduped = _dedup(batch)
             after = _grounded_snapshot(self.state)
             grounds = [

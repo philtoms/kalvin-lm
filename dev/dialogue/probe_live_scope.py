@@ -37,9 +37,7 @@ hop_mod.trawl = traced_trawl
 hop_mod.Hop.run = traced_run
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin import rationaliser as rat_mod
 
-rat_mod.Hop = hop_mod.Hop  # rationaliser imported Hop by name
 
 sys.argv = ["harness", "data/scripts/wdmh-underfit.ks", "-p", "data/dialogue/mhall.json"]
 from dev.dialogue.harness import main

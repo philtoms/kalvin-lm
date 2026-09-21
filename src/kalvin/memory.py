@@ -184,6 +184,23 @@ class Memory:
             if not (e.signature == kline.signature and e.nodes == kline.nodes)
         ]
 
+    def ground_cascade(self, kline: KLine) -> None:
+        """Ground ``kline`` at S1, then cascade any node-resolution it unblocks.
+
+        A grounding may make other work-list entries groundable (an identity
+        whose signature just landed, a canon whose nodes are now all seen, a
+        relationship whose reciprocal just grounded). Cascade until fixed point.
+        """
+        self.ground(kline)
+        sweep = True
+        while sweep:
+            sweep = False
+            for entry in self.work_list:
+                if self.is_groundable(entry):
+                    if self.ground(entry):
+                        sweep = True
+                        break
+
     # -- stm (working memory) ------------------------------------------
 
     def add_stm(self, kline: KLine) -> None:

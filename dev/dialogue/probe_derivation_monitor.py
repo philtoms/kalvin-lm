@@ -48,8 +48,6 @@ orig_hop_run = hop_mod.Hop.run
 hop_mod.Hop.run = monitored_hop_run
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin import rationaliser as rat_mod
-rat_mod.Hop = hop_mod.Hop
 
 sys.argv = ["harness", "data/scripts/wdmh.ks", "-p", "data/dialogue/mhall.json"]
 from dev.dialogue.harness import main

@@ -9,6 +9,7 @@ from kalvin import hop as hop_mod
 from kalvin.kline import ASK_SIG, is_ask, is_terminal
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin import rationaliser as rat_mod
+from kalvin import cogitator as cog_mod
 from kalvin.memory import Memory
 
 def nm(v):
@@ -22,7 +23,7 @@ def render(k):
 # 1. trace the ask-marked kline + had:[did,have] through the rationaliser state
 orig_ground = Memory.ground
 orig_add = Memory.add_work
-orig_propose = rat_mod.Rationaliser._propose
+orig_propose = cog_mod._propose
 
 def traced_ground(self, kline, store=None):
     r = orig_ground(self, kline, store) if store is not None else orig_ground(self, kline)
@@ -30,16 +31,16 @@ def traced_ground(self, kline, store=None):
         print(f"    [ground] {render(kline)}")
     return r
 
-def traced_propose(self, kline):
-    held = self._state.where(lambda k: not is_terminal(k), True)
+def traced_propose(state, kline):
+    held = state.where(lambda k: not is_terminal(k), True)
     had_mem = [k for k in held if getattr(k.signature, "label", "") == "had"]
     print(f"\n[propose] queued={render(kline)}  had-klines in held: "
           f"{[render(k) for k in had_mem]}  work_list has had: "
-          f"{[render(k) for k in self._state.work_list if getattr(k.signature, 'label', '') == 'had']}")
-    return orig_propose(self, kline)
+          f"{[render(k) for k in state.work_list if getattr(k.signature, 'label', '') == 'had']}")
+    return orig_propose(state, kline)
 
 Memory.ground = traced_ground
-rat_mod.Rationaliser._propose = traced_propose
+cog_mod._propose = traced_propose
 
 # 2. value-level trawl rounds for the MHALL goal hop
 def traced_run(self):
