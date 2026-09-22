@@ -65,7 +65,9 @@ class Rationaliser:
         structural_sig = sig_level(kline, self._state.signifier)
         query_sig = _LAYOUT.classify(query.significance)
 
-        if query_sig == "S4":
+        if query_sig == "S4" and not is_ask(kline.signature):
+            # A statement fed at S4 is refused; an ask starts optimistically
+            # as a full underfit (kalvin-algebra §4) — it attends instead.
             self._state.refuse(kline)
             self._state.remove_work(kline)
             return True

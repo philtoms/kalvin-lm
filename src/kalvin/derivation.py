@@ -227,30 +227,53 @@ class Derivation:
                 if d1 < d0:
                     yield k, "reverse", new, d0, d1
 
+    def _walk_neighbours(
+        self, v: int, delivered: tuple[int, tuple[int, ...]] | None,
+        *, a_side: bool = False,
+    ) -> list[tuple[int, tuple[int, tuple[int, ...]]]]:
+        """Def 15 — the two step forms from value ``v``: a descent crosses
+        a held kline ``v`` heads into its witness; an ascent steps into
+        the head of a held kline covering ``v``. An ascent into the head
+        of the kline that delivered ``v`` is inert. A-side walks cross
+        single-node witnesses only — a step licenses the kline's whole
+        witness, and a multi-node witness cannot be partially consumed
+        (its siblings would dangle); B reads ν_B's klines as walk
+        material, the goal's own canon enumerating its slots."""
+        out: list[tuple[int, tuple[int, tuple[int, ...]]]] = []
+        for k in self.memory:
+            if not self.usable(k):
+                continue
+            key = (int(k.signature), tuple(int(n) for n in k.nodes))
+            if int(k.signature) == v:
+                if v in [int(n) for n in k.nodes]:
+                    continue  # self-containing — an inert witness
+                if a_side and len(k.nodes) != 1:
+                    continue  # the whole witness or none — no dangling siblings
+                out.extend((int(n), key) for n in k.nodes)
+            elif (
+                key != delivered
+                and int(self.signifier.residual(v, int(k.signature))) == 0
+            ):
+                out.append((int(k.signature), key))
+        return out
+
     def descend(
         self, starts: Sequence[int]
     ) -> dict[int, tuple[int, tuple[int, tuple[int, ...]], int]]:
-        """Def 15 — a sig→witness descent: every value reachable from
-        ``starts`` through held klines its current value heads, as
-        ``{value: (depth, delivering kline key, start)}``. A value with
-        no headed kline is a descent's end."""
+        """Def 15 — the walk from ``starts``, descents and ascents, as
+        ``{value: (depth, delivering kline key, start)}``; bounded by the
+        walk-edge bound (T2)."""
         reached: dict[int, tuple[int, tuple[int, tuple[int, ...]], int]] = {}
-        frontier = [(int(v), 0, int(v)) for v in starts]
+        frontier = [(int(v), 0, int(v), None) for v in starts]
         while frontier:
-            nxt: list[tuple[int, int, int]] = []
-            for v, depth, start in frontier:
+            nxt: list[tuple[int, int, int, tuple[int, tuple[int, ...]] | None]] = []
+            for v, depth, start, delivered in frontier:
                 if depth >= self.max_walk_edges:
                     continue
-                for k in self.memory:
-                    if not self.usable(k) or int(k.signature) != v:
-                        continue
-                    if int(k.signature) in [int(n) for n in k.nodes]:
-                        continue  # self-containing — an inert witness
-                    key = (int(k.signature), tuple(int(n) for n in k.nodes))
-                    for n in k.nodes:
-                        if int(n) not in reached:
-                            reached[int(n)] = (depth + 1, key, start)
-                            nxt.append((int(n), depth + 1, start))
+                for value, key in self._walk_neighbours(v, delivered, a_side=True):
+                    if value not in reached:
+                        reached[value] = (depth + 1, key, start)
+                        nxt.append((value, depth + 1, start, key))
             frontier = nxt
         return reached
 
@@ -276,12 +299,12 @@ class Derivation:
         return self._finish(result, "abandoned")
 
     def _canonicalise(self) -> bool:
-        """Take the first contraction that exposes an applicable misfit
-        correspondence (the §9 survey condition)."""
+        """Take the first exactly-witnessed contraction (§9: the survey
+        — held witnesses propose the configurations, no exposure
+        requirement)."""
         for _, _, new in self.canonicalisations():
-            if self._exposes(new):
-                self.nodes = new
-                return True
+            self.nodes = new
+            return True
         return False
 
     def _target(self) -> bool:
@@ -294,7 +317,7 @@ class Derivation:
         return True
 
     def _walk(self) -> bool:
-        """Def 15 — the slot walk is a meeting of two descents: A's from
+        """Def 15 — the slot walk is a meeting of two walks: A's from
         its underfit slots, B's from the held value containing the
         overfit. The meeting — a value delivered by distinct klines on
         the two sides — writes the bridge slot_a:[slot_b]."""
@@ -329,40 +352,37 @@ class Derivation:
         path_a: dict[int, tuple[int, tuple[int, tuple[int, ...]], int]],
         b_starts: Sequence[int],
     ) -> bool:
-        """Descend from B's slots until a value of ``path_a`` is reached;
-        the first meeting delivered by a distinct kline writes the bridge:
-        the A-side departure replaced by the B-side departure."""
-        frontier = [(int(v), 0, int(v)) for v in b_starts]
+        """Walk from B's side until a value of ``path_a`` is reached; the
+        first meeting delivered by a distinct kline writes the bridge
+        slot_a:[slot_b] — the A-side underfit slot to the B-side overfit
+        slot: the meeting value when it is a node of ν_B, else B's
+        departure (§9: the compound is itself the slot)."""
+        frontier = [(int(v), 0, int(v), None) for v in b_starts]
         seen = {int(v) for v in b_starts}
         while frontier:
-            nxt: list[tuple[int, int, int]] = []
-            for v, depth, start in frontier:
+            nxt: list[tuple[int, int, int, tuple[int, tuple[int, ...]] | None]] = []
+            for v, depth, start, delivered in frontier:
                 if depth >= self.max_walk_edges:
                     continue
-                for k in self.memory:
-                    if not self.usable(k) or int(k.signature) != v:
-                        continue
-                    if int(k.signature) in [int(n) for n in k.nodes]:
-                        continue
-                    for n in k.nodes:
-                        ni = int(n)
-                        if ni in path_a:
-                            a_depth, a_key, a_start = path_a[ni]
-                            b_key = (
-                                int(k.signature),
-                                tuple(int(x) for x in k.nodes),
+                for value, key in self._walk_neighbours(v, delivered):
+                    if value in path_a:
+                        a_depth, a_key, a_start = path_a[value]
+                        if a_key != key and a_start != start:
+                            b_slot = (
+                                value
+                                if any(int(n) == value for n in self.goal.nodes)
+                                else start
                             )
-                            if a_key != b_key and a_start != start:
-                                bridge = KLine(
-                                    a_start, [start], acq_depth=a_depth + depth + 1
-                                )
-                                if self._ground_composed(bridge):
-                                    self.composed.append(bridge)
-                                    return True
-                            continue
-                        if ni not in seen:
-                            seen.add(ni)
-                            nxt.append((ni, depth + 1, start))
+                            bridge = KLine(
+                                a_start, [b_slot], acq_depth=a_depth + depth + 1
+                            )
+                            if self._ground_composed(bridge):
+                                self.composed.append(bridge)
+                                return True
+                        continue
+                    if value not in seen:
+                        seen.add(value)
+                        nxt.append((value, depth + 1, start, key))
             frontier = nxt
         return False
 

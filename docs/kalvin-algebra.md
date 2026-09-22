@@ -463,6 +463,8 @@ Informally, the bands represent increasing uncertainty:
 
 Unknown is also S4's shape of no represented content: the system has no current content on the relevant side. No compiled ask takes it — the ask is the marked kline (§13).
 
+S4 is not immediately stuck. An ask starts optimistically as a full underfit: held against its goal, its entire content is underfit slots, each walkable under Definition 15. The question is held; the arrangement is the work.
+
 ---
 
 # 5. Relationship Kline
@@ -658,15 +660,17 @@ A targeting relationship can be decomposed into slots.
 
 The misfit is carried on both parties: the underfit by nodes of ν_A, the overfit by nodes of ν_B. A node is a **slot** when it carries misfit content — an underfit slot of ν_A, an overfit slot of ν_B. The notion is one, read on the two parties: an overfit slot of C(A,B) is an underfit slot of C(B,A).
 
-For an underfit slot, strategy first looks for a licensed replacement at the slot. For the overfit, an adoptive replacement is sought by selection, at any node of ν_A. If none exists, the slot is walked: a **meeting** of two descents, one from each party.
+For an underfit slot, strategy first looks for a licensed replacement at the slot. For the overfit, an adoptive replacement is sought by selection, at any node of ν_A. If none exists, the slot is walked: a **meeting** of two walks, one from each party.
 
-A descent is licensed by heading alone: a step crosses a held kline its current value heads, from its signature to its witness. A value with no headed kline is a descent's end. No other licence is permitted — occurrence of a witness licenses nothing, and a kline's direction is a property of the walk, not of arrival.
+A walk is licensed in two step forms. A **descent** crosses a held kline the current value heads, from its signature to its witness — and licenses the kline's whole witness: a multi-node witness cannot be partially consumed, its siblings would dangle. An **ascent** steps into the head of a held kline whose content contains the current value's. Heading licenses the bridge alone — the meeting value is one both parties walk to. No other licence is permitted: occurrence of a witness licenses nothing, and a kline's direction is a property of the walk, not of arrival. An ascent into the head of the kline a party stands on is inert — a walk never re-traverses its own edge. A value with no headed kline and no containing head is a walk's end.
 
-A's descent departs its underfit slots — the nodes of ν_A carrying the gap. B's descent departs the held value containing the overfit, the compound the overfit composes into. Both parties descend through their own klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
+A connotation is the designed walk segment: its head composes the underfit atom with the witness content, so a walk enters from the underfit value — contained in the head — and leaves at the witness: `m → ms → s`. Connotations chain through their witnesses: each arrival may ascend into the next head. B's side reads ν_B's klines as walk material — the goal's own canon enumerates its slots, every node accounted.
 
-The meeting is written into memory as the **bridge** — a composed correspondence `slot_a:[slot_b]` with acquisition depth equal to the edges both descents crossed, which the main derivation may then consume: the A-side departure value is replaced by the B-side departure value. The goal is never rewritten; ν_B's klines are descent material, read and never changed.
+A's walk departs its underfit slots — the nodes of ν_A carrying the gap. B's walk departs the held value containing the overfit, the compound the overfit composes into. Both parties walk through held klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
 
-The slot walk is therefore an evidence-construction mechanism: the two parties descend from their misfit locations, and the bridge exists only where held klines genuinely meet — two klines sharing a value, one reachable from each side. Nothing is invented: a value nothing heads is unreachable, a hub's klines replace one another only as the meeting's distinct-kline pair licenses, and a misfit with no slot on either side — a pure overfit against A — has no descent to meet.
+The meeting is written into memory as the **bridge** — a composed correspondence `slot_a:[slot_b]` with acquisition depth equal to the edges both walks crossed, which the main derivation may then consume: the A-side departure value is replaced by the B-side departure value. The goal is never rewritten; ν_B's klines are walk material, read and never changed.
+
+The slot walk is therefore an evidence-construction mechanism: the two parties walk from their misfit locations, and the bridge exists only where held klines genuinely meet — two klines sharing a value, one reachable from each side. Nothing is invented: a value nothing heads is unreachable, a hub's klines replace one another only as the meeting's distinct-kline pair licenses, and a misfit with no slot on either side — a pure overfit against A — has no walk to meet.
 
 ---
 
@@ -783,7 +787,7 @@ Traversal may also revisit correspondence states without changing the mismatch.
 
 Therefore termination of a mixed derivation is a strategy property rather than a property of the rewrite relation alone.
 
-A strategy must bound witnessed runs and traversal. Suitable policies forbid expand-after-contract of the same witness, and adopt single-visit, depth-bounded descents for the meeting walk: each value enters a descent once (Definition 15).
+A strategy must bound witnessed runs and traversal. Suitable policies forbid expand-after-contract of the same witness, and bound the meeting walk by edges: an ascent admits mutual-coverage cycles (`m → ms → s → ms`), so a walk may revisit values and terminates at the edge bound alone (Definition 15).
 
 ### Confluence
 
