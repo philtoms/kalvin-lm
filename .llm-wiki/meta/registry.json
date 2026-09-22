@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T17:54:15.080Z",
+  "last_updated": "2026-09-22T09:04:35.807Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4512,6 +4512,56 @@
       "source_context": "Moving using_resolver from library to dev callers",
       "created": "2026-09-21",
       "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati": {
+      "type": "source",
+      "title": "Observation: Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent",
+      "tags": [
+        "engine",
+        "events",
+        "trainer",
+        "unblocking"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati",
+      "relevance": "high",
+      "observed_at": "2026-09-22T09:04:35.741Z",
+      "source_context": "Restoring fast-path events at the Engine boundary",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p": {
+      "type": "source",
+      "title": "Observation: Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm)",
+      "tags": [
+        "cleanup",
+        "dead-code",
+        "removal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p",
+      "relevance": "high",
+      "observed_at": "2026-09-22T08:22:03.573Z",
+      "source_context": "Removing orphaned Model/agent_codec/expand/proposals/stm modules",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list": {
+      "type": "source",
+      "title": "Observation: WorkRunner cogitates the popped item, not the whole work list",
+      "tags": [
+        "architecture",
+        "work-runner",
+        "cogitator",
+        "fix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list",
+      "relevance": "high",
+      "observed_at": "2026-09-22T08:48:50.902Z",
+      "source_context": "Per-item cogitation in WorkRunner",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

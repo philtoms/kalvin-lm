@@ -316,6 +316,9 @@
 - [[sources/obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme]] — Observation: Tetrad completed: single char is the pure attractor (environmental reading) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-]] — Observation: Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser]] — Observation: using_resolver now installed by dev callers, not rationaliser/cogitator *(created: 2026-09-21)*
+- [[sources/obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati]] — Observation: Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p]] — Observation: Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm) *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list]] — Observation: WorkRunner cogitates the popped item, not the whole work list *(created: 2026-09-22)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -325,4 +328,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T17:54:15.080Z* | *Total pages: 313*
+*Last updated: 2026-09-22T09:04:35.807Z* | *Total pages: 316*

@@ -7,9 +7,11 @@ The Engine rationalises KValues against the Memory via the fast/slow split:
     (:mod:`kalvin.work_runner`), which cogitates each item
     (:mod:`kalvin.cogitator`) in a background thread.
 
-Events (fast-path grounding is silent): each cogitation emission is
-published as a ``frame`` event via the adapter; the runner publishes
-``done`` idle events. Serialization is the Memory state snapshot (JSON).
+Events: the Engine publishes what it did — ``ground`` for receipts of
+already-grounded klines, ``frame`` (S1/S4) for fast-path resolutions, a
+``frame`` per cogitation emission (via the adapter), and the runner
+publishes ``done`` idle events. Serialization is the Memory state snapshot
+(JSON).
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from kalvin.kvalue import KValue
 from kalvin.memory import Memory
 from kalvin.paths import agent_bin
 from kalvin.rationaliser import Rationaliser
-from kalvin.significance import SIG_S1, structural_sig
+from kalvin.significance import SIG_S1, SIG_S4, structural_sig
 from kalvin.signifier import NLPSignifier
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.tokenizer import TiktokenNotInstalledError
@@ -169,15 +171,28 @@ class Engine:
         Fast path: the rationaliser grounds S1-stamped queries on receipt and
         refuses S4. Slow path: everything else queues on the work list, and
         each queued item is submitted to the work runner, which cogitates it.
+        Fast-path resolutions publish events: ``ground`` for a receipt of an
+        already-grounded kline, ``frame`` at S1 for a fresh grounding, and
+        ``frame`` at S4 for a refusal.
 
         Returns True if the fast path resolved the query, False if it was
         queued (rational).
         """
+        if self._state.is_grounded(value.kline):
+            self._publish("ground", value, KValue(value.kline, SIG_S1))
+            return True
+
         before = len(self._state.work_list)
         self._rationaliser.rationalise([value])
         queued = self._state.work_list[before:]
         for kline in queued:
             self._runner.submit(kline)
+
+        if not queued:
+            if self._state.is_grounded(value.kline):
+                self._publish("frame", value, KValue(value.kline, SIG_S1))
+            elif self._state.is_refused(value.kline):
+                self._publish("frame", value, KValue(value.kline, SIG_S4))
         return not queued
 
     # WorkHandler protocol

@@ -767,3 +767,12 @@
 ## [2026-09-21T17:54:15.012Z] observe
 - slug: "obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory", title: "Engine+WorkRunner now run rationaliser/cogitate over Memory", relevance: "high"
 
+## [2026-09-22T08:22:03.576Z] observe
+- slug: "obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p", title: "Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm)", relevance: "high"
+
+## [2026-09-22T08:48:50.904Z] observe
+- slug: "obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list", title: "WorkRunner cogitates the popped item, not the whole work list", relevance: "high"
+
+## [2026-09-22T09:04:35.743Z] observe
+- slug: "obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati", title: "Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent", relevance: "high"
+
