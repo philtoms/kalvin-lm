@@ -39,12 +39,11 @@ Thread model
 ``on_event`` is called from the WorkRunner background thread via
 ``Engine._publish`` → ``adapter.on_event``.
 
-Model access: :class:`~kalvin.model.Model` and :class:`~kalvin.stm.STM` are
-internally guarded by re-entrant locks, so any model read performed
-here in ``on_event`` — or by any other subscriber — observes a consistent,
-atomic snapshot and needs no adapter-level locking. (The rationalisation
-*event count* still depends on the async Cogitator's processing timing but
-every individual model operation is atomic and deadlock-free.)
+State access: the shared :class:`~kalvin.memory.Memory` is mutated on the
+bus thread (rationalise) and on the WorkRunner thread (cogitation passes)
+with no locking — under CPython's GIL, individual list/dict operations are
+atomic, but composite passes are not transactional. If that ever becomes
+a problem, the seam is here.
 
 Sender map: the sender map (a plain dict) is written on the bus thread and read
 on the Cogitator thread.  Under CPython's GIL, individual dict reads/writes are
