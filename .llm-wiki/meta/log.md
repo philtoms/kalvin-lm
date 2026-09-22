@@ -776,3 +776,51 @@
 ## [2026-09-22T09:04:35.743Z] observe
 - slug: "obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati", title: "Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent", relevance: "high"
 
+## [2026-09-22T12:58:47.146Z] observe
+- slug: "obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid", title: "mhall.ks training intent decoded: Query stress test, goal/evidence split", relevance: "high"
+
+## [2026-09-22T12:58:55.739Z] observe
+- slug: "obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio", title: "mhall scaffolds read as underfits: M, H, ALL over S, V, O; solution covers nodes", relevance: "high"
+
+## [2026-09-22T13:05:32.004Z] observe
+- slug: "obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-", title: "mhall Det/Mod sub-block is surplus-to-goal spring-board for future scripts", relevance: "high"
+
+## [2026-09-22T13:47:17.086Z] observe
+- slug: "obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi", title: "mhall proposing died at eb07933, not the refactor — BPE-collision leak closed", relevance: "critical"
+
+## [2026-09-22T13:47:17.088Z] observe
+- slug: "obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-", title: "mhall stall root: ask dies at S4-refusal; attending ask still derives nothing", relevance: "high"
+
+## [2026-09-22T14:18:43.315Z] observe
+- slug: "obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-", title: "Ask-attends probe: empty ask silently discharged by grounded canon; riding ask never", relevance: "high"
+
+## [2026-09-22T15:39:13.440Z] observe
+- slug: "obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on", title: "Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck", relevance: "high"
+
+## [2026-09-22T15:44:45.986Z] observe
+- slug: "obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt", title: "Algebra: MHALL|ASK:[] is not a shape — ask always rides nodes; empty = Unknown", relevance: "high"
+
+## [2026-09-22T15:57:37.091Z] observe
+- slug: "obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-", title: "Algebra vs needed ask semantics: C(ask,goal) machinery exists, never applied to asks", relevance: "critical"
+
+## [2026-09-22T16:18:30.661Z] observe
+- slug: "obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i", title: "Doctrine: S3-only bridging; S4 = structural question semantics (initial A, not rewrite)", relevance: "critical"
+
+## [2026-09-22T17:09:00.622Z] observe
+- slug: "obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled", title: "Def 15 walk amendment + S4 full-underfit stance — design settled, wording pending", relevance: "critical"
+
+## [2026-09-22T17:18:54.270Z] observe
+- slug: "obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun", title: "kalvin-algebra.md amended: two-form walk licence, T2 edge bound, S4 full-underfit stance", relevance: "critical"
+
+## [2026-09-22T17:33:50.990Z] observe
+- slug: "obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at", title: "mhall reaches its goal: MHALL:[Subject, Verb, Object] proposed at S1 via connotation walks", relevance: "critical"
+
+## [2026-09-22T17:47:46.044Z] observe
+- slug: "obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a", title: "Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path", relevance: "critical"
+
+## [2026-09-22T18:01:12.703Z] observe
+- slug: "obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans", title: "Decision: ask never grounds — attends, derives, discharged by answer's grounding", relevance: "critical"
+
+## [2026-09-22T18:05:05.867Z] observe
+- slug: "obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-", title: "Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form", relevance: "critical"
+

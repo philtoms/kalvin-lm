@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-22T09:04:35.807Z",
+  "last_updated": "2026-09-22T18:05:05.931Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4513,6 +4513,140 @@
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
+    "sources/obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt": {
+      "type": "source",
+      "title": "Observation: Algebra: MHALL|ASK:[] is not a shape — ask always rides nodes; empty = Unknown",
+      "tags": [
+        "algebra",
+        "ask",
+        "unknown",
+        "s4",
+        "shape"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt",
+      "relevance": "high",
+      "observed_at": "2026-09-22T15:44:45.985Z",
+      "source_context": "Checking the truth doc on the empty-ask shape",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-": {
+      "type": "source",
+      "title": "Observation: Algebra vs needed ask semantics: C(ask,goal) machinery exists, never applied to asks",
+      "tags": [
+        "ask",
+        "algebra",
+        "mhall",
+        "underfit",
+        "goal",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T15:57:37.088Z",
+      "source_context": "Mapping Phil's needed ask semantics onto kalvin-algebra.md",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-": {
+      "type": "source",
+      "title": "Observation: Ask-attends probe: empty ask silently discharged by grounded canon; riding ask never",
+      "tags": [
+        "mhall",
+        "ask",
+        "is_answered",
+        "canon",
+        "probe",
+        "fork"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-",
+      "relevance": "high",
+      "observed_at": "2026-09-22T14:18:43.312Z",
+      "source_context": "Probing the ask-attends fork on the mhall stall",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans": {
+      "type": "source",
+      "title": "Observation: Decision: ask never grounds — attends, derives, discharged by answer's grounding",
+      "tags": [
+        "ask",
+        "semantics",
+        "decision",
+        "dropped",
+        "grounding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T18:01:12.700Z",
+      "source_context": "Settling the ask lifecycle semantics with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled": {
+      "type": "source",
+      "title": "Observation: Def 15 walk amendment + S4 full-underfit stance — design settled, wording pending",
+      "tags": [
+        "algebra",
+        "def15",
+        "walk",
+        "connotation",
+        "ask",
+        "s4",
+        "design"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T17:09:00.619Z",
+      "source_context": "Designing the ask/walk algebra amendments with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i": {
+      "type": "source",
+      "title": "Observation: Doctrine: S3-only bridging; S4 = structural question semantics (initial A, not rewrite)",
+      "tags": [
+        "doctrine",
+        "bands",
+        "s3",
+        "s4",
+        "bridging",
+        "ask",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T16:18:30.659Z",
+      "source_context": "Doctrine decision: band-scoped work licences, S4 structural semantics",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-": {
+      "type": "source",
+      "title": "Observation: Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form",
+      "tags": [
+        "mhall",
+        "ask",
+        "s4",
+        "walk",
+        "evidence",
+        "correction",
+        "goal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T18:05:05.865Z",
+      "source_context": "Integrating the 2026-09-22 worked-example observations into the mhall training-intent reading",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
     "sources/obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati": {
       "type": "source",
       "title": "Observation: Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent",
@@ -4530,6 +4664,136 @@
       "created": "2026-09-22",
       "updated": "2026-09-22"
     },
+    "sources/obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun": {
+      "type": "source",
+      "title": "Observation: kalvin-algebra.md amended: two-form walk licence, T2 edge bound, S4 full-underfit stance",
+      "tags": [
+        "algebra",
+        "def15",
+        "t2",
+        "s4",
+        "walk",
+        "amendment",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T17:18:54.267Z",
+      "source_context": "Applying the settled walk/S4 amendments to the truth doc",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-": {
+      "type": "source",
+      "title": "Observation: mhall Det/Mod sub-block is surplus-to-goal spring-board for future scripts",
+      "tags": [
+        "kscript",
+        "mhall",
+        "curriculum",
+        "authoring",
+        "spring-board"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-",
+      "relevance": "high",
+      "observed_at": "2026-09-22T13:05:32.002Z",
+      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid": {
+      "type": "source",
+      "title": "Observation: mhall.ks training intent decoded: Query stress test, goal/evidence split",
+      "tags": [
+        "kscript",
+        "mhall",
+        "curriculum",
+        "training-intent"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid",
+      "relevance": "high",
+      "observed_at": "2026-09-22T12:58:47.143Z",
+      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi": {
+      "type": "source",
+      "title": "Observation: mhall proposing died at eb07933, not the refactor — BPE-collision leak closed",
+      "tags": [
+        "mhall",
+        "bisect",
+        "regression",
+        "def22",
+        "coverage"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T13:47:17.084Z",
+      "source_context": "Diagnosing the silent canonical mhall run",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at": {
+      "type": "source",
+      "title": "Observation: mhall reaches its goal: MHALL:[Subject, Verb, Object] proposed at S1 via connotation walks",
+      "tags": [
+        "mhall",
+        "ask",
+        "walk",
+        "connotation",
+        "bridge",
+        "implementation",
+        "goal-reached"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T17:33:50.987Z",
+      "source_context": "Implementing the amended walk/S4 semantics in the rationaliser",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio": {
+      "type": "source",
+      "title": "Observation: mhall scaffolds read as underfits: M, H, ALL over S, V, O; solution covers nodes",
+      "tags": [
+        "kscript",
+        "underfit",
+        "s2",
+        "mhall",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio",
+      "relevance": "high",
+      "observed_at": "2026-09-22T12:58:55.737Z",
+      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-": {
+      "type": "source",
+      "title": "Observation: mhall stall root: ask dies at S4-refusal; attending ask still derives nothing",
+      "tags": [
+        "mhall",
+        "ask",
+        "refusal",
+        "def22",
+        "stall",
+        "rationaliser"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-",
+      "relevance": "high",
+      "observed_at": "2026-09-22T13:47:17.087Z",
+      "source_context": "Diagnosing the silent canonical mhall run",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
     "sources/obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p": {
       "type": "source",
       "title": "Observation: Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm)",
@@ -4543,6 +4807,46 @@
       "relevance": "high",
       "observed_at": "2026-09-22T08:22:03.573Z",
       "source_context": "Removing orphaned Model/agent_codec/expand/proposals/stm modules",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on": {
+      "type": "source",
+      "title": "Observation: Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck",
+      "tags": [
+        "mhall",
+        "ask",
+        "derivation",
+        "moves",
+        "connotation",
+        "licence",
+        "descent"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on",
+      "relevance": "high",
+      "observed_at": "2026-09-22T15:39:13.438Z",
+      "source_context": "Round-2 ask-attends probe with is_answered disabled",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a": {
+      "type": "source",
+      "title": "Observation: Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path",
+      "tags": [
+        "walk",
+        "ascent",
+        "containment",
+        "witness",
+        "accounting",
+        "mhall",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T17:47:46.041Z",
+      "source_context": "Closing the partial-witness walk leak per Phil's ruling",
       "created": "2026-09-22",
       "updated": "2026-09-22"
     },

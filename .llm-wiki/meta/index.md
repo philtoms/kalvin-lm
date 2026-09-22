@@ -316,8 +316,24 @@
 - [[sources/obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme]] — Observation: Tetrad completed: single char is the pure attractor (environmental reading) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-]] — Observation: Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser]] — Observation: using_resolver now installed by dev callers, not rationaliser/cogitator *(created: 2026-09-21)*
+- [[sources/obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt]] — Observation: Algebra: MHALL|ASK:[] is not a shape — ask always rides nodes; empty = Unknown *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-]] — Observation: Algebra vs needed ask semantics: C(ask,goal) machinery exists, never applied to asks *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-]] — Observation: Ask-attends probe: empty ask silently discharged by grounded canon; riding ask never *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans]] — Observation: Decision: ask never grounds — attends, derives, discharged by answer's grounding *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled]] — Observation: Def 15 walk amendment + S4 full-underfit stance — design settled, wording pending *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i]] — Observation: Doctrine: S3-only bridging; S4 = structural question semantics (initial A, not rewrite) *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-]] — Observation: Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati]] — Observation: Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun]] — Observation: kalvin-algebra.md amended: two-form walk licence, T2 edge bound, S4 full-underfit stance *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-]] — Observation: mhall Det/Mod sub-block is surplus-to-goal spring-board for future scripts *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid]] — Observation: mhall.ks training intent decoded: Query stress test, goal/evidence split *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi]] — Observation: mhall proposing died at eb07933, not the refactor — BPE-collision leak closed *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at]] — Observation: mhall reaches its goal: MHALL:[Subject, Verb, Object] proposed at S1 via connotation walks *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio]] — Observation: mhall scaffolds read as underfits: M, H, ALL over S, V, O; solution covers nodes *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-]] — Observation: mhall stall root: ask dies at S4-refusal; attending ask still derives nothing *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p]] — Observation: Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm) *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on]] — Observation: Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a]] — Observation: Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list]] — Observation: WorkRunner cogitates the popped item, not the whole work list *(created: 2026-09-22)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
@@ -328,4 +344,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-22T09:04:35.807Z* | *Total pages: 316*
+*Last updated: 2026-09-22T18:05:05.931Z* | *Total pages: 332*

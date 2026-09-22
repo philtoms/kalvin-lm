@@ -2,6 +2,22 @@
 
 ## 2026-09-22
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-","title":"Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans","title":"Decision: ask never grounds — attends, derives, discharged by answer's grounding"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a","title":"Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at","title":"mhall reaches its goal: MHALL:[Subject, Verb, Object] proposed at S1 via connotation walks"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun","title":"kalvin-algebra.md amended: two-form walk licence, T2 edge bound, S4 full-underfit stance"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled","title":"Def 15 walk amendment + S4 full-underfit stance — design settled, wording pending"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i","title":"Doctrine: S3-only bridging; S4 = structural question semantics (initial A, not rewrite)"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-","title":"Algebra vs needed ask semantics: C(ask,goal) machinery exists, never applied to asks"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt","title":"Algebra: MHALL|ASK:[] is not a shape — ask always rides nodes; empty = Unknown"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on","title":"Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-","title":"Ask-attends probe: empty ask silently discharged by grounded canon; riding ask never"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-","title":"mhall stall root: ask dies at S4-refusal; attending ask still derives nothing"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi","title":"mhall proposing died at eb07933, not the refactor — BPE-collision leak closed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-","title":"mhall Det/Mod sub-block is surplus-to-goal spring-board for future scripts"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio","title":"mhall scaffolds read as underfits: M, H, ALL over S, V, O; solution covers nodes"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid","title":"mhall.ks training intent decoded: Query stress test, goal/evidence split"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati","title":"Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list","title":"WorkRunner cogitates the popped item, not the whole work list"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p","title":"Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm)"}
