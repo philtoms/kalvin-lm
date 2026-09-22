@@ -15,8 +15,7 @@ assessment — not bare KLines:
 
 - ``submit`` compiles KScript source via :func:`compile_source` (which now
   returns ``list[KValue]``) and forwards each KValue to
-  :meth:`Engine.rationalise`. The Model API stays KLine-based (plan D2):
-  STM pre-registration and the sender-map key read ``entry.kline``.
+  :meth:`Engine.rationalise`; the sender-map key reads ``entry.kline``.
 - ``countersign`` materialises the inbound bus payload to a :class:`KValue`
   (see :func:`_materialise_kvalue`) and forwards it to
   :meth:`Engine.countersign`.
@@ -78,8 +77,11 @@ if TYPE_CHECKING:
 class _EngineLike(Protocol):
     def rationalise(self, value: KValue) -> bool: ...
     def countersign(self, value: KValue) -> bool: ...
-    def save(self, path, format=None) -> None: ...
-    def codec(self) -> object: ...
+    def save(self, path) -> None: ...
+    def runner_drain(self, timeout: float | None = None) -> bool: ...
+    def rebind(self, state) -> None: ...
+    @property
+    def signifier(self) -> object: ...
 
 
 logger = logging.getLogger(__name__)
@@ -222,9 +224,9 @@ class EngineAdapter:
             path a participant uses to hand Kalvin a KValue with its own
             declared significance (the two-way significance dialog).
         save:
-            Persist Kalvin's model to disk via agent_codec.
+            Persist Kalvin's memory to disk (the state snapshot).
         load:
-            Load Kalvin's model from disk via agent_codec.
+            Load Kalvin's memory from disk (the state snapshot).
         """
         if msg.action == "submit":
             self._handle_submit(msg)
@@ -307,13 +309,6 @@ class EngineAdapter:
             return
 
         logger.info("Submitting %d compiled entries to Engine", len(entries))
-        # Pre-register all entries in STM so countersign pairs (e.g. from
-        # `M == H` compiling to {M: H} and {H: M}) can find each other
-        # during rationalise(). The Model API stays KLine-based (D2): pass
-        # ``entry.kline`` at the boundary, never the KValue.
-        if hasattr(self._engine, "model"):
-            for entry in entries:
-                self._engine.model.add_to_stm(entry.kline)
         for entry in entries:
             key: EntryKey = (entry.kline.signature, tuple(entry.kline.nodes))
             self._sender_map[key] = msg.sender or ""
@@ -373,7 +368,7 @@ class EngineAdapter:
         self._engine.rationalise(kvalue)  # fire-and-forget; events via on_event
 
     def _handle_save(self, msg: Message) -> None:
-        """Persist Kalvin's model to disk via agent_codec.
+        """Persist Kalvin's memory to disk (the state snapshot).
 
         ``msg.message`` is the file path (or None for default).
         Sends a confirmation or error back to the sender.
@@ -404,11 +399,11 @@ class EngineAdapter:
             )
 
     def _handle_load(self, msg: Message) -> None:
-        """Load Kalvin's model from disk via agent_codec.
+        """Load Kalvin's memory from disk (the state snapshot).
 
         ``msg.message`` is the file path (or None for default).
-        Reconstructs the Engine with the loaded model, replacing the
-        current one. Sends a confirmation or error back to the sender.
+        Rebinds the Engine onto the loaded memory, replacing the current
+        one. Sends a confirmation or error back to the sender.
         """
         if self._engine is None:
             logger.error("No Engine bound; cannot load")
@@ -416,20 +411,17 @@ class EngineAdapter:
 
         path = msg.message or str(agent_bin())
         try:
-            from kalvin.agent_codec import AgentCodec
+            from kalvin.memory import Memory
 
-            model, activity = AgentCodec.load(path)
-
-            self._engine._model = model
-            self._engine._activity = activity
-            self._engine._runner._model = model  # rebind the work runner's model ref
+            state = Memory.load(self._engine.signifier, path)
+            self._engine.rebind(state)
 
             logger.info("Kalvin model loaded from %s", path)
             self._bus.send(
                 Message(
                     role=msg.sender or SUPERVISOR_ROLE,
                     action="loaded",
-                    message={"path": str(path), "frame_size": len(model)},
+                    message={"path": str(path), "frame_size": len(state.frame)},
                 )
             )
         except Exception as exc:

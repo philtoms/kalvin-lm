@@ -746,3 +746,24 @@
 ## [2026-09-21T15:37:33.933Z] observe
 - slug: "obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory", title: "EngineState renamed to Memory (kalvin.memory)", relevance: "high"
 
+## [2026-09-21T16:02:51.635Z] observe
+- slug: "obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes", title: "Engine/rationaliser identity swap done (module names + classes)", relevance: "high"
+
+## [2026-09-21T16:40:21.333Z] observe
+- slug: "obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r", title: "Cogitator freed: work_runner rename + cogitate extracted from rationaliser", relevance: "high"
+
+## [2026-09-21T16:53:20.898Z] observe
+- slug: "obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0", title: "Steps 2+3 committed: 886d249 and 0b38eb0", relevance: "low"
+
+## [2026-09-21T17:27:56.657Z] observe
+- slug: "obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser", title: "using_resolver now installed by dev callers, not rationaliser/cogitator", relevance: "medium"
+
+## [2026-09-21T17:34:42.926Z] observe
+- slug: "obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop", title: "cogitate single-pass; callers own the reentry loop", relevance: "medium"
+
+## [2026-09-21T17:40:11.080Z] observe
+- slug: "obs-2026-09-21-resolver-reentry-refactor-committed-2704e35", title: "Resolver/reentry refactor committed: 2704e35", relevance: "low"
+
+## [2026-09-21T17:54:15.012Z] observe
+- slug: "obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory", title: "Engine+WorkRunner now run rationaliser/cogitate over Memory", relevance: "high"
+

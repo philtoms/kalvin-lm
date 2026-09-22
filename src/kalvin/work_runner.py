@@ -1,106 +1,68 @@
-"""WorkRunner — background processor for rational work items (S2/S3).
+"""WorkRunner — background runner for work-list items.
 
-The WorkRunner is the slow-path of the rationalisation pipeline. It is a thin
-threading dispatcher: it dequeues ``WorkItem`` instances, invokes functions
-from :mod:`kalvin.expand` (expand) and :mod:`kalvin.proposals`
-(propose_expansions), and routes results to a ``WorkHandler``. All
-significance computation lives in :mod:`kalvin.significance`; graph expansion
-in :mod:`kalvin.expand`; and expansion-proposal logic in
-:mod:`kalvin.proposals`.
-
-Split out of the Engine module so the fast-path (Engine routing)
-and slow-path (work-item processing) live in their own modules while sharing the seam
-defined here: the Engine submits work items and is the primary
-``WorkHandler``.
+The Engine feeds memory via the rationaliser: the fast path resolves
+directly, the rest queue on the work list. Those queued work-list items are
+submitted here. Each item runs one pass of cogitation
+(:func:`kalvin.cogitator.cogitate`) over the shared :class:`Memory`; the
+pass's emissions are routed to a ``WorkHandler``.
 """
 
 from __future__ import annotations
 
 import threading
 import time as _time
-from typing import TYPE_CHECKING, NamedTuple, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from kalvin.cogitator import cogitate
 from kalvin.events import RationaliseEvent
-from kalvin.expand import expand
 from kalvin.kline import KDbg, KLine
 from kalvin.kvalue import KValue
-from kalvin.model import Model
-from kalvin.proposals import propose_expansions
-from kalvin.significance import SIG_S4, BandLayout
+from kalvin.memory import Memory
+from kalvin.significance import SIG_S4
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from kalvin.abstract import KSignifier
     from kalvin.engine import EngineAdapter
 
 
-# Cogitation Handler Protocol
+# Work Handler Protocol
 
 
 @runtime_checkable
 class WorkHandler(Protocol):
-    """Protocol for handling work-item results.
+    """Protocol for handling cogitation emissions.
 
-    The WorkRunner calls these methods when it discovers significant
-    results during background graph expansion.
+    The WorkRunner calls these methods for the emissions a cogitation
+    pass produces while working a submitted item.
     """
 
-    def on_s1(self, query: KValue, candidate: KLine) -> None:
-        """Called when the runner discovers an S1 (exact) result.
+    def on_emission(self, query: KLine, emission: KValue) -> None:
+        """Called once per emission of the cogitation pass working ``query``.
 
-        ``query`` is the original inbound KValue; ``candidate`` is the
-        KLine (from the model) that reached S1.
+        ``query`` is the submitted work-list kline; ``emission`` is a
+        cogitation emission (a proposal KValue carrying its own
+        significance).
         """
         ...
-
-    def on_expansion(
-        self,
-        query: KValue,
-        proposal: KLine,
-        significance: int,
-        original_candidate: KLine | None = None,
-    ) -> None:
-        """Called when an expansion proposal is generated (S2/S3).
-
-        ``query`` is the original inbound KValue; ``proposal`` is the
-        expansion-proposal KLine carrying the ``expand()``-computed significance.
-        """
-        ...
-
-
-# Work Item
-
-
-class WorkItem(NamedTuple):
-    """A single query|candidate pair queued for background processing.
-
-    ``query`` is a KValue (carries the declared significance into the slow
-    path); ``candidate`` is the KLine from the model; ``level`` is the
-    routing classification ("S2" or "S3").
-    """
-
-    query: KValue
-    candidate: KLine
-    level: str  # "S2" or "S3"
 
 
 # WorkRunner
 
 
 class WorkRunner:
-    """Background processor for rational work items (S2/S3).
+    """Background runner for work-list items.
 
-    Receives individual query|candidate|level work items,
-    computes deep significance (expand()), and processes results.
+    Receives queued work-list klines, runs one cogitation pass over the
+    shared memory per item, and routes each emission to the handler.
+
     Parameters
     ----------
-    model:
-        Model instance for distance computation and countersignature checks.
+    state:
+        The shared Memory the cogitation passes operate on.
     adapter:
-        Adapter for receiving events. Must implement ``on_event(event)``.
-        The EventBus class satisfies this protocol via its ``on_event`` method.
+        Adapter for receiving events ("done" idle events). Must implement
+        ``on_event(event)``.
     handler:
-        WorkHandler implementation. Called when the runner discovers
-        significant results (S1 matches and S2/S3 expansion proposals).
+        WorkHandler implementation — called with each cogitation emission.
         The Engine is the primary implementation.
     timeout:
         Idle seconds before emitting "done" so subscribers can realign.
@@ -109,34 +71,32 @@ class WorkRunner:
 
     def __init__(
         self,
-        model: Model,
+        state: Memory,
         adapter: EngineAdapter,
         handler: WorkHandler,
-        signifier: KSignifier,
         timeout: float = 2.0,
     ):
-        self._model = model
+        self._state = state
         self._adapter = adapter
         self._handler = handler
-        self._signifier = signifier
         self._timeout = timeout
 
         self._lock = threading.Lock()
         self._condition = threading.Condition(self._lock)
-        self._backlog: list[WorkItem] = []
+        self._backlog: list[KLine] = []
         self._stop = threading.Event()
         self._processing = False
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
-    def submit(self, item: WorkItem) -> None:
-        """Queue a work item for background processing."""
+    def submit(self, kline: KLine) -> None:
+        """Queue a work-list kline for background cogitation."""
         with self._condition:
-            self._backlog.append(item)
+            self._backlog.append(kline)
             self._condition.notify()
 
     def join(self, timeout: float | None = None) -> None:
-        """Stop the runner thread and wait for it to finish."""
+        """Stop the runner's thread and wait for it to finish."""
         self._stop.set()
         with self._condition:
             self._condition.notify()
@@ -164,7 +124,7 @@ class WorkRunner:
                 return False
 
     def _run(self) -> None:
-        """Background thread: process work items."""
+        """Background thread: run one cogitation pass per submitted item."""
         idle_time = 0.0
         while not self._stop.is_set():
             with self._condition:
@@ -187,41 +147,12 @@ class WorkRunner:
                 self._processing = False
                 self._condition.notify_all()
 
-    def _run_work_item(self, item: WorkItem) -> None:
-        """Expand a work item, classifying each yield against boundaries.
+    def _run_work_item(self, kline: KLine) -> None:
+        """One cogitation pass over the work list, per submitted item.
 
-        Work items arrive routed as S2 or S3 only (see Engine._route). The
-        pair is expanded and each yield classified; a terminal S1 (distance
-        1) discovered during expansion is a genuine structural exact match
-        and triggers ``on_s1``.
-
-        ``item.query`` is a KValue (the original inbound); the model API
-        (``expand``) stays KLine-based, so ``query_kline`` is extracted here.
+        The pass operates on the shared memory's work list (the submitted
+        kline among its entries); each emission goes to the handler, with
+        the submitted kline as its query voice.
         """
-        query_value, candidate, level = item
-        query_kline = query_value.kline
-
-        layout = BandLayout()
-
-        for kv in expand(self._model, query_kline, candidate, self._signifier):
-            band = layout.classify(kv.significance)
-
-            if band == "S4":
-                continue
-
-            if band == "S1":
-                self._handler.on_s1(query_value, candidate)
-                break
-            else:
-                # kv.kline is the expanded (possibly misfit) candidate.
-                # The query voice on the published event is the WorkItem's
-                # original inbound KValue.
-                for proposal, sig in propose_expansions(
-                    self._model, kv.kline, kv.significance, self._signifier
-                ):
-                    self._handler.on_expansion(
-                        query_value,
-                        proposal,
-                        sig,
-                        original_candidate=kv.kline,
-                    )
+        for emission in cogitate(self._state):
+            self._handler.on_emission(kline, emission)

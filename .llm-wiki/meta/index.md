@@ -290,10 +290,14 @@
 - [[sources/obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl]] — Observation: Bracket audit: required for lowercase/digit/case-control, stylistic otherwise *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests]] — Observation: Case rule implemented: expansion hooks + sig-case gate, 83 tests green *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial]] — Observation: Case-triad rule sketched: Capitalized words expand as Initial(tail) *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop]] — Observation: cogitate single-pass; callers own the reentry loop *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r]] — Observation: Cogitator freed: work_runner rename + cogitate extracted from rationaliser *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete]] — Observation: Committed 3932429: Def 1 seam migration complete *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners]] — Observation: CONTEXT.md algebraic entries reduced to normative one-liners *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin]] — Observation: CONTEXT.md KScript entries collapsed to code-pointer one-liners *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s]] — Observation: dev/ks/compile.py now takes script path and optional --model state *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes]] — Observation: Engine/rationaliser identity swap done (module names + classes) *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory]] — Observation: Engine+WorkRunner now run rationaliser/cogitate over Memory *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory]] — Observation: EngineState renamed to Memory (kalvin.memory) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g]] — Observation: Harness sub-script delineation simplified to scope-0 entry groups *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti]] — Observation: KDbg.scope aligned to BindingScope frames — one scope definition in the compiler *(created: 2026-09-21)*
@@ -303,12 +307,15 @@
 - [[sources/obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test]] — Observation: Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is]] — Observation: Optional bracket syntax analyzed: klines invariant, binding is the delta *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl]] — Observation: Probe sys.path bootstraps were off-by-one; two probe run styles *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-resolver-reentry-refactor-committed-2704e35]] — Observation: Resolver/reentry refactor committed: 2704e35 *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model]] — Observation: script-reading.md rewritten around three-layer model *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill]] — Observation: script-reading.md three-layer revision settled via grill *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d]] — Observation: src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0]] — Observation: Steps 2+3 committed: 886d249 and 0b38eb0 *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar]] — Observation: Symbol range committed (4d1bbb9): caseless words + MTS alnum guard *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme]] — Observation: Tetrad completed: single char is the pure attractor (environmental reading) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-]] — Observation: Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser]] — Observation: using_resolver now installed by dev callers, not rationaliser/cogitator *(created: 2026-09-21)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -318,4 +325,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T15:37:34.006Z* | *Total pages: 306*
+*Last updated: 2026-09-21T17:54:15.080Z* | *Total pages: 313*

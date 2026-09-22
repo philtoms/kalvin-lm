@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T15:37:34.006Z",
+  "last_updated": "2026-09-21T17:54:15.080Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4067,6 +4067,39 @@
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
+    "sources/obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop": {
+      "type": "source",
+      "title": "Observation: cogitate single-pass; callers own the reentry loop",
+      "tags": [
+        "refactor",
+        "cogitator",
+        "reentry"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T17:34:42.925Z",
+      "source_context": "Single-pass cogitate refactor",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r": {
+      "type": "source",
+      "title": "Observation: Cogitator freed: work_runner rename + cogitate extracted from rationaliser",
+      "tags": [
+        "architecture",
+        "refactor",
+        "cogitator",
+        "work-runner"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r",
+      "relevance": "high",
+      "observed_at": "2026-09-21T16:40:21.331Z",
+      "source_context": "Cogitator→work_runner rename and rationalise/cogitate split",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete": {
       "type": "source",
       "title": "Observation: Committed 3932429: Def 1 seam migration complete",
@@ -4130,6 +4163,40 @@
       "relevance": "medium",
       "observed_at": "2026-09-21T13:36:38.418Z",
       "source_context": "Adding CLI args to dev/ks/compile.py",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes": {
+      "type": "source",
+      "title": "Observation: Engine/rationaliser identity swap done (module names + classes)",
+      "tags": [
+        "architecture",
+        "refactor",
+        "naming"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes",
+      "relevance": "high",
+      "observed_at": "2026-09-21T16:02:51.631Z",
+      "source_context": "Engine/rationaliser module rename refactor",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory": {
+      "type": "source",
+      "title": "Observation: Engine+WorkRunner now run rationaliser/cogitate over Memory",
+      "tags": [
+        "architecture",
+        "engine",
+        "work-runner",
+        "memory",
+        "convergence"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory",
+      "relevance": "high",
+      "observed_at": "2026-09-21T17:54:15.010Z",
+      "source_context": "Engine+work_runner migration onto rationaliser/cogitator/Memory",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
@@ -4290,6 +4357,21 @@
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
+    "sources/obs-2026-09-21-resolver-reentry-refactor-committed-2704e35": {
+      "type": "source",
+      "title": "Observation: Resolver/reentry refactor committed: 2704e35",
+      "tags": [
+        "commits",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-resolver-reentry-refactor-committed-2704e35",
+      "relevance": "low",
+      "observed_at": "2026-09-21T17:40:11.079Z",
+      "source_context": "Committing resolver/reentry refactor",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model": {
       "type": "source",
       "title": "Observation: script-reading.md rewritten around three-layer model",
@@ -4338,6 +4420,22 @@
       "relevance": "critical",
       "observed_at": "2026-09-21T15:16:42.155Z",
       "source_context": "Refactoring src/dialogue into main code lines",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0": {
+      "type": "source",
+      "title": "Observation: Steps 2+3 committed: 886d249 and 0b38eb0",
+      "tags": [
+        "architecture",
+        "refactor",
+        "commits"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0",
+      "relevance": "low",
+      "observed_at": "2026-09-21T16:53:20.897Z",
+      "source_context": "Committing refactor steps 2+3",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
@@ -4396,6 +4494,22 @@
       "relevance": "high",
       "observed_at": "2026-09-21T10:48:04.903Z",
       "source_context": "Committing the three-thread closure",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser": {
+      "type": "source",
+      "title": "Observation: using_resolver now installed by dev callers, not rationaliser/cogitator",
+      "tags": [
+        "refactor",
+        "resolver",
+        "dev-concern"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T17:27:56.655Z",
+      "source_context": "Moving using_resolver from library to dev callers",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },

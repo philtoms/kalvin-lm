@@ -2,6 +2,13 @@
 
 ## 2026-09-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory","title":"Engine+WorkRunner now run rationaliser/cogitate over Memory"}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-21-resolver-reentry-refactor-committed-2704e35","title":"Resolver/reentry refactor committed: 2704e35"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop","title":"cogitate single-pass; callers own the reentry loop"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser","title":"using_resolver now installed by dev callers, not rationaliser/cogitator"}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0","title":"Steps 2+3 committed: 886d249 and 0b38eb0"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r","title":"Cogitator freed: work_runner rename + cogitate extracted from rationaliser"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes","title":"Engine/rationaliser identity swap done (module names + classes)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory","title":"EngineState renamed to Memory (kalvin.memory)"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution","title":"All live doc references updated for the dialogue dissolution"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl","title":"Probe sys.path bootstraps were off-by-one; two probe run styles"}
