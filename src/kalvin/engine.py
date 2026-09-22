@@ -4,8 +4,8 @@ The Engine rationalises KValues against the Memory via the fast/slow split:
   - Fast path: the rationaliser (:mod:`kalvin.rationaliser`) feeds memory —
     S1-stamped queries ground on receipt, S4 is refused, no model calls.
   - Slow path: the queued work-list items are submitted to the WorkRunner
-    (:mod:`kalvin.work_runner`), one cogitation pass
-    (:mod:`kalvin.cogitator`) per item in a background thread.
+    (:mod:`kalvin.work_runner`), which cogitates each item
+    (:mod:`kalvin.cogitator`) in a background thread.
 
 Events (fast-path grounding is silent): each cogitation emission is
 published as a ``frame`` event via the adapter; the runner publishes
@@ -168,8 +168,7 @@ class Engine:
 
         Fast path: the rationaliser grounds S1-stamped queries on receipt and
         refuses S4. Slow path: everything else queues on the work list, and
-        each queued item is submitted to the work runner for a background
-        cogitation pass.
+        each queued item is submitted to the work runner, which cogitates it.
 
         Returns True if the fast path resolved the query, False if it was
         queued (rational).

@@ -1,10 +1,10 @@
-"""The cogitator — the cogitation pass over the memory work list.
+"""The cogitator — cogitation over the memory work list.
 
 The rationaliser feeds memory: directly on the fast path, or indirectly by
-queuing on the work list. :func:`cogitate` is the second half of the turn —
-a single oldest-first pass over that attention. A pass that changes the
-work list can unblock further entries; callers re-enter cogitate until a
-pass changes nothing.
+queuing on the work list. :func:`cogitate` is the second half of the turn:
+cogitate one work-list kline, or — with no kline — one oldest-first pass
+over the whole work list. A pass that changes the work list can unblock
+further entries; callers re-enter until a pass changes nothing.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ from kalvin.significance import gamma_to_byte
 __all__ = ["cogitate"]
 
 
-def cogitate(state: Memory) -> list[KValue]:
-    """One oldest-first pass over the work list: ask, propose, or ground.
+def cogitate(state: Memory, kline: KLine | None = None) -> list[KValue]:
+    """Cogitate ``kline``, or one oldest-first pass over the work list.
 
     Per entry, in priority order: a groundable entry grounds; a misfit
     entry draws proposals from the strategy; a grounded entry leaves
@@ -27,33 +27,39 @@ def cogitate(state: Memory) -> list[KValue]:
     A pass that changes the work list can unblock further entries —
     the caller re-enters until a pass changes nothing.
     """
+    if kline is not None:
+        return _cogitate_kline(state, kline)
+
     batch: list[KValue] = []
 
     idx = 0
     while idx < len(state.work_list):
-        # Re-check the index each iteration: the ground cascade (via the
-        # S2 strategy's ground callback, or the countersign/groundable
-        # arms) can remove arbitrary work-list entries, shrinking the list
-        # below the index this loop intends to visit.
-        if idx >= len(state.work_list):
-            break
-
-        kline = state.work_list[idx]
-        if state.is_groundable(kline):
-            state.ground_cascade(kline)
-        if state.is_answered(kline):
-            # The ask's content form is grounded — the question has
-            # its answer; attention leaves.
-            state.remove_work_at(idx)
+        entry = state.work_list[idx]
+        batch.extend(_cogitate_kline(state, entry))
+        # The entry left attention (answered, grounded, or removed by a
+        # cascade) — the next entry has slid into this index; a cascade
+        # can also shrink the list below the index entirely.
+        if idx >= len(state.work_list) or state.work_list[idx] is not entry:
             continue
-
-        batch.extend(_propose(state, kline))
-
-        if state.is_grounded(kline):
-            state.remove_work_at(idx)
-            continue
-
         idx += 1
+
+    return batch
+
+
+def _cogitate_kline(state: Memory, kline: KLine) -> list[KValue]:
+    """Cogitate one work-list kline: ground, answer, propose, or release."""
+    if state.is_groundable(kline):
+        state.ground_cascade(kline)
+    if state.is_answered(kline):
+        # The ask's content form is grounded — the question has
+        # its answer; attention leaves.
+        state.remove_work(kline)
+        return []
+
+    batch = _propose(state, kline)
+
+    if state.is_grounded(kline):
+        state.remove_work(kline)
 
     return batch
 

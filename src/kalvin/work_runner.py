@@ -2,9 +2,8 @@
 
 The Engine feeds memory via the rationaliser: the fast path resolves
 directly, the rest queue on the work list. Those queued work-list items are
-submitted here. Each item runs one pass of cogitation
-(:func:`kalvin.cogitator.cogitate`) over the shared :class:`Memory`; the
-pass's emissions are routed to a ``WorkHandler``.
+submitted here. Each item is cogitated (:func:`kalvin.cogitator.cogitate`
+with the kline); the emissions are routed to a ``WorkHandler``.
 """
 
 from __future__ import annotations
@@ -51,8 +50,8 @@ class WorkHandler(Protocol):
 class WorkRunner:
     """Background runner for work-list items.
 
-    Receives queued work-list klines, runs one cogitation pass over the
-    shared memory per item, and routes each emission to the handler.
+    Receives queued work-list klines, cogitates each one, and routes each
+    emission to the handler.
 
     Parameters
     ----------
@@ -148,11 +147,11 @@ class WorkRunner:
                 self._condition.notify_all()
 
     def _run_work_item(self, kline: KLine) -> None:
-        """One cogitation pass over the work list, per submitted item.
+        """Cogitate the submitted kline.
 
-        The pass operates on the shared memory's work list (the submitted
-        kline among its entries); each emission goes to the handler, with
-        the submitted kline as its query voice.
+        The item is already on the shared memory's work list; cogitation
+        grounds it, answers it, or draws proposals from it. Each emission
+        goes to the handler, with the submitted kline as its query voice.
         """
-        for emission in cogitate(self._state):
+        for emission in cogitate(self._state, kline):
             self._handler.on_emission(kline, emission)
