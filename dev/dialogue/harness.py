@@ -318,6 +318,22 @@ class Harness:
                     batch.extend(cogitate(self.state, collect=derivations))
                     if len(self.state.work_list) == size:
                         break
+                # The protocol's pairs: the == pairing is the trainer's,
+                # so the engine stays pure — selection only — and the
+                # harness hands each declared ask its B explicitly
+                # (Def 12 parameterises the derivation by its goal).
+                for k in list(self.state.work_list):
+                    if not is_ask(k.signature) or self.state.is_answered(k):
+                        continue
+                    goal = goals.get(canon_key(k.signature))
+                    if goal is None:
+                        continue
+                    batch.extend(
+                        cogitate(
+                            self.state, k, collect=derivations,
+                            goal=goal.kline,
+                        )
+                    )
             deduped = _dedup(batch)
             after = _grounded_snapshot(self.state)
             grounds = [

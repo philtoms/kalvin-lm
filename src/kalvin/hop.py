@@ -39,57 +39,6 @@ TRAWL_DEPTH = 5
 MAX_HOPS = 8
 
 
-def scored_candidates(
-    state: Memory, queued: KLine, signifier: KSignifier
-) -> list[tuple[KLine, str]]:
-    """The candidate list with each goal's source — "supplied" (the
-    construct's `=>`-supplied goal, ahead of selection) or "selected"
-    (Definition 22 coverage, γ-descending)."""
-    content = int(signifier.signature_of(queued.nodes))
-    ask_base = (
-        canon_key(queued.signature) if is_ask(queued.signature) else None
-    )
-    d = getattr(queued, "dbg", None)
-    declared = d.goal if (ask_base is not None and d is not None) else ""
-    given: KLine | None = None
-    scored: list[tuple[float, int, KLine]] = []
-    # Goals are held content (frame/ltm), never STM: bridges are scratch
-    # evidence for replacements, not klines to derive toward.
-    pool = state.where(lambda k: not is_terminal(k))
-    if declared:
-        # The == pairing is subjective (outside the algebra): the given
-        # goal rides first as the stand-in for the S4 walk law (§4) —
-        # the unmatched underfit's own derivation — until that law lands.
-        given = next(
-            (
-                k for k in pool
-                if getattr(k, "dbg", None) is not None
-                and k.dbg.label == declared and k.nodes
-            ),
-            None,
-        )
-    for i, k in enumerate(pool):
-        if k.signature == queued.signature and k.nodes == queued.nodes:
-            continue  # the queued kline is not its own goal
-        if k is given:
-            continue  # the given goal is not a candidate
-        if is_ask(k.signature):
-            continue  # a question is never a goal
-        if ask_base is not None and canon_key(k.signature) == ask_base:
-            continue  # an ask never heads its own goal list — nor its canon
-        kc = int(signifier.signature_of(k.nodes))
-        if not any(signifier.signifies(n, kc) for n in queued.nodes):
-            continue  # covers no node of ν_A — not a candidate
-        union = signifier.measure(content | kc)
-        scored.append((signifier.measure(content & kc) / union, i, k))
-    selected = [k for _, _, k in sorted(scored, key=lambda t: (-t[0], t[1]))]
-    out: list[tuple[KLine, str]] = []
-    if given is not None:
-        out.append((given, "supplied"))
-    out.extend((k, "selected") for k in selected)
-    return out
-
-
 def candidate_goals(
     state: Memory, queued: KLine, signifier: KSignifier
 ) -> list[KLine]:
@@ -101,7 +50,26 @@ def candidate_goals(
     one step removed: the marker is not an atom, so the ask and its
     canon share content — the canon is excluded too, by the ask step.
     """
-    return [k for k, _ in scored_candidates(state, queued, signifier)]
+    content = int(signifier.signature_of(queued.nodes))
+    ask_base = (
+        canon_key(queued.signature) if is_ask(queued.signature) else None
+    )
+    scored: list[tuple[float, int, KLine]] = []
+    # Goals are held content (frame/ltm), never STM: bridges are scratch
+    # evidence for replacements, not klines to derive toward.
+    for i, k in enumerate(state.where(lambda k: not is_terminal(k))):
+        if k.signature == queued.signature and k.nodes == queued.nodes:
+            continue  # the queued kline is not its own goal
+        if is_ask(k.signature):
+            continue  # a question is never a goal
+        if ask_base is not None and canon_key(k.signature) == ask_base:
+            continue  # an ask never heads its own goal list — nor its canon
+        kc = int(signifier.signature_of(k.nodes))
+        if not any(signifier.signifies(n, kc) for n in queued.nodes):
+            continue  # covers no node of ν_A — not a candidate
+        union = signifier.measure(content | kc)
+        scored.append((signifier.measure(content & kc) / union, i, k))
+    return [k for _, _, k in sorted(scored, key=lambda t: (-t[0], t[1]))]
 
 
 def trawl(
@@ -163,6 +131,7 @@ class Hop:
         queued: KLine,
         signifier: KSignifier,
         *,
+        goal: KLine | None = None,
         max_goals: int = MAX_GOALS,
         trawl_depth: int = TRAWL_DEPTH,
         **derivation_kwargs,
@@ -170,12 +139,21 @@ class Hop:
         self.state = state  # writes land in its STM tier
         self.queued = queued
         self.signifier = signifier
+        # An explicit B from the caller (Def 12 parameterises the
+        # derivation by its goal); None — Definition 22 selects.
+        self.goal = goal
         self.max_goals = max_goals
         self.trawl_depth = trawl_depth
         self.derivation_kwargs = derivation_kwargs
 
     def run(self) -> HopResult:
-        goals = scored_candidates(self.state, self.queued, self.signifier)
+        if self.goal is not None:
+            goals: list[tuple[KLine, str]] = [(self.goal, "given")]
+        else:
+            goals = [
+                (k, "selected")
+                for k in candidate_goals(self.state, self.queued, self.signifier)
+            ]
         res = HopResult(ending="stuck")
         for goal, source in goals[: self.max_goals]:
             scope = trawl(
@@ -220,6 +198,7 @@ def run_hops(
     queued: KLine,
     signifier: KSignifier,
     *,
+    goal: KLine | None = None,
     max_hops: int = MAX_HOPS,
     **hop_kwargs,
 ) -> HopResult:
@@ -242,7 +221,7 @@ def run_hops(
         return h
 
     for _ in range(max_hops):
-        hop = Hop(state, a, signifier, **hop_kwargs).run()
+        hop = Hop(state, a, signifier, goal=goal, **hop_kwargs).run()
         results += hop.results
         writes += hop.writes
         goals += hop.goals

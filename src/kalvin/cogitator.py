@@ -23,6 +23,7 @@ def cogitate(
     state: Memory,
     kline: KLine | None = None,
     collect: list[tuple[KLine, list["DerivationResult"]]] | None = None,
+    goal: KLine | None = None,
 ) -> list[KValue]:
     """Cogitate ``kline``, or one oldest-first pass over the work list.
 
@@ -36,7 +37,7 @@ def cogitate(
     strategy produced — the selection trace the presentation renders.
     """
     if kline is not None:
-        return _cogitate_kline(state, kline, collect)
+        return _cogitate_kline(state, kline, collect, goal)
 
     batch: list[KValue] = []
 
@@ -58,6 +59,7 @@ def _cogitate_kline(
     state: Memory,
     kline: KLine,
     collect: list[tuple[KLine, list["DerivationResult"]]] | None = None,
+    goal: KLine | None = None,
 ) -> list[KValue]:
     """Cogitate one work-list kline: ground, answer, propose, or release."""
     if state.is_groundable(kline):
@@ -68,7 +70,7 @@ def _cogitate_kline(
         state.remove_work(kline)
         return []
 
-    batch = _propose(state, kline, collect)
+    batch = _propose(state, kline, collect, goal)
 
     if state.is_grounded(kline):
         state.remove_work(kline)
@@ -80,6 +82,7 @@ def _propose(
     state: Memory,
     kline: KLine,
     collect: list[tuple[KLine, list["DerivationResult"]]] | None = None,
+    goal: KLine | None = None,
 ) -> list[KValue]:
     """The re-entry chain over the held memory (Defs 21–23): goals
     from the selection list in order, each scoped and derived to an
@@ -91,7 +94,7 @@ def _propose(
     (Defs 16, 20); γ — significance net of complexity — grades
     effort and never selects the band. The chain's writes extend
     the STM tier later hops trawl."""
-    hop = run_hops(state, kline, state.signifier)
+    hop = run_hops(state, kline, state.signifier, goal=goal)
     if collect is not None:
         collect.append((kline, list(hop.results)))
     batch: list[KValue] = []
