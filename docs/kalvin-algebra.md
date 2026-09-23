@@ -463,7 +463,7 @@ Informally, the bands represent increasing uncertainty:
 
 Unknown is also S4's shape of no represented content: the system has no current content on the relevant side. No compiled ask takes it — the ask is the marked kline (§13).
 
-An ask is an unmatched underfit: no goal, no witness. Its entire content is underfit slots, each walkable under Definition 15. The question is held; the arrangement is the work.
+An ask's own band is S4 — the question. Its structure is canonical: the marker marks identity, not content, so σ(ν_A) is the question's content and selection (Definition 22) reads it like any kline's. Derivation licences read the relationship's band (Definition 14), never the ask's own — S4 licenses nothing.
 
 ---
 
@@ -640,7 +640,7 @@ The relationship C(A,B) determines the region in which targeting may occur. The 
 | S1                | none; the derivation is done                                 |
 | S2                | replacements restricted to the misfit region                 |
 | S3                | replacement permitted; all nodes are in the misfit           |
-| S4                | none; the unmatched underfit walks its slots (Definition 15) |
+| S4                | none; the derivation is stuck                      |
 
 The restriction reads on both ends of the move: forward, the departed node carries underfit content or the arriving witness adopts overfit content; reverse, the consumed nodes carry the underfit or the arriving head lands in the overfit. An empty underfit therefore bars nothing — an overfit relationship is worked by adoption, on the arrival clause alone.
 
