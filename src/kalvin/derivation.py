@@ -46,7 +46,6 @@ class DerivationResult:
     #: The goal this derivation ran toward, and how it joined the list
     #: ("supplied" — the construct's — or "selected" — Definition 22).
     goal: "KLine | None" = None
-    goal_source: str = ""
 
 
 class Derivation:

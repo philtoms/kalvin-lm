@@ -318,22 +318,6 @@ class Harness:
                     batch.extend(cogitate(self.state, collect=derivations))
                     if len(self.state.work_list) == size:
                         break
-                # The protocol's pairs: the == pairing is the trainer's,
-                # so the engine stays pure — selection only — and the
-                # harness hands each declared ask its B explicitly
-                # (Def 12 parameterises the derivation by its goal).
-                for k in list(self.state.work_list):
-                    if not is_ask(k.signature) or self.state.is_answered(k):
-                        continue
-                    goal = goals.get(canon_key(k.signature))
-                    if goal is None:
-                        continue
-                    batch.extend(
-                        cogitate(
-                            self.state, k, collect=derivations,
-                            goal=goal.kline,
-                        )
-                    )
             deduped = _dedup(batch)
             after = _grounded_snapshot(self.state)
             grounds = [
@@ -622,7 +606,6 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
                     tuple(int(n) for n in r.trace[0]),
                     int(r.goal.signature),
                     tuple(int(n) for n in r.goal.nodes),
-                    r.goal_source,
                     r.ending,
                     round(r.j1, 3),
                 )
@@ -636,7 +619,7 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
                     f"        {'derives':<8} "
                     f"{_label(queued.signature, labels, verbose)}:[{entry}] → "
                     f"{_render_kline_struct(r.goal, labels, verbose)} "
-                    f"({r.goal_source}) {r.ending} j1={r.j1:.3f}"
+                    f"{r.ending} j1={r.j1:.3f}"
                 )
         escalations = {i: r for i, r in turn.escalations}
         for i, v in enumerate(turn.asks):

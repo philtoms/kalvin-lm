@@ -131,7 +131,6 @@ class Hop:
         queued: KLine,
         signifier: KSignifier,
         *,
-        goal: KLine | None = None,
         max_goals: int = MAX_GOALS,
         trawl_depth: int = TRAWL_DEPTH,
         **derivation_kwargs,
@@ -139,23 +138,15 @@ class Hop:
         self.state = state  # writes land in its STM tier
         self.queued = queued
         self.signifier = signifier
-        # An explicit B from the caller (Def 12 parameterises the
-        # derivation by its goal); None — Definition 22 selects.
-        self.goal = goal
         self.max_goals = max_goals
         self.trawl_depth = trawl_depth
         self.derivation_kwargs = derivation_kwargs
 
     def run(self) -> HopResult:
-        if self.goal is not None:
-            goals: list[tuple[KLine, str]] = [(self.goal, "given")]
-        else:
-            goals = [
-                (k, "selected")
-                for k in candidate_goals(self.state, self.queued, self.signifier)
-            ]
         res = HopResult(ending="stuck")
-        for goal, source in goals[: self.max_goals]:
+        for goal in candidate_goals(
+            self.state, self.queued, self.signifier
+        )[: self.max_goals]:
             scope = trawl(
                 self.state,
                 self.queued.nodes,
@@ -167,7 +158,6 @@ class Hop:
                 scope, self.queued, goal, self.signifier, **self.derivation_kwargs
             ).run()
             r.goal = goal
-            r.goal_source = source
             res.goals.append(goal)
             res.results.append(r)
             self.state.extend_stm(r.composed)  # writes go to STM, not the scope
@@ -177,7 +167,16 @@ class Hop:
                 break
         else:
             # done | list exhausted | the goal bound cut the list
-            res.ending = "abandoned" if len(goals) > self.max_goals else "stuck"
+            n = len(res.goals)
+            res.ending = (
+                "abandoned"
+                if n == self.max_goals
+                and len(candidate_goals(
+                    self.state, self.queued, self.signifier
+                ))
+                > n
+                else "stuck"
+            )
         res.reentry = self._reentry(res)
         return res
 
@@ -198,7 +197,6 @@ def run_hops(
     queued: KLine,
     signifier: KSignifier,
     *,
-    goal: KLine | None = None,
     max_hops: int = MAX_HOPS,
     **hop_kwargs,
 ) -> HopResult:
@@ -221,7 +219,7 @@ def run_hops(
         return h
 
     for _ in range(max_hops):
-        hop = Hop(state, a, signifier, goal=goal, **hop_kwargs).run()
+        hop = Hop(state, a, signifier, **hop_kwargs).run()
         results += hop.results
         writes += hop.writes
         goals += hop.goals
