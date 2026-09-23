@@ -1,4 +1,4 @@
-"""Canonical γ tests — significance.gamma_* and the expand terminal byte.
+"""Canonical γ tests — significance.gamma_*.
 
 The aggregation form is fixed (kalvin-algebra.md §11): atom-weighted (granularity-
 invariance), union denominator (band-consistency), decay of the mean,
@@ -9,9 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from kalvin.expand import expand
 from kalvin.kline import KLine, KNode
-from kalvin.model import Model
 from kalvin.significance import (
     DEFAULT_DELTA,
     SIG8_MAX,
@@ -130,70 +128,7 @@ def test_byte_saturation():
     assert 0 < interior < SIG8_MAX
 
 
-# expand terminal byte
-
-
-def _model_with(*klines: KLine) -> Model:
-    model = Model()
-    for kl in klines:
-        model.add_to_ltm(kl)
-    return model
-
-
-def test_expand_exact_grounded_pair_is_max():
-    signifier = NLPSignifier()
-    model = _model_with(KLine(A, [A]), KLine(B, [B]))
-    query = KLine(AB, [A, B])
-    (kv,) = [
-        kv for kv in expand(model, query, query, signifier) if kv.kline is query
-    ]
-    assert kv.significance == SIG8_MAX
-
-
-def test_expand_disjoint_pair_is_min():
-    signifier = NLPSignifier()
-    model = Model()
-    query = KLine(A, [A])
-    candidate = KLine(C, [C])
-    (kv,) = [
-        kv
-        for kv in expand(model, query, candidate, signifier)
-        if kv.kline is candidate
-    ]
-    assert kv.significance == SIG8_MIN
-
-
-def test_expand_ungrounded_match_discounted():
-    signifier = NLPSignifier()
-    model = Model()
-    model.add_to_stm(KLine(A, [A]))  # STM: not grounded — one hop of doubt
-    query = KLine(A, [A])
-    (kv,) = [
-        kv for kv in expand(model, query, query, signifier) if kv.kline is query
-    ]
-    assert kv.significance == gamma_to_byte(DEFAULT_DELTA**1)
-
-
-def test_expand_carried_acquisition_depth_prices_won_knowledge():
-    signifier = NLPSignifier()
-    model = Model()
-    model.add_to_stm(KLine(A, [A], acq_depth=3))  # won through three edges
-    query = KLine(A, [A])
-    (kv,) = [
-        kv for kv in expand(model, query, query, signifier) if kv.kline is query
-    ]
-    assert kv.significance == gamma_to_byte(DEFAULT_DELTA**3)
-
-
-def test_grounding_flattens_the_acquisition_record():
-    signifier = NLPSignifier()
-    model = Model()
-    model.add_to_ltm(KLine(A, [A], acq_depth=3))  # grounded — ratified
-    query = KLine(A, [A])
-    (kv,) = [
-        kv for kv in expand(model, query, query, signifier) if kv.kline is query
-    ]
-    assert kv.significance == SIG8_MAX
+# acq_depth
 
 
 def test_acq_depth_ignored_for_identity():
@@ -202,15 +137,15 @@ def test_acq_depth_ignored_for_identity():
 
 
 def test_acq_depth_round_trips_through_state_snapshot():
-    from dialogue.engine_state import EngineState
+    from kalvin.memory import Memory
 
-    state = EngineState(NLPSignifier())
+    state = Memory(NLPSignifier())
     won = KLine(A, [A], acq_depth=2)
     state.work_list.append(won)
     data = state.to_dict()
     assert data["work_list"][0][2] == 2
-    rebuilt = EngineState.from_dict(NLPSignifier(), data)
+    rebuilt = Memory.from_dict(NLPSignifier(), data)
     assert rebuilt.work_list[0].acq_depth == 2
     # Legacy two-element snapshots still load.
     legacy = {"work_list": [[int(A), [int(A)]], ]}
-    assert EngineState.from_dict(NLPSignifier(), legacy).work_list[0].acq_depth == 0
+    assert Memory.from_dict(NLPSignifier(), legacy).work_list[0].acq_depth == 0

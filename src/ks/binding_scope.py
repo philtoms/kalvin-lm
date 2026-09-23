@@ -56,7 +56,7 @@ class _Scope:
             An inline annotation binds unconditionally and overrides any
             outer (word-list) binding for that char (Word Binding rule:
             inline binds tighter than top-level). Checked before word-list
-            resolution so every code path that resolves the char (MTS char
+            resolution so every code path that resolves the char (compound char
             expansion, identity emission, node resolution) sees the inline
             word, keeping one token per char.
     """
@@ -101,6 +101,11 @@ class BindingScope:
         """File-level char → word memory of every successful resolution."""
         return self._resolved
 
+    @property
+    def depth(self) -> int:
+        """The current frame's nesting level — the root (global) frame is 0."""
+        return len(self._stack) - 1
+
     def push_scope(self) -> None:
         """Push a new scope onto the stack.
 
@@ -128,7 +133,7 @@ class BindingScope:
     def counters_restore(self, snapshot: list[dict[str, int]]) -> None:
         """Restore occurrence counters from a :meth:`counters_snapshot`.
 
-        Used around decoding-aid resolutions (MTS char expansion) so they
+        Used around decoding-aid resolutions (compound char expansion) so they
         don't consume the occurrence counters that belong to the identity
         occurrences emitted as item klines.
         """
@@ -157,7 +162,7 @@ class BindingScope:
         An inline annotation binds unconditionally and overrides any outer
         (word-list) binding for that char. Registered in the current (topmost)
         scope so it is honored before word-list resolution wherever the char
-        is resolved — including MTS char expansion and identity emission, not
+        is resolved — including compound char expansion and identity emission, not
         only the inline item's own node. This keeps one token per char: the
         inline word wins everywhere, never competing with a looser binding.
         """

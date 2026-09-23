@@ -1,11 +1,13 @@
 """Decode the [a, Mod, lamb, a] proposal: values, labels, goal, why done."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from kalvin.bpe_tokenizer import BPETokenizer
+from kalvin.cogitator import cogitate
 from ks.compiler import compile_source
-from dialogue.harness import make_engine, load_engine
-from kalvin.kline import KLine, is_ask, is_terminal
+from dev.dialogue.harness import make_rationaliser, load_rationaliser
+from kalvin.kline import KLine, is_ask, is_terminal, using_resolver
 from kalvin import hop as hop_mod
 
 tok = BPETokenizer()
@@ -18,14 +20,20 @@ def word_bits_of(v):
     upper = int(v) >> 32
     return [i for i in range(64) if upper >> i & 1]
 
-h = load_engine("data/dialogue/mhall.json", tok)
+h = load_rationaliser("data/dialogue/mhall.json", tok)
 sig = h.signifier
 bits = h.word_bits
 
 mhall_src = open("data/scripts/mhall.ks").read()
 entries = compile_source(mhall_src, tokenizer=tok, signifier=sig, dev=True,
                          word_bits=bits, known_words=h.known_words)
-h.engine.rationalise(entries)
+with using_resolver(h.state.find):
+    h.rationaliser.rationalise(entries)
+    while True:
+        size = len(h.state.work_list)
+        cogitate(h.state)
+        if len(h.state.work_list) == size:
+            break
 
 print("word bits table (word -> bit, sig):")
 for w, b in bits.items():

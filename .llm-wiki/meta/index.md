@@ -285,17 +285,56 @@
 - [[sources/obs-2026-09-20-all-value-space-leaks-fixed-bits-confined-to-kline-signifier]] — Observation: All value-space leaks fixed: bits confined to kline/signifier/tokenizer/compiler homes *(created: 2026-09-20)*
 - [[sources/obs-2026-09-20-appendix-added-the-word-bit-realisation-in-construction-deta]] — Observation: Appendix added: the word-bit realisation in construction detail *(created: 2026-09-20)*
 - [[sources/obs-2026-09-20-def-1-honored-in-engine-measure-units-same-content-on-ksigni]] — Observation: Def 1 honored in engine: measure/units/same_content on KSignifier; derivation.py fully seam-routed *(created: 2026-09-20)*
+- [[sources/obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution]] — Observation: All live doc references updated for the dialogue dissolution *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-]] — Observation: Attraction refined to uppercase-only: lowercase single chars are literal words *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-bracket-audit-required-for-lowercase-digit-case-control-styl]] — Observation: Bracket audit: required for lowercase/digit/case-control, stylistic otherwise *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-case-rule-implemented-expansion-hooks-sig-case-gate-83-tests]] — Observation: Case rule implemented: expansion hooks + sig-case gate, 83 tests green *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-case-triad-rule-sketched-capitalized-words-expand-as-initial]] — Observation: Case-triad rule sketched: Capitalized words expand as Initial(tail) *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop]] — Observation: cogitate single-pass; callers own the reentry loop *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r]] — Observation: Cogitator freed: work_runner rename + cogitate extracted from rationaliser *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete]] — Observation: Committed 3932429: Def 1 seam migration complete *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners]] — Observation: CONTEXT.md algebraic entries reduced to normative one-liners *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin]] — Observation: CONTEXT.md KScript entries collapsed to code-pointer one-liners *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s]] — Observation: dev/ks/compile.py now takes script path and optional --model state *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes]] — Observation: Engine/rationaliser identity swap done (module names + classes) *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory]] — Observation: Engine+WorkRunner now run rationaliser/cogitate over Memory *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory]] — Observation: EngineState renamed to Memory (kalvin.memory) *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g]] — Observation: Harness sub-script delineation simplified to scope-0 entry groups *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti]] — Observation: KDbg.scope aligned to BindingScope frames — one scope definition in the compiler *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr]] — Observation: KDbg.scope now carries AST nesting depth; scope-0 = root constructs *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha]] — Observation: KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-]] — Observation: MTS retired (85083f5): compound/expansion/canon triple aligned everywhere *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test]] — Observation: Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-optional-bracket-syntax-analyzed-klines-invariant-binding-is]] — Observation: Optional bracket syntax analyzed: klines invariant, binding is the delta *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl]] — Observation: Probe sys.path bootstraps were off-by-one; two probe run styles *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-resolver-reentry-refactor-committed-2704e35]] — Observation: Resolver/reentry refactor committed: 2704e35 *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model]] — Observation: script-reading.md rewritten around three-layer model *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill]] — Observation: script-reading.md three-layer revision settled via grill *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d]] — Observation: src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0]] — Observation: Steps 2+3 committed: 886d249 and 0b38eb0 *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-symbol-range-committed-4d1bbb9-caseless-words-mts-alnum-guar]] — Observation: Symbol range committed (4d1bbb9): caseless words + MTS alnum guard *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-tetrad-completed-single-char-is-the-pure-attractor-environme]] — Observation: Tetrad completed: single char is the pure attractor (environmental reading) *(created: 2026-09-21)*
 - [[sources/obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-]] — Observation: Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails *(created: 2026-09-21)*
+- [[sources/obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser]] — Observation: using_resolver now installed by dev callers, not rationaliser/cogitator *(created: 2026-09-21)*
+- [[sources/obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt]] — Observation: Algebra: MHALL|ASK:[] is not a shape — ask always rides nodes; empty = Unknown *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-]] — Observation: Algebra vs needed ask semantics: C(ask,goal) machinery exists, never applied to asks *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-]] — Observation: Ask-attends probe: empty ask silently discharged by grounded canon; riding ask never *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans]] — Observation: Decision: ask never grounds — attends, derives, discharged by answer's grounding *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled]] — Observation: Def 15 walk amendment + S4 full-underfit stance — design settled, wording pending *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i]] — Observation: Doctrine: S3-only bridging; S4 = structural question semantics (initial A, not rewrite) *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-]] — Observation: Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati]] — Observation: Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun]] — Observation: kalvin-algebra.md amended: two-form walk licence, T2 edge bound, S4 full-underfit stance *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-]] — Observation: mhall Det/Mod sub-block is surplus-to-goal spring-board for future scripts *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid]] — Observation: mhall.ks training intent decoded: Query stress test, goal/evidence split *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi]] — Observation: mhall proposing died at eb07933, not the refactor — BPE-collision leak closed *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at]] — Observation: mhall reaches its goal: MHALL:[Subject, Verb, Object] proposed at S1 via connotation walks *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio]] — Observation: mhall scaffolds read as underfits: M, H, ALL over S, V, O; solution covers nodes *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-]] — Observation: mhall stall root: ask dies at S4-refusal; attending ask still derives nothing *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p]] — Observation: Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm) *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on]] — Observation: Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a]] — Observation: Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path *(created: 2026-09-22)*
+- [[sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list]] — Observation: WorkRunner cogitates the popped item, not the whole work list *(created: 2026-09-22)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -305,4 +344,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-21T10:48:04.980Z* | *Total pages: 293*
+*Last updated: 2026-09-22T18:05:05.931Z* | *Total pages: 332*

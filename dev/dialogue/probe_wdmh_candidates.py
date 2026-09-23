@@ -2,15 +2,16 @@
 compute Def 22 candidate lists for both forms of the question."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.kline import KLine, is_terminal
 from kalvin.hop import candidate_goals
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_rationaliser
 
 tok = BPETokenizer()
-h = load_engine(Path("data/dialogue/wdmh-underfit.json"), tok)
+h = load_rationaliser(Path("data/dialogue/wdmh-underfit.json"), tok)
 st = h.state
 sig = h.signifier
 

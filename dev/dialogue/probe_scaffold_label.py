@@ -1,14 +1,15 @@
 import sys
 sys.path.insert(0, 'src')
+sys.path.insert(0, '.')
 from pathlib import Path
-from dialogue.harness import make_engine
+from dev.dialogue.harness import make_rationaliser
 from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import Compiler
 from ks.lexer import Lexer
 from ks.parser import Parser
 
 tok = BPETokenizer()
-h = make_engine(tok)
+h = make_rationaliser(tok)
 source = Path("data/scripts/wdmh-underfit.ks").read_text()
 c = Compiler(tok, signifier=h.signifier, dev=True, word_bits=h.word_bits)
 entries = c.compile(Parser(Lexer(source).tokenize()).parse())

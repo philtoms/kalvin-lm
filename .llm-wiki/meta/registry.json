@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-21T10:48:04.980Z",
+  "last_updated": "2026-09-22T18:05:05.931Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -3973,6 +3973,22 @@
       "created": "2026-09-20",
       "updated": "2026-09-20"
     },
+    "sources/obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution": {
+      "type": "source",
+      "title": "Observation: All live doc references updated for the dialogue dissolution",
+      "tags": [
+        "docs",
+        "refactor",
+        "verification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T15:21:47.550Z",
+      "source_context": "Updating document references after src/dialogue refactor",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-attraction-refined-to-uppercase-only-lowercase-single-chars-": {
       "type": "source",
       "title": "Observation: Attraction refined to uppercase-only: lowercase single chars are literal words",
@@ -4051,6 +4067,39 @@
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
+    "sources/obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop": {
+      "type": "source",
+      "title": "Observation: cogitate single-pass; callers own the reentry loop",
+      "tags": [
+        "refactor",
+        "cogitator",
+        "reentry"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T17:34:42.925Z",
+      "source_context": "Single-pass cogitate refactor",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r": {
+      "type": "source",
+      "title": "Observation: Cogitator freed: work_runner rename + cogitate extracted from rationaliser",
+      "tags": [
+        "architecture",
+        "refactor",
+        "cogitator",
+        "work-runner"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r",
+      "relevance": "high",
+      "observed_at": "2026-09-21T16:40:21.331Z",
+      "source_context": "Cogitator→work_runner rename and rationalise/cogitate split",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
     "sources/obs-2026-09-21-committed-3932429-def-1-seam-migration-complete": {
       "type": "source",
       "title": "Observation: Committed 3932429: Def 1 seam migration complete",
@@ -4065,6 +4114,210 @@
       "relevance": "medium",
       "observed_at": "2026-09-21T05:57:43.678Z",
       "source_context": "Committing the Def 1 seam migration",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md algebraic entries reduced to normative one-liners",
+      "tags": [
+        "docs",
+        "domain-modeling",
+        "kalvin"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners",
+      "relevance": "high",
+      "observed_at": "2026-09-21T12:18:09.826Z",
+      "source_context": "De-overlapping docs/kalvin-algebra.md and CONTEXT.md normative definitions",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin": {
+      "type": "source",
+      "title": "Observation: CONTEXT.md KScript entries collapsed to code-pointer one-liners",
+      "tags": [
+        "docs",
+        "kscript",
+        "glossary",
+        "kalvin"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T12:28:06.107Z",
+      "source_context": "Slimming CONTEXT.md glossary entries to single sentences",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s": {
+      "type": "source",
+      "title": "Observation: dev/ks/compile.py now takes script path and optional --model state",
+      "tags": [
+        "kscript",
+        "dev-tools",
+        "compile"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T13:36:38.418Z",
+      "source_context": "Adding CLI args to dev/ks/compile.py",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes": {
+      "type": "source",
+      "title": "Observation: Engine/rationaliser identity swap done (module names + classes)",
+      "tags": [
+        "architecture",
+        "refactor",
+        "naming"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes",
+      "relevance": "high",
+      "observed_at": "2026-09-21T16:02:51.631Z",
+      "source_context": "Engine/rationaliser module rename refactor",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory": {
+      "type": "source",
+      "title": "Observation: Engine+WorkRunner now run rationaliser/cogitate over Memory",
+      "tags": [
+        "architecture",
+        "engine",
+        "work-runner",
+        "memory",
+        "convergence"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory",
+      "relevance": "high",
+      "observed_at": "2026-09-21T17:54:15.010Z",
+      "source_context": "Engine+work_runner migration onto rationaliser/cogitator/Memory",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory": {
+      "type": "source",
+      "title": "Observation: EngineState renamed to Memory (kalvin.memory)",
+      "tags": [
+        "rename",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory",
+      "relevance": "high",
+      "observed_at": "2026-09-21T15:37:33.930Z",
+      "source_context": "Renaming EngineState to Memory after the dialogue dissolution",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g": {
+      "type": "source",
+      "title": "Observation: Harness sub-script delineation simplified to scope-0 entry groups",
+      "tags": [
+        "dialogue",
+        "harness",
+        "kscript"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g",
+      "relevance": "high",
+      "observed_at": "2026-09-21T14:01:41.968Z",
+      "source_context": "Simplifying sub-script delineation in src/dialogue/harness.py",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti": {
+      "type": "source",
+      "title": "Observation: KDbg.scope aligned to BindingScope frames — one scope definition in the compiler",
+      "tags": [
+        "domain",
+        "kscript",
+        "scope",
+        "binding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti",
+      "relevance": "high",
+      "observed_at": "2026-09-21T14:43:11.366Z",
+      "source_context": "Aligning KDbg.scope with BindingScope frames after scope-terminology discussion",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr": {
+      "type": "source",
+      "title": "Observation: KDbg.scope now carries AST nesting depth; scope-0 = root constructs",
+      "tags": [
+        "kscript",
+        "compiler",
+        "harness",
+        "scope"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr",
+      "relevance": "high",
+      "observed_at": "2026-09-21T14:11:42.273Z",
+      "source_context": "Making KDbg.scope carry nesting depth for harness step delineation",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha": {
+      "type": "source",
+      "title": "Observation: KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented",
+      "tags": [
+        "kscript",
+        "ks",
+        "bpe",
+        "token-encoder",
+        "word-bits",
+        "encoding",
+        "audit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha",
+      "relevance": "high",
+      "observed_at": "2026-09-21T11:54:13.552Z",
+      "source_context": "Auditing KS/BPE cooperation for multi-subword exotic words",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-": {
+      "type": "source",
+      "title": "Observation: MTS retired (85083f5): compound/expansion/canon triple aligned everywhere",
+      "tags": [
+        "domain-modeling",
+        "glossary",
+        "kscript",
+        "ks",
+        "terminology",
+        "committed"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-",
+      "relevance": "high",
+      "observed_at": "2026-09-21T12:13:25.656Z",
+      "source_context": "Committing the MTS retirement and vocabulary alignment",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test": {
+      "type": "source",
+      "title": "Observation: Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green",
+      "tags": [
+        "dialogue",
+        "cleanup",
+        "committed",
+        "modules"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T12:20:59.606Z",
+      "source_context": "Committing obsolete dialogue module removal",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
@@ -4085,6 +4338,37 @@
       "relevance": "high",
       "observed_at": "2026-09-21T08:58:54.978Z",
       "source_context": "Design review of optional bracket syntax for KS inline annotations",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl": {
+      "type": "source",
+      "title": "Observation: Probe sys.path bootstraps were off-by-one; two probe run styles",
+      "tags": [
+        "probes",
+        "tooling",
+        "gotcha"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T15:16:42.157Z",
+      "source_context": "Refactoring src/dialogue into main code lines",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-resolver-reentry-refactor-committed-2704e35": {
+      "type": "source",
+      "title": "Observation: Resolver/reentry refactor committed: 2704e35",
+      "tags": [
+        "commits",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-resolver-reentry-refactor-committed-2704e35",
+      "relevance": "low",
+      "observed_at": "2026-09-21T17:40:11.079Z",
+      "source_context": "Committing resolver/reentry refactor",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
@@ -4120,6 +4404,38 @@
       "relevance": "high",
       "observed_at": "2026-09-21T10:34:31.360Z",
       "source_context": "Grilling revision of script-reading.md (dialogue-dev skill reference)",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d": {
+      "type": "source",
+      "title": "Observation: src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue",
+      "tags": [
+        "refactor",
+        "architecture",
+        "layout"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d",
+      "relevance": "critical",
+      "observed_at": "2026-09-21T15:16:42.155Z",
+      "source_context": "Refactoring src/dialogue into main code lines",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0": {
+      "type": "source",
+      "title": "Observation: Steps 2+3 committed: 886d249 and 0b38eb0",
+      "tags": [
+        "architecture",
+        "refactor",
+        "commits"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0",
+      "relevance": "low",
+      "observed_at": "2026-09-21T16:53:20.897Z",
+      "source_context": "Committing refactor steps 2+3",
       "created": "2026-09-21",
       "updated": "2026-09-21"
     },
@@ -4180,6 +4496,376 @@
       "source_context": "Committing the three-thread closure",
       "created": "2026-09-21",
       "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser": {
+      "type": "source",
+      "title": "Observation: using_resolver now installed by dev callers, not rationaliser/cogitator",
+      "tags": [
+        "refactor",
+        "resolver",
+        "dev-concern"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser",
+      "relevance": "medium",
+      "observed_at": "2026-09-21T17:27:56.655Z",
+      "source_context": "Moving using_resolver from library to dev callers",
+      "created": "2026-09-21",
+      "updated": "2026-09-21"
+    },
+    "sources/obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt": {
+      "type": "source",
+      "title": "Observation: Algebra: MHALL|ASK:[] is not a shape — ask always rides nodes; empty = Unknown",
+      "tags": [
+        "algebra",
+        "ask",
+        "unknown",
+        "s4",
+        "shape"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt",
+      "relevance": "high",
+      "observed_at": "2026-09-22T15:44:45.985Z",
+      "source_context": "Checking the truth doc on the empty-ask shape",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-": {
+      "type": "source",
+      "title": "Observation: Algebra vs needed ask semantics: C(ask,goal) machinery exists, never applied to asks",
+      "tags": [
+        "ask",
+        "algebra",
+        "mhall",
+        "underfit",
+        "goal",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T15:57:37.088Z",
+      "source_context": "Mapping Phil's needed ask semantics onto kalvin-algebra.md",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-": {
+      "type": "source",
+      "title": "Observation: Ask-attends probe: empty ask silently discharged by grounded canon; riding ask never",
+      "tags": [
+        "mhall",
+        "ask",
+        "is_answered",
+        "canon",
+        "probe",
+        "fork"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-",
+      "relevance": "high",
+      "observed_at": "2026-09-22T14:18:43.312Z",
+      "source_context": "Probing the ask-attends fork on the mhall stall",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans": {
+      "type": "source",
+      "title": "Observation: Decision: ask never grounds — attends, derives, discharged by answer's grounding",
+      "tags": [
+        "ask",
+        "semantics",
+        "decision",
+        "dropped",
+        "grounding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T18:01:12.700Z",
+      "source_context": "Settling the ask lifecycle semantics with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled": {
+      "type": "source",
+      "title": "Observation: Def 15 walk amendment + S4 full-underfit stance — design settled, wording pending",
+      "tags": [
+        "algebra",
+        "def15",
+        "walk",
+        "connotation",
+        "ask",
+        "s4",
+        "design"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T17:09:00.619Z",
+      "source_context": "Designing the ask/walk algebra amendments with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i": {
+      "type": "source",
+      "title": "Observation: Doctrine: S3-only bridging; S4 = structural question semantics (initial A, not rewrite)",
+      "tags": [
+        "doctrine",
+        "bands",
+        "s3",
+        "s4",
+        "bridging",
+        "ask",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T16:18:30.659Z",
+      "source_context": "Doctrine decision: band-scoped work licences, S4 structural semantics",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-": {
+      "type": "source",
+      "title": "Observation: Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form",
+      "tags": [
+        "mhall",
+        "ask",
+        "s4",
+        "walk",
+        "evidence",
+        "correction",
+        "goal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T18:05:05.865Z",
+      "source_context": "Integrating the 2026-09-22 worked-example observations into the mhall training-intent reading",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati": {
+      "type": "source",
+      "title": "Observation: Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent",
+      "tags": [
+        "engine",
+        "events",
+        "trainer",
+        "unblocking"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati",
+      "relevance": "high",
+      "observed_at": "2026-09-22T09:04:35.741Z",
+      "source_context": "Restoring fast-path events at the Engine boundary",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun": {
+      "type": "source",
+      "title": "Observation: kalvin-algebra.md amended: two-form walk licence, T2 edge bound, S4 full-underfit stance",
+      "tags": [
+        "algebra",
+        "def15",
+        "t2",
+        "s4",
+        "walk",
+        "amendment",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T17:18:54.267Z",
+      "source_context": "Applying the settled walk/S4 amendments to the truth doc",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-": {
+      "type": "source",
+      "title": "Observation: mhall Det/Mod sub-block is surplus-to-goal spring-board for future scripts",
+      "tags": [
+        "kscript",
+        "mhall",
+        "curriculum",
+        "authoring",
+        "spring-board"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-",
+      "relevance": "high",
+      "observed_at": "2026-09-22T13:05:32.002Z",
+      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid": {
+      "type": "source",
+      "title": "Observation: mhall.ks training intent decoded: Query stress test, goal/evidence split",
+      "tags": [
+        "kscript",
+        "mhall",
+        "curriculum",
+        "training-intent"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid",
+      "relevance": "high",
+      "observed_at": "2026-09-22T12:58:47.143Z",
+      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi": {
+      "type": "source",
+      "title": "Observation: mhall proposing died at eb07933, not the refactor — BPE-collision leak closed",
+      "tags": [
+        "mhall",
+        "bisect",
+        "regression",
+        "def22",
+        "coverage"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T13:47:17.084Z",
+      "source_context": "Diagnosing the silent canonical mhall run",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at": {
+      "type": "source",
+      "title": "Observation: mhall reaches its goal: MHALL:[Subject, Verb, Object] proposed at S1 via connotation walks",
+      "tags": [
+        "mhall",
+        "ask",
+        "walk",
+        "connotation",
+        "bridge",
+        "implementation",
+        "goal-reached"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T17:33:50.987Z",
+      "source_context": "Implementing the amended walk/S4 semantics in the rationaliser",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio": {
+      "type": "source",
+      "title": "Observation: mhall scaffolds read as underfits: M, H, ALL over S, V, O; solution covers nodes",
+      "tags": [
+        "kscript",
+        "underfit",
+        "s2",
+        "mhall",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio",
+      "relevance": "high",
+      "observed_at": "2026-09-22T12:58:55.737Z",
+      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-": {
+      "type": "source",
+      "title": "Observation: mhall stall root: ask dies at S4-refusal; attending ask still derives nothing",
+      "tags": [
+        "mhall",
+        "ask",
+        "refusal",
+        "def22",
+        "stall",
+        "rationaliser"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-",
+      "relevance": "high",
+      "observed_at": "2026-09-22T13:47:17.087Z",
+      "source_context": "Diagnosing the silent canonical mhall run",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p": {
+      "type": "source",
+      "title": "Observation: Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm)",
+      "tags": [
+        "cleanup",
+        "dead-code",
+        "removal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p",
+      "relevance": "high",
+      "observed_at": "2026-09-22T08:22:03.573Z",
+      "source_context": "Removing orphaned Model/agent_codec/expand/proposals/stm modules",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on": {
+      "type": "source",
+      "title": "Observation: Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck",
+      "tags": [
+        "mhall",
+        "ask",
+        "derivation",
+        "moves",
+        "connotation",
+        "licence",
+        "descent"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on",
+      "relevance": "high",
+      "observed_at": "2026-09-22T15:39:13.438Z",
+      "source_context": "Round-2 ask-attends probe with is_answered disabled",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a": {
+      "type": "source",
+      "title": "Observation: Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path",
+      "tags": [
+        "walk",
+        "ascent",
+        "containment",
+        "witness",
+        "accounting",
+        "mhall",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a",
+      "relevance": "critical",
+      "observed_at": "2026-09-22T17:47:46.041Z",
+      "source_context": "Closing the partial-witness walk leak per Phil's ruling",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list": {
+      "type": "source",
+      "title": "Observation: WorkRunner cogitates the popped item, not the whole work list",
+      "tags": [
+        "architecture",
+        "work-runner",
+        "cogitator",
+        "fix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list",
+      "relevance": "high",
+      "observed_at": "2026-09-22T08:48:50.902Z",
+      "source_context": "Per-item cogitation in WorkRunner",
+      "created": "2026-09-22",
+      "updated": "2026-09-22"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

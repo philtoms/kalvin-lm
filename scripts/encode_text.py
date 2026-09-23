@@ -21,7 +21,7 @@ from tqdm import tqdm
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from kalvin.rationaliser import Rationaliser
+from kalvin.engine import Engine
 from kalvin.events import EventBus
 from kalvin.kline import KLine
 
@@ -111,14 +111,6 @@ def main():
         default=None,
         help="Path to load/save the agent (default: <data>/kalvin.bin)",
     )
-
-    parser.add_argument(
-        "-f",
-        "--format",
-        choices=["binary", "json"],
-        default="binary",
-        help="Agent format (default: binary)",
-    )
     args = parser.parse_args()
     from kalvin.paths import data_dir
 
@@ -131,12 +123,12 @@ def main():
     agent_size = 0
     if agent_path and agent_path.exists():
         print(f"\nLoading agent from: {agent_path}")
-        agent = Rationaliser.load(agent_path, format=args.format, adapter=EventBus())
+        agent = Engine.load(agent_path, adapter=EventBus())
         agent_size = agent.frame_size()
         print(f"Loaded agent size: {agent_size:,} KLines")
     else:
         print("\nInitializing new agent...")
-        agent = Rationaliser(adapter=EventBus())
+        agent = Engine(adapter=EventBus())
         print(f"Initial agent size: {agent.frame_size():,} KLines")
 
     for text in stream_text(input_file):
@@ -162,7 +154,7 @@ def main():
 
     # Save agent
     print(f"\nSaving agent to: {agent_path}")
-    agent.save(agent_path, format=args.format)
+    agent.save(agent_path)
     actual_size = Path(agent_path).stat().st_size
     print(f"Saved: {actual_size / 1024:.1f} KB ({actual_size / 1024 / 1024:.2f} MB)")
 

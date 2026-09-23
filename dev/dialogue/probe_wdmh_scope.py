@@ -1,14 +1,15 @@
 """Dump the goal list for the WDMH ask and the Def 23 scope per goal."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.kline import ASK_SIG, is_terminal, is_ask
 from kalvin.hop import candidate_goals, trawl
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_rationaliser
 
-h = load_engine(Path("data/dialogue/wdmh-underfit.json"), BPETokenizer())
+h = load_rationaliser(Path("data/dialogue/wdmh-underfit.json"), BPETokenizer())
 st = h.state
 sig = h.signifier
 

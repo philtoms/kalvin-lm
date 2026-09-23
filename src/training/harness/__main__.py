@@ -6,7 +6,7 @@ Usage::
     python -m training.harness --host 0.0.0.0 --port 9000
 
 Loads a YAML configuration file, instantiates embedded participants
-(Rationaliser adapter, Trainer), starts the WebSocket server for client
+(Engine adapter, Trainer), starts the WebSocket server for client
 participants (Slack, TUI), and runs the bus event loop.  SIGTERM/SIGINT
 trigger graceful shutdown with Trainer state persistence.
 """
@@ -26,7 +26,7 @@ from training.harness.server import HarnessServer
 logger = logging.getLogger(__name__)
 
 
-# Thin wrapper to prevent double-subscription: both RationaliserAdapter and
+# Thin wrapper to prevent double-subscription: both EngineAdapter and
 # Trainer call bus.subscribe() in their constructors, and
 # HarnessServer._setup() also subscribes the factory result — this
 # wrapper's on_message is a no-op to avoid double-dispatch.
@@ -124,7 +124,7 @@ def main(argv: list[str] | None = None) -> None:
     shutdown_callbacks: list = []
 
     # Mandatory tokenizer (no fallback; raises on data-less machines).
-    from kalvin.rationaliser import _default_tokenizer as _make_tok
+    from kalvin.engine import _default_tokenizer as _make_tok
 
     shared_tokenizer = _make_tok()
 
@@ -132,17 +132,17 @@ def main(argv: list[str] | None = None) -> None:
 
     shared_signifier = NLPSignifier()
 
-    def rationaliser_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
+    def engine_factory(address: str, bus: MessageBus) -> _AlreadySubscribed:
         # Two-phase wiring to avoid the circular dep.
-        from kalvin.rationaliser import Rationaliser
-        from training.harness.adapter import RationaliserAdapter
+        from kalvin.engine import Engine
+        from training.harness.adapter import EngineAdapter
 
-        adapter = RationaliserAdapter(bus, role=address, tokenizer=shared_tokenizer, signifier=shared_signifier)
-        rationaliser = Rationaliser(tokenizer=shared_tokenizer, signifier=shared_signifier, adapter=adapter)
-        adapter.bind(rationaliser)
+        adapter = EngineAdapter(bus, role=address, tokenizer=shared_tokenizer, signifier=shared_signifier)
+        engine = Engine(tokenizer=shared_tokenizer, signifier=shared_signifier, adapter=adapter)
+        adapter.bind(engine)
         return _AlreadySubscribed(adapter)
 
-    server.register_participant_class("Rationaliser", rationaliser_factory)
+    server.register_participant_class("Engine", engine_factory)
 
     trainer_holder: list = []
 

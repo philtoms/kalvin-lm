@@ -1,17 +1,18 @@
 """Trace denotate/expand for the WDMH<->MHALL candidate pair specifically."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 from pathlib import Path
-from dialogue.harness import load_engine
+from dev.dialogue.harness import load_rationaliser
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue.cogitator import Cogitator
+from kalvin.work_runner import WorkRunner
 from kalvin.kline import is_terminal, is_identity
 
 tok = BPETokenizer()
-h = load_engine(Path("data/dialogue/mhall.json"), tok)
+h = load_rationaliser(Path("data/dialogue/mhall.json"), tok)
 h.run(Path("data/scripts/wdmh-underfit.ks").read_text())
 state = h.state
-cog = Cogitator(state)
+cog = WorkRunner(state)
 
 def by_label(label):
     return [k for k in state.where(lambda k: getattr(k.signature, "label", None) == label)]

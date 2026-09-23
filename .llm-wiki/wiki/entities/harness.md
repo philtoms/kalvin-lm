@@ -23,11 +23,11 @@ Two implementations exist in the codebase:
   (`server.py`) + addressed message bus (`bus.py`) that loads participants
   (Rationaliser adapter, Trainer, supervisors) and routes role-addressed
   messages between them. Launched via `python -m training.harness`.
-- **`src/dialogue/harness.py`** — the dialogue harness. A minimal,
+- **`dev/dialogue/harness.py`** — the dialogue harness. A minimal,
   synchronous, [[concepts/non-judging-harness|non-judging]] loop: compile a
   KScript source, feed each entry to the [[entities/k-engine|engine]] one at a
   time, present the `(batch, observations)` trace. Launched via
-  `python -m dialogue.harness`.
+  `PYTHONPATH=src:. python -m dev.dialogue.harness`.
 
 Both are pure mechanism — judgement belongs to a trainer agent outside the loop
 (in auto-tune, the pi agent). The factory functions that assemble the engine

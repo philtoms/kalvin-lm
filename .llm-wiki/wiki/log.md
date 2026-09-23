@@ -1,7 +1,49 @@
 # Wiki Update Log
 
+## 2026-09-22
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-","title":"Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans","title":"Decision: ask never grounds — attends, derives, discharged by answer's grounding"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a","title":"Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at","title":"mhall reaches its goal: MHALL:[Subject, Verb, Object] proposed at S1 via connotation walks"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun","title":"kalvin-algebra.md amended: two-form walk licence, T2 edge bound, S4 full-underfit stance"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled","title":"Def 15 walk amendment + S4 full-underfit stance — design settled, wording pending"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i","title":"Doctrine: S3-only bridging; S4 = structural question semantics (initial A, not rewrite)"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-","title":"Algebra vs needed ask semantics: C(ask,goal) machinery exists, never applied to asks"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt","title":"Algebra: MHALL|ASK:[] is not a shape — ask always rides nodes; empty = Unknown"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on","title":"Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-","title":"Ask-attends probe: empty ask silently discharged by grounded canon; riding ask never"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-","title":"mhall stall root: ask dies at S4-refusal; attending ask still derives nothing"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi","title":"mhall proposing died at eb07933, not the refactor — BPE-collision leak closed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-","title":"mhall Det/Mod sub-block is surplus-to-goal spring-board for future scripts"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio","title":"mhall scaffolds read as underfits: M, H, ALL over S, V, O; solution covers nodes"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid","title":"mhall.ks training intent decoded: Query stress test, goal/evidence split"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati","title":"Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list","title":"WorkRunner cogitates the popped item, not the whole work list"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p","title":"Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm)"}
+
 ## 2026-09-21
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory","title":"Engine+WorkRunner now run rationaliser/cogitate over Memory"}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-21-resolver-reentry-refactor-committed-2704e35","title":"Resolver/reentry refactor committed: 2704e35"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop","title":"cogitate single-pass; callers own the reentry loop"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser","title":"using_resolver now installed by dev callers, not rationaliser/cogitator"}
+- **observe**: {"relevance":"low","slug":"obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0","title":"Steps 2+3 committed: 886d249 and 0b38eb0"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r","title":"Cogitator freed: work_runner rename + cogitate extracted from rationaliser"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes","title":"Engine/rationaliser identity swap done (module names + classes)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory","title":"EngineState renamed to Memory (kalvin.memory)"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution","title":"All live doc references updated for the dialogue dissolution"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl","title":"Probe sys.path bootstraps were off-by-one; two probe run styles"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d","title":"src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti","title":"KDbg.scope aligned to BindingScope frames — one scope definition in the compiler"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr","title":"KDbg.scope now carries AST nesting depth; scope-0 = root constructs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g","title":"Harness sub-script delineation simplified to scope-0 entry groups"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s","title":"dev/ks/compile.py now takes script path and optional --model state"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin","title":"CONTEXT.md KScript entries collapsed to code-pointer one-liners"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test","title":"Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners","title":"CONTEXT.md algebraic entries reduced to normative one-liners"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-","title":"MTS retired (85083f5): compound/expansion/canon triple aligned everywhere"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha","title":"KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-","title":"Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-21-script-reading-md-rewritten-around-three-layer-model","title":"script-reading.md rewritten around three-layer model"}
 - **observe**: {"relevance":"high","slug":"obs-2026-09-21-script-reading-md-three-layer-revision-settled-via-grill","title":"script-reading.md three-layer revision settled via grill"}

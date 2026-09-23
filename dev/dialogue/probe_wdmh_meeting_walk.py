@@ -16,6 +16,7 @@ correspondence  slot_a:[slot_b]  for the main line to consume.
 """
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from kalvin.derivation import Derivation, KLine
 
@@ -147,7 +148,7 @@ def run(self):
 Derivation.run = run
 
 sys.argv = ["harness", "data/scripts/wdmh.ks", "-p", "data/dialogue/mhall.json"]
-from dialogue.harness import main
+from dev.dialogue.harness import main
 main()
 
 print(f"\n\n=== MODE D: composed writes ({len(writes_log)}) ===")

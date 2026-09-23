@@ -7,7 +7,7 @@ syntax, which binds semantics to structure. At the bottom, **structure** —
 the klines the compiler emits, the actual structure used to communicate
 with Kalvin. The compiler labels klines with **Target Significance** — the
 answers the script asserts the trainee should learn to derive — but the
-engine never sees the letters' meanings: those are not encoded into
+rationaliser never sees the letters' meanings: those are not encoded into
 klines. The semantics exist for the **agent running the session**, so it
 can tell whether Kalvin is learning anything useful — and Kalvin's
 proposals must decode back into meaningful statements, because Kalvin
@@ -30,7 +30,7 @@ lamb)`. The high layer, and it belongs to the agent alone: Kalvin knows
   layer. A script with scaffolding and no annotations is valid; the
   letters are then just labels to Kalvin and opaque to the agent.
 - **Structure** — the klines the compiler emits: the actual content fed to
-  Kalvin's engine. The only layer that is ever exchanged with the trainee.
+  Kalvin's rationaliser. The only layer that is ever exchanged with the trainee.
 
 The relational tokens — canonicalises, connotes, denotes — suggest nuanced
 relationships through structure, and a script is designed to illustrate
@@ -55,7 +55,7 @@ outside the scope of this document.
 | (none) | ASK           | `{A\|ASK: [A]}`                  | ask: a CANON or an IDENTITY flagged as an ASK                                            |
 
 `MHALL == SVO => ...` literally means: queue `MHALL:[]` — the ask at
-S4 — with `SVO:[block operands]` as the implied goal. The engine still
+S4 — with `SVO:[block operands]` as the implied goal. The rationaliser still
 selects its own goals (the goal is just another held kline to it); the
 goal exists so the agent running the session can grade Kalvin's proposals
 against the true answer. Goals don't always have to be Canons:
@@ -109,13 +109,13 @@ MHALL == SVO =>
 ```
 
 The goal compiles to a held kline — the harness's answer key (see the
-COUNTERSIGNS row above). The engine still selects its own goals; the
+COUNTERSIGNS row above). The rationaliser still selects its own goals; the
 scaffold arranges the true answer for grading, it does not prescribe the
 route.
 
-## MTS and annotations
+## Compounds and annotations
 
-A multi-character signature like `MHALL` or `DMHAL` is an **MTS**: the
+A multi-character signature like `MHALL` or `DMHAL` is a **Compound**: the
 compiler expands it into its constituent single-char identities plus one
 MTS relationship. A signature that spells its annotation — `DMHAL` under
 `(did Mary have a lamb)` — is easy for the agent to decode; `DGI` under
@@ -136,7 +136,7 @@ second, structure last.
 2. **Read the first relation in a block** — the scaffolding. It defines
    Kalvin's task. These are the invitations the scaffolding extends — what
    the trainer hopes the structure will bring about — not obligations on
-   the engine (see **The three layers**):
+   the rationaliser (see **The three layers**):
    - `MHALL == SVO => ...` goal-targeted training. `MHALL:[]` is queued at
      S4; `SVO:[...]` is the implied goal. Kalvin is expected to propose
      toward the goal — grade its proposals against it.
@@ -197,9 +197,9 @@ what you found.
 
 ## Authoring a new script
 
-Scripts live in `data/scripts/`. Author a `.ks` to test an engine
-theory or shake up a settled engine — never to work around an engine bug
-(see the skill's "engine first" discipline).
+Scripts live in `data/scripts/`. Author a `.ks` to test an rationaliser
+theory or shake up a settled rationaliser — never to work around an rationaliser bug
+(see the skill's "rationaliser first" discipline).
 
 1. **Write the annotations first.** Each block's parenthetical says what it
    means in high-level language — this is what you (the agent) will

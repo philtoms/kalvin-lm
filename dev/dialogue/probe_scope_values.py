@@ -2,13 +2,15 @@
 MHALL goal, and the fate of had:[did,have] after its feed."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin import hop as hop_mod
 from kalvin.kline import ASK_SIG, is_ask, is_terminal
 from kalvin.bpe_tokenizer import BPETokenizer
-from dialogue import engine as eng_mod
-from dialogue.engine_state import EngineState
+from kalvin import rationaliser as rat_mod
+from kalvin import cogitator as cog_mod
+from kalvin.memory import Memory
 
 def nm(v):
     lab = getattr(v, "label", "")
@@ -18,10 +20,10 @@ def render(k):
     m = "?" if is_ask(k.signature) else " "
     return f"{m}{nm(k.signature)}:[{', '.join(nm(n) for n in k.nodes)}]"
 
-# 1. trace the ask-marked kline + had:[did,have] through the engine state
-orig_ground = EngineState.ground
-orig_add = EngineState.add_work
-orig_propose = eng_mod.Engine._propose
+# 1. trace the ask-marked kline + had:[did,have] through the rationaliser state
+orig_ground = Memory.ground
+orig_add = Memory.add_work
+orig_propose = cog_mod._propose
 
 def traced_ground(self, kline, store=None):
     r = orig_ground(self, kline, store) if store is not None else orig_ground(self, kline)
@@ -29,16 +31,16 @@ def traced_ground(self, kline, store=None):
         print(f"    [ground] {render(kline)}")
     return r
 
-def traced_propose(self, kline):
-    held = self._state.where(lambda k: not is_terminal(k), True)
+def traced_propose(state, kline):
+    held = state.where(lambda k: not is_terminal(k), True)
     had_mem = [k for k in held if getattr(k.signature, "label", "") == "had"]
     print(f"\n[propose] queued={render(kline)}  had-klines in held: "
           f"{[render(k) for k in had_mem]}  work_list has had: "
-          f"{[render(k) for k in self._state.work_list if getattr(k.signature, 'label', '') == 'had']}")
-    return orig_propose(self, kline)
+          f"{[render(k) for k in state.work_list if getattr(k.signature, 'label', '') == 'had']}")
+    return orig_propose(state, kline)
 
-EngineState.ground = traced_ground
-eng_mod.Engine._propose = traced_propose
+Memory.ground = traced_ground
+cog_mod._propose = traced_propose
 
 # 2. value-level trawl rounds for the MHALL goal hop
 def traced_run(self):
@@ -70,8 +72,8 @@ def passive_run(self):
     traced_run(self)
     return orig_run(self)
 hop_mod.Hop.run = passive_run
-eng_mod.Hop = hop_mod.Hop
+rat_mod.Hop = hop_mod.Hop
 
 sys.argv = ["harness", "data/scripts/wdmh-underfit.ks", "-p", "data/dialogue/mhall.json"]
-from dialogue.harness import main
+from dev.dialogue.harness import main
 main()

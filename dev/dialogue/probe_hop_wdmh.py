@@ -2,28 +2,36 @@
 
 The algebra's worked example: A0 = wdmh:[w,d,m,h] (the question at its own
 resolution), goal B = mhall:[m,h,a,l,l] held as canon. Memory = the state a
-fresh engine holds after running mhall.ks (frame) + the wdmh scaffolding.
+fresh rationaliser holds after running mhall.ks (frame) + the wdmh scaffolding.
 """
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from pathlib import Path
 from kalvin.bpe_tokenizer import BPETokenizer
 from ks.compiler import compile_source
-from dialogue.harness import make_engine
+from dev.dialogue.harness import make_rationaliser
 from kalvin.hop import Hop, run_hops
-from kalvin.kline import KLine
+from kalvin.cogitator import cogitate
+from kalvin.kline import KLine, using_resolver
 from kalvin.kvalue import KValue
 
 tok = BPETokenizer()
-h = make_engine(tok)
+h = make_rationaliser(tok)
 sig = h.signifier
 bits: dict[str, int] = {}
 
 for path in ("data/scripts/mhall.ks", "data/scripts/wdmh-underfit.ks"):
     entries = compile_source(open(path).read(), tokenizer=tok, signifier=sig,
                              dev=True, word_bits=bits)
-    h.engine.rationalise(entries)
+    with using_resolver(h.state.find):
+        h.rationaliser.rationalise(entries)
+        while True:
+            size = len(h.state.work_list)
+            cogitate(h.state)
+            if len(h.state.work_list) == size:
+                break
 
 st = h.state
 print("frame entries:", sum(len(b) for b in st.frame.values()),

@@ -28,8 +28,8 @@ from kalvin.derivation import Derivation, DerivationResult
 from kalvin.kline import KLine, canon_key, is_ask, is_terminal
 
 if TYPE_CHECKING:
-    from dialogue.engine_state import EngineState
     from kalvin.abstract import KSignifier
+    from kalvin.memory import Memory
 
 #: Def 21 bound — goals a hop takes from its list.
 MAX_GOALS = 8
@@ -40,7 +40,7 @@ MAX_HOPS = 8
 
 
 def candidate_goals(
-    state: EngineState, queued: KLine, signifier: KSignifier
+    state: Memory, queued: KLine, signifier: KSignifier
 ) -> list[KLine]:
     """Def 22 — the goal list: coverage pool (Def 8), γ(A, K) order.
 
@@ -54,8 +54,12 @@ def candidate_goals(
     ask_base = (
         canon_key(queued.signature) if is_ask(queued.signature) else None
     )
+    d = getattr(queued, "dbg", None)
+    declared = d.goal if (ask_base is not None and d is not None) else ""
     scored: list[tuple[float, int, KLine]] = []
-    for i, k in enumerate(state.where(lambda k: not is_terminal(k), True)):
+    # Goals are held content (frame/ltm), never STM: bridges are scratch
+    # evidence for replacements, not klines to derive toward.
+    for i, k in enumerate(state.where(lambda k: not is_terminal(k))):
         if k.signature == queued.signature and k.nodes == queued.nodes:
             continue  # the queued kline is not its own goal
         if is_ask(k.signature):
@@ -63,7 +67,13 @@ def candidate_goals(
         if ask_base is not None and canon_key(k.signature) == ask_base:
             continue  # an ask never heads its own goal list — nor its canon
         kc = int(signifier.signature_of(k.nodes))
-        if not any(signifier.signifies(n, kc) for n in queued.nodes):
+        kd = getattr(k, "dbg", None)
+        is_declared = bool(
+            declared and kd is not None and kd.label == declared and k.nodes
+        )
+        if not is_declared and not any(
+            signifier.signifies(n, kc) for n in queued.nodes
+        ):
             continue  # covers no node of ν_A — not a candidate
         union = signifier.measure(content | kc)
         scored.append((signifier.measure(content & kc) / union, i, k))
@@ -71,7 +81,7 @@ def candidate_goals(
 
 
 def trawl(
-    state: EngineState,
+    state: Memory,
     a_nodes: list[int],
     b_nodes: list[int],
     signifier: KSignifier,
@@ -125,7 +135,7 @@ class Hop:
 
     def __init__(
         self,
-        state: EngineState,
+        state: Memory,
         queued: KLine,
         signifier: KSignifier,
         *,
@@ -173,11 +183,14 @@ class Hop:
         writer = next(
             (r for r in reversed(res.results) if r.composed), res.results[-1]
         )
-        return KLine(self.queued.signature, writer.trace[-1])
+        # The ask's goal declaration rides the re-entry — selection keeps it.
+        return KLine(
+            self.queued.signature, writer.trace[-1], dbg=self.queued.dbg
+        )
 
 
 def run_hops(
-    state: EngineState,
+    state: Memory,
     queued: KLine,
     signifier: KSignifier,
     *,

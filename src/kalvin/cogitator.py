@@ -1,229 +1,95 @@
-"""Cogitator — background processor for rational work items (S2/S3).
+"""The cogitator — cogitation over the memory work list.
 
-The Cogitator is the slow-path of the rationalisation pipeline. It is a thin
-threading dispatcher: it dequeues ``WorkItem`` instances, invokes functions
-from :mod:`kalvin.expand` (expand) and :mod:`kalvin.proposals`
-(propose_expansions), and routes results to a ``CogitationHandler``. All
-significance computation lives in :mod:`kalvin.significance`; graph expansion
-in :mod:`kalvin.expand`; and expansion-proposal logic in
-:mod:`kalvin.proposals`.
-
-Split out of the Rationaliser module so the fast-path (Rationaliser routing)
-and slow-path (cogitation) live in their own modules while sharing the seam
-defined here: the Rationaliser submits work items and is the primary
-``CogitationHandler``.
+The rationaliser feeds memory: directly on the fast path, or indirectly by
+queuing on the work list. :func:`cogitate` is the second half of the turn:
+cogitate one work-list kline, or — with no kline — one oldest-first pass
+over the whole work list. A pass that changes the work list can unblock
+further entries; callers re-enter until a pass changes nothing.
 """
 
 from __future__ import annotations
 
-import threading
-import time as _time
-from typing import TYPE_CHECKING, NamedTuple, Protocol, runtime_checkable
-
-from kalvin.events import RationaliseEvent
-from kalvin.expand import expand
-from kalvin.proposals import propose_expansions
-from kalvin.significance import SIG_S4, BandLayout
-from kalvin.kline import KDbg, KLine
+from kalvin.hop import run_hops
+from kalvin.kline import KLine, canon_key
 from kalvin.kvalue import KValue
-from kalvin.model import Model
+from kalvin.memory import Memory
+from kalvin.significance import gamma_to_byte
 
-if TYPE_CHECKING:
-    from kalvin.abstract import KSignifier
-
-if TYPE_CHECKING:
-    from kalvin.rationaliser import RationaliserAdapter
+__all__ = ["cogitate"]
 
 
-# Cogitation Handler Protocol
+def cogitate(state: Memory, kline: KLine | None = None) -> list[KValue]:
+    """Cogitate ``kline``, or one oldest-first pass over the work list.
 
-
-@runtime_checkable
-class CogitationHandler(Protocol):
-    """Protocol for handling cogitation results.
-
-    The Cogitator calls these methods when it discovers significant
-    results during background graph expansion.
+    Per entry, in priority order: a groundable entry grounds; a misfit
+    entry draws proposals from the strategy; a grounded entry leaves
+    attention. Entries that match no path persist for a later turn.
+    A pass that changes the work list can unblock further entries —
+    the caller re-enters until a pass changes nothing.
     """
+    if kline is not None:
+        return _cogitate_kline(state, kline)
 
-    def on_s1(self, query: KValue, candidate: KLine) -> None:
-        """Called when cogitation discovers an S1 (exact) result.
+    batch: list[KValue] = []
 
-        ``query`` is the original inbound KValue; ``candidate`` is the
-        KLine (from the model) that reached S1.
-        """
-        ...
+    idx = 0
+    while idx < len(state.work_list):
+        entry = state.work_list[idx]
+        batch.extend(_cogitate_kline(state, entry))
+        # The entry left attention (answered, grounded, or removed by a
+        # cascade) — the next entry has slid into this index; a cascade
+        # can also shrink the list below the index entirely.
+        if idx >= len(state.work_list) or state.work_list[idx] is not entry:
+            continue
+        idx += 1
 
-    def on_expansion(
-        self,
-        query: KValue,
-        proposal: KLine,
-        significance: int,
-        original_candidate: KLine | None = None,
-    ) -> None:
-        """Called when an expansion proposal is generated (S2/S3).
-
-        ``query`` is the original inbound KValue; ``proposal`` is the
-        expansion-proposal KLine carrying the ``expand()``-computed significance.
-        """
-        ...
+    return batch
 
 
-# Work Item
+def _cogitate_kline(state: Memory, kline: KLine) -> list[KValue]:
+    """Cogitate one work-list kline: ground, answer, propose, or release."""
+    if state.is_groundable(kline):
+        state.ground_cascade(kline)
+    if state.is_answered(kline):
+        # The ask's content form is grounded — the question has
+        # its answer; attention leaves.
+        state.remove_work(kline)
+        return []
+
+    batch = _propose(state, kline)
+
+    if state.is_grounded(kline):
+        state.remove_work(kline)
+
+    return batch
 
 
-class WorkItem(NamedTuple):
-    """A single query|candidate pair queued for cogitation.
-
-    ``query`` is a KValue (carries the declared significance into the slow
-    path); ``candidate`` is the KLine from the model; ``level`` is the
-    routing classification ("S2" or "S3").
-    """
-
-    query: KValue
-    candidate: KLine
-    level: str  # "S2" or "S3"
-
-
-# Cogitator
-
-
-class Cogitator:
-    """Background processor for rational work items (S2/S3).
-
-    Receives individual query|candidate|level work items,
-    computes deep significance (expand()), and processes results.
-    Parameters
-    ----------
-    model:
-        Model instance for distance computation and countersignature checks.
-    adapter:
-        Adapter for receiving events. Must implement ``on_event(event)``.
-        The EventBus class satisfies this protocol via its ``on_event`` method.
-    handler:
-        CogitationHandler implementation. Called when cogitation discovers
-        significant results (S1 matches and S2/S3 expansion proposals).
-        The Rationaliser is the primary implementation.
-    timeout:
-        Idle seconds before emitting "done" so subscribers can realign.
-        Does not halt the thread. Default 2.0.
-    """
-
-    def __init__(
-        self,
-        model: Model,
-        adapter: RationaliserAdapter,
-        handler: CogitationHandler,
-        signifier: KSignifier,
-        timeout: float = 2.0,
-    ):
-        self._model = model
-        self._adapter = adapter
-        self._handler = handler
-        self._signifier = signifier
-        self._timeout = timeout
-
-        self._lock = threading.Lock()
-        self._condition = threading.Condition(self._lock)
-        self._backlog: list[WorkItem] = []
-        self._stop = threading.Event()
-        self._processing = False
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
-
-    def submit(self, item: WorkItem) -> None:
-        """Queue a work item for background cogitation."""
-        with self._condition:
-            self._backlog.append(item)
-            self._condition.notify()
-
-    def join(self, timeout: float | None = None) -> None:
-        """Stop the cogitation thread and wait for it to finish."""
-        self._stop.set()
-        with self._condition:
-            self._condition.notify()
-        self._thread.join(timeout=timeout)
-
-    def drain(self, timeout: float | None = None) -> bool:
-        """Wait until the backlog is empty and the current work item finishes.
-
-        Does NOT stop the thread — the Cogitator remains alive and will
-        accept new work items after draining.
-
-        Returns True if drained within *timeout*, False if timed out.
-        """
-        deadline = None
-        if timeout is not None:
-            deadline = _time.monotonic() + timeout
-
-        while True:
-            with self._condition:
-                if not self._backlog and not self._processing:
-                    return True
-                self._condition.wait(timeout=0.5)
-
-            if deadline is not None and _time.monotonic() >= deadline:
-                return False
-
-    def _run(self) -> None:
-        """Background thread: process work items."""
-        idle_time = 0.0
-        while not self._stop.is_set():
-            with self._condition:
-                while not self._backlog and not self._stop.is_set():
-                    self._condition.wait(timeout=0.5)
-                    idle_time += 0.5
-                    if idle_time >= self._timeout:
-                        done_k = KLine(0, [], dbg=KDbg(label="done"))
-                        done_value = KValue(done_k, SIG_S4)
-                        self._adapter.on_event(RationaliseEvent("done", done_value, done_value))
-                        idle_time = 0.0
-                idle_time = 0.0
-                if self._stop.is_set() and not self._backlog:
-                    return
-                self._processing = True
-                item = self._backlog.pop(0)
-
-            self._run_work_item(item)
-            with self._condition:
-                self._processing = False
-                self._condition.notify_all()
-
-    def _run_work_item(self, item: WorkItem) -> None:
-        """Expand a work item, classifying each yield against boundaries.
-
-        Work items arrive routed as S2 or S3 only (see Rationaliser._route). The
-        pair is expanded and each yield classified; a terminal S1 (distance
-        1) discovered during expansion is a genuine structural exact match
-        and triggers ``on_s1``.
-
-        ``item.query`` is a KValue (the original inbound); the model API
-        (``expand``) stays KLine-based, so ``query_kline`` is extracted here.
-        """
-        query_value, candidate, level = item
-        query_kline = query_value.kline
-
-        layout = BandLayout()
-
-        for kv in expand(self._model, query_kline, candidate, self._signifier):
-            band = layout.classify(kv.significance)
-
-            if band == "S4":
-                continue
-
-            if band == "S1":
-                self._handler.on_s1(query_value, candidate)
-                break
-            else:
-                # kv.kline is the expanded (possibly misfit) candidate.
-                # The query voice on the published event is the WorkItem's
-                # original inbound KValue.
-                for proposal, sig in propose_expansions(
-                    self._model, kv.kline, kv.significance, self._signifier
-                ):
-                    self._handler.on_expansion(
-                        query_value,
-                        proposal,
-                        sig,
-                        original_candidate=kv.kline,
-                    )
+def _propose(state: Memory, kline: KLine) -> list[KValue]:
+    """The re-entry chain over the held memory (Defs 21–23): goals
+    from the selection list in order, each scoped and derived to an
+    ending; a hop that ends without done re-enters at the ending
+    state of the derivation that wrote — the evidence-building
+    route — so a composed correspondence is consumed by a later
+    derivation of the same queued kline. Done derivations propose
+    at their significance — J of the final content against the goal
+    (Defs 16, 20); γ — significance net of complexity — grades
+    effort and never selects the band. The chain's writes extend
+    the STM tier later hops trawl."""
+    hop = run_hops(state, kline, state.signifier)
+    batch: list[KValue] = []
+    original = [int(n) for n in kline.nodes]
+    for result in hop.results:
+        if result.ending != "done":
+            # Stuck and abandoned ask; done at entry is the ground
+            # path's, not a proposal.
+            continue
+        if result.trace[-1] == original:
+            # Done without moving — the queued kline as held: the
+            # ground path's done, not a derivation's answer.
+            continue
+        proposal = KLine(
+            canon_key(kline.signature), result.trace[-1]
+        )
+        if not state.is_refused(proposal):
+            batch.append(KValue(proposal, gamma_to_byte(result.j1)))
+    return batch

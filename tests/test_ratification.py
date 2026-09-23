@@ -1,9 +1,9 @@
-"""Ratification: a `==` goal grades the engine's proposals, and the
+"""Ratification: a `==` goal grades the rationaliser's proposals, and the
 S1-stamped answer grounds on receipt.
 
 The harness answers a goal-paired proposal at γ of its content against
 the goal's target (the goal's signature value) — the reached goal is
-ratified at S1, never the S4 decline. The engine honours the stamp: a
+ratified at S1, never the S4 decline. The rationaliser honours the stamp: a
 stamped-S1 kline grounds on receipt (the stamp, not structure, is the
 licence — the reached-goal answer is a misfit in the question's head);
 an ask never grounds however stamped.
@@ -16,9 +16,9 @@ from kalvin.kline import ASK_SIG, KLine, KNode
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, gamma_to_byte
 from kalvin.signifier import NLPSignifier
-from dialogue.engine import Engine
-from dialogue.engine_state import EngineState
-from dialogue.harness import Harness
+from kalvin.rationaliser import Rationaliser
+from kalvin.memory import Memory
+from dev.dialogue.harness import Harness
 
 
 def bit(n: int) -> KNode:
@@ -31,7 +31,7 @@ WDMH = int(bit(4)) | int(M) | int(H)  # the question's head
 
 
 def _harness() -> Harness:
-    return Harness(BPETokenizer(), Engine(EngineState(NLPSignifier())))
+    return Harness(BPETokenizer(), Rationaliser(Memory(NLPSignifier())))
 
 
 def test_goal_reached_proposal_ratifies_at_s1():
@@ -56,14 +56,14 @@ def test_unpaired_proposal_has_no_grade():
 
 
 def test_stamped_s1_grounds_on_receipt():
-    e = Engine(EngineState(NLPSignifier()))
+    e = Rationaliser(Memory(NLPSignifier()))
     prop = KLine(WDMH, [M, H, A, L, L])  # misfit head — never structural
     e.rationalise([KValue(prop, SIG_S1)])
     assert e.state.is_grounded(prop)
 
 
 def test_stamped_s1_ask_never_grounds():
-    e = Engine(EngineState(NLPSignifier()))
+    e = Rationaliser(Memory(NLPSignifier()))
     ask = KLine(WDMH | ASK_SIG, [M, H])
     e.rationalise([KValue(ask, SIG_S1)])
     assert not e.state.is_grounded(ask)

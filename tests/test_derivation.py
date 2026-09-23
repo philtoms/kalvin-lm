@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from collections import Counter
 
-from dialogue.engine_state import EngineState
 from kalvin.derivation import Derivation
 from kalvin.hop import run_hops
 from kalvin.kline import KLine, KNode
+from kalvin.memory import Memory
 from kalvin.signifier import NLPSignifier
 
 
@@ -38,8 +38,8 @@ def _memory() -> list[KLine]:
     ]
 
 
-def _state(*memory: KLine) -> EngineState:
-    st = EngineState(SIG)
+def _state(*memory: KLine) -> Memory:
+    st = Memory(SIG)
     st.work_list.extend(memory or _memory())
     return st
 

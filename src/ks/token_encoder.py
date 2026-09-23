@@ -18,7 +18,7 @@ Node layout (the compiler's packing, distinct from the raw tokenizer)::
   ONE word and ONE bit — the subword ids OR together, so a multi-subword
   word needs no decomposition kline; the shared word bit does the job.
 
-A compound signature (MTS, e.g. ``MHALL``) is not a word: its signature
+A compound signature (e.g. ``MHALL``) is not a word: its signature
 is the OR-reduction of its component words' values — one bit per word
 (5 words → 5 bits). A CONNOTES concatenation signature (``SubjectM`` =
 ``Subject`` + ``M`` — the compound sitting in the sig's slot) is a
@@ -31,7 +31,7 @@ Encoding rules:
     signature for compound refs/defs.
   - Nodes → each encoded individually via ``_encode_word``.
   - Canonical encoding: a declared compound identifier's signature is
-    computed once at its MTS CANONICALISES definition (OR of its resolved
+    computed once at its expansion CANONICALISES definition (OR of its resolved
     component node values) and reused by every reference via the
     ``_compound_sigs`` registry.
 
@@ -39,14 +39,14 @@ Significance levels (compile-time intent) — each emitted KValue carries
 kalvin.significance.band_significance(op), computed from the production op at
 encode time (never from dbg):
     ASK → S4         CONNOTES → S2    CANONICALISES → S2
-    DENOTES → S3      MTS → S1
+    DENOTES → S3      EXPANSION → S1
 
 Dependencies: kalvin.kline.KLine, kalvin.kvalue.KValue,
               kalvin.significance.band_significance, kalvin.abstract.KTokenizer,
               kalvin.signifier.NLPSignifier, ks.ast_emitter.SymbolicEntry.
 
 Output ordering: compiled source (operator + identity klines from the
-script) precedes MTS expansion klines. See ``encode_entries``.
+script) precedes compound expansion klines. See ``encode_entries``.
 """
 
 from __future__ import annotations
@@ -99,7 +99,7 @@ class TokenEncoder:
             max(self._word_bits.values(), default=0).bit_length()
         )
         # Canonical encoding registry: a declared compound
-        # identifier's signature uint64, computed once at its MTS CANONICALISES
+        # identifier's signature uint64, computed once at its expansion CANONICALISES
         # definition as OR of its resolved component node values, then reused
         # by every referencing entry. The ASTEmitter emits definitions before
         # references, so this is populated on demand.
@@ -143,9 +143,9 @@ class TokenEncoder:
 
         Returns:
             Ordered list of KValue objects (each wrapping a KLine).
-            **Compiled source precedes MTS expansion entries:** operator
+            **Compiled source precedes compound expansion entries:** operator
             and identity klines that come from the script appear first,
-            followed by MTS expansions. ``KDbg.scope`` and
+            followed by compound expansions. ``KDbg.scope`` and
             ``KDbg.annotation`` are carried through so downstream consumers
             can group by owning scope regardless of this partition. Every
             KValue carries a band-representative significance derived from
@@ -157,17 +157,17 @@ class TokenEncoder:
         tagged: list[tuple[KValue, bool]] = []
         with (using_resolver(self._resolve_node) if self._dev else contextlib.nullcontext()):
             for entry in symbolic:
-                for kv, is_mts in self._encode_entries_for_entry(entry):
-                    tagged.append((kv, is_mts))
+                for kv, is_expansion in self._encode_entries_for_entry(entry):
+                    tagged.append((kv, is_expansion))
 
-        source = [kv for kv, is_mts in tagged if not is_mts]
-        mts = [kv for kv, is_mts in tagged if is_mts]
-        return source + mts
+        source = [kv for kv, is_expansion in tagged if not is_expansion]
+        expansion = [kv for kv, is_expansion in tagged if is_expansion]
+        return source + expansion
 
     # Per-entry encoding
 
     def _encode_entries_for_entry(self, entry: SymbolicEntry) -> list[tuple[KValue, bool]]:
-        """Process one SymbolicEntry into one or more (KValue, is_mts) pairs.
+        """Process one SymbolicEntry into one or more (KValue, is_expansion) pairs.
 
         Steps:
           1. Encode signature → uint64 (word value, or the registered
@@ -184,7 +184,7 @@ class TokenEncoder:
             and entry.sig.isupper()
         )
         is_compound_ref = entry.sig in self._compound_sigs
-        # A multi-char uppercase sig that no MTS entry registered (e.g. a
+        # A multi-char uppercase sig that no expansion entry registered (e.g. a
         # sigless annotation's synthesized initials `WW...`) is still a
         # compound: its signature composes from its nodes — it is not a
         # word and never takes a word bit.
@@ -212,7 +212,7 @@ class TokenEncoder:
 
         # 3. Declared-compound definition: sig = OR of resolved component
         #    node values; register for reuse by references.
-        #    Only the DEFINING entry registers — the MTS CANONICALISES entry
+        #    Only the DEFINING entry registers — the expansion CANONICALISES entry
         #    (declared compound → its declared characters). A block-canon
         #    entry (compound → block operands, e.g. `WDMH => M H W`) is a
         #    REFERENCE: it reuses the registered signature and must NOT
@@ -253,14 +253,14 @@ class TokenEncoder:
         )
         # Wrap as a KValue. Significance comes from the production op
         # (entry.op — the SymbolicEntry field), NEVER read back from
-        # main.dbg.op (D3: dbg is unspec'd dev-only provenance). MTS
+        # main.dbg.op (D3: dbg is unspec'd dev-only provenance). Expansion
         # emissions are asserted at S1.
         band = (
-            band_significance("MTS")
-            if entry.is_mts
+            band_significance("EXPANSION")
+            if entry.is_expansion
             else band_significance(entry.op)
         )
-        return [(KValue(main, band), entry.is_mts)]
+        return [(KValue(main, band), entry.is_expansion)]
 
     # Word encoding
 

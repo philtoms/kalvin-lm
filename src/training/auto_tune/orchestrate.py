@@ -108,7 +108,7 @@ _POLL_INTERVAL = 0.1  # seconds between polls
 
 # A connected run idle longer than this while holding unsatisfied work is
 # treated as stalled (frozen), not incomplete (busy). Long enough to ride
-# out a cogitation drain or a slow rationalise; short enough that the agent
+# out a work-runner drain or a slow rationalise; short enough that the agent
 # does not waste a full ``step`` timeout churning a dead stream.
 STALL_THRESHOLD = 15.0  # seconds
 

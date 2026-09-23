@@ -707,3 +707,120 @@
 ## [2026-09-21T10:48:04.906Z] observe
 - slug: "obs-2026-09-21-three-threads-closed-a083c47-reserved-doctrine-word-x-error-", title: "Three threads closed (a083c47): reserved doctrine, Word(x) error, one-word tails", relevance: "high"
 
+## [2026-09-21T11:54:13.554Z] observe
+- slug: "obs-2026-09-21-ks-bpe-audit-multi-token-words-correctly-encoded-unicode-cha", title: "KS/BPE audit: multi-token words correctly encoded; unicode charset undocumented", relevance: "high"
+
+## [2026-09-21T12:13:25.658Z] observe
+- slug: "obs-2026-09-21-mts-retired-85083f5-compound-expansion-canon-triple-aligned-", title: "MTS retired (85083f5): compound/expansion/canon triple aligned everywhere", relevance: "high"
+
+## [2026-09-21T12:18:09.828Z] observe
+- slug: "obs-2026-09-21-context-md-algebraic-entries-reduced-to-normative-one-liners", title: "CONTEXT.md algebraic entries reduced to normative one-liners", relevance: "high"
+
+## [2026-09-21T12:20:59.608Z] observe
+- slug: "obs-2026-09-21-obsolete-dialogue-modules-removed-d9be56f-2105-lines-95-test", title: "Obsolete dialogue modules removed (d9be56f): −2105 lines, 95 tests green", relevance: "medium"
+
+## [2026-09-21T12:28:06.111Z] observe
+- slug: "obs-2026-09-21-context-md-kscript-entries-collapsed-to-code-pointer-one-lin", title: "CONTEXT.md KScript entries collapsed to code-pointer one-liners", relevance: "medium"
+
+## [2026-09-21T13:36:38.421Z] observe
+- slug: "obs-2026-09-21-dev-ks-compile-py-now-takes-script-path-and-optional-model-s", title: "dev/ks/compile.py now takes script path and optional --model state", relevance: "medium"
+
+## [2026-09-21T14:01:41.971Z] observe
+- slug: "obs-2026-09-21-harness-sub-script-delineation-simplified-to-scope-0-entry-g", title: "Harness sub-script delineation simplified to scope-0 entry groups", relevance: "high"
+
+## [2026-09-21T14:11:42.276Z] observe
+- slug: "obs-2026-09-21-kdbg-scope-now-carries-ast-nesting-depth-scope-0-root-constr", title: "KDbg.scope now carries AST nesting depth; scope-0 = root constructs", relevance: "high"
+
+## [2026-09-21T14:43:11.369Z] observe
+- slug: "obs-2026-09-21-kdbg-scope-aligned-to-bindingscope-frames-one-scope-definiti", title: "KDbg.scope aligned to BindingScope frames — one scope definition in the compiler", relevance: "high"
+
+## [2026-09-21T15:16:42.157Z] observe
+- slug: "obs-2026-09-21-src-dialogue-dissolved-engine-into-src-kalvin-harness-into-d", title: "src/dialogue dissolved: engine into src/kalvin, harness into dev/dialogue", relevance: "critical"
+
+## [2026-09-21T15:16:42.158Z] observe
+- slug: "obs-2026-09-21-probe-sys-path-bootstraps-were-off-by-one-two-probe-run-styl", title: "Probe sys.path bootstraps were off-by-one; two probe run styles", relevance: "medium"
+
+## [2026-09-21T15:21:47.552Z] observe
+- slug: "obs-2026-09-21-all-live-doc-references-updated-for-the-dialogue-dissolution", title: "All live doc references updated for the dialogue dissolution", relevance: "medium"
+
+## [2026-09-21T15:37:33.933Z] observe
+- slug: "obs-2026-09-21-enginestate-renamed-to-memory-kalvin-memory", title: "EngineState renamed to Memory (kalvin.memory)", relevance: "high"
+
+## [2026-09-21T16:02:51.635Z] observe
+- slug: "obs-2026-09-21-engine-rationaliser-identity-swap-done-module-names-classes", title: "Engine/rationaliser identity swap done (module names + classes)", relevance: "high"
+
+## [2026-09-21T16:40:21.333Z] observe
+- slug: "obs-2026-09-21-cogitator-freed-work-runner-rename-cogitate-extracted-from-r", title: "Cogitator freed: work_runner rename + cogitate extracted from rationaliser", relevance: "high"
+
+## [2026-09-21T16:53:20.898Z] observe
+- slug: "obs-2026-09-21-steps-2-3-committed-886d249-and-0b38eb0", title: "Steps 2+3 committed: 886d249 and 0b38eb0", relevance: "low"
+
+## [2026-09-21T17:27:56.657Z] observe
+- slug: "obs-2026-09-21-using-resolver-now-installed-by-dev-callers-not-rationaliser", title: "using_resolver now installed by dev callers, not rationaliser/cogitator", relevance: "medium"
+
+## [2026-09-21T17:34:42.926Z] observe
+- slug: "obs-2026-09-21-cogitate-single-pass-callers-own-the-reentry-loop", title: "cogitate single-pass; callers own the reentry loop", relevance: "medium"
+
+## [2026-09-21T17:40:11.080Z] observe
+- slug: "obs-2026-09-21-resolver-reentry-refactor-committed-2704e35", title: "Resolver/reentry refactor committed: 2704e35", relevance: "low"
+
+## [2026-09-21T17:54:15.012Z] observe
+- slug: "obs-2026-09-21-engine-workrunner-now-run-rationaliser-cogitate-over-memory", title: "Engine+WorkRunner now run rationaliser/cogitate over Memory", relevance: "high"
+
+## [2026-09-22T08:22:03.576Z] observe
+- slug: "obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p", title: "Orphaned pipeline modules removed (model, agent_codec, expand, proposals, stm)", relevance: "high"
+
+## [2026-09-22T08:48:50.904Z] observe
+- slug: "obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list", title: "WorkRunner cogitates the popped item, not the whole work list", relevance: "high"
+
+## [2026-09-22T09:04:35.743Z] observe
+- slug: "obs-2026-09-22-fast-path-events-restored-engine-publishes-ground-frame-rati", title: "Fast-path events restored: Engine publishes ground/frame, rationaliser stays silent", relevance: "high"
+
+## [2026-09-22T12:58:47.146Z] observe
+- slug: "obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid", title: "mhall.ks training intent decoded: Query stress test, goal/evidence split", relevance: "high"
+
+## [2026-09-22T12:58:55.739Z] observe
+- slug: "obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio", title: "mhall scaffolds read as underfits: M, H, ALL over S, V, O; solution covers nodes", relevance: "high"
+
+## [2026-09-22T13:05:32.004Z] observe
+- slug: "obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-", title: "mhall Det/Mod sub-block is surplus-to-goal spring-board for future scripts", relevance: "high"
+
+## [2026-09-22T13:47:17.086Z] observe
+- slug: "obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi", title: "mhall proposing died at eb07933, not the refactor — BPE-collision leak closed", relevance: "critical"
+
+## [2026-09-22T13:47:17.088Z] observe
+- slug: "obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-", title: "mhall stall root: ask dies at S4-refusal; attending ask still derives nothing", relevance: "high"
+
+## [2026-09-22T14:18:43.315Z] observe
+- slug: "obs-2026-09-22-ask-attends-probe-empty-ask-silently-discharged-by-grounded-", title: "Ask-attends probe: empty ask silently discharged by grounded canon; riding ask never", relevance: "high"
+
+## [2026-09-22T15:39:13.440Z] observe
+- slug: "obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on", title: "Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck", relevance: "high"
+
+## [2026-09-22T15:44:45.986Z] observe
+- slug: "obs-2026-09-22-algebra-mhall-ask-is-not-a-shape-ask-always-rides-nodes-empt", title: "Algebra: MHALL|ASK:[] is not a shape — ask always rides nodes; empty = Unknown", relevance: "high"
+
+## [2026-09-22T15:57:37.091Z] observe
+- slug: "obs-2026-09-22-algebra-vs-needed-ask-semantics-c-ask-goal-machinery-exists-", title: "Algebra vs needed ask semantics: C(ask,goal) machinery exists, never applied to asks", relevance: "critical"
+
+## [2026-09-22T16:18:30.661Z] observe
+- slug: "obs-2026-09-22-doctrine-s3-only-bridging-s4-structural-question-semantics-i", title: "Doctrine: S3-only bridging; S4 = structural question semantics (initial A, not rewrite)", relevance: "critical"
+
+## [2026-09-22T17:09:00.622Z] observe
+- slug: "obs-2026-09-22-def-15-walk-amendment-s4-full-underfit-stance-design-settled", title: "Def 15 walk amendment + S4 full-underfit stance — design settled, wording pending", relevance: "critical"
+
+## [2026-09-22T17:18:54.270Z] observe
+- slug: "obs-2026-09-22-kalvin-algebra-md-amended-two-form-walk-licence-t2-edge-boun", title: "kalvin-algebra.md amended: two-form walk licence, T2 edge bound, S4 full-underfit stance", relevance: "critical"
+
+## [2026-09-22T17:33:50.990Z] observe
+- slug: "obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at", title: "mhall reaches its goal: MHALL:[Subject, Verb, Object] proposed at S1 via connotation walks", relevance: "critical"
+
+## [2026-09-22T17:47:46.044Z] observe
+- slug: "obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a", title: "Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path", relevance: "critical"
+
+## [2026-09-22T18:01:12.703Z] observe
+- slug: "obs-2026-09-22-decision-ask-never-grounds-attends-derives-discharged-by-ans", title: "Decision: ask never grounds — attends, derives, discharged by answer's grounding", relevance: "critical"
+
+## [2026-09-22T18:05:05.867Z] observe
+- slug: "obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-", title: "Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form", relevance: "critical"
+

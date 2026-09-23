@@ -8,6 +8,7 @@ goal's witness resolution) is left as-is — a separate witnessed licence.
 """
 import sys, os
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from collections import Counter, deque
 from kalvin.derivation import Derivation, KLine
@@ -80,7 +81,7 @@ def run(self):
 Derivation.run = run
 
 sys.argv = ["harness", "data/scripts/wdmh.ks", "-p", "data/dialogue/mhall.json"]
-from dialogue.harness import main
+from dev.dialogue.harness import main
 main()
 
 print(f"\n\n=== MODE C: composed writes ({len(writes_log)}) ===")

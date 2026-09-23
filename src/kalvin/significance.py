@@ -4,8 +4,7 @@ This module owns the *topology* of significance: how a structural distance
 between two klines is encoded as a single byte, how that byte is partitioned
 into the S1/S2/S3/S4 bands, and how per-node accountedness composes into a
 terminal grade. It is pure byte/structure algebra — no graph traversal, no
-expansion proposals. The expansion pipeline (``kalvin.expand``) builds on top
-of this layer; the dependency is strictly one-way.
+expansion proposals.
 
 Two clusters live here:
 
@@ -19,8 +18,7 @@ Two clusters live here:
      ``Aggregator`` that bundles layout + the two seams and composes a
      terminal byte via ``compose_terminal``.
   3. **Structural grounding** — structural band derivation lives in
-     ``kline.sig_level``; model-state grounding queries (``is_countersigned``)
-     live on :class:`kalvin.model.Model`.
+     ``kline.sig_level``.
 
 Significance occupies the LOW 8 BITS of an int; access is always via
 masking: ``sig & SIG_MASK``. It is a global linear inverted distance in
@@ -118,7 +116,7 @@ _OP_TO_SIG: dict[str, int] = {
     "CONNOTES": SIG_S2,
     "IDENTITY": SIG_S1,
     "ASK": SIG_S4,
-    "MTS": SIG_S1,
+    "EXPANSION": SIG_S1,
 }
 
 
@@ -448,7 +446,7 @@ class Aggregator:
 
 
 #: Module-level default aggregator: default layout, asymptotic decay (k=50),
-#: mean compose. cogitator uses this unless constructed otherwise.
+#: mean compose. The work runner uses this unless constructed otherwise.
 DEFAULT_AGGREGATOR = Aggregator()
 
 

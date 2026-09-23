@@ -1,6 +1,7 @@
 """Compile the wdmh scripts and dump entries; then run the harness and trace."""
 import sys
 sys.path.insert(0, "src")
+sys.path.insert(0, ".")
 
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier

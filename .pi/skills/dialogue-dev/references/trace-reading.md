@@ -1,7 +1,7 @@
 # Reading a harness trace
 
 The harness prints a per-step trace, then a summary tail. It is a faithful,
-non-judging presenter — every line is a fact about what the engine did, not a
+non-judging presenter — every line is a fact about what the rationaliser did, not a
 verdict. This is the vocabulary for reading it.
 
 ## Per-step layout
@@ -19,16 +19,16 @@ verdict. This is the vocabulary for reading it.
   should become). `<kline>` is `signature:[nodes]` in scripted labels
   (hex when no label is known).
 - **`<turn>  feed  <kline> <band>`** — the harness fed these compiled entries to the
-  engine. The `<turn>` is incremented every time the harness feeds another entry. It
+  rationaliser. The `<turn>` is incremented every time the harness feeds another entry. It
   is reset on the next step.
-- **`asks <kline>`** — The ask here is the engine's request for klines with this
-  signature. The engine always asks about entries it has not previously seen.
-- **`propose  <kline> <band> <significance`** — one engine emission this step. `<band>` here
-  is the engine's _actual_ output band (S1 ground-and-cascade, S2 propose,
-  S3 denote, S4 ask). `(none)` = the engine had nothing to emit.
-- **`grounds <kline>`** — an S1 observation: a kline the engine grounded
+- **`asks <kline>`** — The ask here is the rationaliser's request for klines with this
+  signature. The rationaliser always asks about entries it has not previously seen.
+- **`propose  <kline> <band> <significance`** — one rationaliser emission this step. `<band>` here
+  is the rationaliser's _actual_ output band (S1 ground-and-cascade, S2 propose,
+  S3 denote, S4 ask). `(none)` = the rationaliser had nothing to emit.
+- **`grounds <kline>`** — an S1 observation: a kline the rationaliser grounded
   internally this step (added to its grounded model). Distinct from `out`:
-  groundings are the engine's private S1 state; `out` is what it would say.
+  groundings are the rationaliser's private S1 state; `out` is what it would say.
 
 ## Bands (quick reference)
 
@@ -50,7 +50,7 @@ changes. The annotation is the trainer-facing rationale (the parenthetical
 prose in the `.ks`). Use it to form an exploratory expectation. For example:
 The annotation for WDMH is (What did mary have) — You know that Mary had a
 little lamb, so a useful expectation might be "Mary had a little lamb".
-But remember that the engine proposes klines, not prose. Always check the nodes.
+But remember that the rationaliser proposes klines, not prose. Always check the nodes.
 
 Note: a single annotation can appear non-contiguously — source entries and
 MTS entries for the same block are split by the encoder's source-before-MTS
@@ -68,16 +68,16 @@ partition (see behaviour-notes §Compilation).
       ...
 ```
 
-- **`batch by band`** — counts of engine _emissions_ across the run. A
+- **`batch by band`** — counts of rationaliser _emissions_ across the run. A
   factual histogram, not a score.
-- **`grounded`** — the final grounded model: everything the engine ended up knowing
+- **`grounded`** — the final grounded model: everything the rationaliser ended up knowing
   (identities, canons, relationships), in scripted labels.
-- **`work_list (pending at end of run)`** — what the engine was still working on when
+- **`work_list (pending at end of run)`** — what the rationaliser was still working on when
   turns ran out. **This is the diagnostic.** Distinguish:
   - _Genuine residue_ — signatures the script never makes groundable
     (an unbound `L`; a denotes target like `a:[Det]` where `a` is never an
     identity). Not a bug.
-  - _Stalled klines_ — something that should have grounded but the engine
+  - _Stalled klines_ — something that should have grounded but the rationaliser
     had no path (the historical fast-route drop; relationships that couldn't
     ground). **This is the work.**
 
@@ -92,17 +92,17 @@ partition (see behaviour-notes §Compilation).
 ```
 
 Reading: the script feeds `Mary:[Subject]` (target S3, a relationship).
-The engine routes it (S3 → slow), unpacks the unseen node `Subject` as an
+The rationaliser routes it (S3 → slow), unpacks the unseen node `Subject` as an
 S4 ask. The harness sees the `{Subject:[]}` ask, finds `Subject:[Subject]`
-in the compiled script, and offers it (`offer` line). The engine grounds
-it (`ground Subject:[Subject]`). No `out` — the engine had no _proposal_
+in the compiled script, and offers it (`offer` line). The rationaliser grounds
+it (`ground Subject:[Subject]`). No `out` — the rationaliser had no _proposal_
 this step, but its grounded model grew.
 
 The **expectation** here is concrete and checkable: the annotation "Subject"
 is a fact about Mary's role, so expect `Subject:[Subject]` to appear in the
 `ground` line this step. It does. Met. (Contrast: a step that vanishes —
 `out (none)` _and_ nothing in `ground` or `work_list` — is the signal to
-suspect the engine dropped the kline at routing. The historical unseen-
+suspect the rationaliser dropped the kline at routing. The historical unseen-
 signature canon bug was this shape.)
 
 ## Worked example 2 — the answering proposal (read this before judging)
@@ -116,7 +116,7 @@ Decide on a useful expectation and write it down so that you can compare
 later. You are looking for a match that you can explore. It might not be
 exact. If you wrote down "MHALL:[Mary, had, a, little, lamb]" but the only
 match you find is "WDMH:[Mary, had, a, little, lamb]" then report it. It is
-useful analysis and in this case it shows that the engine is on the right track.
+useful analysis and in this case it shows that the rationaliser is on the right track.
 
 **Find where that kline actually appears** — it may not be the step you
 expect:
@@ -130,9 +130,9 @@ expect:
 ```
 
 The answer surfaces at step 16 as an `out S2`, the moment `MHALL` grounds
-and becomes a graft candidate for the question's misfit. The engine's S2
+and becomes a graft candidate for the question's misfit. The rationaliser's S2
 similar-fit path folded the grounded prime into the question's signature.
-That _is_ the engine traversing its grounded model to emit a synthesis.
+That _is_ the rationaliser traversing its grounded model to emit a synthesis.
 
 So the order of judgement is fixed:
 
@@ -142,4 +142,4 @@ So the order of judgement is fixed:
    near-match (any step, any line kind — `out`, `ground`, or the summary's
    `grounded`).
 3. **Report your findings**, so that you can formulate your next step.
-   Did the engine meet your expectations? How was it out? What went wrong?
+   Did the rationaliser meet your expectations? How was it out? What went wrong?
