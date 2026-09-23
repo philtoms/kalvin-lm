@@ -6,7 +6,7 @@ from pathlib import Path
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 from kalvin.memory import Memory
-from ks.compiler import compile_source
+from ks.compiler import compile_source, path_resolver
 
 
 def main() -> None:
@@ -20,7 +20,9 @@ def main() -> None:
 
     tok = BPETokenizer()
     sigf = NLPSignifier()
-    entries = compile_source(source, tokenizer=tok, signifier=sigf, dev=True)
+    entries = compile_source(source, tokenizer=tok, signifier=sigf, dev=True,
+                             resolver=path_resolver(
+                                 Path(arg).parent if is_file else "data/scripts"))
 
     stem = Path(arg).stem if is_file else entries[0].kline.signature.label
     out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("data/dialogue") / (stem + ".json")

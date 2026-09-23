@@ -141,6 +141,16 @@ class BindingScope:
         for scope, counters in zip(self._stack, snapshot):
             scope.counters = dict(counters)
 
+    def reset_counters(self) -> None:
+        """Zero the occurrence counters in every scope — a file boundary.
+
+        An imported module's resolutions must not consume the occurrence
+        counters its words owe the importing script (the module's words
+        reach it like known_words: a fresh walk of little then lamb).
+        """
+        for s in self._stack:
+            s.counters.clear()
+
     def add_words(self, words: list[str]) -> None:
         """Append a word list to the current (top) scope.
 

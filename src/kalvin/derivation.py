@@ -43,6 +43,9 @@ class DerivationResult:
     dbar: float = 0.0
     hbar: float = 0.0
     gamma: float = 0.0  # γ: J·δ^(D̄+Ĥ) — significance net of complexity; never the band
+    #: The goal this derivation ran toward, and how it joined the list
+    #: ("supplied" — the construct's — or "selected" — Definition 22).
+    goal: "KLine | None" = None
 
 
 class Derivation:
@@ -245,16 +248,16 @@ class Derivation:
                 continue
             key = (int(k.signature), tuple(int(n) for n in k.nodes))
             if int(k.signature) == v:
-                if v in [int(n) for n in k.nodes]:
+                if v in k.nodes:
                     continue  # self-containing — an inert witness
                 if a_side and len(k.nodes) != 1:
                     continue  # the whole witness or none — no dangling siblings
-                out.extend((int(n), key) for n in k.nodes)
+                out.extend((n, key) for n in k.nodes)
             elif (
                 key != delivered
                 and int(self.signifier.residual(v, int(k.signature))) == 0
             ):
-                out.append((int(k.signature), key))
+                out.append((k.signature, key))
         return out
 
     def descend(
@@ -264,7 +267,7 @@ class Derivation:
         ``{value: (depth, delivering kline key, start)}``; bounded by the
         walk-edge bound (T2)."""
         reached: dict[int, tuple[int, tuple[int, tuple[int, ...]], int]] = {}
-        frontier = [(int(v), 0, int(v), None) for v in starts]
+        frontier = [(v, 0, v, None) for v in starts]
         while frontier:
             nxt: list[tuple[int, int, int, tuple[int, tuple[int, ...]] | None]] = []
             for v, depth, start, delivered in frontier:
@@ -332,13 +335,21 @@ class Derivation:
         if not path_a:
             return False
         excess = self.excess()
+        goal_content = self.goal_content()
         b_values: list[int] = []
         for k in self.memory:
-            if int(self.signifier.residual(excess, int(k.signature))) == 0:
-                b_values.append(int(k.signature))
+            # B departs a value of its own: a node or compound of ν_B
+            # containing the overfit — never a value carrying content
+            # beyond B (Def 15).
+            if int(self.signifier.residual(excess, int(k.signature))) == 0 and int(
+                self.signifier.residual(int(k.signature), goal_content)
+            ) == 0:
+                b_values.append(k.signature)
             for n in k.nodes:
-                if int(self.signifier.residual(excess, int(n))) == 0:
-                    b_values.append(int(n))
+                if int(self.signifier.residual(excess, int(n))) == 0 and int(
+                    self.signifier.residual(int(n), goal_content)
+                ) == 0:
+                    b_values.append(n)
         b_starts = [
             v for v in dict.fromkeys(b_values)  # first-occurrence order
             if not self.signifier.same_content(v, self.queued.signature)  # never bridge to s
@@ -357,8 +368,8 @@ class Derivation:
         slot_a:[slot_b] — the A-side underfit slot to the B-side overfit
         slot: the meeting value when it is a node of ν_B, else B's
         departure (§9: the compound is itself the slot)."""
-        frontier = [(int(v), 0, int(v), None) for v in b_starts]
-        seen = {int(v) for v in b_starts}
+        frontier = [(v, 0, v, None) for v in b_starts]
+        seen = set(b_starts)
         while frontier:
             nxt: list[tuple[int, int, int, tuple[int, tuple[int, ...]] | None]] = []
             for v, depth, start, delivered in frontier:
@@ -371,8 +382,15 @@ class Derivation:
                             b_slot = (
                                 value
                                 if any(int(n) == value for n in self.goal.nodes)
-                                else start
+                                and value != int(self.goal.signature)
+                                else (
+                                    start
+                                    if start != int(self.goal.signature)
+                                    else None
+                                )
                             )
+                            if b_slot is None:
+                                continue  # the type is not a slot — no bridge
                             bridge = KLine(
                                 a_start, [b_slot], acq_depth=a_depth + depth + 1
                             )

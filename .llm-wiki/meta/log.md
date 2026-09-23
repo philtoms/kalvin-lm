@@ -824,3 +824,45 @@
 ## [2026-09-22T18:05:05.867Z] observe
 - slug: "obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-", title: "Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form", relevance: "critical"
 
+## [2026-09-23T08:04:52.686Z] observe
+- slug: "obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-", title: "Goal vs target disambiguated: Def 22 selects goals, == gives the target", relevance: "critical"
+
+## [2026-09-23T10:22:58.551Z] observe
+- slug: "obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele", title: "Countersignature removed from algebra: one \"goal\", given vs selected; standing vs composed evidence", relevance: "critical"
+
+## [2026-09-23T11:18:57.276Z] observe
+- slug: "obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no", title: "== removed from algebra: ask is an unmatched underfit, no goal, no witness", relevance: "critical"
+
+## [2026-09-23T12:27:11.623Z] observe
+- slug: "obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf", title: "No S4 law: uniform selection; the real seam is the pure-underfit relationship", relevance: "critical"
+
+## [2026-09-23T12:55:09.660Z] observe
+- slug: "obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-", title: "Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes", relevance: "critical"
+
+## [2026-09-23T13:07:31.342Z] observe
+- slug: "obs-2026-09-23-13-audited-supplies-a-goal-clause-deleted-table-stays-pendin", title: "§13 audited: supplies-a-goal clause deleted; table stays pending home decision", relevance: "critical"
+
+## [2026-09-23T13:10:51.124Z] observe
+- slug: "obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th", title: "No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling", relevance: "critical"
+
+## [2026-09-23T13:20:20.842Z] observe
+- slug: "obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-", title: "Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given)", relevance: "critical"
+
+## [2026-09-23T13:59:35.956Z] observe
+- slug: "obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s", title: "Given-goal feed removed: engine pure algebra, mhall honestly silent", relevance: "critical"
+
+## [2026-09-23T14:22:40.533Z] observe
+- slug: "obs-2026-09-23-walk-coverage-selection-in-svo-selected-both-scripts-reach-d", title: "Walk-coverage selection in: SVO selected, both scripts reach done — with cascade + head-adoption side-effects", relevance: "critical"
+
+## [2026-09-23T14:47:44.085Z] observe
+- slug: "obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m", title: "B-departure tightened: bridges stay within B, never the type — mhall proposes the walked answer", relevance: "critical"
+
+## [2026-09-23T15:10:59.383Z] observe
+- slug: "obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc", title: "KNode labels preserved through the walk into cogitate's batch", relevance: "medium"
+
+## [2026-09-23T16:09:08.027Z] observe
+- slug: "obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk", title: "kscript import statement implemented (shared-emitter walk)", relevance: "critical"
+
+## [2026-09-23T16:09:18.455Z] retro
+- slug: "kscript-import-shared-emitter-semantics", title: "kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix", category: "architecture"
+

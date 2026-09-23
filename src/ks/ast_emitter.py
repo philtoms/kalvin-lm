@@ -167,7 +167,15 @@ class ASTEmitter:
     # Public API
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
-        """Walk a KScriptFile AST and return the list of SymbolicEntry tuples."""
+        """Walk a KScriptFile AST and return the list of SymbolicEntry tuples.
+
+        A file boundary closes any dangling annotation context: the pending
+        annotation is cleared so an importing script's first scope never
+        inherits the imported file's trailing sigless ask as its prefix.
+        Entries accumulate across emit calls (the compiler emits imported
+        modules first, through this same emitter).
+        """
+        self._pending_annotation = ""
         self._process_constructs(file.constructs)
         return self.entries
 

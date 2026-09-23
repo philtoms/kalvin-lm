@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, cast
 
+from kalvin.derivation import DerivationResult
 from kalvin.cogitator import cogitate
 from kalvin.rationaliser import Rationaliser
 from kalvin.memory import Memory
@@ -71,6 +72,12 @@ class Turn:
     feeds: list[KValue]
     grounds: list[KValue] = field(default_factory=list)
     asks: list[KValue] = field(default_factory=list)
+    #: The selection trace: per cogitated kline, its derivation results
+    #: (goal, source, ending, significance) — the presentation renders
+    #: what the engine selected and why.
+    derivations: list[tuple[KLine, list[DerivationResult]]] = field(
+        default_factory=list
+    )
     #: The supervisor's responses to this turn's escalated proposals,
     #: paired with the proposal index in ``asks`` they answer.
     escalations: list[tuple[int, KValue]] = field(default_factory=list)
@@ -105,6 +112,7 @@ class Harness:
         rationaliser: Rationaliser,
         escalate: Callable[[KValue], KValue] | None = None,
         scaffolding: Literal["batch", "on-demand"] = "batch",
+        resolver: Callable[[str], str] | None = None,
     ) -> None:
         self._tokenizer = tokenizer
         self._rationaliser = rationaliser
@@ -122,6 +130,8 @@ class Harness:
         # The prior state's words in acquisition order — the compile's
         # outermost word list, binding chars the script cannot bind itself.
         self.known_words: list[str] = []
+        # Module name → source, for scripts with ``import`` statements.
+        self.resolver: Callable[[str], str] | None = resolver
 
     @property
     def rationaliser(self) -> Rationaliser:
@@ -152,6 +162,7 @@ class Harness:
         entries = compile_source(
             source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True,
             word_bits=self.word_bits, known_words=self.known_words,
+            resolver=self.resolver,
         )
         # A `==` ask feeds at its subjective significance toward the goal
         # (Def 20): fresh content carries zero depths, so γ(A, B) = J of the
@@ -168,7 +179,7 @@ class Harness:
                 (
                     g for g in entries
                     if g.kline.dbg and g.kline.dbg.label == d.goal
-                    and g.kline.nodes
+                    and g.kline.nodes and not is_ask(g.kline.signature)
                 ),
                 None,
             )
@@ -302,12 +313,13 @@ class Harness:
         while queue:
             feeds = queue.pop(0)
             before = _grounded_snapshot(self.state)
+            derivations: list[tuple[KLine, list[DerivationResult]]] = []
             with using_resolver(self.state.find):
                 self._rationaliser.rationalise(feeds)
                 batch: list[KValue] = []
                 while True:
                     size = len(self.state.work_list)
-                    batch.extend(cogitate(self.state))
+                    batch.extend(cogitate(self.state, collect=derivations))
                     if len(self.state.work_list) == size:
                         break
             deduped = _dedup(batch)
@@ -317,21 +329,21 @@ class Harness:
                 for key, kl in after.items() if key not in before
             ]
             replies: list[KValue] = []
-            turn = Turn(feeds, grounds, deduped)
+            turn = Turn(feeds, grounds, deduped, derivations)
             step.turns.append(turn)
-            for ask_i, ask in enumerate(deduped):
-                if self.state.is_grounded(ask.kline):
+            for prop_i, proposal in enumerate(deduped):
+                if self.state.is_grounded(proposal.kline):
                     # K stating knowledge it already holds — not a
                     # question. No reply, no escalation.
                     continue
-                reply = self._answer(ask, heads, exact, words, answered)
+                reply = self._answer(proposal, heads, exact, words, answered)
                 if reply is None:
-                    if is_ask(ask.kline.signature):
+                    if is_ask(proposal.kline.signature):
                         # An ask is signature discovery, not a
                         # proposal — nothing for a supervisor to decide.
-                        replies.append(KValue(ask.kline, SIG_S4))
+                        replies.append(KValue(proposal.kline, SIG_S4))
                         continue
-                    graded = self._grade_proposal(ask, goals)
+                    graded = self._grade_proposal(proposal, goals)
                     if graded is not None:
                         # A proposal under a `==` goal grades at γ of the
                         # two contents — the byte is the trainer's answer,
@@ -339,8 +351,8 @@ class Harness:
                         replies.append(graded)
                         continue
                     # Off-script: escalate — the supervisor decides.
-                    response = self._escalate(ask)
-                    turn.escalations.append((ask_i, response))
+                    response = self._escalate(proposal)
+                    turn.escalations.append((prop_i, response))
                     replies.append(response)
                     continue
                 replies.extend(reply)
@@ -349,7 +361,7 @@ class Harness:
                 queue.append(replies)
 
     def _grade_proposal(
-        self, ask: KValue, goals: dict[int, KValue]
+        self, proposal: KValue, goals: dict[int, KValue]
     ) -> KValue | None:
         """A proposal under a ``==`` goal, graded at γ of the proposal's
         content against the goal's target — its signature value (Def 20 —
@@ -357,15 +369,15 @@ class Harness:
         ratified at S1 — the answer just granted; one off the goal grades
         low and refuses on re-feed. ``None`` when no goal pairs with the
         proposal's head."""
-        base = canon_key(ask.kline.signature)
+        base = canon_key(proposal.kline.signature)
         goal = goals.get(base)
-        if goal is None or not ask.kline.nodes:
+        if goal is None or not proposal.kline.nodes:
             return None
-        a = int(self.signifier.signature_of(ask.kline.nodes))
+        a = int(self.signifier.signature_of(proposal.kline.nodes))
         b = int(goal.kline.signature)
         union = word_atom_count(a | b)
         j = word_atom_count(a & b) / union if union else 1.0
-        return KValue(ask.kline, gamma_to_byte(j))
+        return KValue(proposal.kline, gamma_to_byte(j))
 
     def _single_token_labels(self, source: str) -> dict[int, str]:
         """``{signature: word}`` for every single-token word in the source.
@@ -379,7 +391,8 @@ class Harness:
         from ks.parser import Parser
         compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True,
                             word_bits=self.word_bits,
-                            known_words=self.known_words)
+                            known_words=self.known_words,
+                            resolver=self.resolver)
         compiler.compile(Parser(Lexer(source).tokenize()).parse())
         return {
             sig: word
@@ -552,7 +565,8 @@ def _state_labels(state: Memory) -> dict[int, str]:
 
 def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
                   word_bits: dict[str, int] | None = None,
-                  state: Memory | None = None) -> dict[int, str]:
+                  state: Memory | None = None,
+                  resolver: Callable[[str], str] | None = None) -> dict[int, str]:
     """Recompile once to recover ``{signature: scripted label}`` for display.
 
     Compiled-entry labels are authoritative; the encoder's ``node_labels``
@@ -562,7 +576,8 @@ def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
     from ks.compiler import Compiler
     from ks.lexer import Lexer
     from ks.parser import Parser
-    compiler = Compiler(tokenizer, signifier=signifier, dev=True, word_bits=word_bits)
+    compiler = Compiler(tokenizer, signifier=signifier, dev=True, word_bits=word_bits,
+                        resolver=resolver)
     entries = compiler.compile(Parser(Lexer(source).tokenize()).parse())
     out: dict[int, str] = dict(compiler.node_labels)
     for e in entries:
@@ -588,6 +603,31 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
         lines.append(f"  T{t:02d}  feed    {feeds}")
         for v in turn.grounds:
             lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
+        seen_derives: set[tuple[int, tuple[int, ...], int, str, str, float]] = set()
+        for queued, results in turn.derivations:
+            for r in results:
+                if r.goal is None:
+                    continue
+                key = (
+                    int(queued.signature),
+                    tuple(int(n) for n in r.trace[0]),
+                    int(r.goal.signature),
+                    tuple(int(n) for n in r.goal.nodes),
+                    r.ending,
+                    round(r.j1, 3),
+                )
+                if key in seen_derives:
+                    continue
+                seen_derives.add(key)
+                entry = ", ".join(
+                    _label(n, labels, verbose) for n in r.trace[0]
+                )
+                lines.append(
+                    f"        {'derives':<8} "
+                    f"{_label(queued.signature, labels, verbose)}:[{entry}] → "
+                    f"{_render_kline_struct(r.goal, labels, verbose)} "
+                    f"{r.ending} j1={r.j1:.3f}"
+                )
         escalations = {i: r for i, r in turn.escalations}
         for i, v in enumerate(turn.asks):
             if v.kline.nodes:
@@ -1038,8 +1078,9 @@ def present(results: list[StepResult], state: Memory, source: str,
             tokenizer: BPETokenizer, signifier: NLPSignifier, *, verbose: bool,
             pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None,
             word_bits: dict[str, int] | None = None,
-            graph: Literal["ascii", "dot", "mermaid"] | None = None) -> None:
-    labels = _sig_to_label(source, tokenizer, signifier, word_bits, state)
+            graph: Literal["ascii", "dot", "mermaid"] | None = None,
+            resolver: Callable[[str], str] | None = None) -> None:
+    labels = _sig_to_label(source, tokenizer, signifier, word_bits, state, resolver)
     last_annotation: str | None = None
     for step in results:
         annotation = step.entry.kline.dbg.annotation if step.entry.kline.dbg else ""
@@ -1188,11 +1229,15 @@ def main(argv: list[str] | None = None) -> int:
                   f"from {state_path} ──")
         else:
             harness = make_rationaliser(tok, scaffolding=scaffolding)
+        # ``import`` statements resolve against the script's own directory.
+        from ks.compiler import path_resolver
+        harness.resolver = path_resolver(source_path.parent)
         if args.structural:
             from dev.dialogue.structural import SemanticEvidence, StructuralSupervisor
 
             labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state)
+                                   harness.word_bits, harness.state,
+                                   harness.resolver)
             render = lambda v: _render_kline(v, labels, args.verbose)  # noqa: E731
             supervisor = StructuralSupervisor(
                 SemanticEvidence(harness.signifier), harness.state, render
@@ -1200,7 +1245,8 @@ def main(argv: list[str] | None = None) -> int:
             harness._escalate = supervisor
         if args.supervise:
             labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state)
+                                   harness.word_bits, harness.state,
+                                   harness.resolver)
             harness._escalate = (
                 _interactive_supervisor(labels, args.verbose)
                 if args.supervise == "interactive"
@@ -1214,7 +1260,8 @@ def main(argv: list[str] | None = None) -> int:
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier,
                 verbose=args.verbose, pre_grounded=pre_grounded,
-                word_bits=harness.word_bits, graph=args.graph)
+                word_bits=harness.word_bits, graph=args.graph,
+                resolver=harness.resolver)
         if state_path is not None:
             harness.state.word_bits = harness.word_bits
             # Always save state to script named path
@@ -1223,7 +1270,8 @@ def main(argv: list[str] | None = None) -> int:
             fmt = args.graph if args.graph in ("dot", "mermaid") else "dot"
             graph_path = state_path.with_suffix(".dot" if fmt == "dot" else ".mmd")
             labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state)
+                                   harness.word_bits, harness.state,
+                                   harness.resolver)
             graph_path.write_text(
                 _GRAPH_RENDERERS[fmt](harness.state, labels, args.verbose)
             )

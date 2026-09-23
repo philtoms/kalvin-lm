@@ -80,3 +80,4 @@ pytest-of-*
 auto-tune/
 trainer_state.json
 curricula/*.json
+dev/probes

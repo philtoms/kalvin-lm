@@ -50,17 +50,17 @@ The formal system is divided as follows:
 
 The value space (Definition 1) supplies the operations; the right-hand column reads them in the reference realisation (Definition 2).
 
-| Symbol      | Meaning                                     | Reference realisation |
-| ----------- | ------------------------------------------- | --------------------- |
-| `v ∨ w`     | composition                                 | `v \| w`              |
-| `v ∧ w`     | overlap                                     | `v & w`               |
-| `v ∖ w`     | residue — v beyond w                        | `v & ~w`              |
-| `\|v\|`     | μ(v) — the content measure                  | `popcount(v)`         |
-| `\|x Δ y\|` | misfit mass: `\|x ∨ y\| − \|x ∧ y\|`        | `popcount(x ^ y)`     |
-| `∅`         | the empty value, composition's unit         | `0`                   |
-| `a`, `abc`  | values, written as their atoms              | `{a}`, `{a,b,c}`      |
-| `σ(ν)`      | evaluation of node sequence ν               | `fold_or(nu)`         |
-| `[n₁ … nₖ]` | node sequence                               | list                  |
+| Symbol      | Meaning                              | Reference realisation |
+| ----------- | ------------------------------------ | --------------------- |
+| `v ∨ w`     | composition                          | `v \| w`              |
+| `v ∧ w`     | overlap                              | `v & w`               |
+| `v ∖ w`     | residue — v beyond w                 | `v & ~w`              |
+| `\|v\|`     | μ(v) — the content measure           | `popcount(v)`         |
+| `\|x Δ y\|` | misfit mass: `\|x ∨ y\| − \|x ∧ y\|` | `popcount(x ^ y)`     |
+| `∅`         | the empty value, composition's unit  | `0`                   |
+| `a`, `abc`  | values, written as their atoms       | `{a}`, `{a,b,c}`      |
+| `σ(ν)`      | evaluation of node sequence ν        | `fold_or(nu)`         |
+| `[n₁ … nₖ]` | node sequence                        | list                  |
 
 The formalisation also uses V\* for sequences of values, and n ∈ ν for a node's multiset membership in a sequence.
 
@@ -329,7 +329,7 @@ Memory M is a finite set of klines.
 
 Different klines may have the same signature. A node may also equal the signature of another kline, so klines may reference one another.
 
-The resulting reference graph is unrestricted and may contain cycles, including canon self-reference and countersign pairs. Cycles carry no decomposition content.
+The resulting reference graph is unrestricted and may contain cycles, including canon self-reference and reciprocal pairs. Cycles carry no decomposition content.
 
 Tier membership and memory-management policy are outside this algebra.
 
@@ -384,20 +384,18 @@ fit : V × V* → Shape
 
 assigns exactly one shape to every pair. Cases are evaluated in the following order; the first matching case determines the result.
 
-| Case | Condition              | Shape      | Band |
-| ---: | ---------------------- | ---------- | ---- |
-|    1 | ν = [] or s = ∅        | Unknown    | S4   |
-|    2 | ν = [s]                | Identity   | S1   |
-|    3 | s = σ(ν)               | Canon      | S1   |
-|    4 | not covered, \|ν\| = 1 | Denotation | S3   |
-|    5 | not covered, \|ν\| > 1 | No-fit     | S3   |
-|    6 | covered, u ≠ ∅, o = ∅  | Underfit   | S2   |
-|    7 | covered, u = ∅, o ≠ ∅  | Overfit    | S2   |
-|    8 | covered, u ≠ ∅, o ≠ ∅  | Under+over | S2   |
+| Case | Condition                            | Shape      | Band |
+| ---: | ------------------------------------ | ---------- | ---- |
+|    1 | ν = [] or s = ∅                      | Unknown    | S4   |
+|    2 | ν = [s]                              | Identity   | S1   |
+|    3 | s = σ(ν)                             | Canon      | S1   |
+|    4 | not covered, \|ν\| = 1, u = ∅, o = ∅ | Denotation | S3   |
+|    5 | not covered, \|ν\| > 1, u = ∅, o = ∅ | No-fit     | S3   |
+|    6 | covered, u ≠ ∅, o = ∅                | Underfit   | S2   |
+|    7 | covered, u = ∅, o ≠ ∅                | Overfit    | S2   |
+|    8 | covered, u ≠ ∅, o ≠ ∅                | Under+over | S2   |
 
 The cases are disjoint because exactness is tested before the misfit cases, and coverage is tested before the S2 cases.
-
-If no node overlaps the head, the pair is necessarily an S3 case. Such a pair must therefore be classified as Denotation or No-fit rather than Under+over.
 
 The classifier is therefore:
 
@@ -463,7 +461,7 @@ Informally, the bands represent increasing uncertainty:
 
 Unknown is also S4's shape of no represented content: the system has no current content on the relevant side. No compiled ask takes it — the ask is the marked kline (§13).
 
-S4 is not immediately stuck. An ask starts optimistically as a full underfit: held against its goal, its entire content is underfit slots, each walkable under Definition 15. The question is held; the arrangement is the work.
+An ask's own band is S4 — the question. Its structure is canonical: the marker marks identity, not content, so σ(ν_A) is the question's content and selection (Definition 22) reads it like any kline's. Derivation licences read the relationship's band (Definition 14), never the ask's own — S4 licenses nothing.
 
 ---
 
@@ -666,7 +664,7 @@ A walk is licensed in two step forms. A **descent** crosses a held kline the cur
 
 A connotation is the designed walk segment: its head composes the underfit atom with the witness content, so a walk enters from the underfit value — contained in the head — and leaves at the witness: `m → ms → s`. Connotations chain through their witnesses: each arrival may ascend into the next head. B's side reads ν_B's klines as walk material — the goal's own canon enumerates its slots, every node accounted.
 
-A's walk departs its underfit slots — the nodes of ν_A carrying the gap. B's walk departs the held value containing the overfit, the compound the overfit composes into. Both parties walk through held klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
+A's walk departs its underfit slots — the nodes of ν_A carrying the gap. B's walk departs a held value of its own — a node or compound of ν_B containing the overfit; never a value carrying content beyond B. Both parties walk through held klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
 
 The meeting is written into memory as the **bridge** — a composed correspondence `slot_a:[slot_b]` with acquisition depth equal to the edges both walks crossed, which the main derivation may then consume: the A-side departure value is replaced by the B-side departure value. The goal is never rewritten; ν_B's klines are walk material, read and never changed.
 
@@ -742,12 +740,7 @@ Node sequences need not be equal.
 
 ### Stuck
 
-The derivation is not done and no licensed targeting replacement exists.
-
-This includes:
-
-1. no goal is present; or
-2. a goal is present but the current misfit cannot be reduced by any available correspondence, directly or through a meeting walk (Definition 15): no pair of held klines delivers a shared value to the two parties' misfit locations.
+The derivation is not done and no licensed targeting replacement exists. The current misfit cannot be reduced by any available correspondence, directly or through a meeting walk (Definition 15): no pair of held klines delivers a shared value to the two parties' misfit locations.
 
 A stuck derivation therefore represents the absence of a currently available semantic bridge in memory. Relative non-existence is an honest outcome, reachable at entry and mid-run alike.
 
@@ -909,10 +902,10 @@ No directly held kline maps w to the object content. A slot derivation is theref
 
 A's descent departs the underfit slot w. B's departs `all`, the held value containing the overfit:
 
-| Descent | Edge    | Correspondence | Licence            |
-| ------- | ------- | -------------- | ------------------ |
-| A       | w → o   | w:[o]          | w heads w:[o]      |
-| B       | all → o | all:[o]        | all heads all:[o]  |
+| Descent | Edge    | Correspondence | Licence           |
+| ------- | ------- | -------------- | ----------------- |
+| A       | w → o   | w:[o]          | w heads w:[o]     |
+| B       | all → o | all:[o]        | all heads all:[o] |
 
 The descents meet at o — a value delivered by two distinct klines, one from each side. The meeting writes the bridge:
 
@@ -920,7 +913,7 @@ The descents meet at o — a value delivered by two distinct klines, one from ea
 w:[all]
 ```
 
-with acquisition depth 2, the edges both descents crossed. The bridge says: w is replaceable by all, licensed at o. Nothing else is written — the klines the descents crossed are already held, and a value nothing heads is unreachable.
+with acquisition depth 2, the edges both descents crossed. The bridge says: w is replaceable by all, licensed at o. A bridge's B-side slot is a node of ν_B or a compound of its own — never B's head itself: the type is not a slot, and a witness that arrives at the type collapses the whole question into one node. Nothing else is written — the klines the descents crossed are already held, and a value nothing heads is unreachable.
 
 The main derivation can then apply:
 
@@ -1003,9 +996,9 @@ Depth is well-defined because licensed Canon expansion terminates (§6).
 
 Content present at entry has acquisition depth 0.
 
-Content introduced through unratified evidence records the evidence's depth plus one.
+Content introduced through composed evidence — a correspondence this derivation wrote — records the evidence's depth plus one.
 
-Content introduced through ratified evidence inherits the evidence depth without the additional penalty.
+Content introduced through standing evidence — a held kline — inherits the evidence's recorded depth.
 
 Canon-mode rewrites do not change acquisition depth because they do not introduce new content.
 
@@ -1029,7 +1022,7 @@ Complexity is the measure of work — how much effort arriving at that significa
 complexity = 1 − δ^(D̄ + Ĥ),
 ```
 
-the complement of the discount over both depths (0 < δ < 1; both denominated in edges). Entry content and ratified standing licences cost nothing; deeper decomposition and unratified acquisition raise it. Complexity is independent of significance: it prices moving between embedded concepts, and never selects a band.
+the complement of the discount over both depths (0 < δ < 1; both denominated in edges). Entry content and standing licences cost nothing; deeper decomposition and composed acquisition raise it. Complexity is independent of significance: it prices moving between embedded concepts, and never selects a band.
 
 Their composite is γ:
 
@@ -1042,7 +1035,7 @@ Their composite is γ:
 Consequently:
 
 - deeper decomposition raises complexity;
-- unratified acquisition raises complexity;
+- composed acquisition raises complexity;
 - equal-content states can differ in complexity when reached by different paths.
 
 γ is directional by design: it grades this derivation's effort toward its goal. B's depths are B's own derivation's problem.
@@ -1060,9 +1053,9 @@ Four properties of the measure:
 1. **Band-consistency.** Significance is 0 exactly at content-disjointness and 1 exactly at value-equality — the band's two ends. The depths only scale γ down.
 2. **Granularity-invariance.** Witnessed moves change complexity only through D̄, never through recomposition. Content-weighted composition is blind to how content is sliced into nodes. An unweighted per-slot mean violates this: expansion alone can raise it at constant content and constant depth.
 3. **Granularity-monotonicity.** Expand strictly increases D̄, so strictly increases complexity; contract strictly decreases it. This makes gratuitous expansion detectable.
-4. **Provenance-monotonicity.** Unratified acquisition strictly increases Ĥ, and nothing in a derivation lowers it — only ratification or re-derivation through ratified licences does. This makes promise-stacking detectable.
+4. **Provenance-monotonicity.** Composed acquisition strictly increases Ĥ, and nothing in a derivation lowers it — only re-derivation through standing licences does. This makes promise-stacking detectable.
 
-The monotonicities are properties of the intended strategy model, not guarantees for arbitrary mixed derivations. Consuming unratified evidence can lower γ even as J rises — the step that wins the answer dips. That dip is the price signal steering strategy toward ratified standing licences.
+The monotonicities are properties of the intended strategy model, not guarantees for arbitrary mixed derivations. Consuming composed evidence can lower γ even as J rises — the step that wins the answer dips. That dip is the price signal steering strategy toward standing licences.
 
 ### Rate of change
 
@@ -1100,9 +1093,9 @@ For δ = 1/2:
 γ = 2^(−9/5) ≈ 0.29 — significance 1.0 at complexity 1 − 2^(−9/5) ≈ 0.71.
 ```
 
-The answer is therefore complete at full significance, high complexity: the work records the cost of reaching the answer through unratified evidence.
+The answer is therefore complete at full significance, high complexity: the work records the cost of reaching the answer through composed evidence.
 
-Ratification can remove that cost on a subsequent derivation by allowing the same correspondence to be traversed without the unratified penalty.
+A standing licence removes that cost: once written into memory, the same correspondence is traversed at its recorded depth, without the composed penalty.
 
 ---
 
@@ -1142,11 +1135,12 @@ A held kline
 K = t:ν_K ∈ M
 ```
 
-is a candidate goal for A when its content covers a node of ν_A:
-
-```text
-n ∧ σ(ν_K) ≠ ∅, for some node n ∈ ν_A    (Definition 8).
-```
+is a candidate goal for A when each of its nodes is covered from ν_A:
+every node t of ν_K is a node of ν_A, or the end of a witness path
+over held klines — a chain of correspondences whose every kline is
+held in M, walked in either direction. Coverage is memory-relative:
+a memory without the paths leaves the kline uncovered — and
+unselected.
 
 The candidates, ordered by descending γ(A, K), are the goal list. γ is the composite (Definition 20): the significance of working from A toward the candidate — content overlap between the two parties — net of the complexity of reaching it. γ, not band, sets the order.
 
@@ -1215,20 +1209,19 @@ These terms are descriptive rather than additional algebraic primitives.
 
 # 13. KScript Surface Syntax
 
-KScript is a surface language for constructing klines and kline pairs.
+KScript is a surface language for constructing klines.
 
 The syntax specifies an intended structure; the algebra then determines the actual fit shape.
 
-| Token           | Structure                               | Band claim once solved             |
-| --------------- | --------------------------------------- | ---------------------------------- |
-| `a == b => c d` | `a|ASK:[a's canon nodes]` (the ask) and the goal `b:[c,d]` | S4 ask; goal S1 (Canon) or open S2 |
-| `a => b c d`    | `a:[b,c,d]`                             | S1 (Canon) or open S2              |
-| `a = a`         | `a:[a]`                                 | S1                                 |
-| `a > b`         | `ab:[b]`                                | S2                                 |
-| `a = b`         | `a:[b]`                                 | S3                                 |
-| `a > a`         | `a:[a]`                                 | S1                                 |
-| `a`             | `a|ASK:[a]`                             | S4 — the ask                       |
-| ask-annotated   | any signature carrying the ASK marker   | S4                                 |
+| Token         | Structure                             | Band claim once solved |
+| ------------- | ------------------------------------- | ---------------------- |
+| `a => b c d`  | `a:[b,c,d]`                           | S1 (Canon) or open S2  |
+| `a = a`       | `a:[a]`                               | S1                     |
+| `a > b`       | `ab:[b]`                              | S2                     |
+| `a = b`       | `a:[b]`                               | S3                     |
+| `a > a`       | `a:[a]`                               | S1                     |
+| `a`           | `a\|ASK:[a]`                          | S4 — the ask           |
+| ask-annotated | any signature carrying the ASK marker | S4                     |
 
 `ASK` is the ASK marker (word-word bit 31): it marks identity, never
 content — every content measurement masks it out — and the ask's canon
@@ -1254,31 +1247,6 @@ but that kline is Canon only when:
 ```text
 a = σ([b,c,d]).
 ```
-
-Similarly:
-
-```text
-a == b => c d
-```
-
-declares goal-targeted training. It creates the queued entry
-
-```text
-a|ASK:[a's canon nodes]
-```
-
-— the ask, S4 — and the implied goal
-
-```text
-b:[c,d]
-```
-
-whose witness is the `=>` block's scaffolding: a Canon when the block
-decomposes b exactly, an open covered misfit otherwise. No pair is
-created. The goal is a held kline like any other; the engine's own
-selection (Definition 22) is unchanged. What the goal adds is a true
-answer key: the trainer can compare the trainee's proposals against
-b's content rather than against the trainee's own candidate ordering.
 
 The `>` form creates:
 
@@ -1307,7 +1275,7 @@ not decreed — and it is outside the content measure: no measurement weighs it,
 and selection (Definition 22) reads the question's content through the
 nodes.
 
-The `=>` operator establishes a composition claim and supplies a goal for completion checking. It is not itself a rewrite licence; licences are correspondence klines (§6).
+The `=>` operator establishes a composition claim; it is not itself a rewrite licence — licences are correspondence klines (§6).
 
 Ratification, tier management, queue policy, and other protocol behaviour remain outside the algebra.
 
@@ -1328,12 +1296,6 @@ Trainer, trainee, supervisor, escalation, and related orchestration belong to th
 ### KScript compilation
 
 Token expansion, word binding, and annotations belong to the implementation and to CONTEXT.md.
-
-### Countersigning and ratification
-
-The algebra defines the relevant kline shapes. Ratification is a protocol operation that changes how those klines are treated.
-
-In particular, a trainer's countersign of a proposal creates a standing one-hop correspondence between the proposal's parties. The correspondence then becomes reusable without the acquisition penalty associated with an unratified traversal. The KScript `==` token is not this countersign: it declares the training pair (ask and implied goal) whose proposals the countersign ratifies.
 
 ---
 
@@ -1422,13 +1384,13 @@ MASK = 0x7FFF_FFFF_0000_0000
 
 ### The capabilities realised
 
-| Definition 1        | realisation                                                  |
-| ------------------- | ------------------------------------------------------------ |
-| `v ∨ w`             | `a \| b` — full-word OR (token cargo may accumulate; inert)  |
-| `v ∧ w`             | `(a & b) & MASK`                                             |
-| `v ∖ w`             | `(a & ~b) & MASK`                                            |
-| `\|v\|`             | `popcount(a & MASK)`                                         |
-| content equality    | equality under the mask                                      |
+| Definition 1     | realisation                                                 |
+| ---------------- | ----------------------------------------------------------- |
+| `v ∨ w`          | `a \| b` — full-word OR (token cargo may accumulate; inert) |
+| `v ∧ w`          | `(a & b) & MASK`                                            |
+| `v ∖ w`          | `(a & ~b) & MASK`                                           |
+| `\|v\|`          | `popcount(a & MASK)`                                        |
+| content equality | equality under the mask                                     |
 
 Derived forms are exact: `|x Δ y| = popcount((x ^ y) & MASK)`; `J(x,y) = popcount((x ∧ y) & MASK) / popcount((x ∨ y) & MASK)`.
 

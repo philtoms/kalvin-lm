@@ -95,6 +95,7 @@
 - [[sources/kalvin-doc-normative-split]] — Kalvin doc normative split: algebra vs CONTEXT.md *(created: 2026-09-12)*
 - [[sources/ks2-conformance-series-landing]] — ks2 conformance series: 6 commits to the engine entry path *(created: 2026-09-12)*
 - [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
+- [[sources/kscript-import-shared-emitter-semantics]] — kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix *(created: 2026-09-23)*
 - [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
@@ -335,6 +336,19 @@
 - [[sources/obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on]] — Observation: Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a]] — Observation: Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list]] — Observation: WorkRunner cogitates the popped item, not the whole work list *(created: 2026-09-22)*
+- [[sources/obs-2026-09-23-13-audited-supplies-a-goal-clause-deleted-table-stays-pendin]] — Observation: §13 audited: supplies-a-goal clause deleted; table stays pending home decision *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m]] — Observation: B-departure tightened: bridges stay within B, never the type — mhall proposes the walked answer *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele]] — Observation: Countersignature removed from algebra: one "goal", given vs selected; standing vs composed evidence *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-]] — Observation: Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given) *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s]] — Observation: Given-goal feed removed: engine pure algebra, mhall honestly silent *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-]] — Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc]] — Observation: KNode labels preserved through the walk into cogitate's batch *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk]] — Observation: kscript import statement implemented (shared-emitter walk) *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th]] — Observation: No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf]] — Observation: No S4 law: uniform selection; the real seam is the pure-underfit relationship *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no]] — Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-]] — Observation: Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-walk-coverage-selection-in-svo-selected-both-scripts-reach-d]] — Observation: Walk-coverage selection in: SVO selected, both scripts reach done — with cascade + head-adoption side-effects *(created: 2026-09-23)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -344,4 +358,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-22T18:05:05.931Z* | *Total pages: 332*
+*Last updated: 2026-09-23T16:09:18.522Z* | *Total pages: 346*
