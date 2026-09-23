@@ -1,5 +1,11 @@
 # Wiki Update Log
 
+## 2026-09-23
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no","title":"== removed from algebra: ask is an unmatched underfit, no goal, no witness"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele","title":"Countersignature removed from algebra: one \"goal\", given vs selected; standing vs composed evidence"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-","title":"Goal vs target disambiguated: Def 22 selects goals, == gives the target"}
+
 ## 2026-09-22
 
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-22-evidence-reversed-mhall-s-v-o-proposal-supersedes-svo-words-","title":"Evidence reversed: MHALL:[S,V,O] proposal supersedes SVO:[words] evidence form"}

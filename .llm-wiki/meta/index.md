@@ -335,6 +335,9 @@
 - [[sources/obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on]] — Observation: Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a]] — Observation: Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list]] — Observation: WorkRunner cogitates the popped item, not the whole work list *(created: 2026-09-22)*
+- [[sources/obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele]] — Observation: Countersignature removed from algebra: one "goal", given vs selected; standing vs composed evidence *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-]] — Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no]] — Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness *(created: 2026-09-23)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -344,4 +347,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-22T18:05:05.931Z* | *Total pages: 332*
+*Last updated: 2026-09-23T11:18:57.337Z* | *Total pages: 335*

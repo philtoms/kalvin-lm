@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-22T18:05:05.931Z",
+  "last_updated": "2026-09-23T11:18:57.337Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4866,6 +4866,64 @@
       "source_context": "Per-item cogitation in WorkRunner",
       "created": "2026-09-22",
       "updated": "2026-09-22"
+    },
+    "sources/obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele": {
+      "type": "source",
+      "title": "Observation: Countersignature removed from algebra: one \"goal\", given vs selected; standing vs composed evidence",
+      "tags": [
+        "algebra",
+        "countersignature",
+        "ratification",
+        "goal",
+        "given-selected",
+        "doc-sweep"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T10:22:58.549Z",
+      "source_context": "Removing countersignature from the algebra per Phil's ruling",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-": {
+      "type": "source",
+      "title": "Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target",
+      "tags": [
+        "terminology",
+        "goal",
+        "target",
+        "def22",
+        "==",
+        "declaration"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T08:04:52.684Z",
+      "source_context": "Resolving the goal/target terminology conflation",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no": {
+      "type": "source",
+      "title": "Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness",
+      "tags": [
+        "algebra",
+        "==",
+        "subjective-goal",
+        "removal",
+        "s4",
+        "unmatched-underfit",
+        "ask"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T11:18:57.274Z",
+      "source_context": "Removing the == subjective goal from the algebra",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",
