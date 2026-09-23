@@ -389,8 +389,8 @@ assigns exactly one shape to every pair. Cases are evaluated in the following or
 |    1 | ν = [] or s = ∅                      | Unknown    | S4   |
 |    2 | ν = [s]                              | Identity   | S1   |
 |    3 | s = σ(ν)                             | Canon      | S1   |
-|    4 | not covered, \|ν\| = 1, u = ∅, o = ∅ | Denotation | S3   |
-|    5 | not covered, \|ν\| > 1, u = ∅, o = ∅ | No-fit     | S3   |
+|    4 | not covered, \|ν\| = 1                | Denotation | S3   |
+|    5 | not covered, \|ν\| > 1                | No-fit     | S3   |
 |    6 | covered, u ≠ ∅, o = ∅                | Underfit   | S2   |
 |    7 | covered, u = ∅, o ≠ ∅                | Overfit    | S2   |
 |    8 | covered, u ≠ ∅, o ≠ ∅                | Under+over | S2   |
@@ -640,7 +640,7 @@ The relationship C(A,B) determines the region in which targeting may occur. The 
 | S3                | replacement permitted; all nodes are in the misfit |
 | S4                | none; the derivation is stuck                      |
 
-The restriction reads on both ends of the move: forward, the departed node carries underfit content or the arriving witness adopts overfit content; reverse, the consumed nodes carry the underfit or the arriving head lands in the overfit. An empty underfit therefore bars nothing — an overfit relationship is worked by adoption, on the arrival clause alone.
+The restriction reads on both ends of the move: forward, the departed node carries underfit content or the arriving witness adopts overfit content; reverse, every consumed node carries underfit content or the arriving head lands in the overfit. An empty underfit therefore bars nothing — an overfit relationship is worked by adoption, on the arrival clause alone.
 
 A targeting replacement is licensed only when it strictly decreases:
 
