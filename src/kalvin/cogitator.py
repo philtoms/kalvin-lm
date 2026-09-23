@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from kalvin.derivation import DerivationResult
 from kalvin.hop import run_hops
-from kalvin.kline import KLine, canon_key
+from kalvin.kline import KLine, KNode, canon_key
 from kalvin.kvalue import KValue
 from kalvin.memory import Memory
 from kalvin.significance import gamma_to_byte
@@ -105,9 +105,10 @@ def _propose(
             # Done without moving — the queued kline as held: the
             # ground path's done, not a derivation's answer.
             continue
-        proposal = KLine(
-            canon_key(kline.signature), result.trace[-1]
-        )
+        sig = canon_key(kline.signature)
+        if isinstance(kline.signature, KNode):
+            sig = KNode(sig, kline.signature.label)
+        proposal = KLine(sig, result.trace[-1])
         if not state.is_refused(proposal):
             batch.append(KValue(proposal, gamma_to_byte(result.j1)))
     return batch

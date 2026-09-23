@@ -229,7 +229,8 @@ class Hop:
         writer = next(
             (r for r in reversed(res.results) if r.composed), res.results[-1]
         )
-        # The ask's goal declaration rides the re-entry — selection keeps it.
+        # dbg rides the re-entry for presentation only — nothing in
+        # the engine reads it.
         return KLine(
             self.queued.signature, writer.trace[-1], dbg=self.queued.dbg
         )
