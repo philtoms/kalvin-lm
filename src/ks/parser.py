@@ -2,7 +2,8 @@
 
 Grammar::
 
-    script          ::= construct*
+    script          ::= import* construct*
+    import          ::= "import" sig
     construct       ::= block | annotation | operator_scope
     block           ::= INDENT construct+ DEDENT
     annotation      ::= ANNOTATION
@@ -12,6 +13,14 @@ Grammar::
     item            ::= sig | annotation | operator_scope
     sig             ::= SIGNATURE
     operator        ::= COUNTERSIGNS | CANONICALISES | CONNOTES | RCONNOTES | DENOTES
+
+Import statements:
+
+    ``import mhall`` resolves and compiles the module's source ahead of the
+    script's own constructs (semantics in ks.compiler). ``import`` is a
+    reserved word at construct position only, and imports must precede all
+    other constructs — a mid-script or nested import is a parse error. As
+    an item (``W > import``) it stays an ordinary word.
 
 Scope rules enforced:
 
@@ -56,6 +65,7 @@ from ks.ast import (
     Annotation,
     Block,
     ConstructItem,
+    Import,
     KScriptFile,
     OperatorScope,
     ScopeItem,
@@ -126,6 +136,7 @@ class Parser:
         self.tokens = tokens
         self.pos: int = 0
         self._newlines_skipped: int = 0
+        self._body_started: bool = False  # any non-import construct seen
 
     # Public API
 
@@ -157,15 +168,42 @@ class Parser:
         """Dispatch to the correct construct parser based on the next token."""
         tok = self._peek()
         if tok.type == TokenType.INDENT:
+            self._body_started = True
             return self._parse_block()
         if tok.type == TokenType.ANNOTATION:
+            self._body_started = True
             return self._parse_annotation_construct()
         if tok.type == TokenType.SIGNATURE:
+            if tok.value == "import":
+                return self._parse_import()
+            self._body_started = True
             return self._parse_operator_scope()
         raise ParseError(
             f"Unexpected token {tok.type.name}; expected INDENT, ANNOTATION, or SIGNATURE",
             tok,
         )
+
+    # Import  ("import" sig)
+
+    def _parse_import(self) -> Import:
+        """Parse ``import <module>`` — reserved at construct position only.
+
+        Imports must precede all other constructs (a mid-script or nested
+        import is a parse error) so the module's entries and word bindings
+        unambiguously precede the script's own.
+        """
+        imp = self._advance()  # 'import'
+        if self._body_started:
+            raise ParseError("imports must precede all other constructs", imp)
+        if self._at_end() or self._peek().type != TokenType.SIGNATURE:
+            raise ParseError("import expects a module name", self._peek())
+        module = self._advance()
+        nxt = self._peek()
+        if nxt.type not in (TokenType.NEWLINE, TokenType.EOF, TokenType.DEDENT):
+            raise ParseError(
+                f"import takes a bare module name, not {nxt.type.name}", nxt
+            )
+        return Import(module=module.value, line=imp.line, column=imp.column)
 
     # Block  (INDENT construct+ DEDENT)
 

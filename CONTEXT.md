@@ -200,6 +200,9 @@ _Avoid_: comment
 A signature composed of multiple words — introduced by expansion (an ALL-UPPER identifier), CONNOTES concatenation, or synthesis from a sigless annotation's initials — whose value is the OR-reduction of its component words' values, taking no word bit of its own (`src/ks/ast_emitter.py`, `src/ks/token_encoder.py`).
 _Avoid_: decomposition (a Canon decomposes into nodes; an expansion introduces a compound's words); MTS (superseded name for the expansion)
 
+**Import**:
+A compile-time directive — `import <module>` — declaring that the module's encounter precedes the script's own: its compiled entries prepend in import order (depth-first; a module imports once however many paths reach it; cycles are errors), and its word lists seed the importing script's root binding scope exactly as prior-state known_words do (the script's own lists are searched first and always win; a file boundary resets the occurrence counters). Compound canons register once across the boundary, so a reference reuses the module's decomposition and signature value. `import` is reserved at construct position only and must precede all other constructs; module resolution is a `resolver` — module name → source (`path_resolver` searches `<dir>/<name>.ks`; the dialogue harness resolves against the script's own directory) (`src/ks/compiler.py`, `src/ks/parser.py`).
+
 **Word Binding**:
 The association of a single-character signature with a word, resolved through annotations — inline annotation over word lists over resolved bindings, ambient attraction sig-case-gated, and acquisition-order seeding across scripts (the full algorithm: `src/ks/binding_scope.py`; case framing: `src/ks/lexer.py`).
 _Avoid_: comment mapping, rebind

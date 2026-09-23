@@ -73,6 +73,17 @@ class OperatorScope:
 
 
 @dataclass
+class Import:
+    """An ``import <module>`` statement — a compile-time directive, not an
+    encounter: the module's entries precede the script's own and its words
+    seed the root binding scope (resolution in ks.compiler)."""
+
+    module: str
+    line: int
+    column: int
+
+
+@dataclass
 class Block:
     """INDENT construct+ DEDENT — an indented block of constructs."""
 
@@ -92,9 +103,9 @@ class KScriptFile:
 
 # Type aliases
 
-ConstructItem: TypeAlias = "Annotation | OperatorScope | Block"
+ConstructItem: TypeAlias = "Annotation | OperatorScope | Block | Import"
 """Top-level construct types — what can appear in Block.constructs and KScriptFile.constructs.
-construct ::= block | annotation | operator_scope.
+construct ::= block | annotation | operator_scope | import.
 """
 
 ScopeItem: TypeAlias = "Signature | Annotation | OperatorScope"

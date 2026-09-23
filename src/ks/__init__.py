@@ -17,6 +17,8 @@ no ``output()`` method, no ``to_jsonl()``.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from kalvin.abstract import KSignifier, KTokenizer
 from kalvin.kline import KLine
 from kalvin.kvalue import KValue
@@ -24,14 +26,16 @@ from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
 
 from .ast_emitter import SymbolicEntry
-from .compiler import Compiler, compile_source
+from .compiler import Compiler, CompileError, compile_source, path_resolver
 
 __all__ = [
     "KScript",
     "KLine",
     "KValue",
     "Compiler",
+    "CompileError",
     "compile_source",
+    "path_resolver",
     "SymbolicEntry",
 ]
 
@@ -46,6 +50,7 @@ class KScript:
         source: KScript source code string.
         tokenizer: Tokenizer for encoding (default: BPETokenizer; tokenizer data is mandatory).
         dev: Enable development/diagnostic mode.
+        resolver: Module name → source, for ``import`` statements.
 
     Example::
 
@@ -59,6 +64,7 @@ class KScript:
         tokenizer: KTokenizer | None = None,
         signifier: KSignifier | None = None,
         dev: bool = False,
+        resolver: Callable[[str], str] | None = None,
     ) -> None:
         self._tokenizer: KTokenizer = tokenizer or BPETokenizer()
         self._signifier: KSignifier = signifier or NLPSignifier()
@@ -68,6 +74,7 @@ class KScript:
             tokenizer=self._tokenizer,
             signifier=self._signifier,
             dev=self._dev,
+            resolver=resolver,
         )
 
     @property
