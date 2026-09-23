@@ -96,6 +96,7 @@
 - [[sources/ks2-conformance-series-landing]] — ks2 conformance series: 6 commits to the engine entry path *(created: 2026-09-12)*
 - [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
 - [[sources/kscript-import-shared-emitter-semantics]] — kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix *(created: 2026-09-23)*
+- [[sources/maude-lexing-and-kind-pitfalls-kalvin-template]] — Maude lexing and kind pitfalls in the Kalvin template *(created: 2026-09-23)*
 - [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
@@ -340,10 +341,12 @@
 - [[sources/obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m]] — Observation: B-departure tightened: bridges stay within B, never the type — mhall proposes the walked answer *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele]] — Observation: Countersignature removed from algebra: one "goal", given vs selected; standing vs composed evidence *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-]] — Observation: Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given) *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-fit-table-cases-4-5-fixed-def-14-consumed-nodes-clause-tight]] — Observation: Fit table cases 4–5 fixed; Def 14 consumed-nodes clause tightened to "every" *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s]] — Observation: Given-goal feed removed: engine pure algebra, mhall honestly silent *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-]] — Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc]] — Observation: KNode labels preserved through the walk into cogitate's batch *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk]] — Observation: kscript import statement implemented (shared-emitter walk) *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-maude-template-updated-to-def-15-meeting-walk-def-13-inertne]] — Observation: Maude template updated to Def 15 meeting walk + Def 13 inertness + one-ask structure *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th]] — Observation: No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf]] — Observation: No S4 law: uniform selection; the real seam is the pure-underfit relationship *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no]] — Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness *(created: 2026-09-23)*
@@ -358,4 +361,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-23T16:09:18.522Z* | *Total pages: 346*
+*Last updated: 2026-09-23T17:36:48.216Z* | *Total pages: 349*

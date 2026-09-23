@@ -2,6 +2,9 @@
 
 ## 2026-09-23
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-23-fit-table-cases-4-5-fixed-def-14-consumed-nodes-clause-tight","title":"Fit table cases 4–5 fixed; Def 14 consumed-nodes clause tightened to \"every\""}
+- **retro**: {"category":"formal-spec","slug":"maude-lexing-and-kind-pitfalls-kalvin-template","title":"Maude lexing and kind pitfalls in the Kalvin template"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-23-maude-template-updated-to-def-15-meeting-walk-def-13-inertne","title":"Maude template updated to Def 15 meeting walk + Def 13 inertness + one-ask structure"}
 - **retro**: {"category":"architecture","slug":"kscript-import-shared-emitter-semantics","title":"kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk","title":"kscript import statement implemented (shared-emitter walk)"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc","title":"KNode labels preserved through the walk into cogitate's batch"}

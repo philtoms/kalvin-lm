@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-23T16:09:18.522Z",
+  "last_updated": "2026-09-23T17:36:48.216Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -649,6 +649,15 @@
       "category": "architecture",
       "status": "insight",
       "slug": "kscript-import-shared-emitter-semantics",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/maude-lexing-and-kind-pitfalls-kalvin-template": {
+      "type": "source",
+      "title": "Maude lexing and kind pitfalls in the Kalvin template",
+      "category": "formal-spec",
+      "status": "insight",
+      "slug": "maude-lexing-and-kind-pitfalls-kalvin-template",
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },
@@ -4955,6 +4964,23 @@
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },
+    "sources/obs-2026-09-23-fit-table-cases-4-5-fixed-def-14-consumed-nodes-clause-tight": {
+      "type": "source",
+      "title": "Observation: Fit table cases 4–5 fixed; Def 14 consumed-nodes clause tightened to \"every\"",
+      "tags": [
+        "kalvin-algebra",
+        "docs",
+        "fit",
+        "def14"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-fit-table-cases-4-5-fixed-def-14-consumed-nodes-clause-tight",
+      "relevance": "high",
+      "observed_at": "2026-09-23T17:36:48.133Z",
+      "source_context": "Fixing fit-table inconsistency and tightening Def 14 reverse-licence wording in kalvin-algebra.md",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
     "sources/obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s": {
       "type": "source",
       "title": "Observation: Given-goal feed removed: engine pure algebra, mhall honestly silent",
@@ -5029,6 +5055,23 @@
       "relevance": "critical",
       "observed_at": "2026-09-23T16:09:08.025Z",
       "source_context": "Extending kscript syntax with an import statement",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-23-maude-template-updated-to-def-15-meeting-walk-def-13-inertne": {
+      "type": "source",
+      "title": "Observation: Maude template updated to Def 15 meeting walk + Def 13 inertness + one-ask structure",
+      "tags": [
+        "maude",
+        "formal-spec",
+        "kalvin-algebra",
+        "def15-meeting"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-maude-template-updated-to-def-15-meeting-walk-def-13-inertne",
+      "relevance": "high",
+      "observed_at": "2026-09-23T16:56:37.307Z",
+      "source_context": "Bringing docs/kalvin-algebra.maude up to spec with latest rules",
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },

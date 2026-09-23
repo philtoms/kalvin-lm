@@ -866,3 +866,12 @@
 ## [2026-09-23T16:09:18.455Z] retro
 - slug: "kscript-import-shared-emitter-semantics", title: "kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix", category: "architecture"
 
+## [2026-09-23T16:56:37.309Z] observe
+- slug: "obs-2026-09-23-maude-template-updated-to-def-15-meeting-walk-def-13-inertne", title: "Maude template updated to Def 15 meeting walk + Def 13 inertness + one-ask structure", relevance: "high"
+
+## [2026-09-23T16:56:37.311Z] retro
+- slug: "maude-lexing-and-kind-pitfalls-kalvin-template", title: "Maude lexing and kind pitfalls in the Kalvin template", category: "formal-spec"
+
+## [2026-09-23T17:36:48.136Z] observe
+- slug: "obs-2026-09-23-fit-table-cases-4-5-fixed-def-14-consumed-nodes-clause-tight", title: "Fit table cases 4–5 fixed; Def 14 consumed-nodes clause tightened to \"every\"", relevance: "high"
+

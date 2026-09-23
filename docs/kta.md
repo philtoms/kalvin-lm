@@ -1,4 +1,4 @@
-# Kalvin as a term algebra - first pass
+# Kalvin as a term algebra - first pass
 
 In universal algebra and mathematical logic, a [term algebra](https://en.wikipedia.org/wiki/Term_algebra) is a freely generated algebraic structure built entirely out of syntax using formal symbols. [1]
 
@@ -17,7 +17,7 @@ In universal algebra and mathematical logic, a [term algebra](https://en.wikiped
 
 ## Homomorphisms and Substitutions in Term Algebras
 
-## In a term algebra, structural operations mimic the syntax of the language itself. Because it is a freely generated structure, mapping terms to other structures—or replacing variables within the terms—follows clean, recursive algebraic properties.
+In a term algebra, structural operations mimic the syntax of the language itself. Because it is a freely generated structure, mapping terms to other structures—or replacing variables within the terms—follows clean, recursive algebraic properties.
 
 ## 1. Homomorphisms and the Universal Property
 
@@ -223,8 +223,6 @@ Let's evaluate the formula $\psi = \text{NOT}(k_A, \text{makeKline}(n_1, n_2, n_
     $$\text{Is } ((0, 1, 0), (1, 0, 1)) \in \text{NOT}^\mathcal{M}?$$
     Since $(1, 0, 1)$ is the exact bitwise inversion of $(0, 1, 0)$, the relation holds true under this valuation.
 
-Would you like to see how we define an equational theory over this 2-sorted setup—for instance, writing structural axioms like $\text{AND}(k, k, k)$ to prove algebraic properties—or explore how this framework translates directly into hardware description languages like VHDL/Verilog structural netlists?
-
 To define an equational theory over our 2-sorted term algebra, we shift from describing specific semantic models to defining purely syntactic rules of balance and identity.
 An equational theory consists of a set of equations (pairs of terms of the exact same sort) that are assumed to be universally true. We then use a formal deduction system to prove new equations without ever evaluating them into bits or hardware.
 
@@ -352,11 +350,11 @@ The engine scans the subterms of t₂. It finds a redex in the first argument sl
 
 ## Terminal State: Normal Form
 
-## The engine scans t₃ again. No further left-hand patterns from our rule set match any part of the expression. The rewriting stops. t₃ is declared the Normal Form of our initial expression.
+The engine scans t₃ again. No further left-hand patterns from our rule set match any part of the expression. The rewriting stops. t₃ is declared the Normal Form of our initial expression.
 
 ## 4. Critical Mathematical Properties of a TRS
 
-For a term rewriting system to be reliable (like an optimizing compiler or an automated hardware prover), it must satisfy two properties:
+For the Kalvin term rewriting system to be reliable, it must satisfy two properties:
 
 - Termination (Strong Normalization): The rewriting process must never loop infinitely. Because each of our rules visibly reduces the number of function applications or nesting depth, our kline TRS is guaranteed to terminate.
 - Confluence (The Church-Rosser Property): If a term has multiple subterms that can be rewritten at the same time, the order in which you choose to apply the rules must not matter. You will always end up with the exact same final normal form.
