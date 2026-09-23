@@ -1210,19 +1210,19 @@ These terms are descriptive rather than additional algebraic primitives.
 
 # 13. KScript Surface Syntax
 
-KScript is a surface language for constructing klines and kline pairs.
+KScript is a surface language for constructing klines.
 
 The syntax specifies an intended structure; the algebra then determines the actual fit shape.
 
-| Token         | Structure                             | Band claim once solved |
-| ------------- | ------------------------------------- | ---------------------- | ------------ |
-| `a => b c d`  | `a:[b,c,d]`                           | S1 (Canon) or open S2  |
-| `a = a`       | `a:[a]`                               | S1                     |
-| `a > b`       | `ab:[b]`                              | S2                     |
-| `a = b`       | `a:[b]`                               | S3                     |
-| `a > a`       | `a:[a]`                               | S1                     |
-| `a`           | `a                                    | ASK:[a]`               | S4 — the ask |
-| ask-annotated | any signature carrying the ASK marker | S4                     |
+| Token           | Structure                             | Band claim once solved |
+| --------------- | ------------------------------------- | ---------------------- |
+| `a => b c d`    | `a:[b,c,d]`                           | S1 (Canon) or open S2  |
+| `a = a`         | `a:[a]`                               | S1                     |
+| `a > b`         | `ab:[b]`                              | S2                     |
+| `a = b`         | `a:[b]`                               | S3                     |
+| `a > a`         | `a:[a]`                               | S1                     |
+| `a`             | `a\|ASK:[a]`                          | S4 — the ask           |
+| ask-annotated   | any signature carrying the ASK marker | S4                     |
 
 `ASK` is the ASK marker (word-word bit 31): it marks identity, never
 content — every content measurement masks it out — and the ask's canon
@@ -1276,7 +1276,7 @@ not decreed — and it is outside the content measure: no measurement weighs it,
 and selection (Definition 22) reads the question's content through the
 nodes.
 
-The `=>` operator establishes a composition claim and supplies a goal for completion checking. It is not itself a rewrite licence; licences are correspondence klines (§6).
+The `=>` operator establishes a composition claim; it is not itself a rewrite licence — licences are correspondence klines (§6).
 
 Ratification, tier management, queue policy, and other protocol behaviour remain outside the algebra.
 
