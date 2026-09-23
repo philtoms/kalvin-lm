@@ -6,7 +6,7 @@ from pathlib import Path
 
 from kalvin.bpe_tokenizer import BPETokenizer
 from kalvin.signifier import NLPSignifier
-from ks.compiler import compile_source
+from ks.compiler import compile_source, path_resolver
 
 
 def main() -> None:
@@ -27,6 +27,7 @@ def main() -> None:
         Path(args.script).read_text(),
         tokenizer=tok, signifier=sigf, dev=True,
         word_bits=word_bits, known_words=known_words,
+        resolver=path_resolver(Path(args.script).parent),
     )
     for e in entries:
         print("   ", e.kline.signature.label, [n.label for n in e.kline.nodes],

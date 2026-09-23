@@ -112,6 +112,7 @@ class Harness:
         rationaliser: Rationaliser,
         escalate: Callable[[KValue], KValue] | None = None,
         scaffolding: Literal["batch", "on-demand"] = "batch",
+        resolver: Callable[[str], str] | None = None,
     ) -> None:
         self._tokenizer = tokenizer
         self._rationaliser = rationaliser
@@ -129,6 +130,8 @@ class Harness:
         # The prior state's words in acquisition order — the compile's
         # outermost word list, binding chars the script cannot bind itself.
         self.known_words: list[str] = []
+        # Module name → source, for scripts with ``import`` statements.
+        self.resolver: Callable[[str], str] | None = resolver
 
     @property
     def rationaliser(self) -> Rationaliser:
@@ -159,6 +162,7 @@ class Harness:
         entries = compile_source(
             source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True,
             word_bits=self.word_bits, known_words=self.known_words,
+            resolver=self.resolver,
         )
         # A `==` ask feeds at its subjective significance toward the goal
         # (Def 20): fresh content carries zero depths, so γ(A, B) = J of the
@@ -175,7 +179,7 @@ class Harness:
                 (
                     g for g in entries
                     if g.kline.dbg and g.kline.dbg.label == d.goal
-                    and g.kline.nodes
+                    and g.kline.nodes and not is_ask(g.kline.signature)
                 ),
                 None,
             )
@@ -387,7 +391,8 @@ class Harness:
         from ks.parser import Parser
         compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True,
                             word_bits=self.word_bits,
-                            known_words=self.known_words)
+                            known_words=self.known_words,
+                            resolver=self.resolver)
         compiler.compile(Parser(Lexer(source).tokenize()).parse())
         return {
             sig: word
@@ -560,7 +565,8 @@ def _state_labels(state: Memory) -> dict[int, str]:
 
 def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
                   word_bits: dict[str, int] | None = None,
-                  state: Memory | None = None) -> dict[int, str]:
+                  state: Memory | None = None,
+                  resolver: Callable[[str], str] | None = None) -> dict[int, str]:
     """Recompile once to recover ``{signature: scripted label}`` for display.
 
     Compiled-entry labels are authoritative; the encoder's ``node_labels``
@@ -570,7 +576,8 @@ def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
     from ks.compiler import Compiler
     from ks.lexer import Lexer
     from ks.parser import Parser
-    compiler = Compiler(tokenizer, signifier=signifier, dev=True, word_bits=word_bits)
+    compiler = Compiler(tokenizer, signifier=signifier, dev=True, word_bits=word_bits,
+                        resolver=resolver)
     entries = compiler.compile(Parser(Lexer(source).tokenize()).parse())
     out: dict[int, str] = dict(compiler.node_labels)
     for e in entries:
@@ -1071,8 +1078,9 @@ def present(results: list[StepResult], state: Memory, source: str,
             tokenizer: BPETokenizer, signifier: NLPSignifier, *, verbose: bool,
             pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None,
             word_bits: dict[str, int] | None = None,
-            graph: Literal["ascii", "dot", "mermaid"] | None = None) -> None:
-    labels = _sig_to_label(source, tokenizer, signifier, word_bits, state)
+            graph: Literal["ascii", "dot", "mermaid"] | None = None,
+            resolver: Callable[[str], str] | None = None) -> None:
+    labels = _sig_to_label(source, tokenizer, signifier, word_bits, state, resolver)
     last_annotation: str | None = None
     for step in results:
         annotation = step.entry.kline.dbg.annotation if step.entry.kline.dbg else ""
@@ -1221,11 +1229,15 @@ def main(argv: list[str] | None = None) -> int:
                   f"from {state_path} ──")
         else:
             harness = make_rationaliser(tok, scaffolding=scaffolding)
+        # ``import`` statements resolve against the script's own directory.
+        from ks.compiler import path_resolver
+        harness.resolver = path_resolver(source_path.parent)
         if args.structural:
             from dev.dialogue.structural import SemanticEvidence, StructuralSupervisor
 
             labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state)
+                                   harness.word_bits, harness.state,
+                                   harness.resolver)
             render = lambda v: _render_kline(v, labels, args.verbose)  # noqa: E731
             supervisor = StructuralSupervisor(
                 SemanticEvidence(harness.signifier), harness.state, render
@@ -1233,7 +1245,8 @@ def main(argv: list[str] | None = None) -> int:
             harness._escalate = supervisor
         if args.supervise:
             labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state)
+                                   harness.word_bits, harness.state,
+                                   harness.resolver)
             harness._escalate = (
                 _interactive_supervisor(labels, args.verbose)
                 if args.supervise == "interactive"
@@ -1247,7 +1260,8 @@ def main(argv: list[str] | None = None) -> int:
         results = harness.run(source)
         present(results, harness.state, source, tok, harness.signifier,
                 verbose=args.verbose, pre_grounded=pre_grounded,
-                word_bits=harness.word_bits, graph=args.graph)
+                word_bits=harness.word_bits, graph=args.graph,
+                resolver=harness.resolver)
         if state_path is not None:
             harness.state.word_bits = harness.word_bits
             # Always save state to script named path
@@ -1256,7 +1270,8 @@ def main(argv: list[str] | None = None) -> int:
             fmt = args.graph if args.graph in ("dot", "mermaid") else "dot"
             graph_path = state_path.with_suffix(".dot" if fmt == "dot" else ".mmd")
             labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state)
+                                   harness.word_bits, harness.state,
+                                   harness.resolver)
             graph_path.write_text(
                 _GRAPH_RENDERERS[fmt](harness.state, labels, args.verbose)
             )
