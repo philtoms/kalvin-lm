@@ -337,7 +337,9 @@
 - [[sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list]] — Observation: WorkRunner cogitates the popped item, not the whole work list *(created: 2026-09-22)*
 - [[sources/obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele]] — Observation: Countersignature removed from algebra: one "goal", given vs selected; standing vs composed evidence *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-]] — Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf]] — Observation: No S4 law: uniform selection; the real seam is the pure-underfit relationship *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no]] — Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-]] — Observation: Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes *(created: 2026-09-23)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -347,4 +349,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-23T11:18:57.337Z* | *Total pages: 335*
+*Last updated: 2026-09-23T12:55:09.729Z* | *Total pages: 337*

@@ -833,3 +833,9 @@
 ## [2026-09-23T11:18:57.276Z] observe
 - slug: "obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no", title: "== removed from algebra: ask is an unmatched underfit, no goal, no witness", relevance: "critical"
 
+## [2026-09-23T12:27:11.623Z] observe
+- slug: "obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf", title: "No S4 law: uniform selection; the real seam is the pure-underfit relationship", relevance: "critical"
+
+## [2026-09-23T12:55:09.660Z] observe
+- slug: "obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-", title: "Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes", relevance: "critical"
+

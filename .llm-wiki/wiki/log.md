@@ -2,6 +2,8 @@
 
 ## 2026-09-23
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-","title":"Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf","title":"No S4 law: uniform selection; the real seam is the pure-underfit relationship"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no","title":"== removed from algebra: ask is an unmatched underfit, no goal, no witness"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele","title":"Countersignature removed from algebra: one \"goal\", given vs selected; standing vs composed evidence"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-","title":"Goal vs target disambiguated: Def 22 selects goals, == gives the target"}

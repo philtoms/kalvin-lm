@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-23T11:18:57.337Z",
+  "last_updated": "2026-09-23T12:55:09.729Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4905,6 +4905,25 @@
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },
+    "sources/obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf": {
+      "type": "source",
+      "title": "Observation: No S4 law: uniform selection; the real seam is the pure-underfit relationship",
+      "tags": [
+        "s4",
+        "uniformity",
+        "def22",
+        "pure-underfit",
+        "ask",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T12:27:11.621Z",
+      "source_context": "Absorbing Phil's uniform-selection correction",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
     "sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no": {
       "type": "source",
       "title": "Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness",
@@ -4922,6 +4941,25 @@
       "relevance": "critical",
       "observed_at": "2026-09-23T11:18:57.274Z",
       "source_context": "Removing the == subjective goal from the algebra",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-": {
+      "type": "source",
+      "title": "Observation: Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes",
+      "tags": [
+        "traceability",
+        "candidates",
+        "supplied-selected",
+        "mhall",
+        "wdmh",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T12:55:09.658Z",
+      "source_context": "Making engine selection traceable in the harness presentation",
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },
