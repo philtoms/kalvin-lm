@@ -857,3 +857,6 @@
 ## [2026-09-23T14:47:44.085Z] observe
 - slug: "obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m", title: "B-departure tightened: bridges stay within B, never the type — mhall proposes the walked answer", relevance: "critical"
 
+## [2026-09-23T15:10:59.383Z] observe
+- slug: "obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc", title: "KNode labels preserved through the walk into cogitate's batch", relevance: "medium"
+

@@ -341,6 +341,7 @@
 - [[sources/obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-]] — Observation: Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given) *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s]] — Observation: Given-goal feed removed: engine pure algebra, mhall honestly silent *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-]] — Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc]] — Observation: KNode labels preserved through the walk into cogitate's batch *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th]] — Observation: No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf]] — Observation: No S4 law: uniform selection; the real seam is the pure-underfit relationship *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no]] — Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness *(created: 2026-09-23)*
@@ -355,4 +356,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-23T14:47:44.158Z* | *Total pages: 343*
+*Last updated: 2026-09-23T15:10:59.462Z* | *Total pages: 344*

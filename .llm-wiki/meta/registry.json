@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-23T14:47:44.158Z",
+  "last_updated": "2026-09-23T15:10:59.462Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4983,6 +4983,25 @@
       "relevance": "critical",
       "observed_at": "2026-09-23T08:04:52.684Z",
       "source_context": "Resolving the goal/target terminology conflation",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc": {
+      "type": "source",
+      "title": "Observation: KNode labels preserved through the walk into cogitate's batch",
+      "tags": [
+        "knode",
+        "labels",
+        "cogitate",
+        "batch",
+        "walk-bridges",
+        "fix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc",
+      "relevance": "medium",
+      "observed_at": "2026-09-23T15:10:59.381Z",
+      "source_context": "Fixing KNode label loss in cogitate's batch",
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },

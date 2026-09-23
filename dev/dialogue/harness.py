@@ -327,19 +327,19 @@ class Harness:
             replies: list[KValue] = []
             turn = Turn(feeds, grounds, deduped, derivations)
             step.turns.append(turn)
-            for ask_i, ask in enumerate(deduped):
-                if self.state.is_grounded(ask.kline):
+            for prop_i, proposal in enumerate(deduped):
+                if self.state.is_grounded(proposal.kline):
                     # K stating knowledge it already holds — not a
                     # question. No reply, no escalation.
                     continue
-                reply = self._answer(ask, heads, exact, words, answered)
+                reply = self._answer(proposal, heads, exact, words, answered)
                 if reply is None:
-                    if is_ask(ask.kline.signature):
+                    if is_ask(proposal.kline.signature):
                         # An ask is signature discovery, not a
                         # proposal — nothing for a supervisor to decide.
-                        replies.append(KValue(ask.kline, SIG_S4))
+                        replies.append(KValue(proposal.kline, SIG_S4))
                         continue
-                    graded = self._grade_proposal(ask, goals)
+                    graded = self._grade_proposal(proposal, goals)
                     if graded is not None:
                         # A proposal under a `==` goal grades at γ of the
                         # two contents — the byte is the trainer's answer,
@@ -347,8 +347,8 @@ class Harness:
                         replies.append(graded)
                         continue
                     # Off-script: escalate — the supervisor decides.
-                    response = self._escalate(ask)
-                    turn.escalations.append((ask_i, response))
+                    response = self._escalate(proposal)
+                    turn.escalations.append((prop_i, response))
                     replies.append(response)
                     continue
                 replies.extend(reply)
@@ -357,7 +357,7 @@ class Harness:
                 queue.append(replies)
 
     def _grade_proposal(
-        self, ask: KValue, goals: dict[int, KValue]
+        self, proposal: KValue, goals: dict[int, KValue]
     ) -> KValue | None:
         """A proposal under a ``==`` goal, graded at γ of the proposal's
         content against the goal's target — its signature value (Def 20 —
@@ -365,15 +365,15 @@ class Harness:
         ratified at S1 — the answer just granted; one off the goal grades
         low and refuses on re-feed. ``None`` when no goal pairs with the
         proposal's head."""
-        base = canon_key(ask.kline.signature)
+        base = canon_key(proposal.kline.signature)
         goal = goals.get(base)
-        if goal is None or not ask.kline.nodes:
+        if goal is None or not proposal.kline.nodes:
             return None
-        a = int(self.signifier.signature_of(ask.kline.nodes))
+        a = int(self.signifier.signature_of(proposal.kline.nodes))
         b = int(goal.kline.signature)
         union = word_atom_count(a | b)
         j = word_atom_count(a & b) / union if union else 1.0
-        return KValue(ask.kline, gamma_to_byte(j))
+        return KValue(proposal.kline, gamma_to_byte(j))
 
     def _single_token_labels(self, source: str) -> dict[int, str]:
         """``{signature: word}`` for every single-token word in the source.

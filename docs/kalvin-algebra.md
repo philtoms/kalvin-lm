@@ -384,20 +384,18 @@ fit : V × V* → Shape
 
 assigns exactly one shape to every pair. Cases are evaluated in the following order; the first matching case determines the result.
 
-| Case | Condition              | Shape      | Band |
-| ---: | ---------------------- | ---------- | ---- |
-|    1 | ν = [] or s = ∅        | Unknown    | S4   |
-|    2 | ν = [s]                | Identity   | S1   |
-|    3 | s = σ(ν)               | Canon      | S1   |
-|    4 | not covered, \|ν\| = 1 | Denotation | S3   |
-|    5 | not covered, \|ν\| > 1 | No-fit     | S3   |
-|    6 | covered, u ≠ ∅, o = ∅  | Underfit   | S2   |
-|    7 | covered, u = ∅, o ≠ ∅  | Overfit    | S2   |
-|    8 | covered, u ≠ ∅, o ≠ ∅  | Under+over | S2   |
+| Case | Condition                            | Shape      | Band |
+| ---: | ------------------------------------ | ---------- | ---- |
+|    1 | ν = [] or s = ∅                      | Unknown    | S4   |
+|    2 | ν = [s]                              | Identity   | S1   |
+|    3 | s = σ(ν)                             | Canon      | S1   |
+|    4 | not covered, \|ν\| = 1, u = ∅, o = ∅ | Denotation | S3   |
+|    5 | not covered, \|ν\| > 1, u = ∅, o = ∅ | No-fit     | S3   |
+|    6 | covered, u ≠ ∅, o = ∅                | Underfit   | S2   |
+|    7 | covered, u = ∅, o ≠ ∅                | Overfit    | S2   |
+|    8 | covered, u ≠ ∅, o ≠ ∅                | Under+over | S2   |
 
 The cases are disjoint because exactness is tested before the misfit cases, and coverage is tested before the S2 cases.
-
-If no node overlaps the head, the pair is necessarily an S3 case. Such a pair must therefore be classified as Denotation or No-fit rather than Under+over.
 
 The classifier is therefore:
 
@@ -635,11 +633,11 @@ Because every node of a Canon is a subset of its head, a self-containing expansi
 
 The relationship C(A,B) determines the region in which targeting may occur. The evidence kline determines the replacement itself.
 
-| Relationship band | Licensed targeting                                           |
-| ----------------- | ------------------------------------------------------------ |
-| S1                | none; the derivation is done                                 |
-| S2                | replacements restricted to the misfit region                 |
-| S3                | replacement permitted; all nodes are in the misfit           |
+| Relationship band | Licensed targeting                                 |
+| ----------------- | -------------------------------------------------- |
+| S1                | none; the derivation is done                       |
+| S2                | replacements restricted to the misfit region       |
+| S3                | replacement permitted; all nodes are in the misfit |
 | S4                | none; the derivation is stuck                      |
 
 The restriction reads on both ends of the move: forward, the departed node carries underfit content or the arriving witness adopts overfit content; reverse, the consumed nodes carry the underfit or the arriving head lands in the overfit. An empty underfit therefore bars nothing — an overfit relationship is worked by adoption, on the arrival clause alone.
@@ -1215,15 +1213,15 @@ KScript is a surface language for constructing klines.
 
 The syntax specifies an intended structure; the algebra then determines the actual fit shape.
 
-| Token           | Structure                             | Band claim once solved |
-| --------------- | ------------------------------------- | ---------------------- |
-| `a => b c d`    | `a:[b,c,d]`                           | S1 (Canon) or open S2  |
-| `a = a`         | `a:[a]`                               | S1                     |
-| `a > b`         | `ab:[b]`                              | S2                     |
-| `a = b`         | `a:[b]`                               | S3                     |
-| `a > a`         | `a:[a]`                               | S1                     |
-| `a`             | `a\|ASK:[a]`                          | S4 — the ask           |
-| ask-annotated   | any signature carrying the ASK marker | S4                     |
+| Token         | Structure                             | Band claim once solved |
+| ------------- | ------------------------------------- | ---------------------- |
+| `a => b c d`  | `a:[b,c,d]`                           | S1 (Canon) or open S2  |
+| `a = a`       | `a:[a]`                               | S1                     |
+| `a > b`       | `ab:[b]`                              | S2                     |
+| `a = b`       | `a:[b]`                               | S3                     |
+| `a > a`       | `a:[a]`                               | S1                     |
+| `a`           | `a\|ASK:[a]`                          | S4 — the ask           |
+| ask-annotated | any signature carrying the ASK marker | S4                     |
 
 `ASK` is the ASK marker (word-word bit 31): it marks identity, never
 content — every content measurement masks it out — and the ask's canon

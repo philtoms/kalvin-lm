@@ -262,6 +262,7 @@
 - [Observation: Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given)](obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-.md)
 - [Observation: Given-goal feed removed: engine pure algebra, mhall honestly silent](obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s.md)
 - [Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target](obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-.md)
+- [Observation: KNode labels preserved through the walk into cogitate's batch](obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc.md)
 - [Observation: No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling](obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th.md)
 - [Observation: No S4 law: uniform selection; the real seam is the pure-underfit relationship](obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf.md)
 - [Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness](obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no.md)
