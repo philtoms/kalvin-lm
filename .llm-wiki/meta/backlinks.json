@@ -768,6 +768,7 @@
   "sources/ks2-third-pass-seven-gap-resolutions": [
     "concepts/grilling"
   ],
+  "sources/kscript-import-shared-emitter-semantics": [],
   "sources/model-state-graph-layer-rendering": [],
   "sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in": [],
   "sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected": [
@@ -959,7 +960,9 @@
   "sources/obs-2026-09-16-unknown-op-unified-into-ask-ask-bit-deleted": [],
   "sources/obs-2026-09-16-wdmh-ask-zero-candidates-empty-nodes-canon-form-orders-verb-": [],
   "sources/obs-2026-09-16-wdmh-mhall-done-end-to-end-zero-sig-bug-denotations-re-entry": [],
-  "sources/obs-2026-09-16-wdmh-mhall-s3-via-mary-have-mhall-value-drifts-per-compile": [],
+  "sources/obs-2026-09-16-wdmh-mhall-s3-via-mary-have-mhall-value-drifts-per-compile": [
+    "sources/kscript-import-shared-emitter-semantics"
+  ],
   "sources/obs-2026-09-16-word-bit-trawl-scaffold-first-groups-depth-5-landed-scope-no": [],
   "sources/obs-2026-09-17-9-adjusted-equality-saturated-calculation-per-step-paragraph": [],
   "sources/obs-2026-09-17-9-retitled-what-a-derivation-establishes-significance-is-the": [],
@@ -1031,7 +1034,9 @@
   "sources/obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-": [],
   "sources/obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid": [],
   "sources/obs-2026-09-22-mhall-proposing-died-at-eb07933-not-the-refactor-bpe-collisi": [],
-  "sources/obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at": [],
+  "sources/obs-2026-09-22-mhall-reaches-its-goal-mhall-subject-verb-object-proposed-at": [
+    "sources/kscript-import-shared-emitter-semantics"
+  ],
   "sources/obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio": [],
   "sources/obs-2026-09-22-mhall-stall-root-ask-dies-at-s4-refusal-attending-ask-still-": [],
   "sources/obs-2026-09-22-orphaned-pipeline-modules-removed-model-agent-codec-expand-p": [],
@@ -1045,6 +1050,9 @@
   "sources/obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s": [],
   "sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-": [],
   "sources/obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc": [],
+  "sources/obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk": [
+    "sources/kscript-import-shared-emitter-semantics"
+  ],
   "sources/obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th": [],
   "sources/obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf": [],
   "sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no": [],

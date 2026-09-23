@@ -860,3 +860,9 @@
 ## [2026-09-23T15:10:59.383Z] observe
 - slug: "obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc", title: "KNode labels preserved through the walk into cogitate's batch", relevance: "medium"
 
+## [2026-09-23T16:09:08.027Z] observe
+- slug: "obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk", title: "kscript import statement implemented (shared-emitter walk)", relevance: "critical"
+
+## [2026-09-23T16:09:18.455Z] retro
+- slug: "kscript-import-shared-emitter-semantics", title: "kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix", category: "architecture"
+

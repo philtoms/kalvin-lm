@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-23T15:10:59.462Z",
+  "last_updated": "2026-09-23T16:09:18.522Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -642,6 +642,15 @@
       "slug": "ks2-third-pass-seven-gap-resolutions",
       "created": "2026-09-10",
       "updated": "2026-09-10"
+    },
+    "sources/kscript-import-shared-emitter-semantics": {
+      "type": "source",
+      "title": "kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "kscript-import-shared-emitter-semantics",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
     },
     "sources/model-state-graph-layer-rendering": {
       "type": "source",
@@ -5002,6 +5011,24 @@
       "relevance": "medium",
       "observed_at": "2026-09-23T15:10:59.381Z",
       "source_context": "Fixing KNode label loss in cogitate's batch",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk": {
+      "type": "source",
+      "title": "Observation: kscript import statement implemented (shared-emitter walk)",
+      "tags": [
+        "kscript",
+        "import",
+        "compiler",
+        "parser",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T16:09:08.025Z",
+      "source_context": "Extending kscript syntax with an import statement",
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },
