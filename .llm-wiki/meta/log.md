@@ -848,3 +848,12 @@
 ## [2026-09-23T13:20:20.842Z] observe
 - slug: "obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-", title: "Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given)", relevance: "critical"
 
+## [2026-09-23T13:59:35.956Z] observe
+- slug: "obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s", title: "Given-goal feed removed: engine pure algebra, mhall honestly silent", relevance: "critical"
+
+## [2026-09-23T14:22:40.533Z] observe
+- slug: "obs-2026-09-23-walk-coverage-selection-in-svo-selected-both-scripts-reach-d", title: "Walk-coverage selection in: SVO selected, both scripts reach done — with cascade + head-adoption side-effects", relevance: "critical"
+
+## [2026-09-23T14:47:44.085Z] observe
+- slug: "obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m", title: "B-departure tightened: bridges stay within B, never the type — mhall proposes the walked answer", relevance: "critical"
+

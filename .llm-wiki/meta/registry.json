@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-23T13:20:20.906Z",
+  "last_updated": "2026-09-23T14:47:44.158Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4886,6 +4886,27 @@
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },
+    "sources/obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m": {
+      "type": "source",
+      "title": "Observation: B-departure tightened: bridges stay within B, never the type — mhall proposes the walked answer",
+      "tags": [
+        "def15",
+        "b-departure",
+        "type-not-slot",
+        "shortcut",
+        "stm-bridges",
+        "walk-coverage",
+        "mhall",
+        "wdmh"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T14:47:44.083Z",
+      "source_context": "Fixing the invalid MarySubject:[SVO] bridge",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
     "sources/obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele": {
       "type": "source",
       "title": "Observation: Countersignature removed from algebra: one \"goal\", given vs selected; standing vs composed evidence",
@@ -4922,6 +4943,27 @@
       "relevance": "critical",
       "observed_at": "2026-09-23T13:20:20.840Z",
       "source_context": "Making the engine pure-algebraic; pairing to the harness",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s": {
+      "type": "source",
+      "title": "Observation: Given-goal feed removed: engine pure algebra, mhall honestly silent",
+      "tags": [
+        "pure-algebra",
+        "given-goal",
+        "removed",
+        "silence",
+        "honest",
+        "mhall",
+        "selection",
+        "def22"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T13:59:35.953Z",
+      "source_context": "Removing the given-goal feed; engine silenced on mhall by ruling",
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },
@@ -5018,6 +5060,26 @@
       "relevance": "critical",
       "observed_at": "2026-09-23T12:55:09.658Z",
       "source_context": "Making engine selection traceable in the harness presentation",
+      "created": "2026-09-23",
+      "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-23-walk-coverage-selection-in-svo-selected-both-scripts-reach-d": {
+      "type": "source",
+      "title": "Observation: Walk-coverage selection in: SVO selected, both scripts reach done — with cascade + head-adoption side-effects",
+      "tags": [
+        "def22",
+        "walk-coverage",
+        "selection",
+        "witness-paths",
+        "mhall",
+        "wdmh",
+        "side-effects"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-23-walk-coverage-selection-in-svo-selected-both-scripts-reach-d",
+      "relevance": "critical",
+      "observed_at": "2026-09-23T14:22:40.530Z",
+      "source_context": "Implementing the walk-coverage selection rule",
       "created": "2026-09-23",
       "updated": "2026-09-23"
     },

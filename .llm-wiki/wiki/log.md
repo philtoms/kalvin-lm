@@ -2,6 +2,9 @@
 
 ## 2026-09-23
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m","title":"B-departure tightened: bridges stay within B, never the type — mhall proposes the walked answer"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-walk-coverage-selection-in-svo-selected-both-scripts-reach-d","title":"Walk-coverage selection in: SVO selected, both scripts reach done — with cascade + head-adoption side-effects"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s","title":"Given-goal feed removed: engine pure algebra, mhall honestly silent"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-","title":"Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given)"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th","title":"No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-13-audited-supplies-a-goal-clause-deleted-table-stays-pendin","title":"§13 audited: supplies-a-goal clause deleted; table stays pending home decision"}
