@@ -335,8 +335,11 @@
 - [[sources/obs-2026-09-22-triple-patch-probe-ask-survives-as-residue-move-inventory-on]] — Observation: Triple-patch probe: ask survives as residue; move inventory = one targeting then stuck *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-walk-ruling-implemented-whole-witness-descents-containment-a]] — Observation: Walk ruling implemented: whole-witness descents, containment ascents — Query chain now the only ALL→O path *(created: 2026-09-22)*
 - [[sources/obs-2026-09-22-workrunner-cogitates-the-popped-item-not-the-whole-work-list]] — Observation: WorkRunner cogitates the popped item, not the whole work list *(created: 2026-09-22)*
+- [[sources/obs-2026-09-23-13-audited-supplies-a-goal-clause-deleted-table-stays-pendin]] — Observation: §13 audited: supplies-a-goal clause deleted; table stays pending home decision *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele]] — Observation: Countersignature removed from algebra: one "goal", given vs selected; standing vs composed evidence *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-]] — Observation: Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given) *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-]] — Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th]] — Observation: No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf]] — Observation: No S4 law: uniform selection; the real seam is the pure-underfit relationship *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no]] — Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-]] — Observation: Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes *(created: 2026-09-23)*
@@ -349,4 +352,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-23T12:55:09.729Z* | *Total pages: 337*
+*Last updated: 2026-09-23T13:20:20.906Z* | *Total pages: 340*

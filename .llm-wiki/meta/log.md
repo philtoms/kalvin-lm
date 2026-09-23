@@ -839,3 +839,12 @@
 ## [2026-09-23T12:55:09.660Z] observe
 - slug: "obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-", title: "Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes", relevance: "critical"
 
+## [2026-09-23T13:07:31.342Z] observe
+- slug: "obs-2026-09-23-13-audited-supplies-a-goal-clause-deleted-table-stays-pendin", title: "§13 audited: supplies-a-goal clause deleted; table stays pending home decision", relevance: "critical"
+
+## [2026-09-23T13:10:51.124Z] observe
+- slug: "obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th", title: "No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling", relevance: "critical"
+
+## [2026-09-23T13:20:20.842Z] observe
+- slug: "obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-", title: "Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given)", relevance: "critical"
+

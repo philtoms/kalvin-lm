@@ -2,6 +2,9 @@
 
 ## 2026-09-23
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-","title":"Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given)"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th","title":"No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-09-23-13-audited-supplies-a-goal-clause-deleted-table-stays-pendin","title":"§13 audited: supplies-a-goal clause deleted; table stays pending home decision"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-","title":"Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf","title":"No S4 law: uniform selection; the real seam is the pure-underfit relationship"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no","title":"== removed from algebra: ask is an unmatched underfit, no goal, no witness"}
