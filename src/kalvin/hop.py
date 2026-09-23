@@ -39,17 +39,12 @@ TRAWL_DEPTH = 5
 MAX_HOPS = 8
 
 
-def candidate_goals(
+def scored_candidates(
     state: Memory, queued: KLine, signifier: KSignifier
-) -> list[KLine]:
-    """Def 22 — the goal list: coverage pool (Def 8), γ(A, K) order.
-
-    The queued kline itself is never a candidate: C(A, A) is Canon at
-    entry and proves nothing — a hop that breaks on it never reaches the
-    real goals down the list. An ask's canon is that same vacuous case
-    one step removed: the marker is not an atom, so the ask and its
-    canon share content — the canon is excluded too, by the ask step.
-    """
+) -> list[tuple[KLine, str]]:
+    """The candidate list with each goal's source — "supplied" (the
+    construct's `=>`-supplied goal, ahead of selection) or "selected"
+    (Definition 22 coverage, γ-descending)."""
     content = int(signifier.signature_of(queued.nodes))
     ask_base = (
         canon_key(queued.signature) if is_ask(queued.signature) else None
@@ -88,7 +83,25 @@ def candidate_goals(
         union = signifier.measure(content | kc)
         scored.append((signifier.measure(content & kc) / union, i, k))
     selected = [k for _, _, k in sorted(scored, key=lambda t: (-t[0], t[1]))]
-    return ([given] if given is not None else []) + selected
+    out: list[tuple[KLine, str]] = []
+    if given is not None:
+        out.append((given, "supplied"))
+    out.extend((k, "selected") for k in selected)
+    return out
+
+
+def candidate_goals(
+    state: Memory, queued: KLine, signifier: KSignifier
+) -> list[KLine]:
+    """Def 22 — the goal list: coverage pool (Def 8), γ(A, K) order.
+
+    The queued kline itself is never a candidate: C(A, A) is Canon at
+    entry and proves nothing — a hop that breaks on it never reaches the
+    real goals down the list. An ask's canon is that same vacuous case
+    one step removed: the marker is not an atom, so the ask and its
+    canon share content — the canon is excluded too, by the ask step.
+    """
+    return [k for k, _ in scored_candidates(state, queued, signifier)]
 
 
 def trawl(
@@ -162,9 +175,9 @@ class Hop:
         self.derivation_kwargs = derivation_kwargs
 
     def run(self) -> HopResult:
-        goals = candidate_goals(self.state, self.queued, self.signifier)
+        goals = scored_candidates(self.state, self.queued, self.signifier)
         res = HopResult(ending="stuck")
-        for goal in goals[: self.max_goals]:
+        for goal, source in goals[: self.max_goals]:
             scope = trawl(
                 self.state,
                 self.queued.nodes,
@@ -175,6 +188,8 @@ class Hop:
             r = Derivation(
                 scope, self.queued, goal, self.signifier, **self.derivation_kwargs
             ).run()
+            r.goal = goal
+            r.goal_source = source
             res.goals.append(goal)
             res.results.append(r)
             self.state.extend_stm(r.composed)  # writes go to STM, not the scope

@@ -43,6 +43,10 @@ class DerivationResult:
     dbar: float = 0.0
     hbar: float = 0.0
     gamma: float = 0.0  # γ: J·δ^(D̄+Ĥ) — significance net of complexity; never the band
+    #: The goal this derivation ran toward, and how it joined the list
+    #: ("supplied" — the construct's — or "selected" — Definition 22).
+    goal: "KLine | None" = None
+    goal_source: str = ""
 
 
 class Derivation:

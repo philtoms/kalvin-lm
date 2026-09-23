@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, cast
 
+from kalvin.derivation import DerivationResult
 from kalvin.cogitator import cogitate
 from kalvin.rationaliser import Rationaliser
 from kalvin.memory import Memory
@@ -71,6 +72,12 @@ class Turn:
     feeds: list[KValue]
     grounds: list[KValue] = field(default_factory=list)
     asks: list[KValue] = field(default_factory=list)
+    #: The selection trace: per cogitated kline, its derivation results
+    #: (goal, source, ending, significance) — the presentation renders
+    #: what the engine selected and why.
+    derivations: list[tuple[KLine, list[DerivationResult]]] = field(
+        default_factory=list
+    )
     #: The supervisor's responses to this turn's escalated proposals,
     #: paired with the proposal index in ``asks`` they answer.
     escalations: list[tuple[int, KValue]] = field(default_factory=list)
@@ -302,12 +309,13 @@ class Harness:
         while queue:
             feeds = queue.pop(0)
             before = _grounded_snapshot(self.state)
+            derivations: list[tuple[KLine, list[DerivationResult]]] = []
             with using_resolver(self.state.find):
                 self._rationaliser.rationalise(feeds)
                 batch: list[KValue] = []
                 while True:
                     size = len(self.state.work_list)
-                    batch.extend(cogitate(self.state))
+                    batch.extend(cogitate(self.state, collect=derivations))
                     if len(self.state.work_list) == size:
                         break
             deduped = _dedup(batch)
@@ -317,7 +325,7 @@ class Harness:
                 for key, kl in after.items() if key not in before
             ]
             replies: list[KValue] = []
-            turn = Turn(feeds, grounds, deduped)
+            turn = Turn(feeds, grounds, deduped, derivations)
             step.turns.append(turn)
             for ask_i, ask in enumerate(deduped):
                 if self.state.is_grounded(ask.kline):
@@ -588,6 +596,32 @@ def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str
         lines.append(f"  T{t:02d}  feed    {feeds}")
         for v in turn.grounds:
             lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
+        seen_derives: set[tuple[int, tuple[int, ...], int, str, str, float]] = set()
+        for queued, results in turn.derivations:
+            for r in results:
+                if r.goal is None:
+                    continue
+                key = (
+                    int(queued.signature),
+                    tuple(int(n) for n in r.trace[0]),
+                    int(r.goal.signature),
+                    tuple(int(n) for n in r.goal.nodes),
+                    r.goal_source,
+                    r.ending,
+                    round(r.j1, 3),
+                )
+                if key in seen_derives:
+                    continue
+                seen_derives.add(key)
+                entry = ", ".join(
+                    _label(n, labels, verbose) for n in r.trace[0]
+                )
+                lines.append(
+                    f"        {'derives':<8} "
+                    f"{_label(queued.signature, labels, verbose)}:[{entry}] → "
+                    f"{_render_kline_struct(r.goal, labels, verbose)} "
+                    f"({r.goal_source}) {r.ending} j1={r.j1:.3f}"
+                )
         escalations = {i: r for i, r in turn.escalations}
         for i, v in enumerate(turn.asks):
             if v.kline.nodes:
