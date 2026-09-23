@@ -56,28 +56,39 @@ def candidate_goals(
     )
     d = getattr(queued, "dbg", None)
     declared = d.goal if (ask_base is not None and d is not None) else ""
+    given: KLine | None = None
     scored: list[tuple[float, int, KLine]] = []
     # Goals are held content (frame/ltm), never STM: bridges are scratch
     # evidence for replacements, not klines to derive toward.
-    for i, k in enumerate(state.where(lambda k: not is_terminal(k))):
+    pool = state.where(lambda k: not is_terminal(k))
+    if declared:
+        # The == pairing is subjective (outside the algebra): the given
+        # goal rides first as the stand-in for the S4 walk law (§4) —
+        # the unmatched underfit's own derivation — until that law lands.
+        given = next(
+            (
+                k for k in pool
+                if getattr(k, "dbg", None) is not None
+                and k.dbg.label == declared and k.nodes
+            ),
+            None,
+        )
+    for i, k in enumerate(pool):
         if k.signature == queued.signature and k.nodes == queued.nodes:
             continue  # the queued kline is not its own goal
+        if k is given:
+            continue  # the given goal is not a candidate
         if is_ask(k.signature):
             continue  # a question is never a goal
         if ask_base is not None and canon_key(k.signature) == ask_base:
             continue  # an ask never heads its own goal list — nor its canon
         kc = int(signifier.signature_of(k.nodes))
-        kd = getattr(k, "dbg", None)
-        is_declared = bool(
-            declared and kd is not None and kd.label == declared and k.nodes
-        )
-        if not is_declared and not any(
-            signifier.signifies(n, kc) for n in queued.nodes
-        ):
+        if not any(signifier.signifies(n, kc) for n in queued.nodes):
             continue  # covers no node of ν_A — not a candidate
         union = signifier.measure(content | kc)
         scored.append((signifier.measure(content & kc) / union, i, k))
-    return [k for _, _, k in sorted(scored, key=lambda t: (-t[0], t[1]))]
+    selected = [k for _, _, k in sorted(scored, key=lambda t: (-t[0], t[1]))]
+    return ([given] if given is not None else []) + selected
 
 
 def trawl(
