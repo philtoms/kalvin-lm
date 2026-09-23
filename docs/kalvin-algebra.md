@@ -666,7 +666,7 @@ A walk is licensed in two step forms. A **descent** crosses a held kline the cur
 
 A connotation is the designed walk segment: its head composes the underfit atom with the witness content, so a walk enters from the underfit value — contained in the head — and leaves at the witness: `m → ms → s`. Connotations chain through their witnesses: each arrival may ascend into the next head. B's side reads ν_B's klines as walk material — the goal's own canon enumerates its slots, every node accounted.
 
-A's walk departs its underfit slots — the nodes of ν_A carrying the gap. B's walk departs the held value containing the overfit, the compound the overfit composes into. Both parties walk through held klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
+A's walk departs its underfit slots — the nodes of ν_A carrying the gap. B's walk departs a held value of its own — a node or compound of ν_B containing the overfit; never a value carrying content beyond B. Both parties walk through held klines until a **shared value is delivered by distinct klines on the two sides** — the meeting. The klines must be distinct: one kline cannot meet itself, and a party's own delivery is not a second witness.
 
 The meeting is written into memory as the **bridge** — a composed correspondence `slot_a:[slot_b]` with acquisition depth equal to the edges both walks crossed, which the main derivation may then consume: the A-side departure value is replaced by the B-side departure value. The goal is never rewritten; ν_B's klines are walk material, read and never changed.
 
@@ -915,7 +915,7 @@ The descents meet at o — a value delivered by two distinct klines, one from ea
 w:[all]
 ```
 
-with acquisition depth 2, the edges both descents crossed. The bridge says: w is replaceable by all, licensed at o. Nothing else is written — the klines the descents crossed are already held, and a value nothing heads is unreachable.
+with acquisition depth 2, the edges both descents crossed. The bridge says: w is replaceable by all, licensed at o. A bridge's B-side slot is a node of ν_B or a compound of its own — never B's head itself: the type is not a slot, and a witness that arrives at the type collapses the whole question into one node. Nothing else is written — the klines the descents crossed are already held, and a value nothing heads is unreachable.
 
 The main derivation can then apply:
 
@@ -1137,11 +1137,12 @@ A held kline
 K = t:ν_K ∈ M
 ```
 
-is a candidate goal for A when its content covers a node of ν_A:
-
-```text
-n ∧ σ(ν_K) ≠ ∅, for some node n ∈ ν_A    (Definition 8).
-```
+is a candidate goal for A when each of its nodes is covered from ν_A:
+every node t of ν_K is a node of ν_A, or the end of a witness path
+over held klines — a chain of correspondences whose every kline is
+held in M, walked in either direction. Coverage is memory-relative:
+a memory without the paths leaves the kline uncovered — and
+unselected.
 
 The candidates, ordered by descending γ(A, K), are the goal list. γ is the composite (Definition 20): the significance of working from A toward the candidate — content overlap between the two parties — net of the complexity of reaching it. γ, not band, sets the order.
 

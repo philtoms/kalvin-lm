@@ -1,9 +1,10 @@
 """Hop — the strategy unit over the derivation model (kalvin-algebra.md §11).
 
-Def 22 Selection — candidate goals for a queued kline: held klines whose
-content covers a node of the queued witness (Def 8), ordered by descending
-γ(A, K). γ's depth factor is constant in K, so the order is content
-overlap. The goal is taken from the top of the list.
+Def 22 Selection — candidate goals for a queued kline: held klines each
+of whose nodes lies in ν_A's walk (Def 15) — a node of ν_A, a witness
+reached from one, or the end of a witness path over held klines —
+ordered by descending γ(A, K). γ's depth factor is constant in K, so the
+order is content overlap. The goal is taken from the top of the list.
 
 Def 23 Scope — a depth-bounded trawl of the correspondence graph, rooted
 at both parties' nodes. The scope is a derivation's memory for its
@@ -22,9 +23,11 @@ derivation's ending state, and reselects candidates for B.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
-from kalvin.derivation import Derivation, DerivationResult
+from kalvin.derivation import (
+    Derivation, DerivationResult, MAX_WALK_EDGES,
+)
 from kalvin.kline import KLine, canon_key, is_ask, is_terminal
 
 if TYPE_CHECKING:
@@ -39,10 +42,48 @@ TRAWL_DEPTH = 5
 MAX_HOPS = 8
 
 
+def walk_closure(
+    klines: list[KLine], nodes: Sequence[int], signifier: KSignifier,
+    *, bound: int = MAX_WALK_EDGES,
+) -> set[int]:
+    """ν_A's witness-path closure over held klines (§7's graph, any
+    direction, depth-bounded): a value is covered when it is a node of
+    ν_A, or shares a held kline with a covered value — as witness
+    (the kline's ν carries it) or as content (σ of the head contains
+    it). Selection coverage, not a derivation licence: the walk's step
+    restrictions (Def 15) bind derivations, not the reachability a
+    candidate is judged by."""
+    reached: set[int] = {int(v) for v in nodes}
+    frontier = list(reached)
+    depth = 0
+    while frontier and depth < bound:
+        nxt: list[int] = []
+        for v in frontier:
+            for k in klines:
+                if is_terminal(k):
+                    continue
+                w = [int(n) for n in k.nodes]
+                head = int(k.signature)
+                touches = (
+                    v in w
+                    or (head != v and int(signifier.residual(v, head)) == 0)
+                )
+                if not touches:
+                    continue
+                for value in w + [head]:
+                    if value not in reached and value != v:
+                        reached.add(value)
+                        nxt.append(value)
+        frontier = nxt
+        depth += 1
+    return reached
+
+
 def candidate_goals(
     state: Memory, queued: KLine, signifier: KSignifier
 ) -> list[KLine]:
-    """Def 22 — the goal list: coverage pool (Def 8), γ(A, K) order.
+    """Def 22 — the goal list: held klines each of whose nodes lies in
+    ν_A's walk (directly, or by a witness path), γ(A, K) order.
 
     The queued kline itself is never a candidate: C(A, A) is Canon at
     entry and proves nothing — a hop that breaks on it never reaches the
@@ -54,19 +95,21 @@ def candidate_goals(
     ask_base = (
         canon_key(queued.signature) if is_ask(queued.signature) else None
     )
+    pool = state.where(lambda k: not is_terminal(k))
+    closure = walk_closure(pool, queued.nodes, signifier)
     scored: list[tuple[float, int, KLine]] = []
     # Goals are held content (frame/ltm), never STM: bridges are scratch
     # evidence for replacements, not klines to derive toward.
-    for i, k in enumerate(state.where(lambda k: not is_terminal(k))):
+    for i, k in enumerate(pool):
         if k.signature == queued.signature and k.nodes == queued.nodes:
             continue  # the queued kline is not its own goal
         if is_ask(k.signature):
             continue  # a question is never a goal
         if ask_base is not None and canon_key(k.signature) == ask_base:
             continue  # an ask never heads its own goal list — nor its canon
+        if not all(int(n) in closure for n in k.nodes):
+            continue  # some node uncovered from ν_A — not a candidate
         kc = int(signifier.signature_of(k.nodes))
-        if not any(signifier.signifies(n, kc) for n in queued.nodes):
-            continue  # covers no node of ν_A — not a candidate
         union = signifier.measure(content | kc)
         scored.append((signifier.measure(content & kc) / union, i, k))
     return [k for _, _, k in sorted(scored, key=lambda t: (-t[0], t[1]))]

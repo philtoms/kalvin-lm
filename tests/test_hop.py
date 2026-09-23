@@ -48,11 +48,15 @@ def _state(*memory: KLine) -> Memory:
 def test_selection_orders_goals_by_overlap():
     goals = candidate_goals(_state(), KLine(WDMH, [W, D, M, H]), SIG)
     sigs = [int(k.signature) for k in goals]
-    # J(wdhm, dh) = 1/2 leads; mhall 1/3 follows; m:[m] covers node m
+    keys = {
+        (int(k.signature), tuple(int(n) for n in k.nodes)) for k in goals
+    }
+    # J(wdhm, dh) = 1/2 leads; mhall 1/3 follows — a and l are covered
+    # by witness path w→[o]→all:[o]→all→[a,l,l] (Def 22 walk coverage)
     assert sigs[:2] == [int(DH), int(MHALL)]
-    assert int(MHALL) in sigs
-    # all:[a,l,l] covers no node of [w,d,h,m] — never a candidate (Def 8)
-    assert int(ALL) not in sigs
+    assert (int(ALL), (int(A), int(L), int(L))) in keys
+    assert (int(ALL), (int(O),)) in keys
+    assert (int(W), (int(O),)) in keys
 
 
 def test_trawl_is_dual_rooted_and_depth_bounded():

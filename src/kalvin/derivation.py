@@ -335,12 +335,20 @@ class Derivation:
         if not path_a:
             return False
         excess = self.excess()
+        goal_content = self.goal_content()
         b_values: list[int] = []
         for k in self.memory:
-            if int(self.signifier.residual(excess, int(k.signature))) == 0:
+            # B departs a value of its own: a node or compound of ν_B
+            # containing the overfit — never a value carrying content
+            # beyond B (Def 15).
+            if int(self.signifier.residual(excess, int(k.signature))) == 0 and int(
+                self.signifier.residual(int(k.signature), goal_content)
+            ) == 0:
                 b_values.append(int(k.signature))
             for n in k.nodes:
-                if int(self.signifier.residual(excess, int(n))) == 0:
+                if int(self.signifier.residual(excess, int(n))) == 0 and int(
+                    self.signifier.residual(int(n), goal_content)
+                ) == 0:
                     b_values.append(int(n))
         b_starts = [
             v for v in dict.fromkeys(b_values)  # first-occurrence order
@@ -374,8 +382,15 @@ class Derivation:
                             b_slot = (
                                 value
                                 if any(int(n) == value for n in self.goal.nodes)
-                                else start
+                                and value != int(self.goal.signature)
+                                else (
+                                    start
+                                    if start != int(self.goal.signature)
+                                    else None
+                                )
                             )
+                            if b_slot is None:
+                                continue  # the type is not a slot — no bridge
                             bridge = KLine(
                                 a_start, [b_slot], acq_depth=a_depth + depth + 1
                             )
