@@ -352,6 +352,13 @@
 - [[sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no]] — Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-]] — Observation: Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-walk-coverage-selection-in-svo-selected-both-scripts-reach-d]] — Observation: Walk-coverage selection in: SVO selected, both scripts reach done — with cascade + head-adoption side-effects *(created: 2026-09-23)*
+- [[sources/obs-2026-09-29-a-1-deleted-unheld-residual-is-s4-creation-only-at-entry-sto]] — Observation: A-1 deleted: unheld residual is S4; creation only at entry/store *(created: 2026-09-29)*
+- [[sources/obs-2026-09-29-docs-trs-significance-md-written-consolidated-trs-spec-draft]] — Observation: docs/trs-significance.md written: consolidated TRS spec draft *(created: 2026-09-29)*
+- [[sources/obs-2026-09-29-trs-dialogue-reviewed-sound-kernel-not-yet-spec-ready]] — Observation: TRS dialogue reviewed: sound kernel, not yet spec-ready *(created: 2026-09-29)*
+- [[sources/obs-2026-09-29-trs-spec-amended-mirror-pairing-d7-materialisation-a-1]] — Observation: TRS spec amended: mirror pairing D7, materialisation A-1 *(created: 2026-09-29)*
+- [[sources/obs-2026-09-30-r3-outcome-anchored-product-is-a-definition-8-entry-no-re-en]] — Observation: R3 outcome anchored: product IS a Definition-8 entry; no re-entry mechanism *(created: 2026-09-30)*
+- [[sources/obs-2026-09-30-trs-spec-all-oqs-resolved-band-terminology-no-splice-admissi]] — Observation: TRS spec: all OQs resolved — band terminology, no splice, admission iff S1 *(created: 2026-09-30)*
+- [[sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo]] — Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop *(created: 2026-09-30)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -361,4 +368,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-23T17:36:48.216Z* | *Total pages: 349*
+*Last updated: 2026-09-30T16:27:13.112Z* | *Total pages: 356*

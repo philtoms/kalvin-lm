@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-23T17:36:48.216Z",
+  "last_updated": "2026-09-30T16:27:13.112Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5171,6 +5171,135 @@
       "source_context": "Implementing the walk-coverage selection rule",
       "created": "2026-09-23",
       "updated": "2026-09-23"
+    },
+    "sources/obs-2026-09-29-a-1-deleted-unheld-residual-is-s4-creation-only-at-entry-sto": {
+      "type": "source",
+      "title": "Observation: A-1 deleted: unheld residual is S4; creation only at entry/store",
+      "tags": [
+        "trs",
+        "significance",
+        "spec",
+        "s4",
+        "boundary",
+        "axioms"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-29-a-1-deleted-unheld-residual-is-s4-creation-only-at-entry-sto",
+      "relevance": "high",
+      "observed_at": "2026-09-29T17:30:02.499Z",
+      "source_context": "Resolving A-1 vs S4 contradiction in docs/trs-significance.md",
+      "created": "2026-09-29",
+      "updated": "2026-09-29"
+    },
+    "sources/obs-2026-09-29-docs-trs-significance-md-written-consolidated-trs-spec-draft": {
+      "type": "source",
+      "title": "Observation: docs/trs-significance.md written: consolidated TRS spec draft",
+      "tags": [
+        "trs",
+        "significance",
+        "spec",
+        "algebra",
+        "consolidation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-29-docs-trs-significance-md-written-consolidated-trs-spec-draft",
+      "relevance": "high",
+      "observed_at": "2026-09-29T16:21:20.555Z",
+      "source_context": "Consolidating data/trs.md into normative spec docs/trs-significance.md",
+      "created": "2026-09-29",
+      "updated": "2026-09-29"
+    },
+    "sources/obs-2026-09-29-trs-dialogue-reviewed-sound-kernel-not-yet-spec-ready": {
+      "type": "source",
+      "title": "Observation: TRS dialogue reviewed: sound kernel, not yet spec-ready",
+      "tags": [
+        "trs",
+        "significance",
+        "spec",
+        "review",
+        "algebra"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-29-trs-dialogue-reviewed-sound-kernel-not-yet-spec-ready",
+      "relevance": "high",
+      "observed_at": "2026-09-29T16:06:47.480Z",
+      "source_context": "Reviewing data/trs.md as candidate spec for alternative significance-based TRS model",
+      "created": "2026-09-29",
+      "updated": "2026-09-29"
+    },
+    "sources/obs-2026-09-29-trs-spec-amended-mirror-pairing-d7-materialisation-a-1": {
+      "type": "source",
+      "title": "Observation: TRS spec amended: mirror pairing D7, materialisation A-1",
+      "tags": [
+        "trs",
+        "significance",
+        "spec",
+        "amendments"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-29-trs-spec-amended-mirror-pairing-d7-materialisation-a-1",
+      "relevance": "high",
+      "observed_at": "2026-09-29T17:05:40.001Z",
+      "source_context": "Applying user amendments to docs/trs-significance.md (mirror pairing + materialisation)",
+      "created": "2026-09-29",
+      "updated": "2026-09-29"
+    },
+    "sources/obs-2026-09-30-r3-outcome-anchored-product-is-a-definition-8-entry-no-re-en": {
+      "type": "source",
+      "title": "Observation: R3 outcome anchored: product IS a Definition-8 entry; no re-entry mechanism",
+      "tags": [
+        "trs",
+        "significance",
+        "r3",
+        "entry",
+        "anchoring",
+        "rules"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-30-r3-outcome-anchored-product-is-a-definition-8-entry-no-re-en",
+      "relevance": "high",
+      "observed_at": "2026-09-30T16:27:13.042Z",
+      "source_context": "Anchoring R3 re-entry outcome in Definitions 8/9 per user critique",
+      "created": "2026-09-30",
+      "updated": "2026-09-30"
+    },
+    "sources/obs-2026-09-30-trs-spec-all-oqs-resolved-band-terminology-no-splice-admissi": {
+      "type": "source",
+      "title": "Observation: TRS spec: all OQs resolved — band terminology, no splice, admission iff S1",
+      "tags": [
+        "trs",
+        "significance",
+        "band",
+        "routes",
+        "admission",
+        "terminology"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-30-trs-spec-all-oqs-resolved-band-terminology-no-splice-admissi",
+      "relevance": "high",
+      "observed_at": "2026-09-30T14:17:13.988Z",
+      "source_context": "Applying final three OQ rulings to docs/trs-significance.md",
+      "created": "2026-09-30",
+      "updated": "2026-09-30"
+    },
+    "sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo": {
+      "type": "source",
+      "title": "Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop",
+      "tags": [
+        "trs",
+        "significance",
+        "r2",
+        "r3",
+        "reentry",
+        "canonical"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo",
+      "relevance": "high",
+      "observed_at": "2026-09-30T14:47:02.073Z",
+      "source_context": "Applying R2/R3 restructuring to docs/trs-significance.md",
+      "created": "2026-09-30",
+      "updated": "2026-09-30"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

@@ -1,5 +1,18 @@
 # Wiki Update Log
 
+## 2026-09-30
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-30-r3-outcome-anchored-product-is-a-definition-8-entry-no-re-en","title":"R3 outcome anchored: product IS a Definition-8 entry; no re-entry mechanism"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo","title":"TRS spec: unpaired residual adjacencies, canonical re-entry loop"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-30-trs-spec-all-oqs-resolved-band-terminology-no-splice-admissi","title":"TRS spec: all OQs resolved — band terminology, no splice, admission iff S1"}
+
+## 2026-09-29
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-29-a-1-deleted-unheld-residual-is-s4-creation-only-at-entry-sto","title":"A-1 deleted: unheld residual is S4; creation only at entry/store"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-29-trs-spec-amended-mirror-pairing-d7-materialisation-a-1","title":"TRS spec amended: mirror pairing D7, materialisation A-1"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-29-docs-trs-significance-md-written-consolidated-trs-spec-draft","title":"docs/trs-significance.md written: consolidated TRS spec draft"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-29-trs-dialogue-reviewed-sound-kernel-not-yet-spec-ready","title":"TRS dialogue reviewed: sound kernel, not yet spec-ready"}
+
 ## 2026-09-23
 
 - **observe**: {"relevance":"high","slug":"obs-2026-09-23-fit-table-cases-4-5-fixed-def-14-consumed-nodes-clause-tight","title":"Fit table cases 4–5 fixed; Def 14 consumed-nodes clause tightened to \"every\""}
