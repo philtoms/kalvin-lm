@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-09-30T16:27:13.112Z",
+  "last_updated": "2026-10-01T10:58:49.242Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5282,6 +5282,25 @@
       "created": "2026-09-30",
       "updated": "2026-09-30"
     },
+    "sources/obs-2026-09-30-trs-spec-terminology-aligned-underfit-can-n-overfit-can-n": {
+      "type": "source",
+      "title": "Observation: TRS spec terminology aligned: underfit=σ∖can(N), overfit=can(N)∖σ",
+      "tags": [
+        "trs",
+        "significance",
+        "terminology",
+        "underfit",
+        "overfit",
+        "alignment"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-09-30-trs-spec-terminology-aligned-underfit-can-n-overfit-can-n",
+      "relevance": "high",
+      "observed_at": "2026-09-30T16:31:23.924Z",
+      "source_context": "Reversing overfit/underfit terminology in docs/trs-significance.md to align with kalvin-algebra.md",
+      "created": "2026-09-30",
+      "updated": "2026-09-30"
+    },
     "sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo": {
       "type": "source",
       "title": "Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop",
@@ -5300,6 +5319,118 @@
       "source_context": "Applying R2/R3 restructuring to docs/trs-significance.md",
       "created": "2026-09-30",
       "updated": "2026-09-30"
+    },
+    "sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation": {
+      "type": "source",
+      "title": "Observation: decode renamed witness: strict converse of canonicalisation",
+      "tags": [
+        "trs",
+        "significance",
+        "terminology",
+        "witness",
+        "decode",
+        "rename"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation",
+      "relevance": "high",
+      "observed_at": "2026-10-01T10:58:49.166Z",
+      "source_context": "Renaming decode to witness across docs/trs-significance.md",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat": {
+      "type": "source",
+      "title": "Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input",
+      "tags": [
+        "trs",
+        "significance",
+        "r2",
+        "products",
+        "klines",
+        "symmetry",
+        "reentry"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat",
+      "relevance": "high",
+      "observed_at": "2026-10-01T10:12:24.695Z",
+      "source_context": "Restating R2 with three reentrant kline products per user ruling",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular": {
+      "type": "source",
+      "title": "Observation: TRS spec: decode total; rules use only defined kline vocabulary",
+      "tags": [
+        "trs",
+        "significance",
+        "terminology",
+        "decode-total",
+        "rules-follow-definitions"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular",
+      "relevance": "high",
+      "observed_at": "2026-10-01T10:49:17.053Z",
+      "source_context": "Withdrawing residual/empty-adjacency terms from rules; making decode total",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-": {
+      "type": "source",
+      "title": "Observation: TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7",
+      "tags": [
+        "trs",
+        "significance",
+        "properties",
+        "minimal",
+        "non-normative"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-",
+      "relevance": "high",
+      "observed_at": "2026-10-01T09:44:31.194Z",
+      "source_context": "Minimising non-normative text in docs/trs-significance.md per user review of P-1..P-4",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome": {
+      "type": "source",
+      "title": "Observation: TRS spec: S4 at reentry via empty adjacency; R3 single outcome; R4 single arrival",
+      "tags": [
+        "trs",
+        "significance",
+        "s4",
+        "reentry",
+        "rules",
+        "outcomes"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome",
+      "relevance": "high",
+      "observed_at": "2026-10-01T10:32:02.060Z",
+      "source_context": "Moving S4 transition to reentry; single-outcome R3; single-arrival R4",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-trs-spec-sweep-rules-state-behaviour-prohibitions-demoted-to": {
+      "type": "source",
+      "title": "Observation: TRS spec sweep: rules state behaviour; prohibitions demoted to properties",
+      "tags": [
+        "trs",
+        "significance",
+        "editorial",
+        "rules",
+        "positive-phrasing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-trs-spec-sweep-rules-state-behaviour-prohibitions-demoted-to",
+      "relevance": "high",
+      "observed_at": "2026-10-01T08:56:36.316Z",
+      "source_context": "Removing presumptuous negative-constraint phrasing from docs/trs-significance.md",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

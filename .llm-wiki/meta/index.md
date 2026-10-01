@@ -358,7 +358,14 @@
 - [[sources/obs-2026-09-29-trs-spec-amended-mirror-pairing-d7-materialisation-a-1]] — Observation: TRS spec amended: mirror pairing D7, materialisation A-1 *(created: 2026-09-29)*
 - [[sources/obs-2026-09-30-r3-outcome-anchored-product-is-a-definition-8-entry-no-re-en]] — Observation: R3 outcome anchored: product IS a Definition-8 entry; no re-entry mechanism *(created: 2026-09-30)*
 - [[sources/obs-2026-09-30-trs-spec-all-oqs-resolved-band-terminology-no-splice-admissi]] — Observation: TRS spec: all OQs resolved — band terminology, no splice, admission iff S1 *(created: 2026-09-30)*
+- [[sources/obs-2026-09-30-trs-spec-terminology-aligned-underfit-can-n-overfit-can-n]] — Observation: TRS spec terminology aligned: underfit=σ∖can(N), overfit=can(N)∖σ *(created: 2026-09-30)*
 - [[sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo]] — Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop *(created: 2026-09-30)*
+- [[sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation]] — Observation: decode renamed witness: strict converse of canonicalisation *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat]] — Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular]] — Observation: TRS spec: decode total; rules use only defined kline vocabulary *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-]] — Observation: TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7 *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome]] — Observation: TRS spec: S4 at reentry via empty adjacency; R3 single outcome; R4 single arrival *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-sweep-rules-state-behaviour-prohibitions-demoted-to]] — Observation: TRS spec sweep: rules state behaviour; prohibitions demoted to properties *(created: 2026-10-01)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -368,4 +375,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-09-30T16:27:13.112Z* | *Total pages: 356*
+*Last updated: 2026-10-01T10:58:49.242Z* | *Total pages: 363*
