@@ -210,6 +210,15 @@ class End:
     effort: Fraction | None = None
 
 
+@dataclass(frozen=True)
+class Proposal:
+    """A halted kline read as a request (§5 Definition 15)."""
+
+    kind: str  # "acquire" | "connect" | "continue"
+    kline: Kline
+    effort: Fraction
+
+
 @dataclass
 class Rationalisation:
     stores: list[Kline]
@@ -257,10 +266,28 @@ def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisatio
                         seen.add(p)
                         queue.append((p, opener))
                 else:
-                    ends.append(End("R4: expansion emptied the adjacency", None))
+                    ends.append(End("R4: expansion emptied the adjacency", cand, effort(cand)))
             else:  # S4 — candidate whose neighbour supplied no adjacency
                 ends.append(End("R4: candidate with no adjacency", cand, effort(cand)))
 
     if queue:
-        ends.append(End(f"bound: reentry depth {max_rounds} reached", None))
+        pending = min(queue, key=lambda item: effort(item[0]))  # the frontier's cheapest continuation
+        ends.append(End(f"bound: reentry depth {max_rounds} reached", pending[0], effort(pending[0])))
     return Rationalisation(stores=stores, ends=ends, rounds=rounds)
+
+
+def proposals(r: Rationalisation) -> list[Proposal]:
+    """Every halt generates one proposal (§5 Definition 15), ordered by graded
+    significance — ascending effort, ties in generation order."""
+    out = []
+    for e in r.ends:
+        if e.kline is None:
+            continue
+        if e.reason.startswith("no candidates"):
+            kind = "connect"
+        elif e.reason.startswith("bound"):
+            kind = "continue"
+        else:
+            kind = "acquire"
+        out.append(Proposal(kind, e.kline, e.effort if e.effort is not None else effort(e.kline)))
+    return sorted(out, key=lambda p: p.effort)  # least entropy first — most significant next step

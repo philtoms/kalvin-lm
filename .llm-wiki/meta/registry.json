@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-01T13:36:00.391Z",
+  "last_updated": "2026-10-01T13:55:07.444Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5320,6 +5320,25 @@
       "created": "2026-09-30",
       "updated": "2026-09-30"
     },
+    "sources/obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend": {
+      "type": "source",
+      "title": "Observation: Amendment 15: proposals ordered by graded significance (ascending effort)",
+      "tags": [
+        "trs",
+        "proposals",
+        "ordering",
+        "graded-significance",
+        "amendment-15",
+        "mid-run-rescue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend",
+      "relevance": "high",
+      "observed_at": "2026-10-01T13:55:07.350Z",
+      "source_context": "Ruling: proposal ordering is graded significance, not strategy",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
     "sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation": {
       "type": "source",
       "title": "Observation: decode renamed witness: strict converse of canonicalisation",
@@ -5393,6 +5412,27 @@
       "relevance": "high",
       "observed_at": "2026-10-01T13:24:53.072Z",
       "source_context": "Defining graded significance as entropy in the TRS spec",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-proposals-built-acquire-connect-continue-at-every-halt-ranke": {
+      "type": "source",
+      "title": "Observation: Proposals built: acquire/connect/continue at every halt, ranked by effort",
+      "tags": [
+        "trs",
+        "proposals",
+        "acquire",
+        "connect",
+        "continue",
+        "definition-15",
+        "halt",
+        "discharge"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-proposals-built-acquire-connect-continue-at-every-halt-ranke",
+      "relevance": "high",
+      "observed_at": "2026-10-01T13:47:01.652Z",
+      "source_context": "Building the proposals thin layer at rationalisation halts",
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },

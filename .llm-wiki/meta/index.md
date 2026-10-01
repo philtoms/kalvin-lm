@@ -360,10 +360,12 @@
 - [[sources/obs-2026-09-30-trs-spec-all-oqs-resolved-band-terminology-no-splice-admissi]] — Observation: TRS spec: all OQs resolved — band terminology, no splice, admission iff S1 *(created: 2026-09-30)*
 - [[sources/obs-2026-09-30-trs-spec-terminology-aligned-underfit-can-n-overfit-can-n]] — Observation: TRS spec terminology aligned: underfit=σ∖can(N), overfit=can(N)∖σ *(created: 2026-09-30)*
 - [[sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo]] — Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop *(created: 2026-09-30)*
+- [[sources/obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend]] — Observation: Amendment 15: proposals ordered by graded significance (ascending effort) *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation]] — Observation: decode renamed witness: strict converse of canonicalisation *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned]] — Observation: derive → rationalise: the loop's name, engine-aligned *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b]] — Observation: Effort defined: E discounts repairable residual; S3 strictly below S4 *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-graded-significance-defined-h-1-f-entropy-flow-theorems]] — Observation: Graded significance defined: H = 1 − μ(F)/μ(σ∨â), entropy flow theorems *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-proposals-built-acquire-connect-continue-at-every-halt-ranke]] — Observation: Proposals built: acquire/connect/continue at every halt, ranked by effort *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida]] — Observation: R1 rewritten: S1 arrival licenses the trace's opening candidate *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat]] — Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired]] — Observation: trs.md references dropped from spec; dialogue retired *(created: 2026-10-01)*
@@ -383,4 +385,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-01T13:36:00.391Z* | *Total pages: 371*
+*Last updated: 2026-10-01T13:55:07.444Z* | *Total pages: 373*

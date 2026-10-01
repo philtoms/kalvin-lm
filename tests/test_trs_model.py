@@ -15,6 +15,7 @@ from trs import (
     decompose,
     effort,
     entropy,
+    proposals,
     rationalise,
     significance,
     r2_products,
@@ -208,6 +209,56 @@ def test_ends_carry_the_halt_measure():
     r = rationalise(d, k(A, A))
     halted = [e for e in r.ends if e.kline is not None]
     assert halted and all(e.effort == effort(e.kline) for e in halted)
+
+
+# --- §5 Definition 15: proposals at halt ---
+
+
+def test_proposal_acquire_from_unheld_witness():
+    d = base_domain(k(ABD, A, B))  # the R2 trace pushes ⟨B, ∅⟩ (unheld B)
+    r = rationalise(d, k(A, A, B))
+    ps = [p for p in proposals(r) if p.kind == "acquire" and p.kline == k(B)]
+    assert ps and ps[0].effort == 1  # nothing held explains B — full effort
+
+
+def test_proposal_connect_from_empty_overlap():
+    r = rationalise(Domain(), k(AB, A, B))
+    ps = proposals(r)
+    assert len(ps) == 1
+    assert ps[0].kind == "connect" and ps[0].kline == k(AB, A, B)
+
+
+def test_proposal_continue_names_min_effort_frontier():
+    d = base_domain(k(AB, A, B, C))  # the overfit cycle
+    r = rationalise(d, k(A, A, B), max_rounds=1)
+    ps = [p for p in proposals(r) if p.kind == "continue"]
+    assert ps and ps[0].effort == effort(ps[0].kline)  # the frontier's cheapest member
+
+
+def test_emptied_expansion_records_its_candidate():
+    d = base_domain(k(AB), k(ABC, AB))  # k(AB) is terminal — the only substitutable
+    r = rationalise(d, k(C, C))
+    ends = [e for e in r.ends if e.reason == "R4: expansion emptied the adjacency"]
+    assert ends and ends[0].kline == k(C, AB)  # the candidate whose expansion emptied
+    assert ends[0].effort == effort(k(C, AB))
+
+
+def test_proposals_cover_every_end():
+    d = base_domain(k(AB), k(ABC, AB))
+    r = rationalise(d, k(C, C))
+    assert len(proposals(r)) == len(r.ends)  # one proposal per halt
+    assert all(p.kind in ("acquire", "connect", "continue") for p in proposals(r))
+
+
+def test_proposals_ordered_by_significance():
+    # ends at E = 2/3 (emptied expansion ⟨C, {AB}⟩) and E = 1 (⟨C, ∅⟩, no adjacency)
+    d = base_domain(k(AB), k(ABC, AB), k(CD))  # k(AB) and k(CD) are terminal
+    r = rationalise(d, k(C, C))
+    ps = proposals(r)
+    assert len(ps) == 2
+    assert ps == sorted(ps, key=lambda p: p.effort)  # ascending effort
+    assert ps[0].kline == k(C, AB) and ps[0].effort == Fraction(2, 3)  # least entropy first
+    assert ps[1].kline == k(C) and ps[1].effort == 1  # the full-surprise acquire sorts last
 
 
 # --- §5 + D10: R1 stores; admission iff S1 ---

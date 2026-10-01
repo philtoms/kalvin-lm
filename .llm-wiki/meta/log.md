@@ -941,3 +941,9 @@
 ## [2026-10-01T13:36:00.310Z] observe
 - slug: "obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b", title: "Effort defined: E discounts repairable residual; S3 strictly below S4", relevance: "high"
 
+## [2026-10-01T13:47:01.655Z] observe
+- slug: "obs-2026-10-01-proposals-built-acquire-connect-continue-at-every-halt-ranke", title: "Proposals built: acquire/connect/continue at every halt, ranked by effort", relevance: "high"
+
+## [2026-10-01T13:55:07.353Z] observe
+- slug: "obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend", title: "Amendment 15: proposals ordered by graded significance (ascending effort)", relevance: "high"
+

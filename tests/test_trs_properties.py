@@ -15,6 +15,7 @@ from trs import (
     effort,
     entropy,
     mu,
+    proposals,
     rationalise,
     r2_products,
     r3_substitute,
@@ -270,6 +271,14 @@ def test_rationalisation_bounded_and_honest(sc, bound):
     assert all(
         e.reason.startswith(("R4", "no candidates", "bound")) for e in r.ends
     )
+    # every halt records its kline and its halt measure
+    assert all(e.kline is not None and e.effort is not None for e in r.ends)
+    ps = proposals(r)
+    assert len(ps) == len(r.ends)  # every halt generates exactly one proposal
+    assert all(p.kind in ("acquire", "connect", "continue") for p in ps)
+    assert all(p.effort == effort(p.kline) for p in ps)
+    assert all(0 <= p.effort <= 1 for p in ps)
+    assert ps == sorted(ps, key=lambda p: p.effort)  # graded significance: least entropy first
 
 
 # --- the R1 rewrite rule: opener stored, endpoint constructable ---
