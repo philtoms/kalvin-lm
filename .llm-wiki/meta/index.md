@@ -364,6 +364,8 @@
 - [[sources/obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned]] — Observation: derive → rationalise: the loop's name, engine-aligned *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat]] — Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired]] — Observation: trs.md references dropped from spec; dialogue retired *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0]] — Observation: TRS milestone: spec → code, committed 2aaa2e0 *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem]] — Observation: TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular]] — Observation: TRS spec: decode total; rules use only defined kline vocabulary *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie]] — Observation: TRS spec implemented and tested: one spec defect fixed (emptied expansion) *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-]] — Observation: TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7 *(created: 2026-10-01)*
@@ -378,4 +380,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-01T11:45:37.855Z* | *Total pages: 366*
+*Last updated: 2026-10-01T12:38:02.319Z* | *Total pages: 368*

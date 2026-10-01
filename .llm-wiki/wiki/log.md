@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem","title":"TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0","title":"TRS milestone: spec → code, committed 2aaa2e0"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie","title":"TRS spec implemented and tested: one spec defect fixed (emptied expansion)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned","title":"derive → rationalise: the loop's name, engine-aligned"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired","title":"trs.md references dropped from spec; dialogue retired"}

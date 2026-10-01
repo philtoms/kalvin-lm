@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-01T11:45:37.855Z",
+  "last_updated": "2026-10-01T12:38:02.319Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5390,6 +5390,41 @@
       "relevance": "medium",
       "observed_at": "2026-10-01T11:02:05.055Z",
       "source_context": "Retiring data/trs.md per user instruction",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0": {
+      "type": "source",
+      "title": "Observation: TRS milestone: spec → code, committed 2aaa2e0",
+      "tags": [
+        "trs",
+        "milestone",
+        "commit",
+        "implementation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0",
+      "relevance": "high",
+      "observed_at": "2026-10-01T12:29:29.645Z",
+      "source_context": "Committing the TRS reference implementation milestone",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem": {
+      "type": "source",
+      "title": "Observation: TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated",
+      "tags": [
+        "trs",
+        "property-testing",
+        "hypothesis",
+        "invariants",
+        "i2-seam"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem",
+      "relevance": "high",
+      "observed_at": "2026-10-01T12:38:02.203Z",
+      "source_context": "Building property-based invariant tests for src/trs",
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },

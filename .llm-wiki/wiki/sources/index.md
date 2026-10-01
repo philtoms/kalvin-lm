@@ -285,6 +285,8 @@
 - [Observation: derive → rationalise: the loop's name, engine-aligned](obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned.md)
 - [Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input](obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat.md)
 - [Observation: trs.md references dropped from spec; dialogue retired](obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired.md)
+- [Observation: TRS milestone: spec → code, committed 2aaa2e0](obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0.md)
+- [Observation: TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated](obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem.md)
 - [Observation: TRS spec: decode total; rules use only defined kline vocabulary](obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular.md)
 - [Observation: TRS spec implemented and tested: one spec defect fixed (emptied expansion)](obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie.md)
 - [Observation: TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7](obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-.md)

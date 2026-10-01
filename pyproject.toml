@@ -26,6 +26,7 @@ dev = [
     "pytest-xdist>=3.5.0",
     "ruff>=0.2.0",
     "mypy>=1.8.0",
+    "hypothesis>=6.100.0",
     "ipython>=8.0.0",
 ]
 notebooks = [

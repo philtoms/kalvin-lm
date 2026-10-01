@@ -926,3 +926,9 @@
 ## [2026-10-01T11:45:37.747Z] observe
 - slug: "obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie", title: "TRS spec implemented and tested: one spec defect fixed (emptied expansion)", relevance: "high"
 
+## [2026-10-01T12:29:29.646Z] observe
+- slug: "obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0", title: "TRS milestone: spec → code, committed 2aaa2e0", relevance: "high"
+
+## [2026-10-01T12:38:02.206Z] observe
+- slug: "obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem", title: "TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated", relevance: "high"
+
