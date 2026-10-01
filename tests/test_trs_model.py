@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import pytest
+from fractions import Fraction
 
 from trs import (
+    BETA,
     Band,
     Domain,
     Kline,
     band,
     can,
     decompose,
+    effort,
+    entropy,
     rationalise,
+    significance,
     r2_products,
     r3_substitute,
 )
@@ -145,6 +150,64 @@ def test_r3_emptied_expansion():
     d = base_domain(k(AB))  # terminal kline headed AB
     n_prime = r3_substitute(d, k(CD, AB))
     assert n_prime == frozenset()  # routes to R4
+
+
+# --- §4 Definition 13: entropy and graded significance ---
+
+
+def test_entropy_endpoints():
+    assert entropy(k(AB, A, B)) == 0  # canon: no surprise at S1
+    assert entropy(k(AB, AB)) == 0  # identity: no surprise at S1 either
+    assert significance(k(AB, A, B)) == 1
+    assert entropy(k(C, A, B)) == 1  # S3: no correspondence, full surprise
+    assert entropy(Kline(AB, frozenset())) == 1  # S4: 100% surprise
+
+
+def test_significance_interior_for_s2():
+    assert significance(k(AB, A)) == Fraction(1, 2)  # F = A, σ ∨ â = AB
+    assert 0 < significance(k(ABC, AB)) < 1
+
+
+def test_band_grade_correspondence():
+    for kk in (k(AB, A, B), k(AB, AB), k(AB, A), k(C, A, B), Kline(AB, frozenset())):
+        b = band(kk)
+        g = significance(kk)
+        assert (b is Band.S1) == (g == 1)
+        assert (b is Band.S2) == (0 < g < 1)
+        assert (b in (Band.S3, Band.S4)) == (g == 0)  # entropy does not split S3/S4
+
+
+# --- §4 Definition 14: effort — entropy biased by repairability ---
+
+
+def test_effort_anchors():
+    assert effort(k(AB, A, B)) == 0  # S1 — canon
+    assert effort(k(AB, AB)) == 0  # S1 — identity
+    assert effort(Kline(AB, frozenset())) == 1  # S4 — exactly full, nothing to work with
+
+
+def test_effort_s3_strictly_below_s4():
+    assert effort(k(C, A, B)) < 1  # S3: adjacency present — repairable
+    assert effort(k(C, A, B)) == Fraction(1 + BETA * 2, 3)  # (μ(σ) + β·μ(â))/μ(σ ∨ â) = (1+1)/3
+    assert effort(Kline(C, frozenset())) == 1  # S4 with the same claim: strictly more
+
+
+def test_effort_s2_interior_both_kinds():
+    assert 0 < effort(k(AB, A)) < 1  # pure underfit: U carries it
+    assert 0 < effort(k(A, AB)) < 1  # pure overfit: β·O carries it (β > 0)
+
+
+def test_effort_beta_interpolation():
+    for kk in (k(AB, A), k(C, A, B), k(ABC, AB), k(AB, A, B)):
+        assert effort(kk, beta=Fraction(1)) == entropy(kk)  # β → 1 recovers H
+        assert effort(kk) <= entropy(kk)  # E ≤ H for β ≤ 1
+
+
+def test_ends_carry_the_halt_measure():
+    d = base_domain(k(AB))  # terminal neighbour
+    r = rationalise(d, k(A, A))
+    halted = [e for e in r.ends if e.kline is not None]
+    assert halted and all(e.effort == effort(e.kline) for e in halted)
 
 
 # --- §5 + D10: R1 stores; admission iff S1 ---

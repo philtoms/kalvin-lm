@@ -4,7 +4,22 @@ from __future__ import annotations
 
 from hypothesis import assume, given, settings, strategies as st
 
-from trs import Band, Domain, Kline, band, can, contained, decompose, rationalise, r2_products, r3_substitute
+from trs import (
+    Band,
+    Domain,
+    Kline,
+    band,
+    can,
+    contained,
+    decompose,
+    effort,
+    entropy,
+    mu,
+    rationalise,
+    r2_products,
+    r3_substitute,
+    significance,
+)
 
 ATOMS = [1 << i for i in range(6)]
 ALL_SIGS = list(range(1, 64))
@@ -139,6 +154,52 @@ def test_i2_static_domains(d):
     for k in d:
         if d.is_canonical(k):
             assert by_sig.setdefault(k.sig, k.adj) == k.adj
+
+
+# --- §4 Definition 13: entropy and graded significance ---
+
+
+@settings(deadline=None)
+@given(klines())
+def test_band_grade_correspondence(k):
+    b = band(k)
+    g = significance(k)
+    assert (b is Band.S1) == (g == 1)  # no surprise — canon and identity alike
+    assert (b is Band.S2) == (0 < g < 1)
+    assert (b in (Band.S3, Band.S4)) == (g == 0)  # entropy does not split S3/S4
+    assert entropy(k) == 1 - g
+
+
+@settings(deadline=None)
+@given(klines())
+def test_effort_properties(k):
+    from fractions import Fraction
+
+    assert 0 <= effort(k) <= 1
+    assert effort(k) <= entropy(k)  # β ≤ 1
+    b = band(k)
+    if b is Band.S1:
+        assert effort(k) == 0  # anchor — canon and identity alike
+    elif b is Band.S4:
+        assert effort(k) == 1  # anchor — exactly full
+    elif b is Band.S3:
+        assert effort(k) < 1  # repairability: strictly below S4
+    else:
+        assert 0 < effort(k) < 1  # S2 — both kinds
+    assert effort(k, beta=Fraction(1)) == entropy(k)  # β → 1 recovers H
+
+
+@settings(deadline=None)
+@given(s2_scenarios())
+def test_r2_never_reduces_entropy(sc):
+    """Weighted by head measure, R2 never reduces entropy; exact iff the fit head is held."""
+    d, k = sc
+    t = decompose(k)
+    total = mu(k.sig | can(k.adj))
+    carried = sum(mu(p.sig) * entropy(p) for p in r2_products(d, k))
+    assert carried >= total * entropy(k)
+    fit_held = t.F == 0 or d.witness(t.F) != frozenset()
+    assert (carried == total * entropy(k)) == fit_held
 
 
 # --- §5 R2/R3: product well-formedness ---

@@ -1,6 +1,7 @@
 """Significance-routed model (docs/trs-significance.md)."""
 
 from trs.model import (
+    BETA,
     Band,
     Decomposition,
     Domain,
@@ -11,13 +12,18 @@ from trs.model import (
     can,
     contained,
     decompose,
+    effort,
+    entropy,
+    mu,
     rationalise,
     r2_products,
     r3_substitute,
     residue,
+    significance,
 )
 
 __all__ = [
+    "BETA",
     "Band",
     "Decomposition",
     "Domain",
@@ -28,8 +34,12 @@ __all__ = [
     "can",
     "contained",
     "decompose",
+    "effort",
+    "entropy",
+    "mu",
     "rationalise",
     "r2_products",
     "r3_substitute",
     "residue",
+    "significance",
 ]

@@ -935,3 +935,9 @@
 ## [2026-10-01T13:11:27.676Z] observe
 - slug: "obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida", title: "R1 rewritten: S1 arrival licenses the trace's opening candidate", relevance: "high"
 
+## [2026-10-01T13:24:53.074Z] observe
+- slug: "obs-2026-10-01-graded-significance-defined-h-1-f-entropy-flow-theorems", title: "Graded significance defined: H = 1 − μ(F)/μ(σ∨â), entropy flow theorems", relevance: "high"
+
+## [2026-10-01T13:36:00.310Z] observe
+- slug: "obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b", title: "Effort defined: E discounts repairable residual; S3 strictly below S4", relevance: "high"
+

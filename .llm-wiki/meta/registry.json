@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-01T13:11:27.753Z",
+  "last_updated": "2026-10-01T13:36:00.391Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5353,6 +5353,46 @@
       "relevance": "high",
       "observed_at": "2026-10-01T11:33:34.790Z",
       "source_context": "Renaming derive to rationalise per user ruling",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b": {
+      "type": "source",
+      "title": "Observation: Effort defined: E discounts repairable residual; S3 strictly below S4",
+      "tags": [
+        "trs",
+        "effort",
+        "bias",
+        "repairability",
+        "definition-14",
+        "halt",
+        "proposals",
+        "beta"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b",
+      "relevance": "high",
+      "observed_at": "2026-10-01T13:36:00.308Z",
+      "source_context": "Biasing entropy by repairability for halt-time proposals",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-graded-significance-defined-h-1-f-entropy-flow-theorems": {
+      "type": "source",
+      "title": "Observation: Graded significance defined: H = 1 − μ(F)/μ(σ∨â), entropy flow theorems",
+      "tags": [
+        "trs",
+        "graded-significance",
+        "entropy",
+        "definition-13",
+        "jaccard",
+        "r2-theorem"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-graded-significance-defined-h-1-f-entropy-flow-theorems",
+      "relevance": "high",
+      "observed_at": "2026-10-01T13:24:53.072Z",
+      "source_context": "Defining graded significance as entropy in the TRS spec",
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },

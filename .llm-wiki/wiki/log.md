@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b","title":"Effort defined: E discounts repairable residual; S3 strictly below S4"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-graded-significance-defined-h-1-f-entropy-flow-theorems","title":"Graded significance defined: H = 1 − μ(F)/μ(σ∨â), entropy flow theorems"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida","title":"R1 rewritten: S1 arrival licenses the trace's opening candidate"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem","title":"TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0","title":"TRS milestone: spec → code, committed 2aaa2e0"}

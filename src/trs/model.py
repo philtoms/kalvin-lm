@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from collections import deque
+from fractions import Fraction
 
 
 # --- §1 Definition 1 — Node algebra (word-bit realisation; ⊥ = 0) ---
@@ -18,6 +19,11 @@ def residue(x: int, y: int) -> int:
 def contained(x: int, y: int) -> bool:
     """x ⪯ y — containment."""
     return x & y == x
+
+
+def mu(v: int) -> int:
+    """μ — the measure: mass of a node (word-bit: popcount)."""
+    return v.bit_count()
 
 
 # --- §1 Definition 2 — Kline ---
@@ -140,6 +146,30 @@ def decompose(k: Kline) -> Decomposition:
     return Decomposition(F=f, U=residue(k.sig, a_hat), O=residue(a_hat, k.sig))
 
 
+# --- §4 Definition 13 — entropy and graded significance ---
+
+
+def significance(k: Kline) -> Fraction:
+    """g(C) = μ(F)/μ(σ ∨ â) — the entropy complement (§4 Definition 13)."""
+    a_hat = can(k.adj)
+    return Fraction(mu(k.sig & a_hat), mu(k.sig | a_hat))
+
+
+def entropy(k: Kline) -> Fraction:
+    """H(C) = 1 − g(C) — surprise: the unexplained fraction of the pairing."""
+    return 1 - significance(k)
+
+
+BETA = Fraction(1, 2)
+
+
+def effort(k: Kline, beta: Fraction = BETA) -> Fraction:
+    """E(C) = (μ(U) + β·μ(O))/μ(σ ∨ â) — entropy biased by repairability (§4 Definition 14)."""
+    t = decompose(k)
+    total = mu(k.sig | can(k.adj))
+    return Fraction(mu(t.U) + beta * mu(t.O), total)
+
+
 # --- §5 — the rewrite rules ---
 
 
@@ -173,10 +203,11 @@ def r3_substitute(d: Domain, k: Kline) -> frozenset[int]:
 
 @dataclass(frozen=True)
 class End:
-    """A terminal arrival."""
+    """A terminal arrival — with the halt measure (Definition 14) where a kline halted."""
 
     reason: str
     kline: Kline | None
+    effort: Fraction | None = None
 
 
 @dataclass
@@ -199,11 +230,11 @@ def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisatio
         e, origin = queue.popleft()
         rounds += 1
         if not e.adj:  # R4 arrival — an entry kline with no adjacency
-            ends.append(End("R4: entry kline with no adjacency", e))
+            ends.append(End("R4: entry kline with no adjacency", e, effort(e)))
             continue
         neighbours = d.overlap(e.sig)  # Definition 9
         if not neighbours:
-            ends.append(End("no candidates — the entry terminates", e))
+            ends.append(End("no candidates — the entry terminates", e, effort(e)))
             continue
         c_e = can(e.adj)
         for nb in sorted(neighbours, key=lambda k: k.sig):
@@ -228,7 +259,7 @@ def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisatio
                 else:
                     ends.append(End("R4: expansion emptied the adjacency", None))
             else:  # S4 — candidate whose neighbour supplied no adjacency
-                ends.append(End("R4: candidate with no adjacency", cand))
+                ends.append(End("R4: candidate with no adjacency", cand, effort(cand)))
 
     if queue:
         ends.append(End(f"bound: reentry depth {max_rounds} reached", None))

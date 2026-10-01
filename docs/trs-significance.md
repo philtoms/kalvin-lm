@@ -19,10 +19,11 @@ This document takes positions; each is listed here for review. Method: the rules
 | D7  | The decomposition pairs cross-wise: `U` carries `N_O`, `O` carries `N_U` — `U` and `O` each serve as lookup key in one product and as claim in the other (§5, R2).                             |
 | D11 | R3 is single pass, with a single outcome: the reentrant kline `⟨can(N′), N′⟩`. Reentry continues until a band routes to S1 or S4 (§5, R3).                                                     |
 | D8  | `witness_D` yields no adjacency for a signature not held (Definition 6); a product carrying it routes to R4 at reentry (§5). Signatures enter `D` at R1 (D10).                                 |
-| D9  | The classifier's value is the **band** (banded significance). Graded significance — an int — is reserved and undefined here (§4). The band routes the TRS; R1–R4 are the four routes.          |
+| D9  | The classifier's value is the **band** (banded significance); the grade is the entropy complement (Definition 13). The band routes the TRS; R1–R4 are the four routes.          |
 | D10 | A kline enters `D` at R1, iff a trace it opens reaches S1. Entry content persists through the stores of its opening candidates.                                                                           |
+| D12 | Effort `E` (Definition 14) biases entropy by repairability: adjacency-side residual counts at `β` (default ½) — dereference beats acquisition. `S3` is strictly less surprising than `S4`; anchors `S1 = 0`, `S4 = 1` hold.          |
 
-Amended eleven times on review: (1) misfit pairing taken to the mirror, then superseded — the misfit products are now the unpaired residual adjacencies (D7); (2) Axiom A-1 deleted — an unheld derived signature is a transition to S4, not a materialisation, and closure is I-1 alone; (3) no R3 splice — occurrence is the licence; band vs graded significance terminology fixed (D9); admission iff S1, entries transient (D10); (4) R3 canonicalises and re-enters as a new entry, prior signature discarded, single pass, reenter until S1 or S4 (D6, D11); (5) R2's products are three re-entering klines — `⟨F, N_F⟩`, `⟨U, N_O⟩`, `⟨O, N_U⟩` — replacing the fit-termination and raw-adjacency products; R3 takes an S3 candidate uniformly (D5, D7); (6) the unheld-residual S4 transition moved from R2 to reentry — the empty adjacency routes to R4, now with the single arrival of an entry kline with no adjacency — and R3's single outcome is the reentrant kline (D8, D11); (7) decode made total — `∅` for signatures not held — and `residual`/`empty adjacency` withdrawn from the rules: R2 states the decomposition, decode, and the three products; the no-adjacency routing follows Definitions 2, 6, and 11 (D8); (8) `decode` renamed `witness` — the strict converse of canonicalisation, aligning with the engine's held witness (Definition 6); (9) derive/derived → rationalise/rationalised — the algorithm's name, as the algebra's §12 term for producing, using, and consolidating evidence; (10) R3: an expansion that empties `N′` arrives at R4 — found in code testing (`can(∅) = ⊥` is not a legal head); (11) R1 stores the opening candidate of the trace, not the S1 candidate — a proof of full entry understanding licenses the origin, from which the S1 candidate is constructable; R1 mints canonical klines only where the opening candidate is itself the S1 candidate.
+Amended thirteen times on review: (1) misfit pairing taken to the mirror, then superseded — the misfit products are now the unpaired residual adjacencies (D7); (2) Axiom A-1 deleted — an unheld derived signature is a transition to S4, not a materialisation, and closure is I-1 alone; (3) no R3 splice — occurrence is the licence; band vs graded significance terminology fixed (D9); admission iff S1, entries transient (D10); (4) R3 canonicalises and re-enters as a new entry, prior signature discarded, single pass, reenter until S1 or S4 (D6, D11); (5) R2's products are three re-entering klines — `⟨F, N_F⟩`, `⟨U, N_O⟩`, `⟨O, N_U⟩` — replacing the fit-termination and raw-adjacency products; R3 takes an S3 candidate uniformly (D5, D7); (6) the unheld-residual S4 transition moved from R2 to reentry — the empty adjacency routes to R4, now with the single arrival of an entry kline with no adjacency — and R3's single outcome is the reentrant kline (D8, D11); (7) decode made total — `∅` for signatures not held — and `residual`/`empty adjacency` withdrawn from the rules: R2 states the decomposition, decode, and the three products; the no-adjacency routing follows Definitions 2, 6, and 11 (D8); (8) `decode` renamed `witness` — the strict converse of canonicalisation, aligning with the engine's held witness (Definition 6); (9) derive/derived → rationalise/rationalised — the algorithm's name, as the algebra's §12 term for producing, using, and consolidating evidence; (10) R3: an expansion that empties `N′` arrives at R4 — found in code testing (`can(∅) = ⊥` is not a legal head); (11) R1 stores the opening candidate of the trace, not the S1 candidate — a proof of full entry understanding licenses the origin, from which the S1 candidate is constructable; R1 mints canonical klines only where the opening candidate is itself the S1 candidate; (12) graded significance defined (Definition 13): entropy `H = 1 − μ(F)/μ(σ ∨ â)` — the fraction of unexplained mass, the measure of cognitive effort; zero surprise at S1 in canon and identity alike, full surprise at S3 and S4; `μ` restored to Definition 1; (13) effort defined (Definition 14): entropy biased by repairability — `E = (μ(U) + β·μ(O))/μ(σ ∨ â)`, `β` default ½ — `S3` strictly below `S4`, anchors intact; the halt measure for proposal generation.
 
 ---
 
@@ -67,9 +68,10 @@ Terms are shared with `kalvin-algebra.md`; the mapping below gives both document
 - `∨` — commutative, associative, idempotent; unit `⊥`;
 - `∧` — commutative; `v ∧ ⊥ = ⊥`;
 - `∖` — `(v ∖ w) ∨ (v ∧ w) = v` and `(v ∖ w) ∧ w = ⊥`;
+- `μ : Node → ℕ` — a measure: `μ(⊥) = 0`, and `v ∧ w = ⊥ ⟹ μ(v ∨ w) = μ(v) + μ(w)`;
 - decidable equality.
 
-Write `x ⪯ y` for `x ∧ y = x`. These are the laws of `kalvin-algebra.md` Definition 1 minus the measure `μ` — graded significance is not defined by this model (§4). The reference realisation is the same word-bit space. A node is opaque; the algebra never looks inside one.
+Write `x ⪯ y` for `x ∧ y = x`. These are the laws of `kalvin-algebra.md` Definition 1, measure included — `μ` grades significance (Definition 13). The reference realisation is the same word-bit space, `μ` = popcount. A node is opaque; the algebra never looks inside one — `μ` weighs, it does not decompose.
 
 ### Definition 2 — Kline
 
@@ -188,7 +190,7 @@ Every candidate carries a signature rationalised from one context — the entry'
 
 ## 4. The Band
 
-Significance has two species, distinguished by prefix. **Graded significance** is a measure — an int — and is not defined by this model. **Banded significance** is the classifier below: it assigns each candidate exactly one band, S1–S4. A graded measure, if added later, would quantify the band, as `J` quantizes the engine's bands (`kalvin-algebra.md` §10).
+Significance has two species, distinguished by prefix. **Graded significance** is the measure of Definition 13 — the entropy of a pairing. **Banded significance** is the classifier below: it assigns each candidate exactly one band, S1–S4. The grade quantifies the band, as `J` quantizes the engine's bands (`kalvin-algebra.md` §10); the band routes the rewrite system.
 
 The band is the routing signal: each band selects one of the four routes, R1–R4, and the tree grows by band alone.
 
@@ -226,7 +228,51 @@ Then
 σ = F ∨ U      â = F ∨ O      F ∧ O = F ∧ U = O ∧ U = ⊥
 ```
 
-`S2 ⟺ F ≠ ⊥ ∧ (U ≠ ⊥ ∨ O ≠ ⊥)`. Flow directions: `U ≠ ⊥` is underfit — the unresolved content sits in the signature, and information must flow signature → adjacency; `O ≠ ⊥` is overfit — the unresolved content sits in the adjacency, and information must flow adjacency → signature; both is bidirectional. The directions are orientations of flow, not size comparisons — neither side need contain the other.
+`S2 ⟺ F ≠ ⊥ ∧ (U ≠ ∥ ∨ O ≠ ⊥)`. Flow directions: `U ≠ ⊥` is underfit — the unresolved content sits in the signature, and information must flow signature → adjacency; `O ≠ ⊥` is overfit — the unresolved content sits in the adjacency, and information must flow adjacency → signature; both is bidirectional. The directions are orientations of flow, not size comparisons — neither side need contain the other.
+
+### Definition 13 — Entropy and graded significance
+
+For a candidate `C = ⟨σ, N⟩` with `â = can(N)` and decomposition `F, U, O` (Definition 12), the **entropy** of the pairing is
+
+```text
+H(C) = 1 − μ(F) / μ(σ ∨ â)
+```
+
+and the **graded significance** is its complement `g(C) = μ(F) / μ(σ ∨ â)`. The more significant, the less entropy.
+
+Entropy is surprise: the fraction of the pairing's mass that is unexplained — the cognitive effort remaining before the pairing is fully understood. The pairing's own correspondence decides it; `D` enters only through the witnesses the rules fetch.
+
+- `S1` — `F = σ = â`: `H = 0`, `g = 1` — no surprise, in canon and identity alike.
+- `S2` — `F ≠ ⊥`, `U ∨ O ≠ ⊥`: `0 < g < 1` strictly.
+- `S3` — `F = ⊥`: `g = 0` — no correspondence, full surprise.
+- `S4` — `â = ⊥`: `μ(F)/μ(σ) = 0` — `H = 1`: 100% surprise.
+
+Entropy does not separate `S3` from `S4`: both carry full surprise. The empty adjacency is structural — an arrival condition (Definition 11, case 1), not a point on the correspondence axis.
+
+Entropy flow under the rules:
+
+- `R1` fires exactly at `H = 0` — the proof of full understanding is the discharge of all surprise.
+- `R2` partitions the surprise: the misfit products are disjoint or empty and carry `H = 1`; the fit product carries `H = 0` when its head is held. Weighted by head measure, R2 never reduces entropy — `Σ μ(head) · H(product) ≥ μ(σ ∨ â) · H(C)`, with equality iff the fit head is held or `⊥` (an unheld fit head degrades to R4 at full surprise).
+- `R3` discards the surprised claim: the prior signature, carrying all of `C`'s entropy, is dropped, and the product `⟨can(N′), N′⟩` is self-canonical — `H = 0` as a kline. Surprise re-enters only through Definition 9's re-pairing against neighbour adjacencies.
+- `R4` is the full-surprise arrival: nothing held explains the entry.
+
+### Definition 14 — Effort (biased entropy)
+
+Entropy does not separate `S3` from `S4` — both carry full surprise on the correspondence axis. But `S3` is strictly less costly than `S4`: its adjacency is present and dereferenceable, while `S4` has nothing to work with. The **effort** discounts the adjacency-side residual accordingly:
+
+```text
+E(C) = ( μ(U) + β · μ(O) ) / μ(σ ∨ â)      β ∈ (0, 1), a named constant; default ½
+```
+
+The `O`-side mass is present but unconnected — resolvable by dereferencing, not acquisition — so it counts at `β`. Consequences:
+
+- `E(S1) = 0` and `E(S4) = 1` exactly — the anchors survive the bias.
+- `E(S3) < 1` pointwise whenever `â ≠ ⊥`: `β·μ(â) < μ(â)`. Repairability is now strictly less surprising.
+- `0 < E(S2) < 1` in both kinds: `β > 0` keeps pure overfit off zero, `U` keeps pure underfit off zero.
+- `β → 1` recovers `H`; `E ≤ H` for `β ≤ 1`. The R2 entropy theorem is stated for `H` and does not transfer to `E`.
+- An `S2` may outweigh an `S3` — effort grades within bands; the band still routes.
+
+Effort is the halt measure: when rationalisation ends, `E` of the halted kline is how far the trace did not get — the ranking fuel for the proposals the halt generates.
 
 ---
 
@@ -319,6 +365,7 @@ Across R1–R4, every rewrite resolves against held content and signatures enter
 | S1 band                            | S1 band {Identity, Canon} — `⟨s, {s}⟩` is S1 here, collapsing the engine's Identity/Canon distinction |
 | S3 boundary `σ ∧ can(N) = ⊥`       | equivalent to the engine's not-covered case (distributivity: `σ ∧ can(N) = ⊥ ⟺ ∀ n ∈ N : σ ∧ n = ⊥`)  |
 | residuals `U = σ ∖ â`, `O = â ∖ σ` | `u = s ∖ σ(ν)`, `o = σ(ν) ∖ s` (Definition 9) — identical                                             |
+| graded significance `g = μ(F)/μ(σ ∨ â)` | significance ratio `J = |s ∩ σ(ν)| / |s ∪ σ(ν)|` (§10) — the same Jaccard, independently reached       |
 | no goal, no targeting licence      | goal kline B, strict-decrease targeting (Def 14)                                                      |
 
 The architectural difference: the engine is goal-directed — a derivation works toward B under a licence that strictly decreases mismatch; this model is significance-routed — the tree grows by valuation alone, and no kline plays the goal's role. The candidate construction being the same object in both models is the strongest evidence that the two are readings of one system.
@@ -330,6 +377,5 @@ The architectural difference: the engine is goal-directed — a derivation works
 - selection order among neighbours, among R3 substitutions, and among re-entering products — strategy;
 - arrival — the rules route every band (D11) but do not guarantee termination of the full tree: bounds on round length and re-entry depth are strategy, as the engine's T2 bounds witnessed cycles;
 - confluence — intentionally not required: branching over neighbours is the model's semantics, and different branches may ground different resolutions;
-- graded significance — the measure species, undefined here; adding it would quantify the band;
 - reinforcement, tiering, memory-management policy;
 - ratification of stored klines.
