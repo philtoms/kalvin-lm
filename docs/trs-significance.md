@@ -20,9 +20,9 @@ This document takes positions; each is listed here for review. Method: the rules
 | D11 | R3 is single pass, with a single outcome: the reentrant kline `⟨can(N′), N′⟩`. Reentry continues until a band routes to S1 or S4 (§5, R3).                                                     |
 | D8  | `witness_D` yields no adjacency for a signature not held (Definition 6); a product carrying it routes to R4 at reentry (§5). Signatures enter `D` at R1 (D10).                                 |
 | D9  | The classifier's value is the **band** (banded significance). Graded significance — an int — is reserved and undefined here (§4). The band routes the TRS; R1–R4 are the four routes.          |
-| D10 | A kline enters `D` at R1, iff its candidate reaches S1. Entry content persists through the stores of its candidates.                                                                           |
+| D10 | A kline enters `D` at R1, iff a trace it opens reaches S1. Entry content persists through the stores of its opening candidates.                                                                           |
 
-Amended ten times on review: (1) misfit pairing taken to the mirror, then superseded — the misfit products are now the unpaired residual adjacencies (D7); (2) Axiom A-1 deleted — an unheld derived signature is a transition to S4, not a materialisation, and closure is I-1 alone; (3) no R3 splice — occurrence is the licence; band vs graded significance terminology fixed (D9); admission iff S1, entries transient (D10); (4) R3 canonicalises and re-enters as a new entry, prior signature discarded, single pass, reenter until S1 or S4 (D6, D11); (5) R2's products are three re-entering klines — `⟨F, N_F⟩`, `⟨U, N_O⟩`, `⟨O, N_U⟩` — replacing the fit-termination and raw-adjacency products; R3 takes an S3 candidate uniformly (D5, D7); (6) the unheld-residual S4 transition moved from R2 to reentry — the empty adjacency routes to R4, now with the single arrival of an entry kline with no adjacency — and R3's single outcome is the reentrant kline (D8, D11); (7) decode made total — `∅` for signatures not held — and `residual`/`empty adjacency` withdrawn from the rules: R2 states the decomposition, decode, and the three products; the no-adjacency routing follows Definitions 2, 6, and 11 (D8); (8) `decode` renamed `witness` — the strict converse of canonicalisation, aligning with the engine's held witness (Definition 6); (9) derive/derived → rationalise/rationalised — the algorithm's name, as the algebra's §12 term for producing, using, and consolidating evidence; (10) R3: an expansion that empties `N′` arrives at R4 — found in code testing (`can(∅) = ⊥` is not a legal head).
+Amended eleven times on review: (1) misfit pairing taken to the mirror, then superseded — the misfit products are now the unpaired residual adjacencies (D7); (2) Axiom A-1 deleted — an unheld derived signature is a transition to S4, not a materialisation, and closure is I-1 alone; (3) no R3 splice — occurrence is the licence; band vs graded significance terminology fixed (D9); admission iff S1, entries transient (D10); (4) R3 canonicalises and re-enters as a new entry, prior signature discarded, single pass, reenter until S1 or S4 (D6, D11); (5) R2's products are three re-entering klines — `⟨F, N_F⟩`, `⟨U, N_O⟩`, `⟨O, N_U⟩` — replacing the fit-termination and raw-adjacency products; R3 takes an S3 candidate uniformly (D5, D7); (6) the unheld-residual S4 transition moved from R2 to reentry — the empty adjacency routes to R4, now with the single arrival of an entry kline with no adjacency — and R3's single outcome is the reentrant kline (D8, D11); (7) decode made total — `∅` for signatures not held — and `residual`/`empty adjacency` withdrawn from the rules: R2 states the decomposition, decode, and the three products; the no-adjacency routing follows Definitions 2, 6, and 11 (D8); (8) `decode` renamed `witness` — the strict converse of canonicalisation, aligning with the engine's held witness (Definition 6); (9) derive/derived → rationalise/rationalised — the algorithm's name, as the algebra's §12 term for producing, using, and consolidating evidence; (10) R3: an expansion that empties `N′` arrives at R4 — found in code testing (`can(∅) = ⊥` is not a legal head); (11) R1 stores the opening candidate of the trace, not the S1 candidate — a proof of full entry understanding licenses the origin, from which the S1 candidate is constructable; R1 mints canonical klines only where the opening candidate is itself the S1 candidate.
 
 ---
 
@@ -164,7 +164,7 @@ E = ⟨σ_E, N_E⟩.
 
 Entries arrive from outside presentation and from the products of R2 and R3 (§5); the pipeline makes no distinction between them.
 
-An entry's content reaches the domain through the S1 stores of its candidates (R1, D10). Presentation requires I-1: its references are held — `can(N_E)` may still be a signature the domain does not hold. The entry locates neighbours; the candidates constructed from it are what get valued (Definition 9, Definition 11).
+An entry's content reaches the domain through the R1 stores earned by its candidates' traces (R1, D10). Presentation requires I-1: its references are held — `can(N_E)` may still be a signature the domain does not hold. The entry locates neighbours; the candidates constructed from it are what get valued (Definition 9, Definition 11).
 
 ### Definition 9 — Entry pipeline
 
@@ -177,6 +177,8 @@ for each neighbour K_i = ⟨σ_i, N_i⟩ :
 ```
 
 Empty lookup: the entry terminates without candidates.
+
+Candidates on re-entering products extend earlier chains: a **trace** is a chain `C₀, C₁, …` where each `C_k` (k > 0) is a candidate formed on an entry that is a product of `C_{k−1}` (R2, R3). `C₀` is formed on a presented entry and opens the trace.
 
 ### Definition 10 — Candidate invariant
 
@@ -232,13 +234,13 @@ Then
 
 The rewrite system operates on candidates. R2 and R3 take a kline and produce klines, each in its own way; their products re-enter as entries (Definition 8), so every product meets the same pipeline and the same bands. A product with no adjacency routes to R4 — the misfit asks, and later-arriving information may complete the path. Reentry is not a rewrite rule. Only S2 and S3 produce further work.
 
-### Rule R1 — fit (S1): store
+### Rule R1 — proof of full understanding (S1): store the opening candidate
 
 ```text
-C : S1  ⟹  D := D ∪ { C }
+C₀ opens a trace;  a candidate on that trace : S1  ⟹  D := D ∪ { C₀ }
 ```
 
-Idempotent. The candidate is proven canonical; it is stored if absent. A kline enters `D` at R1, when its candidate reaches S1 (D10). `c_E` may be a signature the domain does not yet hold, and an S1 candidate mints it over a held adjacency — the witness stored is the adjacency the candidate was valued against, and this is how entry information becomes knowledge. Reinforcement and promotion are outside the algebra (§7).
+Reaching S1 is a proof of full entry understanding — the entry has been completely rationalised. The kline that enters `D` is the candidate that opened the trace, formed on the presented entry — not the candidate formed on the final entry, which by this proof is constructable from the former by reapplying the rules. Where the opening candidate is itself the S1 candidate, the two coincide. Idempotent. A kline enters `D` at R1, when a trace it opens reaches S1 (D10). The opening candidate's head `c_E` may be a signature the domain does not yet hold — it is minted over the held adjacency the candidate was valued against, and this is how entry information becomes knowledge. Reinforcement and promotion are outside the algebra (§7).
 
 ### Rule R2 — partial fit (S2): project
 
@@ -294,7 +296,7 @@ neighbours K_i   candidates C_i = ⟨c_E, N_i⟩
       ┌─────────┼──────────┬───────────────────┐
       S1        S2         S3                  S4 (no adjacency) → end
       │         │          │
-    store    project    substitute (single pass)
+    store C₀  project    substitute (single pass)
       │         │          │
       end   ⟨F, N_F⟩    N′ ──► ⟨can(N′), N′⟩
             ⟨U, N_O⟩              │
@@ -303,7 +305,7 @@ neighbours K_i   candidates C_i = ⟨c_E, N_i⟩
                └── new entries ───┘──► repeat
 ```
 
-Across R1–R4, every rewrite resolves against held content and signatures enter `D` at S1 stores: the system composes what it holds, and asks at its boundary.
+Across R1–R4, every rewrite resolves against held content and signatures enter `D` at R1 stores: the system composes what it holds, and asks at its boundary.
 
 ---
 

@@ -283,6 +283,7 @@
 - [Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop](obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo.md)
 - [Observation: decode renamed witness: strict converse of canonicalisation](obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation.md)
 - [Observation: derive → rationalise: the loop's name, engine-aligned](obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned.md)
+- [Observation: R1 rewritten: S1 arrival licenses the trace's opening candidate](obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida.md)
 - [Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input](obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat.md)
 - [Observation: trs.md references dropped from spec; dialogue retired](obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired.md)
 - [Observation: TRS milestone: spec → code, committed 2aaa2e0](obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0.md)

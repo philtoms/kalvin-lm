@@ -150,13 +150,13 @@ def test_r3_emptied_expansion():
 # --- §5 + D10: R1 stores; admission iff S1 ---
 
 
-def test_r1_mints_canonical_over_misfit_neighbour():
+def test_r1_stores_opening_candidate_first_round():
     d = base_domain(k(ABD, A, B))  # held but non-canonical (can = AB)
     r = rationalise(d, k(A, A, B))
-    assert k(AB, A, B) in d  # minted at R1
-    assert k(AB, A, B) in r.stores
+    assert k(AB, A, B) in r.stores  # first round: opener == the S1 candidate (canonical)
+    assert k(AB, A) in r.stores  # the S2 opener ⟨AB, {A}⟩, licensed by its trace's S1
     assert k(A, A, B) not in d  # the entry itself is never stored (D10)
-    assert all(d.is_canonical(s) for s in r.stores)  # admission iff S1
+    assert not any(d.is_canonical(s) for s in r.stores if s == k(AB, A))  # licensed, not canonical
 
 
 def test_r4_candidate_with_no_adjacency():
@@ -173,11 +173,13 @@ def test_empty_lookup_terminates_entry():
 
 
 def test_rationalisation_reaches_s1_through_reentry():
-    # S3 candidate → R3 product ⟨AB, {A,B}⟩ re-enters → S1 against k(ABC, AB)
+    # S3 candidate ⟨C, {AB}⟩ → R3 product ⟨AB, {A,B}⟩ re-enters → S1:
+    # the proof licenses the opening candidate, not the S1 candidate (R1)
     d = base_domain(k(AB, A, B), k(ABC, AB))
     r = rationalise(d, k(C, C))
-    assert k(AB, AB) in r.stores  # canonical minted over the non-canonical neighbour
-    assert k(AB, AB) in d
+    assert k(C, AB) in r.stores  # the opening candidate is stored
+    assert k(C, AB) in d
+    assert k(AB, AB) not in d  # constructable from the opener — not stored
 
 
 def test_rationalisation_is_bounded_under_cycles():

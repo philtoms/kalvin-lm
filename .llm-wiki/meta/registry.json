@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-01T12:38:02.319Z",
+  "last_updated": "2026-10-01T13:11:27.753Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5353,6 +5353,24 @@
       "relevance": "high",
       "observed_at": "2026-10-01T11:33:34.790Z",
       "source_context": "Renaming derive to rationalise per user ruling",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida": {
+      "type": "source",
+      "title": "Observation: R1 rewritten: S1 arrival licenses the trace's opening candidate",
+      "tags": [
+        "trs",
+        "r1",
+        "trace",
+        "rewrite-rule",
+        "proof-of-understanding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida",
+      "relevance": "high",
+      "observed_at": "2026-10-01T13:11:27.673Z",
+      "source_context": "R1 rewrite rule: store the trace's opening candidate",
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },

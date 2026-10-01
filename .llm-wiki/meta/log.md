@@ -932,3 +932,6 @@
 ## [2026-10-01T12:38:02.206Z] observe
 - slug: "obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem", title: "TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated", relevance: "high"
 
+## [2026-10-01T13:11:27.676Z] observe
+- slug: "obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida", title: "R1 rewritten: S1 arrival licenses the trace's opening candidate", relevance: "high"
+

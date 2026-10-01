@@ -188,14 +188,15 @@ class Rationalisation:
 
 def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisation:
     """Run the entry through the pipeline and the rules until S1/S4 arrival (§5, §7)."""
-    queue: deque[Kline] = deque([entry])
+    # queue holds (entry, origin): the first-round candidate that opened the trace (Definition 9)
+    queue: deque[tuple[Kline, Kline | None]] = deque([(entry, None)])
     seen = {entry}
     stores: list[Kline] = []
     ends: list[End] = []
     rounds = 0
 
     while queue and rounds < max_rounds:
-        e = queue.popleft()
+        e, origin = queue.popleft()
         rounds += 1
         if not e.adj:  # R4 arrival — an entry kline with no adjacency
             ends.append(End("R4: entry kline with no adjacency", e))
@@ -207,22 +208,23 @@ def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisatio
         c_e = can(e.adj)
         for nb in sorted(neighbours, key=lambda k: k.sig):
             cand = Kline(c_e, nb.adj)
+            opener = origin if origin is not None else cand  # first-round candidates open their traces
             b = band(cand)
-            if b is Band.S1:  # R1 — store
-                if d.add(cand):
-                    stores.append(cand)
+            if b is Band.S1:  # R1 — proof of full understanding: store the opening candidate
+                if d.add(opener):
+                    stores.append(opener)
             elif b is Band.S2:  # R2 — three products re-enter
                 for p in r2_products(d, cand):
                     if p not in seen:
                         seen.add(p)
-                        queue.append(p)
+                        queue.append((p, opener))
             elif b is Band.S3:  # R3 — substitute, canonicalise, re-enter
                 n_prime = r3_substitute(d, cand)
                 if n_prime:
                     p = Kline(can(n_prime), n_prime)
                     if p not in seen:
                         seen.add(p)
-                        queue.append(p)
+                        queue.append((p, opener))
                 else:
                     ends.append(End("R4: expansion emptied the adjacency", None))
             else:  # S4 — candidate whose neighbour supplied no adjacency

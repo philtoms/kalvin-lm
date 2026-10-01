@@ -362,6 +362,7 @@
 - [[sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo]] — Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop *(created: 2026-09-30)*
 - [[sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation]] — Observation: decode renamed witness: strict converse of canonicalisation *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned]] — Observation: derive → rationalise: the loop's name, engine-aligned *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida]] — Observation: R1 rewritten: S1 arrival licenses the trace's opening candidate *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat]] — Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired]] — Observation: trs.md references dropped from spec; dialogue retired *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0]] — Observation: TRS milestone: spec → code, committed 2aaa2e0 *(created: 2026-10-01)*
@@ -380,4 +381,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-01T12:38:02.319Z* | *Total pages: 368*
+*Last updated: 2026-10-01T13:11:27.753Z* | *Total pages: 369*

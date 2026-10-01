@@ -31,12 +31,15 @@ def klines(pool: list[int] | None = None) -> st.SearchStrategy[Kline]:
 
 @st.composite
 def closed_domains(draw) -> Domain:
-    """Random I-1-closed domains: every adjacency node is a held signature."""
+    """Random I-1-closed, I-2-valid domains: every adjacency node is a held
+    signature, and no head carries two canonical adjacencies."""
     d = Domain([Kline(a, frozenset([a])) for a in ATOMS])
     held = list(ATOMS)
     for _ in range(draw(st.integers(0, 10))):
         nodes = draw(adjacencies(held, max_size=4))
         k = Kline(draw(sigs()), nodes)
+        if d.is_canonical(k) and d.witness(k.sig) and d.witness(k.sig) != k.adj:
+            continue  # would put a second canonical adjacency under a held head
         d.add(k)
         if k.sig not in held:
             held.append(k.sig)
@@ -189,10 +192,10 @@ def test_no_fabrication(sc):
     atoms_before |= bits(entry.sig) | {b for n in entry.adj for b in bits(n)}
     r = rationalise(d, entry)
     added = set(d) - before
-    assert added == set(r.stores)  # the domain grows only through S1 stores
+    assert added == set(r.stores)  # the domain grows only through R1 stores
     for k in added:
-        assert d.is_canonical(k)  # admission iff S1
-        assert any(k.adj == kk.adj for kk in before)  # stored over a held adjacency
+        assert k.sig == can(entry.adj)  # every store is an opening candidate of this entry
+        assert any(k.adj == kk.adj for kk in before)  # valued against a held adjacency
     atoms_after = {b for k in d for v in (k.sig, *k.adj) for b in bits(v)}
     assert atoms_after <= atoms_before  # no new atoms: the system composes what it holds
 
@@ -208,13 +211,13 @@ def test_rationalisation_bounded_and_honest(sc, bound):
     )
 
 
-# --- the I-2 seam: R1 can mint a second canonical kline under a held head ---
+# --- the R1 rewrite rule: opener stored, endpoint constructable ---
 
 
-def test_i2_seam_demonstrated():
-    """k(3, {3}) and k(3, {1,2}) are both canonical with head 3; R1 mints the
-    second while the first is held. I-2 is not maintained by the rules — a
-    ruling is needed (R1 guard, or I-2 restated as first-wins)."""
+def test_r1_rewrite_stores_opener_not_endpoint():
+    """The trace opening ⟨2, {1}⟩ grounds out at S1 via the R3 expansion
+    {1} → {1,2}. R1 stores the opening candidate; the S1 candidate ⟨3, {1,2}⟩
+    is constructable from it and is not stored."""
     A, B = 1, 2
     d = Domain(
         [
@@ -225,7 +228,8 @@ def test_i2_seam_demonstrated():
         ]
     )
     assert d.i1_closed()
-    rationalise(d, Kline(A, frozenset([B])))
-    assert Kline(3, frozenset([A, B])) in d  # minted at R1
-    assert Kline(3, frozenset([3])) in d  # the held canonical under the same head
-    assert can(d.witness(3)) == 3  # the law holds whichever the index keeps
+    r = rationalise(d, Kline(A, frozenset([B])))
+    assert Kline(2, frozenset([A])) in r.stores  # the opening candidate, stored by proof
+    assert Kline(2, frozenset([A])) in d
+    assert Kline(3, frozenset([A, B])) not in d  # constructable — not minted
+    assert can(d.witness(3)) == 3  # the held canonical keeps the key

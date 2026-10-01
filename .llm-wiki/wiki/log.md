@@ -2,6 +2,7 @@
 
 ## 2026-10-01
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida","title":"R1 rewritten: S1 arrival licenses the trace's opening candidate"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem","title":"TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0","title":"TRS milestone: spec → code, committed 2aaa2e0"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie","title":"TRS spec implemented and tested: one spec defect fixed (emptied expansion)"}
