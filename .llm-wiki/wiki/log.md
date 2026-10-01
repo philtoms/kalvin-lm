@@ -2,6 +2,8 @@
 
 ## 2026-10-01
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned","title":"derive → rationalise: the loop's name, engine-aligned"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired","title":"trs.md references dropped from spec; dialogue retired"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation","title":"decode renamed witness: strict converse of canonicalisation"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular","title":"TRS spec: decode total; rules use only defined kline vocabulary"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome","title":"TRS spec: S4 at reentry via empty adjacency; R3 single outcome; R4 single arrival"}

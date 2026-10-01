@@ -917,3 +917,9 @@
 ## [2026-10-01T10:58:49.168Z] observe
 - slug: "obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation", title: "decode renamed witness: strict converse of canonicalisation", relevance: "high"
 
+## [2026-10-01T11:02:05.056Z] observe
+- slug: "obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired", title: "trs.md references dropped from spec; dialogue retired", relevance: "medium"
+
+## [2026-10-01T11:33:34.792Z] observe
+- slug: "obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned", title: "derive → rationalise: the loop's name, engine-aligned", relevance: "high"
+

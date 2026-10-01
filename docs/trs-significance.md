@@ -2,27 +2,27 @@
 
 **Status:** Draft — normative. This document is the single normative definition of the significance-routed model: an alternative to the goal-directed algebra of `docs/kalvin-algebra.md`. That document remains normative for the engine; this one is normative for this model.
 
-Both models share one centre: the significance valuation of the pairing of one side's evaluated content against the other side's witness (§6) — graded there (`J`), banded here. They differ in what drives rewriting. The engine derives toward a goal kline under a strict-decrease licence; this model has no goal — the band alone routes the rewrite tree.
+Both models share one centre: the significance valuation of the pairing of one side's evaluated content against the other side's witness (§6) — graded there (`J`), banded here. They differ in what drives rewriting. The engine derives toward a goal kline under a strict-decrease licence; this model has no goal — the band alone routes the rationalisation.
 
 ## Decisions
 
 This document takes positions; each is listed here for review. Method: the rules (§5) follow the definitions (§§1–4) and never lead them — a rule uses only terms the definitions supply.
 
-| #   | Decision                                                                                                                                                                                 |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Overfit/underfit follow `kalvin-algebra.md` Definition 9: underfit `U = σ ∖ can(N)` is signature-side, overfit `O = can(N) ∖ σ` is adjacency-side (§0.2, §4). Node operators unify on `∧ ∨ ∖`.                                       |
-| D2  | `can` is the composition fold (§2, Definition 4).                                                                                                                                        |
-| D3  | Adjacency is a finite set; order and multiplicity are dropped (§1, Definition 2).                                                                                                        |
-| D4  | Entry lookup is overlap; exact lookup serves witness; covered lookup serves R3 (§2, Definition 7).                                                                                        |
-| D5  | R2 produces three klines — `⟨F, N_F⟩`, `⟨U, N_O⟩`, `⟨O, N_U⟩` — which re-enter as entries (§5, R2).                                                                       |
-| D6  | R3's product is an entry kline (Definition 8): `⟨can(N′), N′⟩`; the prior signature, where there was one, is discarded (§5, R3).                                                    |
-| D7  | The decomposition pairs cross-wise: `U` carries `N_O`, `O` carries `N_U` — `U` and `O` each serve as lookup key in one product and as claim in the other (§5, R2). |
-| D11 | R3 is single pass, with a single outcome: the reentrant kline `⟨can(N′), N′⟩`. The loop continues until a band routes to S1 or S4 (§5, R3).                                          |
-| D8  | `witness_D` yields no adjacency for a signature not held (Definition 6); a product carrying it routes to R4 at reentry (§5). Signatures enter `D` at R1 (D10). |
-| D9  | The classifier's value is the **band** (banded significance). Graded significance — an int — is reserved and undefined here (§4). The band routes the TRS; R1–R4 are the four routes.    |
-| D10 | A kline enters `D` at R1, iff its candidate reaches S1. Entry content persists through the stores of its candidates.                                                               |
+| #   | Decision                                                                                                                                                                                       |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Overfit/underfit follow `kalvin-algebra.md` Definition 9: underfit `U = σ ∖ can(N)` is signature-side, overfit `O = can(N) ∖ σ` is adjacency-side (§0.2, §4). Node operators unify on `∧ ∨ ∖`. |
+| D2  | `can` is the composition fold (§2, Definition 4).                                                                                                                                              |
+| D3  | Adjacency is a finite set; order and multiplicity are dropped (§1, Definition 2).                                                                                                              |
+| D4  | Entry lookup is overlap; exact lookup serves witness; covered lookup serves R3 (§2, Definition 7).                                                                                             |
+| D5  | R2 produces three klines — `⟨F, N_F⟩`, `⟨U, N_O⟩`, `⟨O, N_U⟩` — which re-enter as entries (§5, R2).                                                                                            |
+| D6  | R3's product is an entry kline (Definition 8): `⟨can(N′), N′⟩`; the prior signature, where there was one, is discarded (§5, R3).                                                               |
+| D7  | The decomposition pairs cross-wise: `U` carries `N_O`, `O` carries `N_U` — `U` and `O` each serve as lookup key in one product and as claim in the other (§5, R2).                             |
+| D11 | R3 is single pass, with a single outcome: the reentrant kline `⟨can(N′), N′⟩`. Reentry continues until a band routes to S1 or S4 (§5, R3).                                                     |
+| D8  | `witness_D` yields no adjacency for a signature not held (Definition 6); a product carrying it routes to R4 at reentry (§5). Signatures enter `D` at R1 (D10).                                 |
+| D9  | The classifier's value is the **band** (banded significance). Graded significance — an int — is reserved and undefined here (§4). The band routes the TRS; R1–R4 are the four routes.          |
+| D10 | A kline enters `D` at R1, iff its candidate reaches S1. Entry content persists through the stores of its candidates.                                                                           |
 
-Amended eight times on review: (1) misfit pairing taken to the mirror, then superseded — the misfit products are now the unpaired residual adjacencies (D7); (2) Axiom A-1 deleted — an unheld derived signature is a transition to S4, not a materialisation, and closure is I-1 alone; (3) no R3 splice — occurrence is the licence; band vs graded significance terminology fixed (D9); admission iff S1, entries transient (D10); (4) R3 canonicalises and re-enters as a new entry, prior signature discarded, single pass, loop until S1 or S4 (D6, D11); (5) R2's products are three re-entering klines — `⟨F, N_F⟩`, `⟨U, N_O⟩`, `⟨O, N_U⟩` — replacing the fit-termination and raw-adjacency products; R3 takes an S3 candidate uniformly (D5, D7); (6) the unheld-residual S4 transition moved from R2 to reentry — the empty adjacency routes to R4, now with the single arrival of an entry kline with no adjacency — and R3's single outcome is the reentrant kline (D8, D11); (7) decode made total — `∅` for signatures not held — and `residual`/`empty adjacency` withdrawn from the rules: R2 states the decomposition, decode, and the three products; the no-adjacency routing follows Definitions 2, 6, and 11 (D8); (8) `decode` renamed `witness` — the strict converse of canonicalisation, aligning with the engine's held witness (Definition 6).
+Amended nine times on review: (1) misfit pairing taken to the mirror, then superseded — the misfit products are now the unpaired residual adjacencies (D7); (2) Axiom A-1 deleted — an unheld derived signature is a transition to S4, not a materialisation, and closure is I-1 alone; (3) no R3 splice — occurrence is the licence; band vs graded significance terminology fixed (D9); admission iff S1, entries transient (D10); (4) R3 canonicalises and re-enters as a new entry, prior signature discarded, single pass, reenter until S1 or S4 (D6, D11); (5) R2's products are three re-entering klines — `⟨F, N_F⟩`, `⟨U, N_O⟩`, `⟨O, N_U⟩` — replacing the fit-termination and raw-adjacency products; R3 takes an S3 candidate uniformly (D5, D7); (6) the unheld-residual S4 transition moved from R2 to reentry — the empty adjacency routes to R4, now with the single arrival of an entry kline with no adjacency — and R3's single outcome is the reentrant kline (D8, D11); (7) decode made total — `∅` for signatures not held — and `residual`/`empty adjacency` withdrawn from the rules: R2 states the decomposition, decode, and the three products; the no-adjacency routing follows Definitions 2, 6, and 11 (D8); (8) `decode` renamed `witness` — the strict converse of canonicalisation, aligning with the engine's held witness (Definition 6); (9) derive/derived → rationalise/rationalised — the algorithm's name, as the algebra's §12 term for producing, using, and consolidating evidence.
 
 ---
 
@@ -30,31 +30,31 @@ Amended eight times on review: (1) misfit pairing taken to the mirror, then supe
 
 ### 0.1 Operators
 
-| Symbol        | Meaning                                  | Reference realisation |
-| ------------- | ---------------------------------------- | --------------------- |
-| `v ∨ w`       | composition                              | `v \| w`              |
-| `v ∧ w`       | overlap                                  | `v & w`               |
-| `v ∖ w`       | residue — v beyond w                     | `v & ~w`              |
-| `⊥`           | the empty node, composition's unit       | `0`                   |
-| `x ⪯ y`       | containment: `x ∧ y = x`                 | `x & y == x`          |
-| `can(N)`      | canonical signature of adjacency N       | fold `∨`              |
-| `witness_D(s)` | the held witness of signature s             | domain lookup         |
-| `V(C)`        | the band of candidate C                  | §4                    |
+| Symbol         | Meaning                            | Reference realisation |
+| -------------- | ---------------------------------- | --------------------- |
+| `v ∨ w`        | composition                        | `v \| w`              |
+| `v ∧ w`        | overlap                            | `v & w`               |
+| `v ∖ w`        | residue — v beyond w               | `v & ~w`              |
+| `⊥`            | the empty node, composition's unit | `0`                   |
+| `x ⪯ y`        | containment: `x ∧ y = x`           | `x & y == x`          |
+| `can(N)`       | canonical signature of adjacency N | fold `∨`              |
+| `witness_D(s)` | the held witness of signature s    | domain lookup         |
+| `V(C)`         | the band of candidate C            | §4                    |
 
 ### 0.2 Terminology mapping
 
 Terms are shared with `kalvin-algebra.md`; the mapping below gives both documents' readings side by side.
 
-| Term (this document)      | This document                             | `kalvin-algebra.md`                         |
-| ------------------------- | ----------------------------------------- | ------------------------------------------- |
-| underfit `U = σ ∖ can(N)` | claimed by the signature, not supplied by the adjacency | `u = s ∖ σ(ν)` — the same |
-| overfit `O = can(N) ∖ σ`  | supplied by the adjacency, not claimed by the signature | `o = σ(ν) ∖ s` — the same  |
-| kline `⟨σ, N⟩`            | signature + adjacency set                 | `s:ν` — head + node **sequence**            |
-| canonical signature       | `can(N)`, the S1 head                     | exact witness / Canon band                  |
-| candidate                 | `⟨c_E, N_i⟩` (§3)                         | relationship kline `C(A,B) = σ(ν_A):ν_B`    |
-| entry kline               | new information; bands belong to its candidates | queued kline A                         |
-| neighbour                 | held kline found by entry lookup          | goal-side material                          |
-| S1 / S2 / S3 / S4         | §4 bands                                  | same bands, §4 (S3 boundary equivalent, §6) |
+| Term (this document)      | This document                                           | `kalvin-algebra.md`                         |
+| ------------------------- | ------------------------------------------------------- | ------------------------------------------- |
+| underfit `U = σ ∖ can(N)` | claimed by the signature, not supplied by the adjacency | `u = s ∖ σ(ν)` — the same                   |
+| overfit `O = can(N) ∖ σ`  | supplied by the adjacency, not claimed by the signature | `o = σ(ν) ∖ s` — the same                   |
+| kline `⟨σ, N⟩`            | signature + adjacency set                               | `s:ν` — head + node **sequence**            |
+| canonical signature       | `can(N)`, the S1 head                                   | exact witness / Canon band                  |
+| candidate                 | `⟨c_E, N_i⟩` (§3)                                       | relationship kline `C(A,B) = σ(ν_A):ν_B`    |
+| entry kline               | new information; bands belong to its candidates         | queued kline A                              |
+| neighbour                 | held kline found by entry lookup                        | goal-side material                          |
+| S1 / S2 / S3 / S4         | §4 bands                                                | same bands, §4 (S3 boundary equivalent, §6) |
 
 ---
 
@@ -180,7 +180,7 @@ Empty lookup: the entry terminates without candidates.
 
 ### Definition 10 — Candidate invariant
 
-Every candidate carries a signature derived from one context — the entry's adjacency, canonicalised — and an adjacency inherited from another — a held kline. The band therefore always compares two independently derived representations of information.
+Every candidate carries a signature rationalised from one context — the entry's adjacency, canonicalised — and an adjacency inherited from another — a held kline. The band therefore always compares two independently rationalised representations of information.
 
 ---
 
@@ -277,13 +277,11 @@ E′ = ⟨can(N′), N′⟩
 
 The prior signature, where there was one, is discarded: S3 means no correspondence, and none is asserted. Definition 9 applies: neighbours are located by overlap on `can(N′)`, candidates are constructed against their adjacencies, and Definition 11 assigns each a band.
 
-The loop is rule composition: each entry's candidates route by band — S1 stores, S4 ends — and S2 and S3 produce work whose products are entries again, until a band routes to S1 or S4.
-
 ### Rule R4 — terminal (S4): end the branch
 
 The arrival is an entry kline with no adjacency — a re-entering product, or a candidate whose neighbour supplied none (Definition 11, case 1). The branch ends undone — the knowledge boundary: a system knows what it knows (S1–S3) and knows what it does not (S4).
 
-### The derivation tree
+### The rationalisation tree
 
 ```text
 entry ⟨σ_E, N_E⟩
@@ -311,15 +309,15 @@ Across R1–R4, every rewrite resolves against held content and signatures enter
 
 ## 6. Relationship to the Kline Algebra
 
-| This model                        | `kalvin-algebra.md`                                                                                   |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| candidate `⟨c_E, N_i⟩`            | relationship kline `C(A,B) = σ(ν_A):ν_B` — same construction, independently reached                   |
-| `can(N)` = fold `∨` over a set    | evaluation `σ(ν)` = fold `∨` over a sequence                                                          |
-| R3 substitution `sig(K) ⇉ adj(K)` | forward replacement `n ⇉ ν_K` (witnessed expand)                                                      |
-| S1 band                           | S1 band {Identity, Canon} — `⟨s, {s}⟩` is S1 here, collapsing the engine's Identity/Canon distinction |
-| S3 boundary `σ ∧ can(N) = ⊥`      | equivalent to the engine's not-covered case (distributivity: `σ ∧ can(N) = ⊥ ⟺ ∀ n ∈ N : σ ∧ n = ⊥`)  |
-| residuals `U = σ ∖ â`, `O = â ∖ σ` | `u = s ∖ σ(ν)`, `o = σ(ν) ∖ s` (Definition 9) — identical |
-| no goal, no targeting licence     | goal kline B, strict-decrease targeting (Def 14)                                                      |
+| This model                         | `kalvin-algebra.md`                                                                                   |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| candidate `⟨c_E, N_i⟩`             | relationship kline `C(A,B) = σ(ν_A):ν_B` — same construction, independently reached                   |
+| `can(N)` = fold `∨` over a set     | evaluation `σ(ν)` = fold `∨` over a sequence                                                          |
+| R3 substitution `sig(K) ⇉ adj(K)`  | forward replacement `n ⇉ ν_K` (witnessed expand)                                                      |
+| S1 band                            | S1 band {Identity, Canon} — `⟨s, {s}⟩` is S1 here, collapsing the engine's Identity/Canon distinction |
+| S3 boundary `σ ∧ can(N) = ⊥`       | equivalent to the engine's not-covered case (distributivity: `σ ∧ can(N) = ⊥ ⟺ ∀ n ∈ N : σ ∧ n = ⊥`)  |
+| residuals `U = σ ∖ â`, `O = â ∖ σ` | `u = s ∖ σ(ν)`, `o = σ(ν) ∖ s` (Definition 9) — identical                                             |
+| no goal, no targeting licence      | goal kline B, strict-decrease targeting (Def 14)                                                      |
 
 The architectural difference: the engine is goal-directed — a derivation works toward B under a licence that strictly decreases mismatch; this model is significance-routed — the tree grows by valuation alone, and no kline plays the goal's role. The candidate construction being the same object in both models is the strongest evidence that the two are readings of one system.
 

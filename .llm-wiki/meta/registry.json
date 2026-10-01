@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-01T10:58:49.242Z",
+  "last_updated": "2026-10-01T11:33:34.859Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5339,6 +5339,23 @@
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },
+    "sources/obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned": {
+      "type": "source",
+      "title": "Observation: derive → rationalise: the loop's name, engine-aligned",
+      "tags": [
+        "trs",
+        "significance",
+        "terminology",
+        "rationalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned",
+      "relevance": "high",
+      "observed_at": "2026-10-01T11:33:34.790Z",
+      "source_context": "Renaming derive to rationalise per user ruling",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
     "sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat": {
       "type": "source",
       "title": "Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input",
@@ -5356,6 +5373,23 @@
       "relevance": "high",
       "observed_at": "2026-10-01T10:12:24.695Z",
       "source_context": "Restating R2 with three reentrant kline products per user ruling",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired": {
+      "type": "source",
+      "title": "Observation: trs.md references dropped from spec; dialogue retired",
+      "tags": [
+        "trs",
+        "significance",
+        "retirement",
+        "dialogue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired",
+      "relevance": "medium",
+      "observed_at": "2026-10-01T11:02:05.055Z",
+      "source_context": "Retiring data/trs.md per user instruction",
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },
