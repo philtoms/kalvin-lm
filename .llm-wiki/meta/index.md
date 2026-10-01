@@ -365,6 +365,7 @@
 - [[sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat]] — Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired]] — Observation: trs.md references dropped from spec; dialogue retired *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular]] — Observation: TRS spec: decode total; rules use only defined kline vocabulary *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie]] — Observation: TRS spec implemented and tested: one spec defect fixed (emptied expansion) *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-]] — Observation: TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7 *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome]] — Observation: TRS spec: S4 at reentry via empty adjacency; R3 single outcome; R4 single arrival *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-sweep-rules-state-behaviour-prohibitions-demoted-to]] — Observation: TRS spec sweep: rules state behaviour; prohibitions demoted to properties *(created: 2026-10-01)*
@@ -377,4 +378,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-01T11:33:34.859Z* | *Total pages: 365*
+*Last updated: 2026-10-01T11:45:37.855Z* | *Total pages: 366*

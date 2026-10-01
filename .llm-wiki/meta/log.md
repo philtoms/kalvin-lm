@@ -923,3 +923,6 @@
 ## [2026-10-01T11:33:34.792Z] observe
 - slug: "obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned", title: "derive → rationalise: the loop's name, engine-aligned", relevance: "high"
 
+## [2026-10-01T11:45:37.747Z] observe
+- slug: "obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie", title: "TRS spec implemented and tested: one spec defect fixed (emptied expansion)", relevance: "high"
+

@@ -2,6 +2,7 @@
 
 ## 2026-10-01
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie","title":"TRS spec implemented and tested: one spec defect fixed (emptied expansion)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned","title":"derive → rationalise: the loop's name, engine-aligned"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired","title":"trs.md references dropped from spec; dialogue retired"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation","title":"decode renamed witness: strict converse of canonicalisation"}

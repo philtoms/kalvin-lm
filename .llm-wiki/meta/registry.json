@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-01T11:33:34.859Z",
+  "last_updated": "2026-10-01T11:45:37.855Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5408,6 +5408,24 @@
       "relevance": "high",
       "observed_at": "2026-10-01T10:49:17.053Z",
       "source_context": "Withdrawing residual/empty-adjacency terms from rules; making decode total",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie": {
+      "type": "source",
+      "title": "Observation: TRS spec implemented and tested: one spec defect fixed (emptied expansion)",
+      "tags": [
+        "trs",
+        "implementation",
+        "testing",
+        "spec-defect",
+        "python"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie",
+      "relevance": "high",
+      "observed_at": "2026-10-01T11:45:37.745Z",
+      "source_context": "Testing docs/trs-significance.md through code (src/trs implementation)",
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },
