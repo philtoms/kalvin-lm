@@ -1,12 +1,12 @@
 # Kalvin — A Significance-Routed Term Rewriting System
 
-**Status:** Draft — normative. This document is the single normative definition of the significance-routed model: an alternative to the goal-directed algebra of `docs/kalvin-algebra.md`. That document remains normative for the engine; this one is normative for this model. The design record is the dialogue `data/trs.md`; this document consolidates its final layer and supersedes every earlier formulation found there — in particular, bands belong to candidates (§3), and the entry is the mechanism that locates them.
+**Status:** Draft — normative. This document is the single normative definition of the significance-routed model: an alternative to the goal-directed algebra of `docs/kalvin-algebra.md`. That document remains normative for the engine; this one is normative for this model.
 
 Both models share one centre: the significance valuation of the pairing of one side's evaluated content against the other side's witness (§6) — graded there (`J`), banded here. They differ in what drives rewriting. The engine derives toward a goal kline under a strict-decrease licence; this model has no goal — the band alone routes the rewrite tree.
 
-## Decisions taken in this consolidation
+## Decisions
 
-The dialogue left points open. This document takes positions; each is listed here for review. Method: the rules (§5) follow the definitions (§§1–4) and never lead them — a rule uses only terms the definitions supply.
+This document takes positions; each is listed here for review. Method: the rules (§5) follow the definitions (§§1–4) and never lead them — a rule uses only terms the definitions supply.
 
 | #   | Decision                                                                                                                                                                                 |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
