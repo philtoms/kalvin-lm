@@ -361,13 +361,16 @@
 - [[sources/obs-2026-09-30-trs-spec-terminology-aligned-underfit-can-n-overfit-can-n]] — Observation: TRS spec terminology aligned: underfit=σ∖can(N), overfit=can(N)∖σ *(created: 2026-09-30)*
 - [[sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo]] — Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop *(created: 2026-09-30)*
 - [[sources/obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend]] — Observation: Amendment 15: proposals ordered by graded significance (ascending effort) *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic]] — Observation: Amendment 16: D-liveness stated; R3 fold pinned deterministic *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation]] — Observation: decode renamed witness: strict converse of canonicalisation *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned]] — Observation: derive → rationalise: the loop's name, engine-aligned *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b]] — Observation: Effort defined: E discounts repairable residual; S3 strictly below S4 *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-graded-significance-defined-h-1-f-entropy-flow-theorems]] — Observation: Graded significance defined: H = 1 − μ(F)/μ(σ∨â), entropy flow theorems *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-i-2-seam-on-hold-dissolves-at-continuous-operation-spec-work]] — Observation: I-2 seam on hold — dissolves at continuous-operation spec work *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-proposals-built-acquire-connect-continue-at-every-halt-ranke]] — Observation: Proposals built: acquire/connect/continue at every halt, ranked by effort *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida]] — Observation: R1 rewritten: S1 arrival licenses the trace's opening candidate *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat]] — Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-ruling-d-growing-during-a-rationalisation-run-is-desired-sem]] — Observation: Ruling: D growing during a rationalisation run is desired semantics *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired]] — Observation: trs.md references dropped from spec; dialogue retired *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0]] — Observation: TRS milestone: spec → code, committed 2aaa2e0 *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem]] — Observation: TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated *(created: 2026-10-01)*
@@ -385,4 +388,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-01T13:55:07.444Z* | *Total pages: 373*
+*Last updated: 2026-10-01T14:35:08.613Z* | *Total pages: 376*

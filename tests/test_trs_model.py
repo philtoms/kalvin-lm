@@ -243,6 +243,19 @@ def test_emptied_expansion_records_its_candidate():
     assert ends[0].effort == effort(k(C, AB))
 
 
+def test_d_is_live_during_the_run():
+    """D14 — the run's own writes close routes: the entry's round-1 store mints
+    AB's first witness and the round-2 origin store adds another, so the
+    expansion of ⟨C, {AB}⟩ never empties. Same D₀, entry ⟨C, {C}⟩ (no stores
+    intervene): the emptied-expansion halt fires."""
+    d0 = [k(A, A), k(B, B), k(C, C), k(AB), k(ABC, AB)]
+    r = rationalise(Domain(d0), k(C, AB))
+    assert k(AB, AB) in r.stores and k(AB, C) in r.stores  # minted mid-run
+    assert not any(e.reason == "R4: expansion emptied the adjacency" for e in r.ends)
+    r2 = rationalise(Domain(d0), k(C, C))
+    assert any(e.reason == "R4: expansion emptied the adjacency" for e in r2.ends)
+
+
 def test_proposals_cover_every_end():
     d = base_domain(k(AB), k(ABC, AB))
     r = rationalise(d, k(C, C))

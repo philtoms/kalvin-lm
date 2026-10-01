@@ -947,3 +947,12 @@
 ## [2026-10-01T13:55:07.353Z] observe
 - slug: "obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend", title: "Amendment 15: proposals ordered by graded significance (ascending effort)", relevance: "high"
 
+## [2026-10-01T14:16:08.393Z] observe
+- slug: "obs-2026-10-01-ruling-d-growing-during-a-rationalisation-run-is-desired-sem", title: "Ruling: D growing during a rationalisation run is desired semantics", relevance: "high"
+
+## [2026-10-01T14:16:08.394Z] observe
+- slug: "obs-2026-10-01-i-2-seam-on-hold-dissolves-at-continuous-operation-spec-work", title: "I-2 seam on hold — dissolves at continuous-operation spec work", relevance: "high"
+
+## [2026-10-01T14:35:08.535Z] observe
+- slug: "obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic", title: "Amendment 16: D-liveness stated; R3 fold pinned deterministic", relevance: "high"
+

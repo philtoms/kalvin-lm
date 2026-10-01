@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-01T13:55:07.444Z",
+  "last_updated": "2026-10-01T14:35:08.613Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5339,6 +5339,25 @@
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },
+    "sources/obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic": {
+      "type": "source",
+      "title": "Observation: Amendment 16: D-liveness stated; R3 fold pinned deterministic",
+      "tags": [
+        "trs",
+        "d14",
+        "d-liveness",
+        "amendment-16",
+        "r3-fold-determinism",
+        "rescue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic",
+      "relevance": "high",
+      "observed_at": "2026-10-01T14:35:08.533Z",
+      "source_context": "Accounting for D-growth during the run in the spec",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
     "sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation": {
       "type": "source",
       "title": "Observation: decode renamed witness: strict converse of canonicalisation",
@@ -5415,6 +5434,24 @@
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },
+    "sources/obs-2026-10-01-i-2-seam-on-hold-dissolves-at-continuous-operation-spec-work": {
+      "type": "source",
+      "title": "Observation: I-2 seam on hold — dissolves at continuous-operation spec work",
+      "tags": [
+        "trs",
+        "i2-seam",
+        "hold",
+        "continuous-operation",
+        "scheduling"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-i-2-seam-on-hold-dissolves-at-continuous-operation-spec-work",
+      "relevance": "high",
+      "observed_at": "2026-10-01T14:16:08.394Z",
+      "source_context": "Triage of the I-2 seam and mid-run rescue threads",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
     "sources/obs-2026-10-01-proposals-built-acquire-connect-continue-at-every-halt-ranke": {
       "type": "source",
       "title": "Observation: Proposals built: acquire/connect/continue at every halt, ranked by effort",
@@ -5471,6 +5508,24 @@
       "relevance": "high",
       "observed_at": "2026-10-01T10:12:24.695Z",
       "source_context": "Restating R2 with three reentrant kline products per user ruling",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-01-ruling-d-growing-during-a-rationalisation-run-is-desired-sem": {
+      "type": "source",
+      "title": "Observation: Ruling: D growing during a rationalisation run is desired semantics",
+      "tags": [
+        "trs",
+        "ruling",
+        "d-growth",
+        "mid-run-rescue",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-ruling-d-growing-during-a-rationalisation-run-is-desired-sem",
+      "relevance": "high",
+      "observed_at": "2026-10-01T14:16:08.391Z",
+      "source_context": "Explaining the mid-run rescue example",
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },

@@ -188,10 +188,13 @@ def r2_products(d: Domain, k: Kline) -> list[Kline]:
 
 
 def r3_substitute(d: Domain, k: Kline) -> frozenset[int]:
-    """R3 — single pass: replace occurring covered signatures by their adjacencies."""
+    """R3 — single pass: replace occurring covered signatures by their adjacencies.
+
+    Several covered klines may share a signature; the fold order is §7
+    strategy, and the reference takes them sorted by (sig, adjacency)."""
     c_n = can(k.adj)
     n_prime = set(k.adj)
-    for nb in d.covered(c_n):
+    for nb in sorted(d.covered(c_n), key=lambda x: (x.sig, tuple(sorted(x.adj)))):
         if nb.sig in k.adj:  # the licence is the occurrence
             n_prime.discard(nb.sig)
             n_prime |= nb.adj
