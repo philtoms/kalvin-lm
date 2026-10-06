@@ -980,3 +980,9 @@
 ## [2026-10-06T10:46:44.115Z] observe
 - slug: "obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq", title: "Seeding withdrawn: unrecognised nodes route through S4 as acquire asks", relevance: "high"
 
+## [2026-10-06T11:40:34.653Z] observe
+- slug: "obs-2026-10-06-trs-block-committed-harness-knode-realisation-lifo-runner-i-", title: "TRS block committed: harness, KNode realisation, LIFO runner, I-1 removal", relevance: "medium"
+
+## [2026-10-06T11:56:25.720Z] observe
+- slug: "obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r", title: "TRS spec de-historicised: decisions table and amendment log removed", relevance: "medium"
+

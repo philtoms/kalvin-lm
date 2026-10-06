@@ -386,7 +386,9 @@
 - [[sources/obs-2026-10-06-root-cause-unmasked-ops-over-cargo-bits-model-now-content-sp]] — Observation: Root cause: unmasked ops over cargo bits; model now content-space *(created: 2026-10-06)*
 - [[sources/obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers]] — Observation: Runner reworked: LIFO stack, duplicates, per-work-entry openers *(created: 2026-10-06)*
 - [[sources/obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq]] — Observation: Seeding withdrawn: unrecognised nodes route through S4 as acquire asks *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-trs-block-committed-harness-knode-realisation-lifo-runner-i-]] — Observation: TRS block committed: harness, KNode realisation, LIFO runner, I-1 removal *(created: 2026-10-06)*
 - [[sources/obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed]] — Observation: TRS harness hooked up: .ks scripts run the significance-routed model *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r]] — Observation: TRS spec de-historicised: decisions table and amendment log removed *(created: 2026-10-06)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -396,4 +398,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-06T10:46:44.193Z* | *Total pages: 384*
+*Last updated: 2026-10-06T11:56:25.797Z* | *Total pages: 386*

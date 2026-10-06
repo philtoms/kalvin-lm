@@ -2,9 +2,8 @@
 
 Compiles a KScript source exactly as the engine path does, then presents
 each entry to ``trs.rationalise`` in authored order — one step per entry,
-D live throughout (D14). Word identities are seeded as the presentation
-substrate (tokenizer-derivable facts, as the engine path's batch primes);
-R1 remains the sole admission for everything the run itself learns.
+D live throughout. Nothing is seeded: unrecognised nodes route through
+S4 as acquire asks (Definition 8), and R1 is the sole admission.
 
 Proposals persist across steps: a later presented entry discharges a
 pending proposal when its content overlaps the target (Definition 15).
@@ -210,7 +209,7 @@ def present_trs(
         print(f"      {mark}{_render(k, labels, alloc, verbose)}")
     print("\n── pending proposals (open at end of run) ──")
     open_props = [p for p in pending if p.discharged_at is None]
-    open_props.sort(key=lambda p: p.prop.effort)  # most significant first (D13)
+    open_props.sort(key=lambda p: p.prop.effort)  # most significant first (Definition 15)
     for p in open_props[:8]:
         print(
             f"      {p.prop.kind:<8} raised at step {p.raised_at + 1}  "

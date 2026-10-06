@@ -2,6 +2,8 @@
 
 ## 2026-10-06
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r","title":"TRS spec de-historicised: decisions table and amendment log removed"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-trs-block-committed-harness-knode-realisation-lifo-runner-i-","title":"TRS block committed: harness, KNode realisation, LIFO runner, I-1 removal"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq","title":"Seeding withdrawn: unrecognised nodes route through S4 as acquire asks"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers","title":"Runner reworked: LIFO stack, duplicates, per-work-entry openers"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-06-knode-throughout-derived-values-carry-provenance-labels","title":"KNode throughout: derived values carry provenance labels"}

@@ -175,7 +175,7 @@ def test_band_grade_correspondence():
 
 
 def test_multiple_canonical_witnesses_coexist():
-    """D15 — I-2 withdrawn: C:[AB] and C:[A,B] coexist under one head;
+    """Multiple canonical witnesses coexist under one head;
     witness keeps the first-stored and the law holds."""
     d = base_domain(k(AB, AB), k(AB, A, B))
     assert k(AB, AB) in d and k(AB, A, B) in d
@@ -233,7 +233,7 @@ def test_proposal_connect_from_empty_overlap():
     connect = [p for p in ps if p.kind == "connect"]
     acquires = [p for p in ps if p.kind == "acquire"]
     assert len(connect) == 1 and connect[0].kline == k(AB, A, B)
-    # each unrecognised node routes through S4 — an acquire ask apiece (D16)
+    # each unrecognised node routes through S4 — an acquire ask apiece (Definition 8)
     assert {p.kline.sig for p in acquires} == {A, B}
     assert all(p.effort == 1 for p in acquires)
 
@@ -254,7 +254,7 @@ def test_emptied_expansion_records_its_candidate():
 
 
 def test_d_is_live_during_the_run():
-    """D14 — the run's own writes close routes: the entry's S1 store mints
+    """The run's own writes close routes: the entry's S1 store mints
     ⟨AB, {C}⟩, which enters covered(AB) and keeps the later expansion of
     ⟨C, {AB}⟩ from emptying — the run bound-loops instead of halting.
     Same D₀, entry ⟨C, {C}⟩ (no store intervenes): the emptied halt fires."""
@@ -284,7 +284,7 @@ def test_proposals_ordered_by_significance():
     assert ps[1].kline == k(C) and ps[1].effort == 1  # the full-surprise acquire sorts last
 
 
-# --- §5 + D10: R1 stores; admission iff S1 ---
+# --- §5 R1: stores; admission iff S1 ---
 
 
 def test_r1_stores_the_work_entrys_first_candidate():
@@ -293,7 +293,7 @@ def test_r1_stores_the_work_entrys_first_candidate():
     # the entry's first candidate ⟨AB, {A}⟩ is the opener, licensed by its
     # sibling S1 ⟨AB, {A, B}⟩; it does not change for this work entry
     assert r.stores == [k(AB, A)]
-    assert k(A, A, B) not in d  # the entry itself is never stored (D10)
+    assert k(A, A, B) not in d  # the entry itself is never stored
     assert not d.is_canonical(k(AB, A))  # a licensed claim, not a canon
 
 

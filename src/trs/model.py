@@ -104,7 +104,7 @@ class Domain:
             return False
         self._klines.add(k)
         if self.is_canonical(k):
-            self._canonical.setdefault(k.sig, k.adj)  # first-stored wins (Definition 6, D15)
+            self._canonical.setdefault(k.sig, k.adj)  # first-stored wins (Definition 6)
         return True
     def is_canonical(self, k: Kline) -> bool:
         """§2 Definition 5."""
@@ -254,7 +254,7 @@ def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisatio
             ends.append(End("R4: entry kline with no adjacency", e, effort(e)))
             continue
         held = {k.sig for k in d}
-        for n in e.adj:  # D16: unrecognised nodes route S4, one ask each
+        for n in e.adj:  # unrecognised nodes route S4, one ask each (Definition 8)
             if n not in held:
                 ask = Kline(n, frozenset())
                 ends.append(End("R4: unrecognised node", ask, effort(ask)))

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-06T10:46:44.193Z",
+  "last_updated": "2026-10-06T11:56:25.797Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5811,6 +5811,20 @@
       "created": "2026-10-06",
       "updated": "2026-10-06"
     },
+    "sources/obs-2026-10-06-trs-block-committed-harness-knode-realisation-lifo-runner-i-": {
+      "type": "source",
+      "title": "Observation: TRS block committed: harness, KNode realisation, LIFO runner, I-1 removal",
+      "tags": [
+        "trs",
+        "commit"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-trs-block-committed-harness-knode-realisation-lifo-runner-i-",
+      "relevance": "medium",
+      "observed_at": "2026-10-06T11:40:34.651Z",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
     "sources/obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed": {
       "type": "source",
       "title": "Observation: TRS harness hooked up: .ks scripts run the significance-routed model",
@@ -5828,6 +5842,23 @@
       "relevance": "high",
       "observed_at": "2026-10-06T06:08:58.465Z",
       "source_context": "Hooking up the dialogue harness and scripted runs for the TRS model",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r": {
+      "type": "source",
+      "title": "Observation: TRS spec de-historicised: decisions table and amendment log removed",
+      "tags": [
+        "trs",
+        "spec",
+        "documentation",
+        "history"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r",
+      "relevance": "medium",
+      "observed_at": "2026-10-06T11:56:25.718Z",
+      "source_context": "Removing decisions table and amendment history from the TRS spec",
       "created": "2026-10-06",
       "updated": "2026-10-06"
     },

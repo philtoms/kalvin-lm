@@ -48,7 +48,7 @@ def klines(pool: list[int] | None = None) -> st.SearchStrategy[Kline]:
 @st.composite
 def closed_domains(draw) -> Domain:
     """Random referentially-closed domains: every adjacency node is a held signature.
-    Several canonical witnesses may share a head (I-2 withdrawn, D15)."""
+    Several canonical witnesses may share a head (Definition 6)."""
     d = Domain([Kline(a, frozenset([a])) for a in ATOMS])
     held = list(ATOMS)
     for _ in range(draw(st.integers(0, 10))):
@@ -132,7 +132,7 @@ def test_decomposition_laws(k):
     assert (band(k) is Band.S2) == (t.F != 0 and (t.U != 0 or t.O != 0))
 
 
-# --- §2 Definition 6: witness (first-stored; I-2 withdrawn, D15) ---
+# --- §2 Definition 6: witness (first-stored wins) ---
 
 
 @settings(deadline=None)
