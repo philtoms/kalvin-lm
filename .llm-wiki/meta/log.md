@@ -956,3 +956,9 @@
 ## [2026-10-01T14:35:08.535Z] observe
 - slug: "obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic", title: "Amendment 16: D-liveness stated; R3 fold pinned deterministic", relevance: "high"
 
+## [2026-10-01T15:42:08.330Z] observe
+- slug: "obs-2026-10-01-amendment-16-repaired-i-2-dissolution-direction-drop-uniquen", title: "Amendment 16 repaired; I-2 dissolution direction: drop uniqueness, witnesses coexist", relevance: "high"
+
+## [2026-10-06T06:00:52.129Z] observe
+- slug: "obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi", title: "I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins", relevance: "high"
+

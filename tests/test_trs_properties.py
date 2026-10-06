@@ -47,15 +47,13 @@ def klines(pool: list[int] | None = None) -> st.SearchStrategy[Kline]:
 
 @st.composite
 def closed_domains(draw) -> Domain:
-    """Random I-1-closed, I-2-valid domains: every adjacency node is a held
-    signature, and no head carries two canonical adjacencies."""
+    """Random I-1-closed domains: every adjacency node is a held signature.
+    Several canonical witnesses may share a head (I-2 withdrawn, D15)."""
     d = Domain([Kline(a, frozenset([a])) for a in ATOMS])
     held = list(ATOMS)
     for _ in range(draw(st.integers(0, 10))):
         nodes = draw(adjacencies(held, max_size=4))
         k = Kline(draw(sigs()), nodes)
-        if d.is_canonical(k) and d.witness(k.sig) and d.witness(k.sig) != k.adj:
-            continue  # would put a second canonical adjacency under a held head
         d.add(k)
         if k.sig not in held:
             held.append(k.sig)
@@ -134,7 +132,7 @@ def test_decomposition_laws(k):
     assert (band(k) is Band.S2) == (t.F != 0 and (t.U != 0 or t.O != 0))
 
 
-# --- §2 Definition 6 + I-2: witness ---
+# --- §2 Definition 6: witness (first-stored; I-2 withdrawn, D15) ---
 
 
 @settings(deadline=None)
@@ -150,11 +148,16 @@ def test_witness_law(d):
 
 @settings(deadline=None)
 @given(closed_domains())
-def test_i2_static_domains(d):
-    by_sig: dict[int, frozenset[int]] = {}
+def test_witness_returns_first_stored(d):
+    """Several canonical witnesses may share a head; the lookup keeps the
+    first-stored and the law holds."""
+    seen: dict[int, frozenset[int]] = {}
     for k in d:
         if d.is_canonical(k):
-            assert by_sig.setdefault(k.sig, k.adj) == k.adj
+            first = seen.setdefault(k.sig, k.adj)
+            if k.adj != first:
+                assert d.witness(k.sig) == first  # coexistence: first-stored wins
+                assert can(d.witness(k.sig)) == k.sig  # the law holds regardless
 
 
 # --- §4 Definition 13: entropy and graded significance ---

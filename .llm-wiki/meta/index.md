@@ -362,6 +362,7 @@
 - [[sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo]] — Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop *(created: 2026-09-30)*
 - [[sources/obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend]] — Observation: Amendment 15: proposals ordered by graded significance (ascending effort) *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic]] — Observation: Amendment 16: D-liveness stated; R3 fold pinned deterministic *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-amendment-16-repaired-i-2-dissolution-direction-drop-uniquen]] — Observation: Amendment 16 repaired; I-2 dissolution direction: drop uniqueness, witnesses coexist *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation]] — Observation: decode renamed witness: strict converse of canonicalisation *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned]] — Observation: derive → rationalise: the loop's name, engine-aligned *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b]] — Observation: Effort defined: E discounts repairable residual; S3 strictly below S4 *(created: 2026-10-01)*
@@ -379,6 +380,7 @@
 - [[sources/obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-]] — Observation: TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7 *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome]] — Observation: TRS spec: S4 at reentry via empty adjacency; R3 single outcome; R4 single arrival *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-sweep-rules-state-behaviour-prohibitions-demoted-to]] — Observation: TRS spec sweep: rules state behaviour; prohibitions demoted to properties *(created: 2026-10-01)*
+- [[sources/obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi]] — Observation: I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins *(created: 2026-10-06)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -388,4 +390,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-01T14:35:08.613Z* | *Total pages: 376*
+*Last updated: 2026-10-06T06:00:52.235Z* | *Total pages: 378*

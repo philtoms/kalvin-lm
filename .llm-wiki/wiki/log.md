@@ -1,7 +1,12 @@
 # Wiki Update Log
 
+## 2026-10-06
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi","title":"I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins"}
+
 ## 2026-10-01
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-amendment-16-repaired-i-2-dissolution-direction-drop-uniquen","title":"Amendment 16 repaired; I-2 dissolution direction: drop uniqueness, witnesses coexist"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic","title":"Amendment 16: D-liveness stated; R3 fold pinned deterministic"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-i-2-seam-on-hold-dissolves-at-continuous-operation-spec-work","title":"I-2 seam on hold — dissolves at continuous-operation spec work"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-01-ruling-d-growing-during-a-rationalisation-run-is-desired-sem","title":"Ruling: D growing during a rationalisation run is desired semantics"}

@@ -178,6 +178,16 @@ def test_band_grade_correspondence():
         assert (b in (Band.S3, Band.S4)) == (g == 0)  # entropy does not split S3/S4
 
 
+def test_multiple_canonical_witnesses_coexist():
+    """D15 — I-2 withdrawn: C:[AB] and C:[A,B] coexist under one head;
+    witness keeps the first-stored and the law holds."""
+    d = base_domain(k(AB, AB), k(AB, A, B))
+    assert k(AB, AB) in d and k(AB, A, B) in d
+    assert d.is_canonical(k(AB, AB)) and d.is_canonical(k(AB, A, B))
+    assert d.witness(AB) == frozenset([AB])  # first-stored
+    assert can(d.witness(AB)) == AB  # the law
+
+
 # --- §4 Definition 14: effort — entropy biased by repairability ---
 
 

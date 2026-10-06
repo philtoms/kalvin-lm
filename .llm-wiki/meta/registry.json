@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-01T14:35:08.613Z",
+  "last_updated": "2026-10-06T06:00:52.235Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5358,6 +5358,26 @@
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },
+    "sources/obs-2026-10-01-amendment-16-repaired-i-2-dissolution-direction-drop-uniquen": {
+      "type": "source",
+      "title": "Observation: Amendment 16 repaired; I-2 dissolution direction: drop uniqueness, witnesses coexist",
+      "tags": [
+        "trs",
+        "repair",
+        "amendment-16",
+        "i2",
+        "direction",
+        "witness-structure",
+        "continuous-operation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-01-amendment-16-repaired-i-2-dissolution-direction-drop-uniquen",
+      "relevance": "high",
+      "observed_at": "2026-10-01T15:42:08.328Z",
+      "source_context": "Repairing non-atomic amendment-16 edit; I-2 direction steer",
+      "created": "2026-10-01",
+      "updated": "2026-10-01"
+    },
     "sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation": {
       "type": "source",
       "title": "Observation: decode renamed witness: strict converse of canonicalisation",
@@ -5671,6 +5691,26 @@
       "source_context": "Removing presumptuous negative-constraint phrasing from docs/trs-significance.md",
       "created": "2026-10-01",
       "updated": "2026-10-01"
+    },
+    "sources/obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi": {
+      "type": "source",
+      "title": "Observation: I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins",
+      "tags": [
+        "trs",
+        "i2-withdrawn",
+        "d15",
+        "witness",
+        "first-stored",
+        "amendment-17",
+        "coexistence"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi",
+      "relevance": "high",
+      "observed_at": "2026-10-06T06:00:52.127Z",
+      "source_context": "Withdrawing I-2; multiple canonical witnesses coexist",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

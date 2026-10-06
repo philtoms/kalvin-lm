@@ -74,11 +74,11 @@ def band(k: Kline) -> Band:
     return Band.S3
 
 
-# --- §1 Definition 3 + I-1/I-2 — Domain ---
+# --- §1 Definition 3 + I-1 — Domain ---
 
 
 class Domain:
-    """D ⊆_fin Kline with the canonical index (I-2) and lookups (Definition 7)."""
+    """D ⊆_fin Kline with the first-stored witness index (Definition 6) and lookups (Definition 7)."""
 
     def __init__(self, klines: "list[Kline] | tuple" = ()) -> None:
         self._klines: set[Kline] = set()
@@ -92,7 +92,7 @@ class Domain:
             return False
         self._klines.add(k)
         if self.is_canonical(k):
-            self._canonical.setdefault(k.sig, k.adj)
+            self._canonical.setdefault(k.sig, k.adj)  # first-stored wins (Definition 6, D15)
         return True
 
     def is_canonical(self, k: Kline) -> bool:
