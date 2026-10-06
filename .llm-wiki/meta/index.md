@@ -380,7 +380,13 @@
 - [[sources/obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-]] — Observation: TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7 *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome]] — Observation: TRS spec: S4 at reentry via empty adjacency; R3 single outcome; R4 single arrival *(created: 2026-10-01)*
 - [[sources/obs-2026-10-01-trs-spec-sweep-rules-state-behaviour-prohibitions-demoted-to]] — Observation: TRS spec sweep: rules state behaviour; prohibitions demoted to properties *(created: 2026-10-01)*
+- [[sources/obs-2026-10-06-halted-entries-relabelled-via-allocation-bit-decomposition]] — Observation: Halted entries relabelled via allocation-bit decomposition *(created: 2026-10-06)*
 - [[sources/obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi]] — Observation: I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-knode-throughout-derived-values-carry-provenance-labels]] — Observation: KNode throughout: derived values carry provenance labels *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-root-cause-unmasked-ops-over-cargo-bits-model-now-content-sp]] — Observation: Root cause: unmasked ops over cargo bits; model now content-space *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers]] — Observation: Runner reworked: LIFO stack, duplicates, per-work-entry openers *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq]] — Observation: Seeding withdrawn: unrecognised nodes route through S4 as acquire asks *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed]] — Observation: TRS harness hooked up: .ks scripts run the significance-routed model *(created: 2026-10-06)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -390,4 +396,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-06T06:00:52.235Z* | *Total pages: 378*
+*Last updated: 2026-10-06T10:46:44.193Z* | *Total pages: 384*

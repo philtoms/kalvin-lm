@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-06T06:00:52.235Z",
+  "last_updated": "2026-10-06T10:46:44.193Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5692,6 +5692,25 @@
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },
+    "sources/obs-2026-10-06-halted-entries-relabelled-via-allocation-bit-decomposition": {
+      "type": "source",
+      "title": "Observation: Halted entries relabelled via allocation-bit decomposition",
+      "tags": [
+        "trs",
+        "harness",
+        "display",
+        "labels",
+        "residuals",
+        "decomposition"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-halted-entries-relabelled-via-allocation-bit-decomposition",
+      "relevance": "medium",
+      "observed_at": "2026-10-06T07:53:08.078Z",
+      "source_context": "Restoring labels to halted entries in the TRS harness display",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
     "sources/obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi": {
       "type": "source",
       "title": "Observation: I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins",
@@ -5709,6 +5728,106 @@
       "relevance": "high",
       "observed_at": "2026-10-06T06:00:52.127Z",
       "source_context": "Withdrawing I-2; multiple canonical witnesses coexist",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-knode-throughout-derived-values-carry-provenance-labels": {
+      "type": "source",
+      "title": "Observation: KNode throughout: derived values carry provenance labels",
+      "tags": [
+        "trs",
+        "knode",
+        "metadata",
+        "labels",
+        "opacity",
+        "realisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-knode-throughout-derived-values-carry-provenance-labels",
+      "relevance": "high",
+      "observed_at": "2026-10-06T08:36:24.390Z",
+      "source_context": "Reworking src/trs to carry KNode metadata throughout",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-root-cause-unmasked-ops-over-cargo-bits-model-now-content-sp": {
+      "type": "source",
+      "title": "Observation: Root cause: unmasked ops over cargo bits; model now content-space",
+      "tags": [
+        "trs",
+        "realisation",
+        "word-mask",
+        "content-space",
+        "appendix",
+        "root-cause"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-root-cause-unmasked-ops-over-cargo-bits-model-now-content-sp",
+      "relevance": "high",
+      "observed_at": "2026-10-06T08:09:22.235Z",
+      "source_context": "Investigating why residues could strip type bits",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers": {
+      "type": "source",
+      "title": "Observation: Runner reworked: LIFO stack, duplicates, per-work-entry openers",
+      "tags": [
+        "trs",
+        "runner",
+        "stack",
+        "lifo",
+        "duplicates",
+        "per-entry-opener",
+        "amendment-18",
+        "cycles"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers",
+      "relevance": "high",
+      "observed_at": "2026-10-06T10:17:26.954Z",
+      "source_context": "Reworking the rationalise queue to stack semantics with per-entry openers",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq": {
+      "type": "source",
+      "title": "Observation: Seeding withdrawn: unrecognised nodes route through S4 as acquire asks",
+      "tags": [
+        "trs",
+        "i-1",
+        "seeding",
+        "s4-routing",
+        "amendment-19",
+        "d16",
+        "bootstrap",
+        "asks"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq",
+      "relevance": "high",
+      "observed_at": "2026-10-06T10:46:44.113Z",
+      "source_context": "Withdrawing kline seeding; unrecognised nodes route through S4",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed": {
+      "type": "source",
+      "title": "Observation: TRS harness hooked up: .ks scripts run the significance-routed model",
+      "tags": [
+        "trs",
+        "harness",
+        "scripted-runs",
+        "dialogue",
+        "kscript",
+        "discharge",
+        "bootstrap"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed",
+      "relevance": "high",
+      "observed_at": "2026-10-06T06:08:58.465Z",
+      "source_context": "Hooking up the dialogue harness and scripted runs for the TRS model",
       "created": "2026-10-06",
       "updated": "2026-10-06"
     },

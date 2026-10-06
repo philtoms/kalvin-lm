@@ -31,7 +31,7 @@ def k(sig: int, *adj: int) -> Kline:
 
 
 def base_domain(*extra: Kline) -> Domain:
-    """Single atoms held canonically — the I-1 substrate."""
+    """Single atoms held canonically — a simple substrate."""
     return Domain([k(A, A), k(B, B), k(C, C), k(D, D), *extra])
 
 
@@ -51,17 +51,13 @@ def test_witness_held_and_unheld():
     assert d.witness(ABCD) == frozenset()  # not held: no witness
 
 
-def test_i1_corollary_witnessed_adjacencies_are_held_signatures():
+def test_witnessed_adjacencies_are_held_signatures():
+    """Stores copy held adjacencies, so witnessed adjacencies reference held
+    signatures — a corollary of the rules, no longer an invariant."""
     d = base_domain(k(AB, A, B), k(ABCD, AB, C, D))
     sigs = {kk.sig for kk in d}
-    assert d.i1_closed()
     for s in (AB, ABCD):
         assert all(n in sigs for n in d.witness(s))
-
-
-def test_i1_detects_violation():
-    d = Domain([k(A, B)])  # B is not a signature in D
-    assert not d.i1_closed()
 
 
 def test_kline_rejects_empty_signature():
@@ -234,8 +230,12 @@ def test_proposal_acquire_from_unheld_witness():
 def test_proposal_connect_from_empty_overlap():
     r = rationalise(Domain(), k(AB, A, B))
     ps = proposals(r)
-    assert len(ps) == 1
-    assert ps[0].kind == "connect" and ps[0].kline == k(AB, A, B)
+    connect = [p for p in ps if p.kind == "connect"]
+    acquires = [p for p in ps if p.kind == "acquire"]
+    assert len(connect) == 1 and connect[0].kline == k(AB, A, B)
+    # each unrecognised node routes through S4 — an acquire ask apiece (D16)
+    assert {p.kline.sig for p in acquires} == {A, B}
+    assert all(p.effort == 1 for p in acquires)
 
 
 def test_proposal_continue_names_min_effort_frontier():
@@ -254,13 +254,13 @@ def test_emptied_expansion_records_its_candidate():
 
 
 def test_d_is_live_during_the_run():
-    """D14 — the run's own writes close routes: the entry's round-1 store mints
-    AB's first witness and the round-2 origin store adds another, so the
-    expansion of ⟨C, {AB}⟩ never empties. Same D₀, entry ⟨C, {C}⟩ (no stores
-    intervene): the emptied-expansion halt fires."""
+    """D14 — the run's own writes close routes: the entry's S1 store mints
+    ⟨AB, {C}⟩, which enters covered(AB) and keeps the later expansion of
+    ⟨C, {AB}⟩ from emptying — the run bound-loops instead of halting.
+    Same D₀, entry ⟨C, {C}⟩ (no store intervenes): the emptied halt fires."""
     d0 = [k(A, A), k(B, B), k(C, C), k(AB), k(ABC, AB)]
-    r = rationalise(Domain(d0), k(C, AB))
-    assert k(AB, AB) in r.stores and k(AB, C) in r.stores  # minted mid-run
+    r = rationalise(Domain(d0), Kline(C, frozenset([AB])))
+    assert k(AB, C) in r.stores  # minted mid-run — the rescuing witness
     assert not any(e.reason == "R4: expansion emptied the adjacency" for e in r.ends)
     r2 = rationalise(Domain(d0), k(C, C))
     assert any(e.reason == "R4: expansion emptied the adjacency" for e in r2.ends)
@@ -287,13 +287,14 @@ def test_proposals_ordered_by_significance():
 # --- §5 + D10: R1 stores; admission iff S1 ---
 
 
-def test_r1_stores_opening_candidate_first_round():
+def test_r1_stores_the_work_entrys_first_candidate():
     d = base_domain(k(ABD, A, B))  # held but non-canonical (can = AB)
     r = rationalise(d, k(A, A, B))
-    assert k(AB, A, B) in r.stores  # first round: opener == the S1 candidate (canonical)
-    assert k(AB, A) in r.stores  # the S2 opener ⟨AB, {A}⟩, licensed by its trace's S1
+    # the entry's first candidate ⟨AB, {A}⟩ is the opener, licensed by its
+    # sibling S1 ⟨AB, {A, B}⟩; it does not change for this work entry
+    assert r.stores == [k(AB, A)]
     assert k(A, A, B) not in d  # the entry itself is never stored (D10)
-    assert not any(d.is_canonical(s) for s in r.stores if s == k(AB, A))  # licensed, not canonical
+    assert not d.is_canonical(k(AB, A))  # a licensed claim, not a canon
 
 
 def test_r4_candidate_with_no_adjacency():
@@ -310,13 +311,15 @@ def test_empty_lookup_terminates_entry():
 
 
 def test_rationalisation_reaches_s1_through_reentry():
-    # S3 candidate ⟨C, {AB}⟩ → R3 product ⟨AB, {A,B}⟩ re-enters → S1:
-    # the proof licenses the opening candidate, not the S1 candidate (R1)
+    # S3 candidate → R3 product ⟨AB, {A,B}⟩ re-enters as a new work entry:
+    # its own first candidate ⟨AB, {A}⟩ is the opener, licensed when a
+    # sibling candidate reaches S1 (R1, Definition 9)
     d = base_domain(k(AB, A, B), k(ABC, AB))
     r = rationalise(d, k(C, C))
-    assert k(C, AB) in r.stores  # the opening candidate is stored
-    assert k(C, AB) in d
-    assert k(AB, AB) not in d  # constructable from the opener — not stored
+    assert k(AB, A) in r.stores  # the re-entered entry's first candidate
+    assert k(AB, A) in d
+    assert k(C, AB) not in d  # traces no longer span reentries (amendment 18)
+    assert k(AB, AB) not in d  # the S1 endpoint is constructable — not minted
 
 
 def test_rationalisation_is_bounded_under_cycles():

@@ -1191,6 +1191,11 @@ def main(argv: list[str] | None = None) -> int:
              "feeds only the opener and withholds scaffolding until K asks.",
     )
     parser.add_argument(
+        "--model", choices=("engine", "trs"), default="engine",
+        help="Which model runs the script: 'engine' (default, the rationaliser) "
+             "or 'trs' (the significance-routed model of docs/trs-significance.md).",
+    )
+    parser.add_argument(
         "-g", "--graph", nargs="?", const="ascii", default=None,
         choices=("ascii", "dot", "mermaid"),
         help="After the summary, print a graph of the end-of-run model state "
@@ -1215,6 +1220,13 @@ def main(argv: list[str] | None = None) -> int:
         except OSError as exc:
             print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
             return 2
+        if args.model == "trs":
+            if args.persist:
+                print("harness: -p persistence is engine-only for now "
+                      "(continuous operation is later work)", file=sys.stderr)
+            from dev.dialogue.trs_harness import main as trs_main
+
+            return trs_main([args.source] + (["-v"] if args.verbose else []))
         tok = BPETokenizer()
         scaffolding = cast(Literal["batch", "on-demand"], args.scaffolding)
         state_path = (

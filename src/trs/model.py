@@ -4,16 +4,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from collections import deque
 from fractions import Fraction
+
+from kalvin.kline import KNode
 
 
 # --- §1 Definition 1 — Node algebra (word-bit realisation; ⊥ = 0) ---
 
 
-def residue(x: int, y: int) -> int:
+def _provenance(x: int, y: int, op: str) -> str:
+    """The label of a value derived from two operands."""
+    a, b = getattr(x, "label", ""), getattr(y, "label", "")
+    return f"{a}{op}{b}" if a and b else ""
+
+
+def residue(x: int, y: int) -> KNode:
     """v ∖ w — residue, x beyond y."""
-    return x & ~y
+    return KNode(x & ~y, _provenance(x, y, "∖"))
+
+
+def meet(x: int, y: int) -> KNode:
+    """v ∧ w — meet, carried as a labelled node."""
+    return KNode(x & y, _provenance(x, y, "∧"))
 
 
 def contained(x: int, y: int) -> bool:
@@ -33,8 +45,8 @@ def mu(v: int) -> int:
 class Kline:
     """⟨σ, N⟩ — signature and adjacency set (§1 Definition 2)."""
 
-    sig: int
-    adj: frozenset[int]
+    sig: KNode
+    adj: frozenset[KNode]
 
     def __post_init__(self) -> None:
         if self.sig == 0:
@@ -44,11 +56,11 @@ class Kline:
 # --- §2 Definition 4 — can: the composition fold ---
 
 
-def can(n: frozenset[int]) -> int:
-    """can(N) = ⋁ N; can(∅) = ⊥."""
-    out = 0
+def can(n: frozenset[KNode]) -> KNode:
+    """can(N) = ⋁ N; can(∅) = ⊥ — labels compose through the fold."""
+    out = KNode(0)
     for node in n:
-        out |= node
+        out = out.merge(node)
     return out
 
 
@@ -74,7 +86,7 @@ def band(k: Kline) -> Band:
     return Band.S3
 
 
-# --- §1 Definition 3 + I-1 — Domain ---
+# --- §1 Definition 3 — Domain ---
 
 
 class Domain:
@@ -94,7 +106,6 @@ class Domain:
         if self.is_canonical(k):
             self._canonical.setdefault(k.sig, k.adj)  # first-stored wins (Definition 6, D15)
         return True
-
     def is_canonical(self, k: Kline) -> bool:
         """§2 Definition 5."""
         return k.sig == can(k.adj)
@@ -109,7 +120,7 @@ class Domain:
         return len(self._klines)
 
     # §2 Definition 6 — witness (total)
-    def witness(self, s: int) -> frozenset[int]:
+    def witness(self, s: int) -> frozenset[KNode]:
         return self._canonical.get(s, frozenset())
 
     # §2 Definition 7 — three lookups
@@ -121,11 +132,6 @@ class Domain:
 
     def covered(self, c: int) -> "list[Kline]":
         return [k for k in self._klines if contained(k.sig, c)]
-
-    # I-1 — referential closure check
-    def i1_closed(self) -> bool:
-        sigs = {k.sig for k in self._klines}
-        return all(n in sigs for k in self._klines for n in k.adj)
 
 
 # --- §4 Definition 12 — decomposition ---
@@ -142,7 +148,7 @@ class Decomposition:
 
 def decompose(k: Kline) -> Decomposition:
     a_hat = can(k.adj)
-    f = k.sig & a_hat
+    f = meet(k.sig, a_hat)
     return Decomposition(F=f, U=residue(k.sig, a_hat), O=residue(a_hat, k.sig))
 
 
@@ -201,7 +207,7 @@ def r3_substitute(d: Domain, k: Kline) -> frozenset[int]:
     return frozenset(n_prime)
 
 
-# --- §5 — reentry: the rationalisation runner (strategy: FIFO + dedupe + bound) ---
+# --- §5 — reentry: the rationalisation runner (strategy: LIFO stack, duplicates allowed, bounded) ---
 
 
 @dataclass(frozen=True)
@@ -230,52 +236,57 @@ class Rationalisation:
 
 
 def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisation:
-    """Run the entry through the pipeline and the rules until S1/S4 arrival (§5, §7)."""
-    # queue holds (entry, origin): the first-round candidate that opened the trace (Definition 9)
-    queue: deque[tuple[Kline, Kline | None]] = deque([(entry, None)])
-    seen = {entry}
+    """Run the entry through the pipeline and the rules until S1/S4 arrival (§5, §7).
+
+    The work queue is an ordinary stack: duplicates are allowed and the
+    next work entry is the latest queued. The opener is cleared on pop and
+    set to the entry's first candidate — it does not change for that work
+    entry (Definition 9)."""
+    queue: list[Kline] = [entry]
     stores: list[Kline] = []
     ends: list[End] = []
     rounds = 0
 
     while queue and rounds < max_rounds:
-        e, origin = queue.popleft()
+        e = queue.pop()  # the latest queued item
         rounds += 1
         if not e.adj:  # R4 arrival — an entry kline with no adjacency
             ends.append(End("R4: entry kline with no adjacency", e, effort(e)))
             continue
+        held = {k.sig for k in d}
+        for n in e.adj:  # D16: unrecognised nodes route S4, one ask each
+            if n not in held:
+                ask = Kline(n, frozenset())
+                ends.append(End("R4: unrecognised node", ask, effort(ask)))
         neighbours = d.overlap(e.sig)  # Definition 9
         if not neighbours:
             ends.append(End("no candidates — the entry terminates", e, effort(e)))
             continue
         c_e = can(e.adj)
+        opener: Kline | None = None  # cleared on pop; set by the first candidate
         for nb in sorted(neighbours, key=lambda k: k.sig):
             cand = Kline(c_e, nb.adj)
-            opener = origin if origin is not None else cand  # first-round candidates open their traces
+            if opener is None:
+                opener = cand  # opens this work entry's trace — unchanging for it
             b = band(cand)
             if b is Band.S1:  # R1 — proof of full understanding: store the opening candidate
                 if d.add(opener):
                     stores.append(opener)
             elif b is Band.S2:  # R2 — three products re-enter
                 for p in r2_products(d, cand):
-                    if p not in seen:
-                        seen.add(p)
-                        queue.append((p, opener))
+                    queue.append(p)
             elif b is Band.S3:  # R3 — substitute, canonicalise, re-enter
                 n_prime = r3_substitute(d, cand)
                 if n_prime:
-                    p = Kline(can(n_prime), n_prime)
-                    if p not in seen:
-                        seen.add(p)
-                        queue.append((p, opener))
+                    queue.append(Kline(can(n_prime), n_prime))
                 else:
                     ends.append(End("R4: expansion emptied the adjacency", cand, effort(cand)))
             else:  # S4 — candidate whose neighbour supplied no adjacency
                 ends.append(End("R4: candidate with no adjacency", cand, effort(cand)))
 
     if queue:
-        pending = min(queue, key=lambda item: effort(item[0]))  # the frontier's cheapest continuation
-        ends.append(End(f"bound: reentry depth {max_rounds} reached", pending[0], effort(pending[0])))
+        pending = min(queue, key=effort)  # the frontier's cheapest continuation
+        ends.append(End(f"bound: reentry depth {max_rounds} reached", pending, effort(pending)))
     return Rationalisation(stores=stores, ends=ends, rounds=rounds)
 
 

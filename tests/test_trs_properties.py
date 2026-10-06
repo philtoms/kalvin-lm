@@ -47,7 +47,7 @@ def klines(pool: list[int] | None = None) -> st.SearchStrategy[Kline]:
 
 @st.composite
 def closed_domains(draw) -> Domain:
-    """Random I-1-closed domains: every adjacency node is a held signature.
+    """Random referentially-closed domains: every adjacency node is a held signature.
     Several canonical witnesses may share a head (I-2 withdrawn, D15)."""
     d = Domain([Kline(a, frozenset([a])) for a in ATOMS])
     held = list(ATOMS)
@@ -233,19 +233,10 @@ def test_r3_product_well_formed(sc):
     n_prime = r3_substitute(d, k)
     if n_prime:
         assert can(n_prime) != 0  # the product's head is legal (Definition 2)
-    assert all(n in held_sigs for n in n_prime)  # I-1 survives substitution
+    assert all(n in held_sigs for n in n_prime)  # substitution keeps references held
 
 
 # --- §5: rationalisation preserves the invariants ---
-
-
-@settings(deadline=None, max_examples=150)
-@given(scenarios())
-def test_i1_maintained_by_construction(sc):
-    d, entry = sc
-    assert d.i1_closed()
-    rationalise(d, entry)
-    assert d.i1_closed()
 
 
 @settings(deadline=None, max_examples=150)
@@ -259,8 +250,9 @@ def test_no_fabrication(sc):
     added = set(d) - before
     assert added == set(r.stores)  # the domain grows only through R1 stores
     for k in added:
-        assert k.sig == can(entry.adj)  # every store is an opening candidate of this entry
-        assert any(k.adj == kk.adj for kk in before)  # valued against a held adjacency
+        # every store is an opener: a first candidate, valued against an
+        # adjacency the domain holds (its work entry's neighbour)
+        assert any(k.adj == kk.adj for kk in d if kk != k)
     atoms_after = {b for k in d for v in (k.sig, *k.adj) for b in bits(v)}
     assert atoms_after <= atoms_before  # no new atoms: the system composes what it holds
 
@@ -287,10 +279,11 @@ def test_rationalisation_bounded_and_honest(sc, bound):
 # --- the R1 rewrite rule: opener stored, endpoint constructable ---
 
 
-def test_r1_rewrite_stores_opener_not_endpoint():
-    """The trace opening ⟨2, {1}⟩ grounds out at S1 via the R3 expansion
-    {1} → {1,2}. R1 stores the opening candidate; the S1 candidate ⟨3, {1,2}⟩
-    is constructable from it and is not stored."""
+def test_lifo_cycles_starve_queued_products():
+    """R2's fit product of a self-witnessing pairing (candidate ⟨2, {3}⟩ →
+    product ⟨2, witness(2)⟩ = ⟨2, {2}⟩) re-queues the work entry itself.
+    Duplicates are allowed, so the run bound-loops and the queued R3
+    product ⟨3, {1, 2}⟩ is never reached — arrival is not guaranteed (§7)."""
     A, B = 1, 2
     d = Domain(
         [
@@ -300,9 +293,11 @@ def test_r1_rewrite_stores_opener_not_endpoint():
             Kline(A, frozenset([A, B])),  # non-canonical: the substitutable source
         ]
     )
-    assert d.i1_closed()
     r = rationalise(d, Kline(A, frozenset([B])))
-    assert Kline(2, frozenset([A])) in r.stores  # the opening candidate, stored by proof
-    assert Kline(2, frozenset([A])) in d
-    assert Kline(3, frozenset([A, B])) not in d  # constructable — not minted
-    assert can(d.witness(3)) == 3  # the held canonical keeps the key
+    assert r.rounds == 64  # the bound holds the cycle
+    assert r.stores == []  # nothing new licensed — the held self-witness cycles
+    assert Kline(3, frozenset([A, B])) not in d  # queued, but starved by LIFO
+    bound = [e for e in r.ends if e.reason.startswith("bound")]
+    assert bound and bound[0].kline == Kline(3, frozenset([A, B]))  # min-effort pending
+    assert bound[0].effort == 0
+    assert can(d.witness(3)) == 3  # the law holds

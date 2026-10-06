@@ -2,6 +2,12 @@
 
 ## 2026-10-06
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq","title":"Seeding withdrawn: unrecognised nodes route through S4 as acquire asks"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers","title":"Runner reworked: LIFO stack, duplicates, per-work-entry openers"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-knode-throughout-derived-values-carry-provenance-labels","title":"KNode throughout: derived values carry provenance labels"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-root-cause-unmasked-ops-over-cargo-bits-model-now-content-sp","title":"Root cause: unmasked ops over cargo bits; model now content-space"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-halted-entries-relabelled-via-allocation-bit-decomposition","title":"Halted entries relabelled via allocation-bit decomposition"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed","title":"TRS harness hooked up: .ks scripts run the significance-routed model"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi","title":"I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins"}
 
 ## 2026-10-01

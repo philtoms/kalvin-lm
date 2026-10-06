@@ -962,3 +962,21 @@
 ## [2026-10-06T06:00:52.129Z] observe
 - slug: "obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi", title: "I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins", relevance: "high"
 
+## [2026-10-06T06:08:58.468Z] observe
+- slug: "obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed", title: "TRS harness hooked up: .ks scripts run the significance-routed model", relevance: "high"
+
+## [2026-10-06T07:53:08.079Z] observe
+- slug: "obs-2026-10-06-halted-entries-relabelled-via-allocation-bit-decomposition", title: "Halted entries relabelled via allocation-bit decomposition", relevance: "medium"
+
+## [2026-10-06T08:09:22.237Z] observe
+- slug: "obs-2026-10-06-root-cause-unmasked-ops-over-cargo-bits-model-now-content-sp", title: "Root cause: unmasked ops over cargo bits; model now content-space", relevance: "high"
+
+## [2026-10-06T08:36:24.392Z] observe
+- slug: "obs-2026-10-06-knode-throughout-derived-values-carry-provenance-labels", title: "KNode throughout: derived values carry provenance labels", relevance: "high"
+
+## [2026-10-06T10:17:26.956Z] observe
+- slug: "obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers", title: "Runner reworked: LIFO stack, duplicates, per-work-entry openers", relevance: "high"
+
+## [2026-10-06T10:46:44.115Z] observe
+- slug: "obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq", title: "Seeding withdrawn: unrecognised nodes route through S4 as acquire asks", relevance: "high"
+
