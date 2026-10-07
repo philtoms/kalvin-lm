@@ -125,9 +125,11 @@ New information enters as
 E = ⟨σ_E, N_E⟩.
 ```
 
-Entries arrive from outside presentation and from the products of R2 (§5); the pipeline makes no distinction between them. R3's product does not arrive as an entry — it re-enters within its candidate's chain (R3).
+Entries arrive from outside presentation and from the products of R2 and R3 (§5). The pipeline makes no distinction between them, but re-entry is distinguishable from entry: a presented entry is one that arrives, and a re-entry product is an entry that the rationalisation itself produced.
 
-An entry's content reaches the domain through the R1 stores earned by its candidates' traces (R1). Presentation admits any kline — the system never seeds and checks nothing at the boundary. `can(N_E)` may still be a signature the domain does not hold. The entry locates neighbours; the candidates constructed from it are what get valued (Definition 9, Definition 11).
+A **trace** is a chain of entries `E₀, E₁, E₂, …` where each `E_k` (k > 0) is a re-entry product arising from the rationalisation of `E_{k−1}`. `E₀` is presented and opens the trace.
+
+An entry's content reaches the domain through the R1 stores earned along its trace (R1). Presentation admits any kline — the system never seeds and checks nothing at the boundary. `can(N_E)` may still be a signature the domain does not hold. The entry locates neighbours; the candidates constructed from it are what get valued (Definition 9, Definition 11).
 
 ### Definition 9 — Entry pipeline
 
@@ -140,8 +142,6 @@ for each neighbour K_i = ⟨σ_i, N_i⟩ :
 ```
 
 Empty lookup: the entry terminates without candidates.
-
-Candidates on re-entering products extend earlier chains: a **trace** is a chain `C₀, C₁, …` where each `C_k` (k > 0) is a candidate formed on an entry that is a product of `C_{k−1}` (R2); R3 substitution continues a trace without a new entry. `C₀` is formed on a presented entry and opens the trace.
 
 ### Definition 10 — Candidate invariant
 
@@ -239,19 +239,19 @@ Effort is the halt measure: when rationalisation ends, `E` of the halted kline i
 
 ## 5. The Rewrite Rules
 
-The rewrite system operates on candidates. R2 and R3 take a kline and produce klines, each in its own way. R2's products re-enter as entries (Definition 8), meeting the same pipeline and the same bands; R3's product re-enters within its candidate's chain. A product with no adjacency routes to R4 — the misfit asks, and later-arriving information may complete the path. Reentry is not a rewrite rule. Only S2 and S3 produce further work.
+The rewrite system operates on candidates. R2 and R3 take a kline and produce klines, each in its own way; their products re-enter as entries (Definition 8), meeting the same pipeline and the same bands. A product with no adjacency routes to R4 — the misfit asks, and later-arriving information may complete the path. Reentry is not a rewrite rule. Only S2 and S3 produce further work.
 
 `D` is live throughout the tree. R1 stores enter `D` at the moment of arrival, and every later application — lookup, witness, substitution — reads `D` as it then stands. A run's own writes can close a route a later candidate would have taken, or open one: a witness minted in one round can keep a later expansion from emptying. The tree is a sequence of applications, not an evaluation against a snapshot of `D`.
 
 ### Rule R1 — proof of full understanding (S1): store the opening candidate
 
 ```text
-C₀ opens a trace;  a candidate on that trace : S1  ⟹  D := D ∪ { C₀ }
+C₀ is formed on a trace's presented entry E₀;  a candidate on that trace : S1  ⟹  D := D ∪ { C₀ }
 ```
 
-Reaching S1 is a proof of full entry understanding — the work entry has been completely rationalised. The kline that enters `D` is the candidate that opened the trace — the work entry's first candidate — not the candidate formed on the final entry, which by this proof is constructable from the former by reapplying the rules. Where the opening candidate is itself the S1 candidate, the two coincide. Idempotent. A kline enters `D` at R1, when a trace it opens reaches S1. The opening candidate's head `c_E` may be a signature the domain does not yet hold — it is minted over the held adjacency the candidate was valued against, and this is how entry information becomes knowledge. Reinforcement and promotion are outside the algebra (§7).
+Reaching S1 is a proof of full entry understanding — the work entry has been completely rationalised. The kline that enters `D` is the opening candidate — the presented entry's first candidate — not the candidate formed on the final entry, which by this proof is constructable from the former by reapplying the rules. Where the opening candidate is itself the S1 candidate, the two coincide. Idempotent. A kline enters `D` at R1, when a trace it opens reaches S1. The opening candidate's head `c_E` may be a signature the domain does not yet hold — it is minted over the held adjacency the candidate was valued against, and this is how entry information becomes knowledge. Reinforcement and promotion are outside the algebra (§7).
 
-### Rule R2 — partial fit (S2): project
+### Rule R2 — partial fit (S2): project, re-enter
 
 For `C = ⟨σ, N⟩ : S2`, compute `F, U, O` (Definition 12) and witness:
 
@@ -269,24 +269,22 @@ The pairing is cross-wise — `U` carries `N_O`, `O` carries `N_U` — so `U` an
 
 ### Rule R3 — misfit (S3): substitute, re-enter
 
-R3 applies to an S3 candidate `C = ⟨σ, N⟩`:
+For `C = ⟨σ, N⟩ : S3`, substitute the covered references in `N` by their witnesses (Definition 7):
 
 ```text
 c_N = can(N)
 for each K ∈ covered(c_N, D) whose signature occurs in N :
-    replace every occurrence of sig(K) in N by adj(K)      single pass
+    replace every occurrence of sig(K) in N by adj(K)
 N′ = the result
 ```
 
-Substituting a signature replaces a reference with the witness it names — dereferencing through the hierarchy. A signature is substituted at most once per pass (well-foundedness). Occurrence implies coverage (`n ∈ N ⟹ n ⪯ can(N)`), so the licence is the occurrence: substitution applies where a covered neighbour's signature occurs in `N`. The covered lookup is the finding mechanism; the occurrence is the licence.
-
-R3's product keeps the candidate's signature and carries the substituted adjacency:
+R3 produces the kline
 
 ```text
-C′ = ⟨σ, N′⟩
+⟨σ, N′⟩
 ```
 
-Substitution is the whole of the rule: the signature makes its claim, and the substituted adjacency is the re-pairing. `C′` re-enters within the candidate's chain — Definition 9 applies: neighbours are located by overlap on `σ`, candidates are constructed against their adjacencies, and Definition 11 assigns each a band. An expansion that empties `N′` arrives at R4.
+The claim `σ` is kept; the adjacency is dereferenced through the covered witnesses. The product re-enters as an entry (Definition 8).
 
 ### Rule R4 — terminal (S4): end the branch
 
@@ -305,13 +303,13 @@ neighbours K_i   candidates C_i = ⟨c_E, N_i⟩
       ┌─────────┼──────────┬───────────────────┐
       S1        S2         S3                  S4 (no adjacency) → end
       │         │          │
-    store C₀  project    substitute (single pass)
+    store C₀  project    substitute
       │         │          │
-      end   ⟨F, N_F⟩    N′ ──► ⟨σ, N′⟩ (in-chain)
+      end   ⟨F, N_F⟩    N′ ──► ⟨σ, N′⟩
             ⟨U, N_O⟩              │
             ⟨O, N_U⟩              │
                │                  │
-               └── new entries ───┘──► repeat
+               └── re-entries ────┘──► repeat
 ```
 
 Across R1–R4, every rewrite resolves against held content and signatures enter `D` at R1 stores: the system composes what it holds, and asks at its boundary.

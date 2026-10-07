@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-07T14:12:51.240Z",
+  "last_updated": "2026-10-07T15:41:14.677Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6098,6 +6098,45 @@
       "relevance": "medium",
       "observed_at": "2026-10-07T14:12:51.174Z",
       "source_context": "Spec sync scope after R3 rewrite",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
+    },
+    "sources/obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter": {
+      "type": "source",
+      "title": "Observation: R3 amended by user: procedure stated in-rule, product re-enters at Def 8",
+      "tags": [
+        "trs",
+        "spec",
+        "r3",
+        "amendment",
+        "true-statement"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter",
+      "relevance": "high",
+      "observed_at": "2026-10-07T15:41:14.586Z",
+      "source_context": "User's R3 amendment — the true statement",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
+    },
+    "sources/obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline": {
+      "type": "source",
+      "title": "Observation: Reentry fixed: Def 8 owns entry/re-entry/trace; Def 9 pipeline-only; R3 follows R2",
+      "tags": [
+        "trs",
+        "spec",
+        "reentry",
+        "trace",
+        "definition8",
+        "definition9",
+        "r3",
+        "rationalise3"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline",
+      "relevance": "high",
+      "observed_at": "2026-10-07T15:32:50.357Z",
+      "source_context": "Spec reentry fix before rationalise3",
       "created": "2026-10-07",
       "updated": "2026-10-07"
     },

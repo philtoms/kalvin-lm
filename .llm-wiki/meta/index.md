@@ -402,6 +402,8 @@
 - [[sources/obs-2026-10-06-verify-step-1-2-r2-single-response-design-vs-current-queued-]] — Observation: Verify step 1.2: R2 single-response design vs current queued products *(created: 2026-10-06)*
 - [[sources/obs-2026-10-06-verify-step-1-settled-goal-rationalises-before-the-ask]] — Observation: Verify step 1 settled: goal rationalises before the ask *(created: 2026-10-06)*
 - [[sources/obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-]] — Observation: R2 spec language is the target; implementation incomplete — do not sync *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter]] — Observation: R3 amended by user: procedure stated in-rule, product re-enters at Def 8 *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline]] — Observation: Reentry fixed: Def 8 owns entry/re-entry/trace; Def 9 pipeline-only; R3 follows R2 *(created: 2026-10-07)*
 - [[sources/obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical]] — Observation: Spec R3 synced: substitute and re-enter in-chain, no canonicalisation *(created: 2026-10-07)*
 - [[sources/obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op]] — Observation: User updates absorbed: next-candidate opener, R3 reentry on opener *(created: 2026-10-07)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
@@ -413,4 +415,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-07T14:12:51.240Z* | *Total pages: 401*
+*Last updated: 2026-10-07T15:41:14.677Z* | *Total pages: 403*

@@ -2,6 +2,8 @@
 
 ## 2026-10-07
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter","title":"R3 amended by user: procedure stated in-rule, product re-enters at Def 8"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline","title":"Reentry fixed: Def 8 owns entry/re-entry/trace; Def 9 pipeline-only; R3 follows R2"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-","title":"R2 spec language is the target; implementation incomplete — do not sync"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical","title":"Spec R3 synced: substitute and re-enter in-chain, no canonicalisation"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op","title":"User updates absorbed: next-candidate opener, R3 reentry on opener"}

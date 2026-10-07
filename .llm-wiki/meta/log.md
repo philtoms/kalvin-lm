@@ -1031,3 +1031,9 @@
 ## [2026-10-07T14:12:51.174Z] observe
 - slug: "obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-", title: "R2 spec language is the target; implementation incomplete — do not sync", relevance: "medium"
 
+## [2026-10-07T15:32:50.359Z] observe
+- slug: "obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline", title: "Reentry fixed: Def 8 owns entry/re-entry/trace; Def 9 pipeline-only; R3 follows R2", relevance: "high"
+
+## [2026-10-07T15:41:14.587Z] observe
+- slug: "obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter", title: "R3 amended by user: procedure stated in-rule, product re-enters at Def 8", relevance: "high"
+
