@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-06T11:56:25.797Z",
+  "last_updated": "2026-10-07T14:12:51.240Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -5692,6 +5692,44 @@
       "created": "2026-10-01",
       "updated": "2026-10-01"
     },
+    "sources/obs-2026-10-06-ask-goal-configuration-two-entries-rest-primes-the-domain": {
+      "type": "source",
+      "title": "Observation: ask==goal configuration: two entries, rest primes the domain",
+      "tags": [
+        "trs",
+        "harness",
+        "ask-goal",
+        "priming",
+        "scripts"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-ask-goal-configuration-two-entries-rest-primes-the-domain",
+      "relevance": "high",
+      "observed_at": "2026-10-06T13:09:54.342Z",
+      "source_context": "Implementing ask==goal configuration in the TRS harness",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-derived-heads-labelled-by-content-phantom-edit-corruption-cl": {
+      "type": "source",
+      "title": "Observation: Derived heads labelled by content; phantom-edit corruption cleaned",
+      "tags": [
+        "trs",
+        "labels",
+        "residue",
+        "meet",
+        "content",
+        "corruption",
+        "incident"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-derived-heads-labelled-by-content-phantom-edit-corruption-cl",
+      "relevance": "high",
+      "observed_at": "2026-10-06T16:58:00.153Z",
+      "source_context": "Content-composed labels for derived heads; phantom-edit corruption incident",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
     "sources/obs-2026-10-06-halted-entries-relabelled-via-allocation-bit-decomposition": {
       "type": "source",
       "title": "Observation: Halted entries relabelled via allocation-bit decomposition",
@@ -5708,6 +5746,24 @@
       "relevance": "medium",
       "observed_at": "2026-10-06T07:53:08.078Z",
       "source_context": "Restoring labels to halted entries in the TRS harness display",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-i-1-enforcement-code-removed-no-neighbours-halt-is-the-ask": {
+      "type": "source",
+      "title": "Observation: I-1 enforcement code removed; no-neighbours halt is the ask",
+      "tags": [
+        "trs",
+        "i-1",
+        "enforcement",
+        "no-neighbours",
+        "presentation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-i-1-enforcement-code-removed-no-neighbours-halt-is-the-ask",
+      "relevance": "medium",
+      "observed_at": "2026-10-06T12:50:00.295Z",
+      "source_context": "Removing redundant I-1 enforcement code from the runner",
       "created": "2026-10-06",
       "updated": "2026-10-06"
     },
@@ -5747,6 +5803,80 @@
       "relevance": "high",
       "observed_at": "2026-10-06T08:36:24.390Z",
       "source_context": "Reworking src/trs to carry KNode metadata throughout",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-note-for-redesign-neighbour-sig-ascending-is-not-algebraic": {
+      "type": "source",
+      "title": "Observation: Note for redesign: neighbour-sig ascending is not algebraic",
+      "tags": [
+        "trs",
+        "redesign",
+        "note",
+        "candidate-ordering"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-note-for-redesign-neighbour-sig-ascending-is-not-algebraic",
+      "relevance": "medium",
+      "observed_at": "2026-10-06T15:26:55.832Z",
+      "source_context": "Step-by-step rationalisation reentry redesign",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-rationalise2-corrections-always-store-r1-sole-via-dispatch": {
+      "type": "source",
+      "title": "Observation: rationalise2 corrections: always-store, R1 sole via dispatch",
+      "tags": [
+        "trs",
+        "redesign",
+        "rationalise2",
+        "r1",
+        "store"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-rationalise2-corrections-always-store-r1-sole-via-dispatch",
+      "relevance": "medium",
+      "observed_at": "2026-10-06T16:34:18.542Z",
+      "source_context": "Correcting rationalise2 store semantics",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-rationalise2-knode-candidate-fallback-r1-stores-first-candid": {
+      "type": "source",
+      "title": "Observation: rationalise2: KNode, candidate fallback, R1 stores first candidate",
+      "tags": [
+        "trs",
+        "redesign",
+        "rationalise2",
+        "knode",
+        "fallback",
+        "opener",
+        "ask-step"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-rationalise2-knode-candidate-fallback-r1-stores-first-candid",
+      "relevance": "high",
+      "observed_at": "2026-10-06T16:45:04.360Z",
+      "source_context": "Points 1-3 on rationalise2: KNode, candidate fallback, opener storage",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-rationalise2-prototype-step-1-2-matches-the-hand-trace-no-di": {
+      "type": "source",
+      "title": "Observation: rationalise2 prototype: step 1.2 matches the hand-trace, no divergence",
+      "tags": [
+        "trs",
+        "redesign",
+        "step-1-2",
+        "rationalise2",
+        "witness-accumulation",
+        "recursion"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-rationalise2-prototype-step-1-2-matches-the-hand-trace-no-di",
+      "relevance": "high",
+      "observed_at": "2026-10-06T16:17:18.793Z",
+      "source_context": "Implementing step 1.2 redesign prototype; verifying against the hand-trace",
       "created": "2026-10-06",
       "updated": "2026-10-06"
     },
@@ -5825,6 +5955,23 @@
       "created": "2026-10-06",
       "updated": "2026-10-06"
     },
+    "sources/obs-2026-10-06-trs-harness-ask-goal-is-the-only-run-mode": {
+      "type": "source",
+      "title": "Observation: TRS harness: ask==goal is the only run mode",
+      "tags": [
+        "trs",
+        "harness",
+        "ask-goal",
+        "simplification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-trs-harness-ask-goal-is-the-only-run-mode",
+      "relevance": "medium",
+      "observed_at": "2026-10-06T13:36:08.273Z",
+      "source_context": "Making ask==goal the only TRS harness mode",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
     "sources/obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed": {
       "type": "source",
       "title": "Observation: TRS harness hooked up: .ks scripts run the significance-routed model",
@@ -5861,6 +6008,136 @@
       "source_context": "Removing decisions table and amendment history from the TRS spec",
       "created": "2026-10-06",
       "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-verify-step-1-1-confirmed-neighbours-first-candidate-s2-f-su": {
+      "type": "source",
+      "title": "Observation: Verify step 1.1 confirmed: neighbours, first candidate S2 F=Subject",
+      "tags": [
+        "trs",
+        "redesign",
+        "verify-step-1-1",
+        "svo",
+        "neighbours",
+        "decomposition"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-verify-step-1-1-confirmed-neighbours-first-candidate-s2-f-su",
+      "relevance": "high",
+      "observed_at": "2026-10-06T15:03:26.375Z",
+      "source_context": "Step-by-step rationalisation reentry redesign; verify step 1.1",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-verify-step-1-2-r2-consumption-diverges-recursion-on-u-f-acc": {
+      "type": "source",
+      "title": "Observation: Verify step 1.2: R2 consumption diverges — recursion on U, F accumulates",
+      "tags": [
+        "trs",
+        "redesign",
+        "verify-step-1-2",
+        "r2",
+        "recursion",
+        "witness-accumulation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-verify-step-1-2-r2-consumption-diverges-recursion-on-u-f-acc",
+      "relevance": "high",
+      "observed_at": "2026-10-06T16:05:44.099Z",
+      "source_context": "Step-by-step rationalisation reentry redesign; verify step 1.2",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-verify-step-1-2-r2-single-response-design-vs-current-queued-": {
+      "type": "source",
+      "title": "Observation: Verify step 1.2: R2 single-response design vs current queued products",
+      "tags": [
+        "trs",
+        "redesign",
+        "reentry",
+        "r2-products",
+        "recursion",
+        "diverge"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-verify-step-1-2-r2-single-response-design-vs-current-queued-",
+      "relevance": "high",
+      "observed_at": "2026-10-06T15:14:09.050Z",
+      "source_context": "Step-by-step rationalisation reentry redesign; verify step 1.2",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-06-verify-step-1-settled-goal-rationalises-before-the-ask": {
+      "type": "source",
+      "title": "Observation: Verify step 1 settled: goal rationalises before the ask",
+      "tags": [
+        "trs",
+        "redesign",
+        "reentry",
+        "verify-step-1",
+        "goal-first"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-06-verify-step-1-settled-goal-rationalises-before-the-ask",
+      "relevance": "high",
+      "observed_at": "2026-10-06T14:54:19.163Z",
+      "source_context": "Step-by-step rationalisation reentry redesign; verify step 1",
+      "created": "2026-10-06",
+      "updated": "2026-10-06"
+    },
+    "sources/obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-": {
+      "type": "source",
+      "title": "Observation: R2 spec language is the target; implementation incomplete — do not sync",
+      "tags": [
+        "trs",
+        "spec",
+        "r2",
+        "pending-implementation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-",
+      "relevance": "medium",
+      "observed_at": "2026-10-07T14:12:51.174Z",
+      "source_context": "Spec sync scope after R3 rewrite",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
+    },
+    "sources/obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical": {
+      "type": "source",
+      "title": "Observation: Spec R3 synced: substitute and re-enter in-chain, no canonicalisation",
+      "tags": [
+        "trs",
+        "spec",
+        "r3",
+        "substitution",
+        "sync"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical",
+      "relevance": "medium",
+      "observed_at": "2026-10-07T14:07:21.036Z",
+      "source_context": "Syncing the spec R3 rule with the substitute-only code",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
+    },
+    "sources/obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op": {
+      "type": "source",
+      "title": "Observation: User updates absorbed: next-candidate opener, R3 reentry on opener",
+      "tags": [
+        "trs",
+        "redesign",
+        "rationalise2",
+        "opener",
+        "r3",
+        "reentry",
+        "user-updates"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op",
+      "relevance": "high",
+      "observed_at": "2026-10-07T14:03:07.284Z",
+      "source_context": "Absorbing the user's model.py updates to rationalise2",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

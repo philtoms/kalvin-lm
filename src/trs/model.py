@@ -12,23 +12,46 @@ from kalvin.kline import KNode
 # --- §1 Definition 1 — Node algebra (word-bit realisation; ⊥ = 0) ---
 
 
-def _provenance(x: int, y: int, op: str) -> str:
+def _provenance(x: KNode, y: KNode, op: str) -> str:
     """The label of a value derived from two operands."""
     a, b = getattr(x, "label", ""), getattr(y, "label", "")
     return f"{a}{op}{b}" if a and b else ""
 
 
-def residue(x: int, y: int) -> KNode:
-    """v ∖ w — residue, x beyond y."""
-    return KNode(x & ~y, _provenance(x, y, "∖"))
+def _tokens(label: str) -> "list[str] | None":
+    """The word tokens of a pure composition label ('A|B'), else None."""
+    if not label:
+        return None
+    parts = label.split("|")
+    if any(not p or ("∖" in p) or ("∧" in p) for p in parts):
+        return None
+    return parts
 
 
-def meet(x: int, y: int) -> KNode:
-    """v ∧ w — meet, carried as a labelled node."""
-    return KNode(x & y, _provenance(x, y, "∧"))
+def residue(x: KNode, y: KNode) -> KNode:
+    """v ∖ w — residue, x beyond y. Where both labels are pure
+    compositions and y's tokens are contained in x's, the label is the
+    remaining tokens — the content, not the expression."""
+    label = _provenance(x, y, "∖")
+    tx, ty = _tokens(getattr(x, "label", "")), _tokens(getattr(y, "label", ""))
+    if tx and ty and set(ty) <= set(tx):
+        keep = [p for p in tx if p not in ty]
+        label = "|".join(keep) if keep else "⊥"
+    return KNode(x & ~y, label)
 
 
-def contained(x: int, y: int) -> bool:
+def meet(x: KNode, y: KNode) -> KNode:
+    """v ∧ w — meet, carried as a labelled node; shared tokens label it."""
+    label = _provenance(x, y, "∧")
+    tx, ty = _tokens(getattr(x, "label", "")), _tokens(getattr(y, "label", ""))
+    if tx and ty:
+        shared = [p for p in tx if p in ty]
+        if shared:
+            label = "|".join(shared)
+    return KNode(x & y, label)
+
+
+def contained(x: KNode, y: KNode) -> bool:
     """x ⪯ y — containment."""
     return x & y == x
 
@@ -94,7 +117,8 @@ class Domain:
 
     def __init__(self, klines: "list[Kline] | tuple" = ()) -> None:
         self._klines: set[Kline] = set()
-        self._canonical: dict[int, frozenset[int]] = {}
+        self._order: list[Kline] = []  # insertion order — first-stored is observable
+        self._canonical: dict[KNode, frozenset[KNode]] = {}
         for k in klines:
             self.add(k)
 
@@ -103,6 +127,7 @@ class Domain:
         if k in self._klines:
             return False
         self._klines.add(k)
+        self._order.append(k)
         if self.is_canonical(k):
             self._canonical.setdefault(k.sig, k.adj)  # first-stored wins (Definition 6)
         return True
@@ -114,23 +139,23 @@ class Domain:
         return k in self._klines
 
     def __iter__(self):
-        return iter(self._klines)
+        return iter(self._order)
 
     def __len__(self) -> int:
         return len(self._klines)
 
     # §2 Definition 6 — witness (total)
-    def witness(self, s: int) -> frozenset[KNode]:
+    def witness(self, s: KNode) -> frozenset[KNode]:
         return self._canonical.get(s, frozenset())
 
     # §2 Definition 7 — three lookups
-    def exact(self, s: int) -> "list[Kline]":
+    def exact(self, s: KNode) -> "list[Kline]":
         return [k for k in self._klines if k.sig == s]
 
-    def overlap(self, s: int) -> "list[Kline]":
+    def overlap(self, s: KNode) -> "list[Kline]":
         return [k for k in self._klines if k.sig & s]
 
-    def covered(self, c: int) -> "list[Kline]":
+    def covered(self, c: KNode) -> "list[Kline]":
         return [k for k in self._klines if contained(k.sig, c)]
 
 
@@ -141,9 +166,9 @@ class Domain:
 class Decomposition:
     """F, U, O — fit, underfit (signature-side), overfit (adjacency-side)."""
 
-    F: int
-    U: int
-    O: int
+    F: KNode
+    U: KNode
+    O: KNode
 
 
 def decompose(k: Kline) -> Decomposition:
@@ -193,7 +218,7 @@ def r2_products(d: Domain, k: Kline) -> list[Kline]:
     ]
 
 
-def r3_substitute(d: Domain, k: Kline) -> frozenset[int]:
+def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
     """R3 — single pass: replace occurring covered signatures by their adjacencies.
 
     Several covered klines may share a signature; the fold order is §7
@@ -253,17 +278,14 @@ def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisatio
         if not e.adj:  # R4 arrival — an entry kline with no adjacency
             ends.append(End("R4: entry kline with no adjacency", e, effort(e)))
             continue
-        held = {k.sig for k in d}
-        for n in e.adj:  # unrecognised nodes route S4, one ask each (Definition 8)
-            if n not in held:
-                ask = Kline(n, frozenset())
-                ends.append(End("R4: unrecognised node", ask, effort(ask)))
         neighbours = d.overlap(e.sig)  # Definition 9
         if not neighbours:
             ends.append(End("no candidates — the entry terminates", e, effort(e)))
             continue
         c_e = can(e.adj)
         opener: Kline | None = None  # cleared on pop; set by the first candidate
+        # NOTE (reentry redesign): sig-ascending candidate order is
+        # incidental, not algebraic — revisit.
         for nb in sorted(neighbours, key=lambda k: k.sig):
             cand = Kline(c_e, nb.adj)
             if opener is None:
@@ -287,6 +309,86 @@ def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisatio
     if queue:
         pending = min(queue, key=effort)  # the frontier's cheapest continuation
         ends.append(End(f"bound: reentry depth {max_rounds} reached", pending, effort(pending)))
+    return Rationalisation(stores=stores, ends=ends, rounds=rounds)
+
+
+def rationalise2(d: Domain, entry: Kline, max_depth: int = 64) -> Rationalisation:
+    """The step-1.2 redesign prototype.
+
+    A work item's value is a head; its candidates are its neighbours'
+    pairings, tried in order until one resolves at S1. R1 stores the work
+    item's FIRST candidate — a later candidate resolving at S1 still
+    stores the first. The S2 products are consumed as one response: F
+    accumulates the witness, U is recursively applied as its own work
+    item, and the enriched F is pushed and iterated — a new work item
+    whose opener is itself.
+    """
+    stores: list[Kline] = []
+    ends: list[End] = []
+    rounds = 0
+
+    def bare(u: KNode) -> Kline:
+        return Kline(u, frozenset())
+
+    def candidates(head: KNode) -> list[Kline]:
+        nbs = d.overlap(head)
+        return [Kline(head, nb.adj) for nb in sorted(nbs, key=lambda k: k.sig)]  # ordering: not algebraic
+
+    def consume(u: KNode, depth: int) -> bool:
+        """A work item: try its candidates in order."""
+        nonlocal rounds
+        rounds += 1
+        if depth >= max_depth:
+            ends.append(End("bound: recursion depth reached", bare(u), effort(bare(u))))
+            return False
+        cands = candidates(u)
+        if not cands:
+            ends.append(End("no candidates — the work item terminates", bare(u), effort(bare(u))))
+            return False
+        for cand in cands:
+            if resolve(cand, cand, depth):
+                return True
+        ends.append(End("no candidate resolved", bare(u), effort(bare(u))))
+        return False
+
+    def resolve(cand: Kline, opener: Kline, depth: int) -> bool:
+        """One candidate's chain; True when it reaches S1."""
+        nonlocal rounds
+        rounds += 1
+        if depth >= max_depth:
+            ends.append(End("bound: recursion depth reached", cand, effort(cand)))
+            return False
+        mark = len(stores)
+        b = band(cand)
+        if b is Band.S1:
+            d.add(opener)  # R1 — the sole store point; stores, always
+            stores.append(opener)
+            return True
+        if b is Band.S2:
+            t = decompose(cand)
+            held: set = set(cand.adj)  # F holds the witness that produced the fit
+            if t.U:
+                consume(t.U, depth + 1)  # U is recursively applied
+            for s in stores[mark:]:  # stored signatures in sigma: add to F
+                if s.sig & cand.sig == s.sig:
+                    held |= s.adj
+            if held == set(cand.adj):
+                return False  # the pass grew nothing — this candidate has stalled
+            enriched = Kline(cand.sig, frozenset(held))
+            return resolve(enriched, opener, depth + 1)  # push and iterate — a new work item
+        if b is Band.S3:
+            n_prime = r3_substitute(d, cand)
+            if n_prime:
+                return resolve(Kline(cand.sig, n_prime), opener, depth + 1)
+            ends.append(End("R4: expansion emptied the adjacency", cand, effort(cand)))
+            return False
+        ends.append(End("R4: candidate with no adjacency", cand, effort(cand)))
+        return False
+
+    if not entry.adj:
+        ends.append(End("R4: entry kline with no adjacency", entry, effort(entry)))
+    else:
+        consume(can(entry.adj), 0)
     return Rationalisation(stores=stores, ends=ends, rounds=rounds)
 
 

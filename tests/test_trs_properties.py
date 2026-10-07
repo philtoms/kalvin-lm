@@ -150,7 +150,7 @@ def test_witness_law(d):
 @given(closed_domains())
 def test_witness_returns_first_stored(d):
     """Several canonical witnesses may share a head; the lookup keeps the
-    first-stored and the law holds."""
+    first-stored and the law holds. Iteration is insertion order."""
     seen: dict[int, frozenset[int]] = {}
     for k in d:
         if d.is_canonical(k):

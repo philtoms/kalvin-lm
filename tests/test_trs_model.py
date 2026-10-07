@@ -17,6 +17,7 @@ from trs import (
     entropy,
     proposals,
     rationalise,
+    rationalise2,
     significance,
     r2_products,
     r3_substitute,
@@ -228,14 +229,11 @@ def test_proposal_acquire_from_unheld_witness():
 
 
 def test_proposal_connect_from_empty_overlap():
+    # nothing is checked at presentation — the no-neighbours halt is the ask
     r = rationalise(Domain(), k(AB, A, B))
     ps = proposals(r)
-    connect = [p for p in ps if p.kind == "connect"]
-    acquires = [p for p in ps if p.kind == "acquire"]
-    assert len(connect) == 1 and connect[0].kline == k(AB, A, B)
-    # each unrecognised node routes through S4 — an acquire ask apiece (Definition 8)
-    assert {p.kline.sig for p in acquires} == {A, B}
-    assert all(p.effort == 1 for p in acquires)
+    assert len(ps) == 1
+    assert ps[0].kind == "connect" and ps[0].kline == k(AB, A, B)
 
 
 def test_proposal_continue_names_min_effort_frontier():
@@ -282,6 +280,27 @@ def test_proposals_ordered_by_significance():
     assert ps == sorted(ps, key=lambda p: p.effort)  # ascending effort
     assert ps[0].kline == k(C, AB) and ps[0].effort == Fraction(2, 3)  # least entropy first
     assert ps[1].kline == k(C) and ps[1].effort == 1  # the full-surprise acquire sorts last
+
+
+# --- step-1.2 redesign prototype: F accumulates, U recurses ---
+
+def test_rationalise2_accumulates_witness_bottom_up():
+    S, V, O = 0b001, 0b010, 0b100
+    d = Domain([
+        Kline(0b1000 | S, frozenset([S])),    # MarySubject
+        Kline(0b10000 | V, frozenset([V])),   # hadVerb
+        Kline(0b100000 | O, frozenset([O])),  # QueryObject
+    ])
+    r = rationalise2(d, Kline(S | V | O, frozenset([S, V, O])))
+    # the recursion stores Object, then VO, then SVO — bottom-up, no halts.
+    # Each chain stores its own opener (the next candidate), so the
+    # witnesses are the opening pairings, not the enriched klines.
+    assert [(int(s.sig), sorted(int(n) for n in s.adj)) for s in r.stores] == [
+        (O, [O]),
+        (V | O, [V]),
+        (S | V | O, [S]),
+    ]
+    assert r.ends == []
 
 
 # --- §5 R1: stores; admission iff S1 ---

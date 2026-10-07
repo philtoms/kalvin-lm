@@ -1,7 +1,25 @@
 # Wiki Update Log
 
+## 2026-10-07
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-","title":"R2 spec language is the target; implementation incomplete — do not sync"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical","title":"Spec R3 synced: substitute and re-enter in-chain, no canonicalisation"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op","title":"User updates absorbed: next-candidate opener, R3 reentry on opener"}
+
 ## 2026-10-06
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-derived-heads-labelled-by-content-phantom-edit-corruption-cl","title":"Derived heads labelled by content; phantom-edit corruption cleaned"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-rationalise2-knode-candidate-fallback-r1-stores-first-candid","title":"rationalise2: KNode, candidate fallback, R1 stores first candidate"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-rationalise2-corrections-always-store-r1-sole-via-dispatch","title":"rationalise2 corrections: always-store, R1 sole via dispatch"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-rationalise2-prototype-step-1-2-matches-the-hand-trace-no-di","title":"rationalise2 prototype: step 1.2 matches the hand-trace, no divergence"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-verify-step-1-2-r2-consumption-diverges-recursion-on-u-f-acc","title":"Verify step 1.2: R2 consumption diverges — recursion on U, F accumulates"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-note-for-redesign-neighbour-sig-ascending-is-not-algebraic","title":"Note for redesign: neighbour-sig ascending is not algebraic"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-verify-step-1-2-r2-single-response-design-vs-current-queued-","title":"Verify step 1.2: R2 single-response design vs current queued products"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-verify-step-1-1-confirmed-neighbours-first-candidate-s2-f-su","title":"Verify step 1.1 confirmed: neighbours, first candidate S2 F=Subject"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-verify-step-1-settled-goal-rationalises-before-the-ask","title":"Verify step 1 settled: goal rationalises before the ask"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-trs-harness-ask-goal-is-the-only-run-mode","title":"TRS harness: ask==goal is the only run mode"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-ask-goal-configuration-two-entries-rest-primes-the-domain","title":"ask==goal configuration: two entries, rest primes the domain"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-i-1-enforcement-code-removed-no-neighbours-halt-is-the-ask","title":"I-1 enforcement code removed; no-neighbours halt is the ask"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r","title":"TRS spec de-historicised: decisions table and amendment log removed"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-06-trs-block-committed-harness-knode-realisation-lifo-runner-i-","title":"TRS block committed: harness, KNode realisation, LIFO runner, I-1 removal"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq","title":"Seeding withdrawn: unrecognised nodes route through S4 as acquire asks"}

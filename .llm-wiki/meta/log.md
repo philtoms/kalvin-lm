@@ -986,3 +986,48 @@
 ## [2026-10-06T11:56:25.720Z] observe
 - slug: "obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r", title: "TRS spec de-historicised: decisions table and amendment log removed", relevance: "medium"
 
+## [2026-10-06T12:50:00.297Z] observe
+- slug: "obs-2026-10-06-i-1-enforcement-code-removed-no-neighbours-halt-is-the-ask", title: "I-1 enforcement code removed; no-neighbours halt is the ask", relevance: "medium"
+
+## [2026-10-06T13:09:54.343Z] observe
+- slug: "obs-2026-10-06-ask-goal-configuration-two-entries-rest-primes-the-domain", title: "ask==goal configuration: two entries, rest primes the domain", relevance: "high"
+
+## [2026-10-06T13:36:08.275Z] observe
+- slug: "obs-2026-10-06-trs-harness-ask-goal-is-the-only-run-mode", title: "TRS harness: ask==goal is the only run mode", relevance: "medium"
+
+## [2026-10-06T14:54:19.164Z] observe
+- slug: "obs-2026-10-06-verify-step-1-settled-goal-rationalises-before-the-ask", title: "Verify step 1 settled: goal rationalises before the ask", relevance: "high"
+
+## [2026-10-06T15:03:26.377Z] observe
+- slug: "obs-2026-10-06-verify-step-1-1-confirmed-neighbours-first-candidate-s2-f-su", title: "Verify step 1.1 confirmed: neighbours, first candidate S2 F=Subject", relevance: "high"
+
+## [2026-10-06T15:14:09.051Z] observe
+- slug: "obs-2026-10-06-verify-step-1-2-r2-single-response-design-vs-current-queued-", title: "Verify step 1.2: R2 single-response design vs current queued products", relevance: "high"
+
+## [2026-10-06T15:26:55.834Z] observe
+- slug: "obs-2026-10-06-note-for-redesign-neighbour-sig-ascending-is-not-algebraic", title: "Note for redesign: neighbour-sig ascending is not algebraic", relevance: "medium"
+
+## [2026-10-06T16:05:44.101Z] observe
+- slug: "obs-2026-10-06-verify-step-1-2-r2-consumption-diverges-recursion-on-u-f-acc", title: "Verify step 1.2: R2 consumption diverges — recursion on U, F accumulates", relevance: "high"
+
+## [2026-10-06T16:17:18.794Z] observe
+- slug: "obs-2026-10-06-rationalise2-prototype-step-1-2-matches-the-hand-trace-no-di", title: "rationalise2 prototype: step 1.2 matches the hand-trace, no divergence", relevance: "high"
+
+## [2026-10-06T16:34:18.542Z] observe
+- slug: "obs-2026-10-06-rationalise2-corrections-always-store-r1-sole-via-dispatch", title: "rationalise2 corrections: always-store, R1 sole via dispatch", relevance: "medium"
+
+## [2026-10-06T16:45:04.361Z] observe
+- slug: "obs-2026-10-06-rationalise2-knode-candidate-fallback-r1-stores-first-candid", title: "rationalise2: KNode, candidate fallback, R1 stores first candidate", relevance: "high"
+
+## [2026-10-06T16:58:00.154Z] observe
+- slug: "obs-2026-10-06-derived-heads-labelled-by-content-phantom-edit-corruption-cl", title: "Derived heads labelled by content; phantom-edit corruption cleaned", relevance: "high"
+
+## [2026-10-07T14:03:07.284Z] observe
+- slug: "obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op", title: "User updates absorbed: next-candidate opener, R3 reentry on opener", relevance: "high"
+
+## [2026-10-07T14:07:21.037Z] observe
+- slug: "obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical", title: "Spec R3 synced: substitute and re-enter in-chain, no canonicalisation", relevance: "medium"
+
+## [2026-10-07T14:12:51.174Z] observe
+- slug: "obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-", title: "R2 spec language is the target; implementation incomplete — do not sync", relevance: "medium"
+

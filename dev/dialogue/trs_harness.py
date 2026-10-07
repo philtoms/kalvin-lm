@@ -1,9 +1,12 @@
 """The TRS dialogue path — the same scripts, the significance-routed model.
 
-Compiles a KScript source exactly as the engine path does, then presents
-each entry to ``trs.rationalise`` in authored order — one step per entry,
-D live throughout. Nothing is seeded: unrecognised nodes route through
-S4 as acquire asks (Definition 8), and R1 is the sole admission.
+Compiles a KScript source exactly as the engine path does, then runs it
+as an ask==goal configuration: the script's last `==` ask and its goal
+kline are the two entries — the ask first, the goal answers — and every
+other kline primes the domain before rationalisation. Priming is a
+harness fact, never a model admission: R1 remains the sole way the run
+itself learns. Nothing is checked at presentation; unheld references
+find no neighbours.
 
 Proposals persist across steps: a later presented entry discharges a
 pending proposal when its content overlaps the target (Definition 15).
@@ -16,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin.kline import KNode
+from kalvin.kline import KNode, is_ask
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source, path_resolver
@@ -30,7 +33,7 @@ from trs import (
     band,
     can,
     proposals,
-    rationalise,
+    rationalise2,
 )
 
 from dev.dialogue.harness import _sig_to_label
@@ -72,6 +75,8 @@ class TrsRunner:
         self.stores: list[tuple[int, Kline]] = []  # (step, store)
 
     def run(self, source: str, resolver=None) -> list[TrsStep]:
+        """An ask==goal run: the `==` ask and its goal are the entries,
+        everything else primes the domain before rationalisation."""
         entries = compile_source(
             source,
             tokenizer=self.tokenizer,
@@ -80,17 +85,52 @@ class TrsRunner:
             word_bits=self.word_bits,
             resolver=resolver,
         )
+        pair = self._ask_goal_pair(entries)
+        if pair is None:
+            raise ValueError("ask==goal: no `==` ask with a findable goal kline")
+        ask, goal = pair
+        for other in entries:
+            if other is not ask and other is not goal:
+                self.domain.add(_to_kline(other))  # primed — never an R1 store
         steps: list[TrsStep] = []
-        for i, value in enumerate(entries):
-            kline = _to_kline(value)
-            result = rationalise(self.domain, kline)
-            steps.append(TrsStep(i, value, kline, result))
-            self._discharge(i, kline)  # only proposals from earlier steps answer
-            for prop in proposals(result):
-                self.pending.append(Pending(prop, i))
-            for store in result.stores:
-                self.stores.append((i, store))
+        self._step(steps, 0, goal)  # the goal rationalises first; the ask asks
+        self._step(steps, 1, ask)
         return steps
+
+    @staticmethod
+    def _ask_goal_pair(entries: list[KValue]) -> tuple[KValue, KValue] | None:
+        """The script's last `==` ask whose named goal resolves to a kline
+        entry — the final question is the point of the script. The goal is
+        the last label match (the fullest authored definition): has nodes,
+        not itself an ask."""
+        pair: tuple[KValue, KValue] | None = None
+        for e in entries:
+            d = e.kline.dbg
+            if d is None or d.op != "ASK" or not d.goal:
+                continue
+            goal = None
+            for g in entries:
+                if (
+                    g.kline.dbg
+                    and g.kline.dbg.label == d.goal
+                    and g.kline.nodes
+                    and not is_ask(g.kline.signature)
+                ):
+                    goal = g
+            if goal is not None:
+                pair = (e, goal)
+        return pair
+
+    def _step(self, steps: list[TrsStep], i: int, value: KValue) -> None:
+        """Present one entry: rationalise, record, discharge, file proposals."""
+        kline = _to_kline(value)
+        result = rationalise2(self.domain, kline)
+        steps.append(TrsStep(i, value, kline, result))
+        self._discharge(i, kline)  # only proposals from earlier steps answer
+        for prop in proposals(result):
+            self.pending.append(Pending(prop, i))
+        for store in result.stores:
+            self.stores.append((i, store))
 
     def _discharge(self, step_index: int, entry: Kline) -> None:
         """A presented entry overlapping a pending target discharges it —
@@ -241,7 +281,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"trs-harness: could not read {args.source!r}: {exc}")
         return 2
     runner = TrsRunner()
-    steps = runner.run(source, resolver=path_resolver(path.parent))
+    try:
+        steps = runner.run(source, resolver=path_resolver(path.parent))
+    except ValueError as exc:
+        print(f"trs-harness: {exc}")
+        return 2
     present_trs(
         steps, runner.domain, runner.pending, source, runner.tokenizer,
         runner.signifier, verbose=args.verbose, word_bits=runner.word_bits,
