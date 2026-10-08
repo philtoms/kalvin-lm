@@ -18,13 +18,15 @@ from trs import (
     proposals,
     rationalise,
     rationalise2,
+    rationalise3,
     significance,
     r2_products,
+    r2_products3,
     r3_substitute,
 )
 
 A, B, C, D = 1, 2, 4, 8
-AB, CD, ABC, ABD, ABCD = 3, 12, 7, 11, 15
+AB, BC, CD, ABC, ABD, ABCD = 3, 6, 12, 7, 11, 15
 
 
 def k(sig: int, *adj: int) -> Kline:
@@ -126,6 +128,33 @@ def test_r2_pure_overfit_skips_empty_head():
     d = base_domain()
     products = r2_products(d, k(AB, A, B, C))  # U = ⊥
     assert [p.sig for p in products] == [AB, C]  # F-product and O-product only
+
+
+# --- §5 R2 (reconstruction): the fit product earns, the cross products re-enter ---
+
+
+def test_r2_reconstruction_cross_wise():
+    e = k(ABC, A, B, C)  # can(N_E) = ABC
+    c = k(ABC, A, B, D)  # â = ABD; F=AB, U=C, O=D — node-clean
+    products = r2_products3(c, e)
+    # F carries its own side; U carries the O-side; O carries the entry's U-side
+    assert [(p.sig, sorted(p.adj)) for p in products] == [(AB, [A, B]), (C, [D]), (D, [C])]
+
+
+def test_r2_reconstruction_crossing_node_starves_the_sides():
+    # B lives inside the crossing node BC: nothing in N is ⪯ F or ⪯ O —
+    # the fit side degrades to R4 despite F ≠ ⊥ (Definition 13)
+    e = k(AB, A, B)
+    c = k(AB, BC)  # F=B, U=A, O=C
+    products = r2_products3(c, e)
+    assert [(p.sig, sorted(p.adj)) for p in products] == [(B, []), (A, []), (C, [A])]
+
+
+def test_r2_reconstruction_pure_overfit_skips_empty_head():
+    e = k(AB, A, B)
+    c = k(AB, A, B, C)  # U = ⊥
+    products = r2_products3(c, e)
+    assert [(p.sig, sorted(p.adj)) for p in products] == [(AB, [A, B]), (C, [])]
 
 
 # --- §5 R3: substitute, canonicalise, re-enter ---
@@ -327,6 +356,30 @@ def test_empty_lookup_terminates_entry():
     r = rationalise(d, k(AB, A, B))
     assert any("no candidates" in e.reason for e in r.ends)
     assert r.stores == []
+
+
+# --- §5 rationalise3: the standardised reentry ---
+
+
+def test_rationalise3_entry_with_no_adjacency_is_r4():
+    d = base_domain()  # presentation admits any kline — checks nothing (Definition 8)
+    r = rationalise3(d, k(AB))
+    assert r.stores == []
+    assert [e.reason for e in r.ends] == ["R4: entry kline with no adjacency"]
+    assert [p.kind for p in proposals(r)] == ["acquire"]
+
+
+def test_rationalise3_canon_memo_is_per_run():
+    """The canon memo bounds one run's recursion (§7) — a later run of the
+    same entry starts fresh."""
+
+    def fresh():
+        return rationalise3(base_domain(k(AB, A, B)), k(A, A))
+
+    first, second = fresh(), fresh()
+    for r in (first, second):
+        assert not any(e.reason.startswith("bound: recursion seen") for e in r.ends)
+    assert first.stores == second.stores == [k(A, A)]  # both runs process fully
 
 
 def test_rationalisation_reaches_s1_through_reentry():

@@ -2,6 +2,9 @@
 
 ## 2026-10-08
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-","title":"TRS recommendations implemented: filter deleted, per-run seen memo, r2_products3 tested"}
+- **retro**: {"category":"trs","slug":"trs-spec-resync-derive-claims-not-restatements","title":"Spec resync: derive claims from code, not from the doc's own restatements"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-","title":"TRS spec §5 resynced to rationalise3: fit product earns, split returns on first cross S1"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-08-like-for-like-filter-kills-vacuous-r3-det-grounds-via-the-tr","title":"Like-for-like filter kills vacuous R3; Det grounds via the transformative path"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-08-r2-owns-the-cross-candidate-accumulation-spec-and-code-align","title":"R2 owns the cross-candidate accumulation; spec and code aligned"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-08-goal-canon-stores-via-accumulated-intermediates-spec-states-","title":"Goal canon stores via accumulated intermediates; spec states the composition"}

@@ -405,81 +405,82 @@ def rationalise2(d: Domain, entry: Kline, max_depth: int = 64) -> Rationalisatio
     return Rationalisation(stores=stores, ends=ends, rounds=rounds)
 
 
-def rationalise3(d: Domain, entry: Kline, max_depth: int = 64) -> Rationalisation:
+def rationalise3(
+    d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None = None
+) -> Rationalisation:
     """§5 as one recursive function — the standardised reentry.
 
     Every kline runs the Definition 9 pipeline as an entry (presented or
     re-entry, Definition 8); its candidates route by band. R1 stores the
     returning candidate — the one whose rationalisation returns at S1,
     directly or through its products (R2, R3). The recursion returns at
-    S1 (True) or S4 (False).
+    S1 — the entry stored — or S4. Bounds (§7 strategy): re-entry depth
+    10 and a per-run memo of processed entry canons.
     """
+
     stores: list[Kline] = []
     ends: list[End] = []
-    rounds = 0
-
-    def rationalise(k: Kline, depth: int) -> bool:
-        nonlocal rounds
-        rounds += 1
-        if depth >= max_depth:
-            ends.append(End("bound: recursion depth reached", k, effort(k)))
-            return False
-        nbs = d.overlap(k.sig)
-        if not nbs:
-            ends.append(End("no candidates — the entry terminates", k, effort(k)))
-            return False
-        c_e = can(k.adj)
-        cands = [Kline(c_e, nb.adj) for nb in nbs if [nb.sig] != nb.adj]  # ordering: not algebraic
+    if seen is None:
+        seen = set()  # the run's canon memo — §7 strategy
+    if not entry.adj:  # R4 arrival — a presented entry with no adjacency
+        ends.append(End("R4: entry kline with no adjacency", entry, effort(entry)))
+        return Rationalisation(stores, ends, depth)
+    c_e = can(entry.adj)
+    if c_e in seen:
+        ends.append(End(f"bound: recursion seen {c_e}", entry, effort(entry)))
+        return Rationalisation(stores, ends, depth)
+    seen.add(c_e)
+    if depth >= 10:
+        ends.append(End("bound: recursion depth reached", entry, effort(entry)))
+        return Rationalisation(stores, ends, depth)
+    nbs = d.overlap(entry.sig)
+    if not nbs:
+        ends.append(End("no candidates — the entry terminates", entry, effort(entry)))
+        return Rationalisation(stores, ends, depth)
+    cands = [Kline(c_e, nb.adj) for nb in nbs]  # neighbour order is §7 strategy
+    earned: set = set()  # R2's accumulation — the running composition
+    for c in cands:
         ok = False
-        earned: set = set()  # R2's accumulation — the running composition
-        for c in cands:
-            # later candidates inherit R2's earned adjacencies (Definition 9)
-            c = Kline(c.sig, frozenset(c.adj | earned))
-            b = band(c)
-            if b is Band.S1:
+        # later candidates inherit the earned adjacencies (§5)
+        c = Kline(c.sig, frozenset(c.adj | earned))
+        b = band(c)
+        if b is Band.S1:
+            ok = True
+
+        elif b is Band.S2:
+            # the fit product (i == 0 — always first for S2) earns its
+            # adjacency into the running composition instead of re-entering;
+            # the cross products re-enter in order, and the first that
+            # returns at S1 returns the split. A product with no adjacency
+            # routes to R4.
+            for i, prod in enumerate(r2_products3(c, entry)):
+                if not prod.adj:
+                    ends.append(End("R4: product with no adjacency", prod, effort(prod)))
+                elif i == 0:
+                    earned |= prod.adj  # R2 — the sole accumulator
+                elif rationalise3(d, prod, depth + 1, seen).stores:
+                    ok = True
+                    break
+
+        elif b is Band.S3:
+            n_prime = r3_substitute(d, c)  # R3 — substitute the candidate
+            if not n_prime:
+                ends.append(End("R4: expansion emptied the adjacency", c, effort(c)))
+            elif n_prime == c.adj:
+                ends.append(End("R4: substitution like for like", c, effort(c)))
+            elif rationalise3(d, Kline(c.sig, n_prime), depth + 1, seen).stores:  # the claim is kept
                 ok = True
 
-            elif b is Band.S2:
-                count = 0
-                # the products re-enter as entries — own traces; the split
-                # returns S1 only when the re-entrant branches do (≥ 2 S1's).
-                # A product with no adjacency routes to R4 (§5, Definition 15).
-                # Each head's adjacency is RECONSTRUCTED from the witness
-                # whose canon covers it: F and O from the candidate's held
-                # adjacency, U from the entry's. U and O are crossover S3s.
-                for i, prod in enumerate(r2_products3(c, k)):
-                    if not prod.adj:
-                        ends.append(End("R4: product with no adjacency", prod, effort(prod)))
-                    elif i == 0 or rationalise(prod, depth + 1):
-                        earned |= prod.adj  # R2 — the sole accumulator
-                        count += 1
-                if count >= 2:
-                    ok = True
+        elif b is Band.S4:
+            ends.append(End("R4: candidate with no adjacency", c, effort(c)))
 
-            elif b is Band.S3:
-                n_prime = r3_substitute(d, c)  # R3 — substitute the candidate
-                if not n_prime:
-                    ends.append(End("R4: expansion emptied the adjacency", c, effort(c)))
-                elif n_prime == c.adj:
-                    ends.append(End("R4: substitution like for like", c, effort(c)))
-                elif rationalise(Kline(c.sig, n_prime), depth + 1):  # the claim is kept
-                    ok = True
-
-            elif b is Band.S4:
-                ends.append(End("R4: candidate with no adjacency", c, effort(c)))
-
-            if ok:
-                d.add(c)  # R1 — the sole store point; stores, always
+        if ok:
+            earned.clear()
+            d.add(c)
+            if not c in stores:
                 stores.append(c)
-                return True
-            
-        return False
-
-    if not entry.adj:
-        ends.append(End("R4: entry kline with no adjacency", entry, effort(entry)))
-        return Rationalisation(stores, ends, rounds)
-    rationalise(entry, 0)
-    return Rationalisation(stores, ends, rounds)
+        
+    return Rationalisation(stores, ends, depth)
 
 
 def proposals(r: Rationalisation) -> list[Proposal]:

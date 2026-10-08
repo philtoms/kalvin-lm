@@ -1086,7 +1086,9 @@
   "sources/obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired": [],
   "sources/obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0": [],
   "sources/obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem": [],
-  "sources/obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular": [],
+  "sources/obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular": [
+    "sources/trs-spec-resync-derive-claims-not-restatements"
+  ],
   "sources/obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie": [],
   "sources/obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-": [],
   "sources/obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome": [],
@@ -1130,8 +1132,11 @@
   "sources/obs-2026-10-08-r2-products-by-reconstruction-f-o-from-the-candidate-s-adjac": [],
   "sources/obs-2026-10-08-spec-r2-now-states-reconstruction-f-o-from-candidate-s-witne": [],
   "sources/obs-2026-10-08-trace-concept-removed-r1-stores-the-returning-candidate-ask-": [],
+  "sources/obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-": [],
+  "sources/obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],
+  "sources/trs-spec-resync-derive-claims-not-restatements": [],
   "sources/wiki-duplicate-consolidation": []
 }

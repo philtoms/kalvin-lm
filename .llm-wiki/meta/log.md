@@ -1076,3 +1076,12 @@
 ## [2026-10-08T13:54:13.036Z] observe
 - slug: "obs-2026-10-08-like-for-like-filter-kills-vacuous-r3-det-grounds-via-the-tr", title: "Like-for-like filter kills vacuous R3; Det grounds via the transformative path", relevance: "high"
 
+## [2026-10-08T22:08:16.816Z] observe
+- slug: "obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-", title: "TRS spec §5 resynced to rationalise3: fit product earns, split returns on first cross S1", relevance: "high"
+
+## [2026-10-08T22:08:16.818Z] retro
+- slug: "trs-spec-resync-derive-claims-not-restatements", title: "Spec resync: derive claims from code, not from the doc's own restatements", category: "trs"
+
+## [2026-10-08T22:27:31.201Z] observe
+- slug: "obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-", title: "TRS recommendations implemented: filter deleted, per-run seen memo, r2_products3 tested", relevance: "high"
+

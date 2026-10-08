@@ -18,6 +18,7 @@ from trs import (
     proposals,
     rationalise,
     r2_products,
+    r2_products3,
     r3_substitute,
     significance,
 )
@@ -204,6 +205,40 @@ def test_r2_never_reduces_entropy(sc):
     assert carried >= total * entropy(k)
     fit_held = t.F == 0 or d.witness(t.F) != frozenset()
     assert (carried == total * entropy(k)) == fit_held
+
+
+@settings(deadline=None)
+@given(s2_scenarios())
+def test_r2_reconstruction_never_reduces_entropy(sc):
+    """The reconstruction variant: exact iff the F-side split is node-clean
+    (can(N_F) = F) — held or not, the entry supplies the U-side."""
+    d, k = sc
+    entry = Kline(k.sig, frozenset(b for b in ATOMS if b & k.sig))  # can(N_E) = σ
+    t = decompose(k)
+    total = mu(k.sig | can(k.adj))
+    carried = sum(mu(p.sig) * entropy(p) for p in r2_products3(k, entry))
+    assert carried >= total * entropy(k)
+    n_f = frozenset(n for n in k.adj if contained(n, t.F))
+    assert (carried == total * entropy(k)) == (can(n_f) == t.F)
+
+
+@settings(deadline=None)
+@given(s2_scenarios())
+def test_r2_reconstruction_well_formed(sc):
+    d, k = sc
+    entry = Kline(k.sig, frozenset(b for b in ATOMS if b & k.sig))
+    t = decompose(k)
+    products = r2_products3(k, entry)
+    assert 1 <= len(products) <= 3
+    assert products[0].sig == t.F  # the fit product leads — S2 guarantees F ≠ ⊥
+    expected = {
+        t.F: frozenset(n for n in k.adj if contained(n, t.F)),
+        t.U: frozenset(n for n in k.adj if contained(n, t.O)),
+        t.O: frozenset(n for n in entry.adj if contained(n, t.U)),
+    }
+    for p in products:
+        assert p.sig != 0
+        assert p.adj == expected[p.sig]
 
 
 # --- §5 R2/R3: product well-formedness ---

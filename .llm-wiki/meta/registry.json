@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-08T13:54:13.159Z",
+  "last_updated": "2026-10-08T22:27:31.280Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6414,6 +6414,42 @@
       "created": "2026-10-08",
       "updated": "2026-10-08"
     },
+    "sources/obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-": {
+      "type": "source",
+      "title": "Observation: TRS recommendations implemented: filter deleted, per-run seen memo, r2_products3 tested",
+      "tags": [
+        "trs",
+        "rationalise3",
+        "r2-reconstruction",
+        "seen-memo",
+        "tests"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-",
+      "relevance": "high",
+      "observed_at": "2026-10-08T22:27:31.200Z",
+      "source_context": "Implementing the three recommendations from the trs-significance resync",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-": {
+      "type": "source",
+      "title": "Observation: TRS spec §5 resynced to rationalise3: fit product earns, split returns on first cross S1",
+      "tags": [
+        "trs",
+        "significance",
+        "reentry",
+        "r2-earn",
+        "r1-licensed-claim"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-",
+      "relevance": "high",
+      "observed_at": "2026-10-08T22:08:16.815Z",
+      "source_context": "Bringing docs/trs-significance.md to spec with rationalise3",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",
       "title": "Operator semantics swaps: move shapes or move names — the countersign test decides",
@@ -6440,6 +6476,15 @@
       "slug": "structural-significance-coverage-semantics",
       "created": "2026-09-10",
       "updated": "2026-09-10"
+    },
+    "sources/trs-spec-resync-derive-claims-not-restatements": {
+      "type": "source",
+      "title": "Spec resync: derive claims from code, not from the doc's own restatements",
+      "category": "trs",
+      "status": "insight",
+      "slug": "trs-spec-resync-derive-claims-not-restatements",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
     },
     "sources/wiki-duplicate-consolidation": {
       "type": "source",

@@ -419,13 +419,16 @@
 - [[sources/obs-2026-10-08-r2-products-by-reconstruction-f-o-from-the-candidate-s-adjac]] — Observation: R2 products by reconstruction: F/O from the candidate's adjacency, U from the entry's *(created: 2026-10-08)*
 - [[sources/obs-2026-10-08-spec-r2-now-states-reconstruction-f-o-from-candidate-s-witne]] — Observation: Spec R2 now states reconstruction: F/O from candidate's witness, U from entry's canon *(created: 2026-10-08)*
 - [[sources/obs-2026-10-08-trace-concept-removed-r1-stores-the-returning-candidate-ask-]] — Observation: Trace concept removed; R1 stores the returning candidate; ask ping-pongs *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-]] — Observation: TRS recommendations implemented: filter deleted, per-run seen memo, r2_products3 tested *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-]] — Observation: TRS spec §5 resynced to rationalise3: fit product earns, split returns on first cross S1 *(created: 2026-10-08)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
 - [[sources/stm-cascade-removals-orphan-check]] — STM cascade removals must be orphan-checked *(created: 2026-08-11)*
 - [[sources/structural-significance-coverage-semantics]] — Structural significance is coverage-based — S2 has ≥1 covered node, S3 none *(created: 2026-09-10)*
+- [[sources/trs-spec-resync-derive-claims-not-restatements]] — Spec resync: derive claims from code, not from the doc's own restatements *(created: 2026-10-08)*
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-08T13:54:13.159Z* | *Total pages: 416*
+*Last updated: 2026-10-08T22:27:31.280Z* | *Total pages: 419*
