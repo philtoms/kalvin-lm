@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-07T15:41:14.677Z",
+  "last_updated": "2026-10-08T13:54:13.159Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6084,6 +6084,79 @@
       "created": "2026-10-06",
       "updated": "2026-10-06"
     },
+    "sources/obs-2026-10-07-10-observations-captured-harness-boundary-s2-singleton-split": {
+      "type": "source",
+      "title": "Observation: 10 observations captured: harness boundary, S2 singleton split, tail recursion",
+      "tags": [
+        "trs",
+        "spec",
+        "observations",
+        "r2",
+        "singleton",
+        "rationalise3",
+        "design-brief"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-10-observations-captured-harness-boundary-s2-singleton-split",
+      "relevance": "high",
+      "observed_at": "2026-10-07T16:37:08.302Z",
+      "source_context": "Capturing the user's 10 observations formally",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
+    },
+    "sources/obs-2026-10-07-committed-91033a1-reentry-spec-fix": {
+      "type": "source",
+      "title": "Observation: Committed 91033a1: reentry spec fix",
+      "tags": [
+        "trs",
+        "commit",
+        "spec"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-committed-91033a1-reentry-spec-fix",
+      "relevance": "low",
+      "observed_at": "2026-10-07T15:46:03.338Z",
+      "source_context": "Committing the reentry spec fix",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
+    },
+    "sources/obs-2026-10-07-f-suppression-experiment-word-canons-are-f-arrivals-reverted": {
+      "type": "source",
+      "title": "Observation: F-suppression experiment: word canons are F-arrivals; reverted",
+      "tags": [
+        "trs",
+        "experiment",
+        "rationalise3",
+        "f-product",
+        "revert"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-f-suppression-experiment-word-canons-are-f-arrivals-reverted",
+      "relevance": "medium",
+      "observed_at": "2026-10-07T17:18:41.658Z",
+      "source_context": "F-suppression experiment on rationalise3, then revert",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
+    },
+    "sources/obs-2026-10-07-r2-ruled-witness-products-singleton-withdrawn-def-10-candida": {
+      "type": "source",
+      "title": "Observation: R2 ruled: witness products (singleton withdrawn); Def 10 = Candidate pairing",
+      "tags": [
+        "trs",
+        "spec",
+        "r2",
+        "witness",
+        "def10",
+        "rename"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-07-r2-ruled-witness-products-singleton-withdrawn-def-10-candida",
+      "relevance": "high",
+      "observed_at": "2026-10-07T16:46:36.517Z",
+      "source_context": "Absorbing user's R2 witness revert and Def 10 rename",
+      "created": "2026-10-07",
+      "updated": "2026-10-07"
+    },
     "sources/obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-": {
       "type": "source",
       "title": "Observation: R2 spec language is the target; implementation incomplete — do not sync",
@@ -6177,6 +6250,169 @@
       "source_context": "Absorbing the user's model.py updates to rationalise2",
       "created": "2026-10-07",
       "updated": "2026-10-07"
+    },
+    "sources/obs-2026-10-08-c-e-subscripts-removed-role-named-c-and-e-throughout": {
+      "type": "source",
+      "title": "Observation: C₀/E₀ subscripts removed — role-named C and E throughout",
+      "tags": [
+        "trs",
+        "spec",
+        "notation",
+        "trace"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-c-e-subscripts-removed-role-named-c-and-e-throughout",
+      "relevance": "low",
+      "observed_at": "2026-10-08T09:02:05.427Z",
+      "source_context": "Notation cleanup after trace definition rewrite",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-def-8-trace-rewritten-descends-from-a-candidate-returns-at-s": {
+      "type": "source",
+      "title": "Observation: Def 8 trace rewritten: descends from a candidate, returns at S1 or S4",
+      "tags": [
+        "trs",
+        "spec",
+        "definition8",
+        "trace"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-def-8-trace-rewritten-descends-from-a-candidate-returns-at-s",
+      "relevance": "medium",
+      "observed_at": "2026-10-08T08:56:50.538Z",
+      "source_context": "Moving the opener detail into the trace definition",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-goal-canon-stores-via-accumulated-intermediates-spec-states-": {
+      "type": "source",
+      "title": "Observation: Goal canon stores via accumulated intermediates; spec states the composition",
+      "tags": [
+        "trs",
+        "r2",
+        "accumulation",
+        "intermediate",
+        "goal-canon",
+        "step-1"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-goal-canon-stores-via-accumulated-intermediates-spec-states-",
+      "relevance": "high",
+      "observed_at": "2026-10-08T12:23:06.895Z",
+      "source_context": "User's incremental-intermediate R2; spec rule gap closed",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-like-for-like-filter-kills-vacuous-r3-det-grounds-via-the-tr": {
+      "type": "source",
+      "title": "Observation: Like-for-like filter kills vacuous R3; Det grounds via the transformative path",
+      "tags": [
+        "trs",
+        "r3",
+        "like-for-like",
+        "step-2",
+        "nonsense-stores"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-like-for-like-filter-kills-vacuous-r3-det-grounds-via-the-tr",
+      "relevance": "high",
+      "observed_at": "2026-10-08T13:54:13.035Z",
+      "source_context": "Step 2: like-for-like filter on R3 substitution",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-opener-the-candidate-itself-ask-stores-the-full-sentence-can": {
+      "type": "source",
+      "title": "Observation: Opener = the candidate itself; ask stores the full-sentence canon",
+      "tags": [
+        "trs",
+        "rationalise3",
+        "opener",
+        "r1",
+        "trace",
+        "full-canon"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-opener-the-candidate-itself-ask-stores-the-full-sentence-can",
+      "relevance": "high",
+      "observed_at": "2026-10-08T08:52:49.798Z",
+      "source_context": "Opener correction per spec; canonical stores emerge",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-r2-owns-the-cross-candidate-accumulation-spec-and-code-align": {
+      "type": "source",
+      "title": "Observation: R2 owns the cross-candidate accumulation; spec and code aligned",
+      "tags": [
+        "trs",
+        "spec",
+        "r2",
+        "accumulation",
+        "attribution"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-r2-owns-the-cross-candidate-accumulation-spec-and-code-align",
+      "relevance": "medium",
+      "observed_at": "2026-10-08T12:33:23.657Z",
+      "source_context": "Spec attribution fix for R2 accumulation",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-r2-products-by-reconstruction-f-o-from-the-candidate-s-adjac": {
+      "type": "source",
+      "title": "Observation: R2 products by reconstruction: F/O from the candidate's adjacency, U from the entry's",
+      "tags": [
+        "trs",
+        "r2",
+        "reconstruction",
+        "rule",
+        "rationalise3"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-r2-products-by-reconstruction-f-o-from-the-candidate-s-adjac",
+      "relevance": "high",
+      "observed_at": "2026-10-08T09:52:54.591Z",
+      "source_context": "Nailing the R2 product rule after witness/witness_of pushback",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-spec-r2-now-states-reconstruction-f-o-from-candidate-s-witne": {
+      "type": "source",
+      "title": "Observation: Spec R2 now states reconstruction: F/O from candidate's witness, U from entry's canon",
+      "tags": [
+        "trs",
+        "spec",
+        "r2",
+        "reconstruction"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-spec-r2-now-states-reconstruction-f-o-from-candidate-s-witne",
+      "relevance": "high",
+      "observed_at": "2026-10-08T09:58:20.646Z",
+      "source_context": "Spec R2 updated to the reconstruction rule",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
+    },
+    "sources/obs-2026-10-08-trace-concept-removed-r1-stores-the-returning-candidate-ask-": {
+      "type": "source",
+      "title": "Observation: Trace concept removed; R1 stores the returning candidate; ask ping-pongs",
+      "tags": [
+        "trs",
+        "spec",
+        "trace-removed",
+        "r1",
+        "returning-candidate",
+        "rationalise3",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-08-trace-concept-removed-r1-stores-the-returning-candidate-ask-",
+      "relevance": "high",
+      "observed_at": "2026-10-08T09:42:53.909Z",
+      "source_context": "User's opener-free refactor; trace removed from spec",
+      "created": "2026-10-08",
+      "updated": "2026-10-08"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

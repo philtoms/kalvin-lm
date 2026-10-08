@@ -34,7 +34,7 @@ def residue(x: KNode, y: KNode) -> KNode:
     remaining tokens — the content, not the expression."""
     label = _provenance(x, y, "∖")
     tx, ty = _tokens(getattr(x, "label", "")), _tokens(getattr(y, "label", ""))
-    if tx and ty and set(ty) <= set(tx):
+    if tx and ty: #and set(ty) <= set(tx):
         keep = [p for p in tx if p not in ty]
         label = "|".join(keep) if keep else "⊥"
     return KNode(x & ~y, label)
@@ -217,6 +217,19 @@ def r2_products(d: Domain, k: Kline) -> list[Kline]:
         if head
     ]
 
+def r2_products3(c: Kline, k: Kline) -> list[Kline]:
+    """R2 — three klines for the non-empty heads, cross-wise pairing."""
+    t = decompose(c)
+    return [
+        Kline(head, carried)
+        for head, carried in (
+            (t.F, frozenset(n for n in c.adj if contained(n, t.F))),
+            (t.U, frozenset(n for n in c.adj if contained(n, t.O))),
+            (t.O, frozenset(n for n in k.adj if contained(n, t.U))),
+        )
+        if head
+    ]
+
 
 def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
     """R3 — single pass: replace occurring covered signatures by their adjacencies.
@@ -226,7 +239,7 @@ def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
     c_n = can(k.adj)
     n_prime = set(k.adj)
     for nb in sorted(d.covered(c_n), key=lambda x: (x.sig, tuple(sorted(x.adj)))):
-        if nb.sig in k.adj:  # the licence is the occurrence
+        if nb.sig in k.adj and nb.adj != frozenset([nb.sig]):  # like for like is no substitution
             n_prime.discard(nb.sig)
             n_prime |= nb.adj
     return frozenset(n_prime)
@@ -390,6 +403,83 @@ def rationalise2(d: Domain, entry: Kline, max_depth: int = 64) -> Rationalisatio
     else:
         consume(can(entry.adj), 0)
     return Rationalisation(stores=stores, ends=ends, rounds=rounds)
+
+
+def rationalise3(d: Domain, entry: Kline, max_depth: int = 64) -> Rationalisation:
+    """§5 as one recursive function — the standardised reentry.
+
+    Every kline runs the Definition 9 pipeline as an entry (presented or
+    re-entry, Definition 8); its candidates route by band. R1 stores the
+    returning candidate — the one whose rationalisation returns at S1,
+    directly or through its products (R2, R3). The recursion returns at
+    S1 (True) or S4 (False).
+    """
+    stores: list[Kline] = []
+    ends: list[End] = []
+    rounds = 0
+
+    def rationalise(k: Kline, depth: int) -> bool:
+        nonlocal rounds
+        rounds += 1
+        if depth >= max_depth:
+            ends.append(End("bound: recursion depth reached", k, effort(k)))
+            return False
+        nbs = d.overlap(k.sig)
+        if not nbs:
+            ends.append(End("no candidates — the entry terminates", k, effort(k)))
+            return False
+        c_e = can(k.adj)
+        cands = [Kline(c_e, nb.adj) for nb in nbs if [nb.sig] != nb.adj]  # ordering: not algebraic
+        ok = False
+        earned: set = set()  # R2's accumulation — the running composition
+        for c in cands:
+            # later candidates inherit R2's earned adjacencies (Definition 9)
+            c = Kline(c.sig, frozenset(c.adj | earned))
+            b = band(c)
+            if b is Band.S1:
+                ok = True
+
+            elif b is Band.S2:
+                count = 0
+                # the products re-enter as entries — own traces; the split
+                # returns S1 only when the re-entrant branches do (≥ 2 S1's).
+                # A product with no adjacency routes to R4 (§5, Definition 15).
+                # Each head's adjacency is RECONSTRUCTED from the witness
+                # whose canon covers it: F and O from the candidate's held
+                # adjacency, U from the entry's. U and O are crossover S3s.
+                for i, prod in enumerate(r2_products3(c, k)):
+                    if not prod.adj:
+                        ends.append(End("R4: product with no adjacency", prod, effort(prod)))
+                    elif i == 0 or rationalise(prod, depth + 1):
+                        earned |= prod.adj  # R2 — the sole accumulator
+                        count += 1
+                if count >= 2:
+                    ok = True
+
+            elif b is Band.S3:
+                n_prime = r3_substitute(d, c)  # R3 — substitute the candidate
+                if not n_prime:
+                    ends.append(End("R4: expansion emptied the adjacency", c, effort(c)))
+                elif n_prime == c.adj:
+                    ends.append(End("R4: substitution like for like", c, effort(c)))
+                elif rationalise(Kline(c.sig, n_prime), depth + 1):  # the claim is kept
+                    ok = True
+
+            elif b is Band.S4:
+                ends.append(End("R4: candidate with no adjacency", c, effort(c)))
+
+            if ok:
+                d.add(c)  # R1 — the sole store point; stores, always
+                stores.append(c)
+                return True
+            
+        return False
+
+    if not entry.adj:
+        ends.append(End("R4: entry kline with no adjacency", entry, effort(entry)))
+        return Rationalisation(stores, ends, rounds)
+    rationalise(entry, 0)
+    return Rationalisation(stores, ends, rounds)
 
 
 def proposals(r: Rationalisation) -> list[Proposal]:

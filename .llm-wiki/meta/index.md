@@ -401,11 +401,24 @@
 - [[sources/obs-2026-10-06-verify-step-1-2-r2-consumption-diverges-recursion-on-u-f-acc]] — Observation: Verify step 1.2: R2 consumption diverges — recursion on U, F accumulates *(created: 2026-10-06)*
 - [[sources/obs-2026-10-06-verify-step-1-2-r2-single-response-design-vs-current-queued-]] — Observation: Verify step 1.2: R2 single-response design vs current queued products *(created: 2026-10-06)*
 - [[sources/obs-2026-10-06-verify-step-1-settled-goal-rationalises-before-the-ask]] — Observation: Verify step 1 settled: goal rationalises before the ask *(created: 2026-10-06)*
+- [[sources/obs-2026-10-07-10-observations-captured-harness-boundary-s2-singleton-split]] — Observation: 10 observations captured: harness boundary, S2 singleton split, tail recursion *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-committed-91033a1-reentry-spec-fix]] — Observation: Committed 91033a1: reentry spec fix *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-f-suppression-experiment-word-canons-are-f-arrivals-reverted]] — Observation: F-suppression experiment: word canons are F-arrivals; reverted *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-r2-ruled-witness-products-singleton-withdrawn-def-10-candida]] — Observation: R2 ruled: witness products (singleton withdrawn); Def 10 = Candidate pairing *(created: 2026-10-07)*
 - [[sources/obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-]] — Observation: R2 spec language is the target; implementation incomplete — do not sync *(created: 2026-10-07)*
 - [[sources/obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter]] — Observation: R3 amended by user: procedure stated in-rule, product re-enters at Def 8 *(created: 2026-10-07)*
 - [[sources/obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline]] — Observation: Reentry fixed: Def 8 owns entry/re-entry/trace; Def 9 pipeline-only; R3 follows R2 *(created: 2026-10-07)*
 - [[sources/obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical]] — Observation: Spec R3 synced: substitute and re-enter in-chain, no canonicalisation *(created: 2026-10-07)*
 - [[sources/obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op]] — Observation: User updates absorbed: next-candidate opener, R3 reentry on opener *(created: 2026-10-07)*
+- [[sources/obs-2026-10-08-c-e-subscripts-removed-role-named-c-and-e-throughout]] — Observation: C₀/E₀ subscripts removed — role-named C and E throughout *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-def-8-trace-rewritten-descends-from-a-candidate-returns-at-s]] — Observation: Def 8 trace rewritten: descends from a candidate, returns at S1 or S4 *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-goal-canon-stores-via-accumulated-intermediates-spec-states-]] — Observation: Goal canon stores via accumulated intermediates; spec states the composition *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-like-for-like-filter-kills-vacuous-r3-det-grounds-via-the-tr]] — Observation: Like-for-like filter kills vacuous R3; Det grounds via the transformative path *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-opener-the-candidate-itself-ask-stores-the-full-sentence-can]] — Observation: Opener = the candidate itself; ask stores the full-sentence canon *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-r2-owns-the-cross-candidate-accumulation-spec-and-code-align]] — Observation: R2 owns the cross-candidate accumulation; spec and code aligned *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-r2-products-by-reconstruction-f-o-from-the-candidate-s-adjac]] — Observation: R2 products by reconstruction: F/O from the candidate's adjacency, U from the entry's *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-spec-r2-now-states-reconstruction-f-o-from-candidate-s-witne]] — Observation: Spec R2 now states reconstruction: F/O from candidate's witness, U from entry's canon *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-trace-concept-removed-r1-stores-the-returning-candidate-ask-]] — Observation: Trace concept removed; R1 stores the returning candidate; ask ping-pongs *(created: 2026-10-08)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -415,4 +428,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-07T15:41:14.677Z* | *Total pages: 403*
+*Last updated: 2026-10-08T13:54:13.159Z* | *Total pages: 416*

@@ -33,7 +33,7 @@ from trs import (
     band,
     can,
     proposals,
-    rationalise2,
+    rationalise3,
 )
 
 from dev.dialogue.harness import _sig_to_label
@@ -124,7 +124,7 @@ class TrsRunner:
     def _step(self, steps: list[TrsStep], i: int, value: KValue) -> None:
         """Present one entry: rationalise, record, discharge, file proposals."""
         kline = _to_kline(value)
-        result = rationalise2(self.domain, kline)
+        result = rationalise3(self.domain, kline)
         steps.append(TrsStep(i, value, kline, result))
         self._discharge(i, kline)  # only proposals from earlier steps answer
         for prop in proposals(result):

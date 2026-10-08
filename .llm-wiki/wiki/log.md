@@ -1,7 +1,23 @@
 # Wiki Update Log
 
+## 2026-10-08
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-like-for-like-filter-kills-vacuous-r3-det-grounds-via-the-tr","title":"Like-for-like filter kills vacuous R3; Det grounds via the transformative path"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-08-r2-owns-the-cross-candidate-accumulation-spec-and-code-align","title":"R2 owns the cross-candidate accumulation; spec and code aligned"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-goal-canon-stores-via-accumulated-intermediates-spec-states-","title":"Goal canon stores via accumulated intermediates; spec states the composition"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-spec-r2-now-states-reconstruction-f-o-from-candidate-s-witne","title":"Spec R2 now states reconstruction: F/O from candidate's witness, U from entry's canon"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-r2-products-by-reconstruction-f-o-from-the-candidate-s-adjac","title":"R2 products by reconstruction: F/O from the candidate's adjacency, U from the entry's"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-trace-concept-removed-r1-stores-the-returning-candidate-ask-","title":"Trace concept removed; R1 stores the returning candidate; ask ping-pongs"}
+- **observe**: {"relevance":"low","slug":"obs-2026-10-08-c-e-subscripts-removed-role-named-c-and-e-throughout","title":"C₀/E₀ subscripts removed — role-named C and E throughout"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-08-def-8-trace-rewritten-descends-from-a-candidate-returns-at-s","title":"Def 8 trace rewritten: descends from a candidate, returns at S1 or S4"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-opener-the-candidate-itself-ask-stores-the-full-sentence-can","title":"Opener = the candidate itself; ask stores the full-sentence canon"}
+
 ## 2026-10-07
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-07-f-suppression-experiment-word-canons-are-f-arrivals-reverted","title":"F-suppression experiment: word canons are F-arrivals; reverted"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-r2-ruled-witness-products-singleton-withdrawn-def-10-candida","title":"R2 ruled: witness products (singleton withdrawn); Def 10 = Candidate pairing"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-10-observations-captured-harness-boundary-s2-singleton-split","title":"10 observations captured: harness boundary, S2 singleton split, tail recursion"}
+- **observe**: {"relevance":"low","slug":"obs-2026-10-07-committed-91033a1-reentry-spec-fix","title":"Committed 91033a1: reentry spec fix"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter","title":"R3 amended by user: procedure stated in-rule, product re-enters at Def 8"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline","title":"Reentry fixed: Def 8 owns entry/re-entry/trace; Def 9 pipeline-only; R3 follows R2"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-","title":"R2 spec language is the target; implementation incomplete — do not sync"}
