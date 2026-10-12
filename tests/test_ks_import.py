@@ -61,6 +61,14 @@ def _mhall_canon(entries):
     )
 
 
+def _mhall_ask(entries):
+    return next(
+        e.kline for e in entries
+        if e.kline.dbg and e.kline.dbg.label == "MHALL"
+        and e.kline.dbg.op == "ASK"
+    )
+
+
 # ── Parsing ───────────────────────────────────────────────────────────
 
 
@@ -119,8 +127,13 @@ def test_import_seeds_word_binding_and_values(tmp_path):
     canon = _mhall_canon(imported)
     # the module's decomposition is reused: no fresh char-words
     assert [n.label for n in canon.nodes] == ["Mary", "had", "a", "little", "lamb"]
-    # value continuity: the imported MHALL equals the standalone module's
-    assert int(canon.signature) == int(_mhall_canon(standalone).signature)
+    # value continuity: the imported MHALL equals the standalone module's.
+    # A `==` ask is the module's own storage (canon suppressed, ask riding
+    # the canon nodes); a node-side reference re-expands the canon.
+    from kalvin.kline import ASK_SIG
+
+    assert int(_mhall_ask(imported).signature) == int(_mhall_ask(standalone).signature)
+    assert int(canon.signature) == int(_mhall_ask(standalone).signature) & ~ASK_SIG
 
 
 def test_import_seeds_binding_for_script_chars(tmp_path):
@@ -188,9 +201,9 @@ def test_diamond_import_emits_once(tmp_path):
         tokenizer=BPETokenizer(), signifier=NLPSignifier(),
         dev=True, resolver=path_resolver(tmp_path),
     )
-    canons = [e for e in entries if e.kline.dbg and e.kline.dbg.label == "MHALL"
-              and e.kline.dbg.op == "CANONICALISES" and e.kline.nodes]
-    assert len(canons) == 1  # mhall emits once despite two paths to it
+    mhall = [e for e in entries if e.kline.dbg and e.kline.dbg.label == "MHALL"]
+    assert len(mhall) == 1  # mhall emits once despite two paths to it
+    assert mhall[0].kline.dbg.op == "ASK"  # the `==` ask is its stored form
 
 
 def test_circular_import_raises(tmp_path):

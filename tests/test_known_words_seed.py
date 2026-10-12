@@ -61,6 +61,14 @@ def test_seeded_words_bind_the_answer_chars():
         "Mary", "had", "a", "little", "lamb"
     ]
     # value continuity: the seeded compile's MHALL equals the answer
-    # script's MHALL (the drift is gone)
-    answer = _mhall_mts(first)
-    assert int(mhall.signature) == int(answer.signature)
+    # script's MHALL (the drift is gone). The answer script's own storage
+    # is its `==` ask (canon suppressed, canon nodes riding); a node-side
+    # reference re-expands the canon — same value, the ask marker masked.
+    from kalvin.kline import ASK_SIG
+
+    answer = next(
+        e.kline for e in first
+        if e.kline.dbg and e.kline.dbg.label == "MHALL"
+        and e.kline.dbg.op == "ASK"
+    )
+    assert int(mhall.signature) == int(answer.signature) & ~ASK_SIG

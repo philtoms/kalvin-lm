@@ -40,21 +40,20 @@ def test_countersigns_ask_carries_marker_and_canon_nodes(tokenizer):
 
 
 def test_ask_is_never_its_canon(tokenizer):
+    # A `==` ask suppresses its own fresh expansion canon: the ask is the
+    # sole stored form of the sig — the question, never the answer.
     entries = compile_source(
         SCRIPT, tokenizer=tokenizer, signifier=NLPSignifier(), dev=True
     )
     (ask,) = _asks(entries)
-    canon = next(
-        e for e in entries
-        if e.kline.dbg and e.kline.dbg.label == "WDMH"
-        and e.kline.dbg.op == "CANONICALISES" and e.kline.dbg.scope == 1
-    )
     sig = NLPSignifier()
-    assert ask.kline.signature != canon.kline.signature  # distinct values
+    assert not any(
+        e.kline.dbg and e.kline.dbg.label == "WDMH"
+        and e.kline.dbg.op == "CANONICALISES"
+        for e in entries
+    )  # the canon is suppressed; only the ask is stored
     assert not is_canon(ask.kline, sig)  # the question, not the answer
-    assert is_canon(canon.kline, sig)
     assert sig_level(ask.kline, sig) == "S4"  # the marker is the ask
-    assert sig_level(canon.kline, sig) == "S1"
 
 
 def test_marker_is_not_an_atom(tokenizer):
