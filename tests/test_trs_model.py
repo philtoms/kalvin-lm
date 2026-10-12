@@ -130,31 +130,35 @@ def test_r2_pure_overfit_skips_empty_head():
     assert [p.sig for p in products] == [AB, C]  # F-product and O-product only
 
 
-# --- §5 R2 (reconstruction): the fit product earns, the cross products re-enter ---
+# --- §5 R2 (reconstruction): same-side pairing — the fit kline earns, the residual products re-enter ---
 
 
-def test_r2_reconstruction_cross_wise():
+def test_r2_reconstruction_same_side_pairing():
     e = k(ABC, A, B, C)  # can(N_E) = ABC
     c = k(ABC, A, B, D)  # â = ABD; F=AB, U=C, O=D — node-clean
-    products = r2_products3(c, e)
-    # F carries its own side; U carries the O-side; O carries the entry's U-side
-    assert [(p.sig, sorted(p.adj)) for p in products] == [(AB, [A, B]), (C, [D]), (D, [C])]
+    products, k_f = r2_products3(c, e)
+    # each head carries its own side: U the entry's U-side, O the candidate's O-side
+    assert [(p.sig, sorted(p.adj)) for p in products] == [(C, [C]), (D, [D])]
+    assert (k_f.sig, sorted(k_f.adj)) == (AB, [A, B])
 
 
 def test_r2_reconstruction_crossing_node_starves_the_sides():
-    # B lives inside the crossing node BC: nothing in N is ⪯ F or ⪯ O —
-    # the fit side degrades to R4 despite F ≠ ⊥ (Definition 13)
+    # B lives inside the crossing node BC: nothing in N is ⪯ B or ⪯ C —
+    # the fit kline starves and O carries no O-side content; U re-pairs
+    # with the entry's own A (Definition 12/13)
     e = k(AB, A, B)
     c = k(AB, BC)  # F=B, U=A, O=C
-    products = r2_products3(c, e)
-    assert [(p.sig, sorted(p.adj)) for p in products] == [(B, []), (A, []), (C, [A])]
+    products, k_f = r2_products3(c, e)
+    assert [(p.sig, sorted(p.adj)) for p in products] == [(A, [A]), (C, [])]
+    assert (k_f.sig, sorted(k_f.adj)) == (B, [])
 
 
 def test_r2_reconstruction_pure_overfit_skips_empty_head():
     e = k(AB, A, B)
     c = k(AB, A, B, C)  # U = ⊥
-    products = r2_products3(c, e)
-    assert [(p.sig, sorted(p.adj)) for p in products] == [(AB, [A, B]), (C, [])]
+    products, k_f = r2_products3(c, e)
+    assert [(p.sig, sorted(p.adj)) for p in products] == [(C, [C])]
+    assert (k_f.sig, sorted(k_f.adj)) == (AB, [A, B])
 
 
 # --- §5 R3: substitute, canonicalise, re-enter ---

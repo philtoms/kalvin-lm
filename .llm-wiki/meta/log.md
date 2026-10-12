@@ -1085,3 +1085,9 @@
 ## [2026-10-08T22:27:31.201Z] observe
 - slug: "obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-", title: "TRS recommendations implemented: filter deleted, per-run seen memo, r2_products3 tested", relevance: "high"
 
+## [2026-10-12T16:05:47.675Z] observe
+- slug: "obs-2026-10-12-r2-same-side-pairing-settled-spec-5-resynced", title: "R2 same-side pairing settled; spec §5 resynced", relevance: "high"
+
+## [2026-10-12T16:05:47.677Z] observe
+- slug: "obs-2026-10-12-d13-r2-entropy-theorem-inverted-by-same-side-pairing", title: "D13 R2 entropy theorem inverted by same-side pairing", relevance: "high"
+

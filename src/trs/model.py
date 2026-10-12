@@ -75,6 +75,8 @@ class Kline:
         if self.sig == 0:
             raise ValueError("signature must be non-empty (Definition 2)")
 
+    def merge(self, m: Kline | None = None) -> Kline:
+        return Kline(self.sig.merge(m.sig), self.adj | m.adj) if m else self
 
 # --- §2 Definition 4 — can: the composition fold ---
 
@@ -217,18 +219,20 @@ def r2_products(d: Domain, k: Kline) -> list[Kline]:
         if head
     ]
 
-def r2_products3(c: Kline, k: Kline) -> list[Kline]:
-    """R2 — three klines for the non-empty heads, cross-wise pairing."""
+def r2_products3(c: Kline, k: Kline) -> tuple[list[Kline], Kline]:
+    """R2 (§5 Rule R2) — same-side products for the non-empty residual
+    heads; the fit kline is earned, not re-entered."""
     t = decompose(c)
-    return [
-        Kline(head, carried)
-        for head, carried in (
-            (t.F, frozenset(n for n in c.adj if contained(n, t.F))),
-            (t.U, frozenset(n for n in c.adj if contained(n, t.O))),
-            (t.O, frozenset(n for n in k.adj if contained(n, t.U))),
-        )
-        if head
-    ]
+    n_f = frozenset(n for n in c.adj if contained(n, t.F))
+    n_o = frozenset(n for n in c.adj if contained(n, t.O))
+    n_u = frozenset(n for n in k.adj if contained(n, t.U))
+    products = []
+    k_f = Kline(t.F, n_f)
+    if t.U:
+        products.append(Kline(t.U, n_u))  # ⟨U, N_U⟩ — the entry's U-side
+    if t.O:
+        products.append(Kline(t.O, n_o))  # ⟨O, N_O⟩ — the candidate's O-side
+    return products, k_f
 
 
 def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
@@ -406,15 +410,15 @@ def rationalise2(d: Domain, entry: Kline, max_depth: int = 64) -> Rationalisatio
 
 
 def rationalise3(
-    d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None = None
+    d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None = None, earned: Kline | None = None
 ) -> Rationalisation:
     """§5 as one recursive function — the standardised reentry.
 
     Every kline runs the Definition 9 pipeline as an entry (presented or
     re-entry, Definition 8); its candidates route by band. R1 stores the
-    returning candidate — the one whose rationalisation returns at S1,
-    directly or through its products (R2, R3). The recursion returns at
-    S1 — the entry stored — or S4. Bounds (§7 strategy): re-entry depth
+    candidate merged with the earned composition — an S1 arrival
+    directly, or an S3 arrival whose substituted re-entry returns with
+    stores. The recursion returns at S1 — the entry stored — or S4. Bounds (§7 strategy): re-entry depth
     10 and a per-run memo of processed entry canons.
     """
 
@@ -438,29 +442,22 @@ def rationalise3(
         ends.append(End("no candidates — the entry terminates", entry, effort(entry)))
         return Rationalisation(stores, ends, depth)
     cands = [Kline(c_e, nb.adj) for nb in nbs]  # neighbour order is §7 strategy
-    earned: set = set()  # R2's accumulation — the running composition
     for c in cands:
         ok = False
         # later candidates inherit the earned adjacencies (§5)
-        c = Kline(c.sig, frozenset(c.adj | earned))
         b = band(c)
         if b is Band.S1:
             ok = True
 
         elif b is Band.S2:
-            # the fit product (i == 0 — always first for S2) earns its
-            # adjacency into the running composition instead of re-entering;
-            # the cross products re-enter in order, and the first that
-            # returns at S1 returns the split. A product with no adjacency
-            # routes to R4.
-            for i, prod in enumerate(r2_products3(c, entry)):
-                if not prod.adj:
-                    ends.append(End("R4: product with no adjacency", prod, effort(prod)))
-                elif i == 0:
-                    earned |= prod.adj  # R2 — the sole accumulator
-                elif rationalise3(d, prod, depth + 1, seen).stores:
-                    ok = True
-                    break
+            # the fit kline is earned — merged into the composition that
+            # rides with the split; the residual products re-enter in
+            # order, each carrying it, and ground for their own sake — no
+            # product return stores the candidate. A product with no
+            # adjacency routes to R4.
+            products, nf = r2_products3(c, entry)
+            for prod in products:
+                rationalise3(d, prod, depth + 1, seen, nf.merge(earned))
 
         elif b is Band.S3:
             n_prime = r3_substitute(d, c)  # R3 — substitute the candidate
@@ -475,10 +472,10 @@ def rationalise3(
             ends.append(End("R4: candidate with no adjacency", c, effort(c)))
 
         if ok:
-            earned.clear()
-            d.add(c)
+            s = c.merge(earned)
+            d.add(s)
             if not c in stores:
-                stores.append(c)
+                stores.append(s)
         
     return Rationalisation(stores, ends, depth)
 

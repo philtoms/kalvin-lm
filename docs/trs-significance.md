@@ -210,8 +210,8 @@ Entropy does not separate `S3` from `S4`: both carry full surprise. The empty ad
 
 Entropy flow under the rules:
 
-- `R1` fires at the return: directly at `H = 0`; through its products, the products discharge the surprise and the returning candidate stores as a licensed claim — its own `H` may stand above zero.
-- `R2` partitions the surprise: the cross products are disjoint by construction and carry `H = 1`; the fit product carries `H = 0` node-clean (`can(N_F) = F`), interior entropy when the F-side crosses node boundaries, and full surprise when no adjacency node is contained in `F` (an empty F-side degrades to R4). Weighted by head measure, R2 never reduces entropy — `Σ μ(head) · H(product) ≥ μ(σ ∨ â) · H(C)`, with equality iff the F-side split is node-clean.
+- `R1` fires at the arrival: directly at `H = 0`; through a product, an S3 candidate whose substituted re-entry returns with stores stores as a licensed claim — its own `H` may stand above zero. The store merges the earned composition (Rule R2): the minted claim may carry the fit heads.
+- `R2` re-pairs each head with content from its own side: `can(N_h) ⪯ h` for every product, so no product arrives at S3 — the misfit mass that drove `H(C)` does not survive the split. A node-clean split (no node of `N` or `N_E` crosses head boundaries) lands every product at S1 and discharges the surprise entirely; interior entropy survives only where a head's atoms cross node boundaries (`H = 1 − μ(can(N_h)) / μ(h)`), and a head whose side supplies no contained node degrades to R4.
 - `R3` substitutes and re-enters on the candidate's own signature: the product `⟨σ, N′⟩` keeps the claim, and the substituted adjacency re-pairs — correspondence may emerge from the re-pairing (S3 → S2 or S1), or not (S3 → S4).
 - `R4` is the full-surprise arrival: nothing held explains the entry.
 
@@ -243,13 +243,13 @@ The rules transform the candidate: direct S1 arrival is a full canon (Definition
 
 `D` is live throughout the tree. R1 stores enter `D` at the moment of arrival, and every later application — lookup, witness, substitution — reads `D` as it then stands. A run's own writes can close a route a later candidate would have taken, or open one: a witness minted in one round can keep a later expansion from emptying. The tree is a sequence of applications, not an evaluation against a snapshot of `D`.
 
-### Rule R1 — proof of full understanding (S1): store the returning candidate
+### Rule R1 — proof of full understanding (S1): store the returning candidate ∨ earned
 
 ```text
-a candidate : S1 — directly or through its products  ⟹  D := D ∪ { C }
+a candidate : S1 — directly or through its products  ⟹  D := D ∪ { C ∨ earned }
 ```
 
-Reaching S1 is a proof of full understanding. Directly, the candidate's claim and content coincide — a full canon (Definition 5). Through its products, the misfit resolved by the products' own groundings, and the proof licenses the candidate's claim over the adjacency it was valued against — a licensed claim, not necessarily a canon. The kline that enters `D` is the returning candidate itself. Idempotent. The returning candidate's head `c_E` may be a signature the domain does not yet hold — it is minted over the held adjacency it was valued against, and this is how entry information becomes knowledge. Reinforcement and promotion are outside the algebra (§7).
+Reaching S1 is a proof of full understanding. Directly, the candidate's claim and content coincide — a full canon (Definition 5). Through a product, only R3's: a substituted re-entry that returns with stores — the misfit resolved by the product's own grounding, and the proof licenses the candidate's claim over the adjacency it was valued against — a licensed claim, not necessarily a canon. The kline that enters `D` is the returning candidate merged with the earned composition: `C ∨ earned` composes the signatures and unions the adjacencies, and `earned` is empty for a presented entry. Idempotent. The returning candidate's head `c_E` may be a signature the domain does not yet hold — it is minted over the held adjacency it was valued against, and this is how entry information becomes knowledge. Reinforcement and promotion are outside the algebra (§7).
 
 ### Rule R2 — partial fit (S2): project, re-enter
 
@@ -264,14 +264,14 @@ N_U = { n ∈ N_E : n ⪯ U }      the entry's adjacency, U-side
 R2 produces three klines — for the non-empty heads:
 
 ```text
-⟨F, N_F⟩      ⟨U, N_O⟩      ⟨O, N_U⟩
+⟨F, N_F⟩      ⟨U, N_U⟩      ⟨O, N_O⟩
 ```
 
-The pairing is cross-wise — `U` carries `N_O`, `O` carries `N_U` — so `U` and `O` each serve as claim in one product and as adjacency in the other.
+The pairing is same-side — each head carries the content reconstructed from its own provenance: `F` and `O` from the candidate's adjacency, `U` from the entry's. The misfit does not question the other side; each residual returns to the side that claims or supplies it.
 
-The fit product does not re-enter: it is the understood portion, and its adjacency is earned into the running composition — joined to the adjacency of each later candidate of the entry (accumulation, below). The cross products re-enter as entries (Definition 8) in order; the first whose rationalisation returns at S1 returns the split, and the candidate stores (R1). When no cross product returns, the split does not return — the halts live in the products' own traces — and the entry proceeds to its next candidate with the earned composition. A product with no adjacency routes to R4.
+The fit product does not re-enter: it is the understood portion, and it is earned — merged into the composition that rides with the split (accumulation, below). The residual products re-enter as entries (Definition 8) in order, each carrying the earned composition; they ground for their own sake — a product's stores are its own trace's (R1), and no product return stores the candidate that split. The halts live in the products' own traces. A product with no adjacency routes to R4.
 
-The products' bands are fixed by the reconstruction. A node-clean split gives `can(N_F) = F`: the fit product is itself a canon (Definition 5); a split whose F-side atoms cross node boundaries leaves `can(N_F)` strictly below `F`, and the fit product carries interior entropy (Definition 13). The cross claims are disjoint from their adjacencies by construction (Definition 12): each arrives at S3, where the claim does not correspond to the adjacency and the adjacency is dereferenceable content.
+The products' bands are fixed by the reconstruction, and the pairing is same-side: `can(N_h) ⪯ h` for every head, so no product arrives at S3. A node-clean split — no node of `N` or `N_E` crosses head boundaries — gives `can(N_h) = h` for every head: each product is itself a canon (Definition 5), and the split discharges the pairing's surprise entirely. A head whose atoms cross node boundaries carries interior entropy (Definition 13); a head whose side supplies no contained node degrades to R4.
 
 ### Rule R3 — misfit (S3): substitute, re-enter
 
@@ -303,26 +303,26 @@ entry ⟨σ_E, N_E⟩
   │                │
   │ overlap(σ_E)   │ can(N_E) = c_E
   ▼                ▼
-neighbours K_i   candidates C_i = ⟨c_E, N_i ∪ earned⟩
+neighbours K_i   candidates C_i = ⟨c_E, N_i⟩
   └────────► V(C_i) ◄───────────┘
                 │
       ┌─────────┼──────────┬───────────────────┐
       S1        S2         S3                  S4 (no adjacency) → end
       │         │          │
     store C   project     substitute
-      │         │          │
-      │      ⟨F,N_F⟩ ──► earned            N′ ──► ⟨σ, N′⟩
-      │      ⟨U,N_O⟩ ──┐                        │
-      │      ⟨O,N_U⟩ ──┴── re-entries ──► repeat │
+   ∨ earned      │          │
+      │      ⟨F,N_F⟩ ──► earned rides       N′ ──► ⟨σ, N′⟩
+      │      ⟨U,N_U⟩ ──┐  with the split        │
+      │      ⟨O,N_O⟩ ──┴── re-entries ──► repeat │
       │                                           │
-      └── a re-entry returning at S1 stores C ────┘
+      └── an S3 re-entry returning with stores stores C ∨ earned ──┘
                 ▼
-   composition clears; next candidate
+           next candidate
 ```
 
 Across R1–R4, every rewrite resolves against held content and signatures enter `D` at R1 stores: the system composes what it holds, and asks at its boundary.
 
-An entry's candidates are processed in turn, every one. R2 accumulates across candidates: the fit product earns its adjacency into the running composition, and each later candidate of the entry is formed with the earned adjacencies joined to its neighbour's — the intermediate klines are the running composition, and each enriched candidate re-routes (Definition 11). A candidate that returns at S1 stores (R1) and clears the composition — the earned content is held, and the next candidate starts from its neighbour alone. The recursion composes the entry's content across its candidate set; the candidate set exhausted, the rationalisation returns with its stores.
+An entry's candidates are processed in turn, every one, each formed from its neighbour's adjacency alone. R2 accumulates down the recursion: the fit kline merges — signature and adjacency — into an earned composition that rides with the split, and every re-entry the split produces carries it; R3's re-entry carries none — it keeps the candidate's claim. The composition is spent at the store: a candidate that arrives at S1 stores merged with the earned composition (R1), and nested splits compose — each split's fit kline merges into the composition it passes down. The candidate set exhausted, the rationalisation returns with its stores.
 
 ### Definition 15 — Proposals
 

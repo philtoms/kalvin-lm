@@ -209,17 +209,22 @@ def test_r2_never_reduces_entropy(sc):
 
 @settings(deadline=None)
 @given(s2_scenarios())
-def test_r2_reconstruction_never_reduces_entropy(sc):
-    """The reconstruction variant: exact iff the F-side split is node-clean
-    (can(N_F) = F) — held or not, the entry supplies the U-side."""
+def test_r2_reconstruction_same_side_discharges_surprise(sc):
+    """Same-side pairing: every product re-pairs with content from its own
+    side — can(N_h) ⪯ h, never S3; a node-clean split (no node of N or N_E
+    crosses head boundaries) lands every product at S1, discharging the
+    pairing's surprise entirely (Definition 13)."""
     d, k = sc
     entry = Kline(k.sig, frozenset(b for b in ATOMS if b & k.sig))  # can(N_E) = σ
     t = decompose(k)
-    total = mu(k.sig | can(k.adj))
-    carried = sum(mu(p.sig) * entropy(p) for p in r2_products3(k, entry))
-    assert carried >= total * entropy(k)
-    n_f = frozenset(n for n in k.adj if contained(n, t.F))
-    assert (carried == total * entropy(k)) == (can(n_f) == t.F)
+    products, k_f = r2_products3(k, entry)
+    for p in [*products, k_f]:
+        assert contained(can(p.adj), p.sig)  # same side — never S3
+    node_clean = all(contained(n, t.F) or contained(n, t.O) for n in k.adj) and all(
+        contained(n, t.F) or contained(n, t.U) for n in entry.adj
+    )
+    if node_clean:
+        assert all(band(p) is Band.S1 for p in [*products, k_f])
 
 
 @settings(deadline=None)
@@ -228,17 +233,17 @@ def test_r2_reconstruction_well_formed(sc):
     d, k = sc
     entry = Kline(k.sig, frozenset(b for b in ATOMS if b & k.sig))
     t = decompose(k)
-    products = r2_products3(k, entry)
-    assert 1 <= len(products) <= 3
-    assert products[0].sig == t.F  # the fit product leads — S2 guarantees F ≠ ⊥
+    products, k_f = r2_products3(k, entry)
+    assert k_f.sig == t.F  # the fit kline — S2 guarantees F ≠ ⊥
+    assert k_f.adj == frozenset(n for n in k.adj if contained(n, t.F))
     expected = {
-        t.F: frozenset(n for n in k.adj if contained(n, t.F)),
-        t.U: frozenset(n for n in k.adj if contained(n, t.O)),
-        t.O: frozenset(n for n in entry.adj if contained(n, t.U)),
+        t.U: frozenset(n for n in entry.adj if contained(n, t.U)),
+        t.O: frozenset(n for n in k.adj if contained(n, t.O)),
     }
     for p in products:
         assert p.sig != 0
         assert p.adj == expected[p.sig]
+    assert {p.sig for p in products} == {h for h in (t.U, t.O) if h}
 
 
 # --- §5 R2/R3: product well-formedness ---
