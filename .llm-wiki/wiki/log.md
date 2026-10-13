@@ -1,5 +1,9 @@
 # Wiki Update Log
 
+## 2026-10-13
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-13-knode-merge-label-composition-made-idempotent","title":"KNode.merge label composition made idempotent"}
+
 ## 2026-10-12
 
 - **observe**: {"relevance":"high","slug":"obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-","title":"Runner consolidation: rationalise3 is now rationalise; nested-end propagation fixed"}

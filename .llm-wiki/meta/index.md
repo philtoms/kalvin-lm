@@ -424,6 +424,7 @@
 - [[sources/obs-2026-10-12-d13-r2-entropy-theorem-inverted-by-same-side-pairing]] — Observation: D13 R2 entropy theorem inverted by same-side pairing *(created: 2026-10-12)*
 - [[sources/obs-2026-10-12-r2-same-side-pairing-settled-spec-5-resynced]] — Observation: R2 same-side pairing settled; spec §5 resynced *(created: 2026-10-12)*
 - [[sources/obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-]] — Observation: Runner consolidation: rationalise3 is now rationalise; nested-end propagation fixed *(created: 2026-10-12)*
+- [[sources/obs-2026-10-13-knode-merge-label-composition-made-idempotent]] — Observation: KNode.merge label composition made idempotent *(created: 2026-10-13)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -434,4 +435,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-12T16:20:06.088Z* | *Total pages: 422*
+*Last updated: 2026-10-13T09:55:06.753Z* | *Total pages: 423*
