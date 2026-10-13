@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-12T16:05:47.765Z",
+  "last_updated": "2026-10-12T16:20:06.088Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6479,6 +6479,22 @@
       "relevance": "high",
       "observed_at": "2026-10-12T16:05:47.672Z",
       "source_context": "Resyncing docs/trs-significance.md §4/§5 to adjusted R2 handling in rationalise3",
+      "created": "2026-10-12",
+      "updated": "2026-10-12"
+    },
+    "sources/obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-": {
+      "type": "source",
+      "title": "Observation: Runner consolidation: rationalise3 is now rationalise; nested-end propagation fixed",
+      "tags": [
+        "trs",
+        "refactor",
+        "reentry"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-",
+      "relevance": "high",
+      "observed_at": "2026-10-12T16:20:05.998Z",
+      "source_context": "Removing rationalise/rationalise2, renaming rationalise3 to rationalise in src/trs",
       "created": "2026-10-12",
       "updated": "2026-10-12"
     },

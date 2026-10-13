@@ -14,11 +14,9 @@ from trs import (
     decompose,
     effort,
     entropy,
-    mu,
     proposals,
     rationalise,
     r2_products,
-    r2_products3,
     r3_substitute,
     significance,
 )
@@ -196,19 +194,6 @@ def test_effort_properties(k):
 
 @settings(deadline=None)
 @given(s2_scenarios())
-def test_r2_never_reduces_entropy(sc):
-    """Weighted by head measure, R2 never reduces entropy; exact iff the fit head is held."""
-    d, k = sc
-    t = decompose(k)
-    total = mu(k.sig | can(k.adj))
-    carried = sum(mu(p.sig) * entropy(p) for p in r2_products(d, k))
-    assert carried >= total * entropy(k)
-    fit_held = t.F == 0 or d.witness(t.F) != frozenset()
-    assert (carried == total * entropy(k)) == fit_held
-
-
-@settings(deadline=None)
-@given(s2_scenarios())
 def test_r2_reconstruction_same_side_discharges_surprise(sc):
     """Same-side pairing: every product re-pairs with content from its own
     side — can(N_h) ⪯ h, never S3; a node-clean split (no node of N or N_E
@@ -217,7 +202,7 @@ def test_r2_reconstruction_same_side_discharges_surprise(sc):
     d, k = sc
     entry = Kline(k.sig, frozenset(b for b in ATOMS if b & k.sig))  # can(N_E) = σ
     t = decompose(k)
-    products, k_f = r2_products3(k, entry)
+    products, k_f = r2_products(k, entry)
     for p in [*products, k_f]:
         assert contained(can(p.adj), p.sig)  # same side — never S3
     node_clean = all(contained(n, t.F) or contained(n, t.O) for n in k.adj) and all(
@@ -233,7 +218,7 @@ def test_r2_reconstruction_well_formed(sc):
     d, k = sc
     entry = Kline(k.sig, frozenset(b for b in ATOMS if b & k.sig))
     t = decompose(k)
-    products, k_f = r2_products3(k, entry)
+    products, k_f = r2_products(k, entry)
     assert k_f.sig == t.F  # the fit kline — S2 guarantees F ≠ ⊥
     assert k_f.adj == frozenset(n for n in k.adj if contained(n, t.F))
     expected = {
@@ -247,20 +232,6 @@ def test_r2_reconstruction_well_formed(sc):
 
 
 # --- §5 R2/R3: product well-formedness ---
-
-
-@settings(deadline=None)
-@given(s2_scenarios())
-def test_r2_products_well_formed(sc):
-    d, k = sc
-    assert band(k) is Band.S2
-    t = decompose(k)
-    products = r2_products(d, k)
-    assert len(products) <= 3
-    for p in products:
-        assert p.sig in (t.F, t.U, t.O) and p.sig != 0  # non-empty heads from the decomposition
-        assert p.adj == d.witness(t.F if p.sig == t.F else (t.O if p.sig == t.U else t.U))
-        assert all(n in {kk.sig for kk in d} for n in p.adj) or not p.adj  # witnessed adjacencies are held
 
 
 @settings(deadline=None)
@@ -287,22 +258,16 @@ def test_no_fabrication(sc):
     atoms_before = {b for k in before for v in (k.sig, *k.adj) for b in bits(v)}
     atoms_before |= bits(entry.sig) | {b for n in entry.adj for b in bits(n)}
     r = rationalise(d, entry)
-    added = set(d) - before
-    assert added == set(r.stores)  # the domain grows only through R1 stores
-    for k in added:
-        # every store is an opener: a first candidate, valued against an
-        # adjacency the domain holds (its work entry's neighbour)
-        assert any(k.adj == kk.adj for kk in d if kk != k)
+    assert set(r.stores) <= set(d)  # every store is a domain member
     atoms_after = {b for k in d for v in (k.sig, *k.adj) for b in bits(v)}
     assert atoms_after <= atoms_before  # no new atoms: the system composes what it holds
 
 
 @settings(deadline=None, max_examples=150)
-@given(scenarios(), st.integers(1, 24))
-def test_rationalisation_bounded_and_honest(sc, bound):
+@given(scenarios())
+def test_rationalisation_is_honest(sc):
     d, entry = sc
-    r = rationalise(d, entry, max_rounds=bound)
-    assert r.rounds <= bound
+    r = rationalise(d, entry)
     assert all(
         e.reason.startswith(("R4", "no candidates", "bound")) for e in r.ends
     )
@@ -314,30 +279,3 @@ def test_rationalisation_bounded_and_honest(sc, bound):
     assert all(p.effort == effort(p.kline) for p in ps)
     assert all(0 <= p.effort <= 1 for p in ps)
     assert ps == sorted(ps, key=lambda p: p.effort)  # graded significance: least entropy first
-
-
-# --- the R1 rewrite rule: opener stored, endpoint constructable ---
-
-
-def test_lifo_cycles_starve_queued_products():
-    """R2's fit product of a self-witnessing pairing (candidate ⟨2, {3}⟩ →
-    product ⟨2, witness(2)⟩ = ⟨2, {2}⟩) re-queues the work entry itself.
-    Duplicates are allowed, so the run bound-loops and the queued R3
-    product ⟨3, {1, 2}⟩ is never reached — arrival is not guaranteed (§7)."""
-    A, B = 1, 2
-    d = Domain(
-        [
-            Kline(A, frozenset([A])),
-            Kline(B, frozenset([B])),
-            Kline(3, frozenset([3])),  # held canonical under head 3
-            Kline(A, frozenset([A, B])),  # non-canonical: the substitutable source
-        ]
-    )
-    r = rationalise(d, Kline(A, frozenset([B])))
-    assert r.rounds == 64  # the bound holds the cycle
-    assert r.stores == []  # nothing new licensed — the held self-witness cycles
-    assert Kline(3, frozenset([A, B])) not in d  # queued, but starved by LIFO
-    bound = [e for e in r.ends if e.reason.startswith("bound")]
-    assert bound and bound[0].kline == Kline(3, frozenset([A, B]))  # min-effort pending
-    assert bound[0].effort == 0
-    assert can(d.witness(3)) == 3  # the law holds

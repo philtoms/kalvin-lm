@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-","title":"Runner consolidation: rationalise3 is now rationalise; nested-end propagation fixed"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-12-d13-r2-entropy-theorem-inverted-by-same-side-pairing","title":"D13 R2 entropy theorem inverted by same-side pairing"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-12-r2-same-side-pairing-settled-spec-5-resynced","title":"R2 same-side pairing settled; spec §5 resynced"}
 

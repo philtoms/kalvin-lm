@@ -330,7 +330,7 @@ A halt names what is missing. A **proposal** is the halted kline read as a reque
 
 - **acquire** — a witness gap. The halted kline is a head without usable adjacency: an unheld-witness arrival `⟨U, ∅⟩`, a candidate whose neighbour supplied none, or an expansion that emptied its adjacency. The request: present an entry whose content witnesses the head.
 - **connect** — an overlap gap. The entry terminated with no neighbours — nothing held overlaps `σ_E`. The request: present content overlapping `σ_E`.
-- **continue** — a frontier halt. The bound stopped the run with pending entries; the request names the minimal-effort pending kline: run on.
+- **continue** — a frontier halt. A bound stopped a branch — a repeated entry canon or the re-entry depth (§7) — and the halted kline asks to run on.
 
 A presented entry `E` discharges a proposal with target `t` iff `(σ_E ∨ can(N_E)) ∧ t ≠ ⊥` — the answer touches the gap; the answer's own rationalisation does the grounding. Proposals do not enter `D` and are not entries; like the engine's asks, a proposal never grounds itself. Proposals are ordered by graded significance — ascending effort (Definition 14): the least-entropy proposal is the most significant next step; ties keep generation order.
 
@@ -356,7 +356,7 @@ The architectural difference: the engine is goal-directed — a derivation works
 ## 7. Outside the Algebra
 
 - selection order among neighbours, among R3 substitutions, and among re-entering products — strategy;
-- arrival — the rules route every band but do not guarantee termination of the full tree: bounds on round length, re-entry depth, and repeated entry canons are strategy, as the engine's T2 bounds witnessed cycles;
+- arrival — the rules route every band but do not guarantee termination of the full tree: bounds on re-entry depth and repeated entry canons are strategy, as the engine's T2 bounds witnessed cycles;
 - confluence — intentionally not required: branching over neighbours is the model's semantics, and different branches may ground different resolutions;
 - reinforcement, tiering, memory-management policy;
 - ratification of stored klines.

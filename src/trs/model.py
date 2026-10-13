@@ -206,20 +206,7 @@ def effort(k: Kline, beta: Fraction = BETA) -> Fraction:
 # --- §5 — the rewrite rules ---
 
 
-def r2_products(d: Domain, k: Kline) -> list[Kline]:
-    """R2 — three klines for the non-empty heads, cross-wise pairing."""
-    t = decompose(k)
-    return [
-        Kline(head, carried)
-        for head, carried in (
-            (t.F, d.witness(t.F)),
-            (t.U, d.witness(t.O)),
-            (t.O, d.witness(t.U)),
-        )
-        if head
-    ]
-
-def r2_products3(c: Kline, k: Kline) -> tuple[list[Kline], Kline]:
+def r2_products(c: Kline, k: Kline) -> tuple[list[Kline], Kline]:
     """R2 (§5 Rule R2) — same-side products for the non-empty residual
     heads; the fit kline is earned, not re-entered."""
     t = decompose(c)
@@ -249,7 +236,7 @@ def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
     return frozenset(n_prime)
 
 
-# --- §5 — reentry: the rationalisation runner (strategy: LIFO stack, duplicates allowed, bounded) ---
+# --- §5 — reentry: the rationalisation runner ---
 
 
 @dataclass(frozen=True)
@@ -277,139 +264,7 @@ class Rationalisation:
     rounds: int
 
 
-def rationalise(d: Domain, entry: Kline, max_rounds: int = 64) -> Rationalisation:
-    """Run the entry through the pipeline and the rules until S1/S4 arrival (§5, §7).
-
-    The work queue is an ordinary stack: duplicates are allowed and the
-    next work entry is the latest queued. The opener is cleared on pop and
-    set to the entry's first candidate — it does not change for that work
-    entry (Definition 9)."""
-    queue: list[Kline] = [entry]
-    stores: list[Kline] = []
-    ends: list[End] = []
-    rounds = 0
-
-    while queue and rounds < max_rounds:
-        e = queue.pop()  # the latest queued item
-        rounds += 1
-        if not e.adj:  # R4 arrival — an entry kline with no adjacency
-            ends.append(End("R4: entry kline with no adjacency", e, effort(e)))
-            continue
-        neighbours = d.overlap(e.sig)  # Definition 9
-        if not neighbours:
-            ends.append(End("no candidates — the entry terminates", e, effort(e)))
-            continue
-        c_e = can(e.adj)
-        opener: Kline | None = None  # cleared on pop; set by the first candidate
-        # NOTE (reentry redesign): sig-ascending candidate order is
-        # incidental, not algebraic — revisit.
-        for nb in sorted(neighbours, key=lambda k: k.sig):
-            cand = Kline(c_e, nb.adj)
-            if opener is None:
-                opener = cand  # opens this work entry's trace — unchanging for it
-            b = band(cand)
-            if b is Band.S1:  # R1 — proof of full understanding: store the opening candidate
-                if d.add(opener):
-                    stores.append(opener)
-            elif b is Band.S2:  # R2 — three products re-enter
-                for p in r2_products(d, cand):
-                    queue.append(p)
-            elif b is Band.S3:  # R3 — substitute, canonicalise, re-enter
-                n_prime = r3_substitute(d, cand)
-                if n_prime:
-                    queue.append(Kline(can(n_prime), n_prime))
-                else:
-                    ends.append(End("R4: expansion emptied the adjacency", cand, effort(cand)))
-            else:  # S4 — candidate whose neighbour supplied no adjacency
-                ends.append(End("R4: candidate with no adjacency", cand, effort(cand)))
-
-    if queue:
-        pending = min(queue, key=effort)  # the frontier's cheapest continuation
-        ends.append(End(f"bound: reentry depth {max_rounds} reached", pending, effort(pending)))
-    return Rationalisation(stores=stores, ends=ends, rounds=rounds)
-
-
-def rationalise2(d: Domain, entry: Kline, max_depth: int = 64) -> Rationalisation:
-    """The step-1.2 redesign prototype.
-
-    A work item's value is a head; its candidates are its neighbours'
-    pairings, tried in order until one resolves at S1. R1 stores the work
-    item's FIRST candidate — a later candidate resolving at S1 still
-    stores the first. The S2 products are consumed as one response: F
-    accumulates the witness, U is recursively applied as its own work
-    item, and the enriched F is pushed and iterated — a new work item
-    whose opener is itself.
-    """
-    stores: list[Kline] = []
-    ends: list[End] = []
-    rounds = 0
-
-    def bare(u: KNode) -> Kline:
-        return Kline(u, frozenset())
-
-    def candidates(head: KNode) -> list[Kline]:
-        nbs = d.overlap(head)
-        return [Kline(head, nb.adj) for nb in sorted(nbs, key=lambda k: k.sig)]  # ordering: not algebraic
-
-    def consume(u: KNode, depth: int) -> bool:
-        """A work item: try its candidates in order."""
-        nonlocal rounds
-        rounds += 1
-        if depth >= max_depth:
-            ends.append(End("bound: recursion depth reached", bare(u), effort(bare(u))))
-            return False
-        cands = candidates(u)
-        if not cands:
-            ends.append(End("no candidates — the work item terminates", bare(u), effort(bare(u))))
-            return False
-        for cand in cands:
-            if resolve(cand, cand, depth):
-                return True
-        ends.append(End("no candidate resolved", bare(u), effort(bare(u))))
-        return False
-
-    def resolve(cand: Kline, opener: Kline, depth: int) -> bool:
-        """One candidate's chain; True when it reaches S1."""
-        nonlocal rounds
-        rounds += 1
-        if depth >= max_depth:
-            ends.append(End("bound: recursion depth reached", cand, effort(cand)))
-            return False
-        mark = len(stores)
-        b = band(cand)
-        if b is Band.S1:
-            d.add(opener)  # R1 — the sole store point; stores, always
-            stores.append(opener)
-            return True
-        if b is Band.S2:
-            t = decompose(cand)
-            held: set = set(cand.adj)  # F holds the witness that produced the fit
-            if t.U:
-                consume(t.U, depth + 1)  # U is recursively applied
-            for s in stores[mark:]:  # stored signatures in sigma: add to F
-                if s.sig & cand.sig == s.sig:
-                    held |= s.adj
-            if held == set(cand.adj):
-                return False  # the pass grew nothing — this candidate has stalled
-            enriched = Kline(cand.sig, frozenset(held))
-            return resolve(enriched, opener, depth + 1)  # push and iterate — a new work item
-        if b is Band.S3:
-            n_prime = r3_substitute(d, cand)
-            if n_prime:
-                return resolve(Kline(cand.sig, n_prime), opener, depth + 1)
-            ends.append(End("R4: expansion emptied the adjacency", cand, effort(cand)))
-            return False
-        ends.append(End("R4: candidate with no adjacency", cand, effort(cand)))
-        return False
-
-    if not entry.adj:
-        ends.append(End("R4: entry kline with no adjacency", entry, effort(entry)))
-    else:
-        consume(can(entry.adj), 0)
-    return Rationalisation(stores=stores, ends=ends, rounds=rounds)
-
-
-def rationalise3(
+def rationalise(
     d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None = None, earned: Kline | None = None
 ) -> Rationalisation:
     """§5 as one recursive function — the standardised reentry.
@@ -418,8 +273,9 @@ def rationalise3(
     re-entry, Definition 8); its candidates route by band. R1 stores the
     candidate merged with the earned composition — an S1 arrival
     directly, or an S3 arrival whose substituted re-entry returns with
-    stores. The recursion returns at S1 — the entry stored — or S4. Bounds (§7 strategy): re-entry depth
-    10 and a per-run memo of processed entry canons.
+    stores. The recursion returns at S1 — the entry stored — or S4.
+    Bounds (§7 strategy): re-entry depth 10 and a per-run memo of
+    processed entry canons.
     """
 
     stores: list[Kline] = []
@@ -455,18 +311,23 @@ def rationalise3(
             # order, each carrying it, and ground for their own sake — no
             # product return stores the candidate. A product with no
             # adjacency routes to R4.
-            products, nf = r2_products3(c, entry)
+            products, nf = r2_products(c, entry)
             for prod in products:
-                rationalise3(d, prod, depth + 1, seen, nf.merge(earned))
-
+                r = rationalise(d, prod, depth + 1, seen, nf.merge(earned))
+                ends.extend(r.ends)
+                stores.extend(r.stores)
+                
         elif b is Band.S3:
             n_prime = r3_substitute(d, c)  # R3 — substitute the candidate
             if not n_prime:
                 ends.append(End("R4: expansion emptied the adjacency", c, effort(c)))
             elif n_prime == c.adj:
                 ends.append(End("R4: substitution like for like", c, effort(c)))
-            elif rationalise3(d, Kline(c.sig, n_prime), depth + 1, seen).stores:  # the claim is kept
-                ok = True
+            else:
+                r_prod = rationalise(d, Kline(c.sig, n_prime), depth + 1, seen)  # the claim is kept
+                ends.extend(r_prod.ends)  # the product's halts are the tree's halts
+                if r_prod.stores:
+                    ok = True
 
         elif b is Band.S4:
             ends.append(End("R4: candidate with no adjacency", c, effort(c)))

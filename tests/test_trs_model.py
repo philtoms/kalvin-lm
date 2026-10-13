@@ -17,11 +17,8 @@ from trs import (
     entropy,
     proposals,
     rationalise,
-    rationalise2,
-    rationalise3,
     significance,
     r2_products,
-    r2_products3,
     r3_substitute,
 )
 
@@ -103,40 +100,13 @@ def test_decomposition_partition_and_flow_sides():
     assert t3.U == 0 and t3.O == C
 
 
-# --- §5 R2: three klines, cross-wise pairing ---
-
-
-def test_r2_cross_wise_pairing():
-    d = base_domain(k(AB, A, B), k(C, C), k(D, D))
-    products = r2_products(d, k(ABC, ABD))
-    # F=AB carries its own witness; U=C carries witness(O)=witness(D); O=D carries witness(U)=witness(C)
-    assert [(p.sig, p.adj) for p in products] == [
-        (AB, frozenset({A, B})),
-        (C, frozenset({D})),
-        (D, frozenset({C})),
-    ]
-
-
-def test_r2_unheld_residual_carries_no_adjacency():
-    d = Domain()  # nothing held: no witness for F, U, or O
-    products = r2_products(d, k(ABC, ABD))
-    assert [p.sig for p in products] == [AB, C, D]
-    assert all(p.adj == frozenset() for p in products)  # R4 arrivals
-
-
-def test_r2_pure_overfit_skips_empty_head():
-    d = base_domain()
-    products = r2_products(d, k(AB, A, B, C))  # U = ⊥
-    assert [p.sig for p in products] == [AB, C]  # F-product and O-product only
-
-
-# --- §5 R2 (reconstruction): same-side pairing — the fit kline earns, the residual products re-enter ---
+# --- §5 Rule R2: same-side products — the fit kline earns, the residual products re-enter ---
 
 
 def test_r2_reconstruction_same_side_pairing():
     e = k(ABC, A, B, C)  # can(N_E) = ABC
     c = k(ABC, A, B, D)  # â = ABD; F=AB, U=C, O=D — node-clean
-    products, k_f = r2_products3(c, e)
+    products, k_f = r2_products(c, e)
     # each head carries its own side: U the entry's U-side, O the candidate's O-side
     assert [(p.sig, sorted(p.adj)) for p in products] == [(C, [C]), (D, [D])]
     assert (k_f.sig, sorted(k_f.adj)) == (AB, [A, B])
@@ -148,7 +118,7 @@ def test_r2_reconstruction_crossing_node_starves_the_sides():
     # with the entry's own A (Definition 12/13)
     e = k(AB, A, B)
     c = k(AB, BC)  # F=B, U=A, O=C
-    products, k_f = r2_products3(c, e)
+    products, k_f = r2_products(c, e)
     assert [(p.sig, sorted(p.adj)) for p in products] == [(A, [A]), (C, [])]
     assert (k_f.sig, sorted(k_f.adj)) == (B, [])
 
@@ -156,7 +126,7 @@ def test_r2_reconstruction_crossing_node_starves_the_sides():
 def test_r2_reconstruction_pure_overfit_skips_empty_head():
     e = k(AB, A, B)
     c = k(AB, A, B, C)  # U = ⊥
-    products, k_f = r2_products3(c, e)
+    products, k_f = r2_products(c, e)
     assert [(p.sig, sorted(p.adj)) for p in products] == [(C, [C])]
     assert (k_f.sig, sorted(k_f.adj)) == (AB, [A, B])
 
@@ -254,13 +224,6 @@ def test_ends_carry_the_halt_measure():
 # --- §5 Definition 15: proposals at halt ---
 
 
-def test_proposal_acquire_from_unheld_witness():
-    d = base_domain(k(ABD, A, B))  # the R2 trace pushes ⟨B, ∅⟩ (unheld B)
-    r = rationalise(d, k(A, A, B))
-    ps = [p for p in proposals(r) if p.kind == "acquire" and p.kline == k(B)]
-    assert ps and ps[0].effort == 1  # nothing held explains B — full effort
-
-
 def test_proposal_connect_from_empty_overlap():
     # nothing is checked at presentation — the no-neighbours halt is the ask
     r = rationalise(Domain(), k(AB, A, B))
@@ -269,11 +232,14 @@ def test_proposal_connect_from_empty_overlap():
     assert ps[0].kind == "connect" and ps[0].kline == k(AB, A, B)
 
 
-def test_proposal_continue_names_min_effort_frontier():
-    d = base_domain(k(AB, A, B, C))  # the overfit cycle
-    r = rationalise(d, k(A, A, B), max_rounds=1)
+def test_proposal_continue_names_the_seen_bound():
+    # the substitution re-derives an already-processed canon — the seen memo
+    # bounds the recursion and the halted product continues (§7, Definition 15)
+    d = base_domain(k(C, D), k(D, A, B))
+    r = rationalise(d, k(C, A, B))
     ps = [p for p in proposals(r) if p.kind == "continue"]
-    assert ps and ps[0].effort == effort(ps[0].kline)  # the frontier's cheapest member
+    assert ps and ps[0].kline == k(AB, A, B)  # the re-entered product that re-met its canon
+    assert ps[0].effort == effort(ps[0].kline)
 
 
 def test_emptied_expansion_records_its_candidate():
@@ -282,19 +248,6 @@ def test_emptied_expansion_records_its_candidate():
     ends = [e for e in r.ends if e.reason == "R4: expansion emptied the adjacency"]
     assert ends and ends[0].kline == k(C, AB)  # the candidate whose expansion emptied
     assert ends[0].effort == effort(k(C, AB))
-
-
-def test_d_is_live_during_the_run():
-    """The run's own writes close routes: the entry's S1 store mints
-    ⟨AB, {C}⟩, which enters covered(AB) and keeps the later expansion of
-    ⟨C, {AB}⟩ from emptying — the run bound-loops instead of halting.
-    Same D₀, entry ⟨C, {C}⟩ (no store intervenes): the emptied halt fires."""
-    d0 = [k(A, A), k(B, B), k(C, C), k(AB), k(ABC, AB)]
-    r = rationalise(Domain(d0), Kline(C, frozenset([AB])))
-    assert k(AB, C) in r.stores  # minted mid-run — the rescuing witness
-    assert not any(e.reason == "R4: expansion emptied the adjacency" for e in r.ends)
-    r2 = rationalise(Domain(d0), k(C, C))
-    assert any(e.reason == "R4: expansion emptied the adjacency" for e in r2.ends)
 
 
 def test_proposals_cover_every_end():
@@ -315,38 +268,16 @@ def test_proposals_ordered_by_significance():
     assert ps[1].kline == k(C) and ps[1].effort == 1  # the full-surprise acquire sorts last
 
 
-# --- step-1.2 redesign prototype: F accumulates, U recurses ---
-
-def test_rationalise2_accumulates_witness_bottom_up():
-    S, V, O = 0b001, 0b010, 0b100
-    d = Domain([
-        Kline(0b1000 | S, frozenset([S])),    # MarySubject
-        Kline(0b10000 | V, frozenset([V])),   # hadVerb
-        Kline(0b100000 | O, frozenset([O])),  # QueryObject
-    ])
-    r = rationalise2(d, Kline(S | V | O, frozenset([S, V, O])))
-    # the recursion stores Object, then VO, then SVO — bottom-up, no halts.
-    # Each chain stores its own opener (the next candidate), so the
-    # witnesses are the opening pairings, not the enriched klines.
-    assert [(int(s.sig), sorted(int(n) for n in s.adj)) for s in r.stores] == [
-        (O, [O]),
-        (V | O, [V]),
-        (S | V | O, [S]),
-    ]
-    assert r.ends == []
-
-
 # --- §5 R1: stores; admission iff S1 ---
 
 
-def test_r1_stores_the_work_entrys_first_candidate():
+def test_r1_stores_the_s1_candidate():
     d = base_domain(k(ABD, A, B))  # held but non-canonical (can = AB)
     r = rationalise(d, k(A, A, B))
-    # the entry's first candidate ⟨AB, {A}⟩ is the opener, licensed by its
-    # sibling S1 ⟨AB, {A, B}⟩; it does not change for this work entry
-    assert r.stores == [k(AB, A)]
+    # the candidate ⟨AB, {A, B}⟩ is itself S1 — stored as presented (Rule R1)
+    assert r.stores == [k(AB, A, B)]
     assert k(A, A, B) not in d  # the entry itself is never stored
-    assert not d.is_canonical(k(AB, A))  # a licensed claim, not a canon
+    assert d.is_canonical(k(AB, A, B))  # a full canon (Definition 5)
 
 
 def test_r4_candidate_with_no_adjacency():
@@ -362,43 +293,35 @@ def test_empty_lookup_terminates_entry():
     assert r.stores == []
 
 
-# --- §5 rationalise3: the standardised reentry ---
+# --- §5 rationalise: the standardised reentry ---
 
 
-def test_rationalise3_entry_with_no_adjacency_is_r4():
+def test_entry_with_no_adjacency_is_r4():
     d = base_domain()  # presentation admits any kline — checks nothing (Definition 8)
-    r = rationalise3(d, k(AB))
+    r = rationalise(d, k(AB))
     assert r.stores == []
     assert [e.reason for e in r.ends] == ["R4: entry kline with no adjacency"]
     assert [p.kind for p in proposals(r)] == ["acquire"]
 
 
-def test_rationalise3_canon_memo_is_per_run():
+def test_canon_memo_is_per_run():
     """The canon memo bounds one run's recursion (§7) — a later run of the
-    same entry starts fresh."""
+    same entry starts fresh: both runs process fully and agree."""
 
     def fresh():
-        return rationalise3(base_domain(k(AB, A, B)), k(A, A))
+        return rationalise(base_domain(k(AB, A, B)), k(A, A))
 
     first, second = fresh(), fresh()
-    for r in (first, second):
-        assert not any(e.reason.startswith("bound: recursion seen") for e in r.ends)
     assert first.stores == second.stores == [k(A, A)]  # both runs process fully
+    assert first.ends == second.ends  # the memo leaves no residue across runs
 
 
-def test_rationalisation_reaches_s1_through_reentry():
-    # S3 candidate → R3 product ⟨AB, {A,B}⟩ re-enters as a new work entry:
-    # its own first candidate ⟨AB, {A}⟩ is the opener, licensed when a
-    # sibling candidate reaches S1 (R1, Definition 9)
+def test_s3_candidate_stores_when_its_product_returns():
+    # S3 candidate ⟨C, {AB}⟩ → R3 product ⟨C, {A,B}⟩ re-enters: its own
+    # candidates reach S1 and the product returns with stores — the
+    # candidate stores as a licensed claim (R1 through R3)
     d = base_domain(k(AB, A, B), k(ABC, AB))
     r = rationalise(d, k(C, C))
-    assert k(AB, A) in r.stores  # the re-entered entry's first candidate
-    assert k(AB, A) in d
-    assert k(C, AB) not in d  # traces no longer span reentries (amendment 18)
-    assert k(AB, AB) not in d  # the S1 endpoint is constructable — not minted
-
-
-def test_rationalisation_is_bounded_under_cycles():
-    d = base_domain(k(AB, A, B, C))  # pure-overfit source: fit product re-derives S2
-    r = rationalise(d, k(A, A, B), max_rounds=16)
-    assert r.rounds <= 16  # arrival is strategy (§7): the bound holds
+    assert k(C, AB) in r.stores  # the licensed claim — kept by the product
+    assert k(AB, AB) in d  # the product's own S1 mint (not in the outer stores)
+    assert not d.is_canonical(k(C, AB))  # a licensed claim, not a canon

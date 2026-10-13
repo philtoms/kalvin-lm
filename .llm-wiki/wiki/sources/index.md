@@ -344,6 +344,7 @@
 - [Observation: TRS spec §5 resynced to rationalise3: fit product earns, split returns on first cross S1](obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-.md)
 - [Observation: D13 R2 entropy theorem inverted by same-side pairing](obs-2026-10-12-d13-r2-entropy-theorem-inverted-by-same-side-pairing.md)
 - [Observation: R2 same-side pairing settled; spec §5 resynced](obs-2026-10-12-r2-same-side-pairing-settled-spec-5-resynced.md)
+- [Observation: Runner consolidation: rationalise3 is now rationalise; nested-end propagation fixed](obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-.md)
 - [Operator semantics swaps: move shapes or move names — the countersign test decides](shape-swap-vs-name-swap-operator-semantics.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)
