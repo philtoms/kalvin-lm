@@ -289,15 +289,17 @@ def rationalise(d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None
 
     Every kline runs the Definition 9 pipeline as an entry (presented or
     re-entry, Definition 8); its candidates consolidate first and route
-    by band. R3 runs as a rewrite loop: an S3 candidate substitutes — a
-    held head expands forward, else the supplying witness substitutes by
-    proof (the node ↦ the supplier's head) — the rewrite is retained and
-    the consumed supplier leaves the list; rounds regenerate candidates
-    until none remain, then the accumulated kline stores (R1 at S1, a
-    licensed claim otherwise). An S2 split's fit stores in its own right;
-    its residual products ground for their own sake. A re-entry's halts
-    are the tree's halts; its stores are its own. Bounds (§7 strategy):
-    re-entry depth 10 and a per-run memo of processed entry canons.
+    by band. The loop carries an increasingly smaller signature: every
+    grounding — an S1 candidate, an S2 split's canonical fit, an S3
+    substitution whose rewrite carries claim bits (a held head expands
+    forward, else the supplying witness substitutes by proof) — shrinks
+    the residual claim, and the next round derives its candidates against
+    the residual: the grounded suppliers drop out structurally, their
+    overlap with the claim being exactly what they grounded. The loop
+    runs until the claim grounds (R1 — the accumulated kline stores, a
+    canon when exact) or the residual asks. A starved fit and the O-side
+    products ground for their own sake. Bounds (§7 strategy): re-entry
+    depth 10 and a per-run memo of processed entry canons.
     """
 
     stores: list[Kline] = []
@@ -322,30 +324,46 @@ def rationalise(d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None
     if any(not nb.adj for nb in nbs):  # terminal witnesses consolidate into one ask
         c0 = Kline(c_e, frozenset())
         ends.append(End("R4: candidate with no adjacency", c0, effort(c0)))
-    work: set = set()  # the retained rewrite — accumulated substitutions
-    consumed: set = set()  # suppliers already processed — excluded from new candidates
-    while True:
-        live = [nb for nb in d.overlap(entry.sig) if nb not in consumed and nb.adj != frozenset([nb.sig]) and nb.adj]
+    grounded = 0  # the grounded bits — the residual signature shrinks as it grows
+    work: set = set()  # the witnesses that grounded the claim
+    licensed = False  # an S3 substitution grounded claim content by proof
+    res_sig, res_adj = entry.sig, entry.adj
+    while res_adj:
+        live = [nb for nb in d.overlap(res_sig) if nb.adj and nb.adj != frozenset([nb.sig])]
         if not live:
+            if grounded and res_sig:  # the residual asks
+                res = Kline(res_sig, res_adj)
+                ends.append(End("no candidates — the entry terminates", res, effort(res)))
             break
-        progress = False
-        for c, suppliers in candidates(c_e, live):  # candidate order is §7 strategy
-            consumed |= set(suppliers)  # every processed candidate leaves the list
+        rc = can(res_adj)  # the residual canon — the round's candidate head
+        shrank = False
+        for c, suppliers in candidates(rc, live):  # candidate order is §7 strategy
             b = band(c)
             if b is Band.S1:
                 admit(d, stores, c)
+                work |= c.adj
+                if rc & ~grounded:
+                    grounded |= rc
+                    shrank = True
 
             elif b is Band.S2:
                 # the fit stores in its own right — it is the aggregate of
-                # what the witnesses actually cover; a starved fit re-enters
-                # as its own ask. The residual products ground for their own
-                # sake — no product return stores the candidate.
-                products, k_f = r2_products(c, entry)
+                # what the witnesses actually cover. A canonical fit
+                # grounds its bits and the loop carries the U-side as the
+                # residual; a starved fit re-enters as its own ask. The
+                # O-side products ground for their own sake.
+                products, k_f = r2_products(c, Kline(res_sig, res_adj))
                 if band(k_f) is Band.S1:
                     admit(d, stores, k_f)
+                    work |= k_f.adj
+                    if k_f.sig & ~grounded:
+                        grounded |= k_f.sig
+                        shrank = True
                 else:
                     products.append(k_f)
                 for prod in products:
+                    if shrank and prod.sig == decompose(c).U:  # the loop carries the U-side
+                        continue
                     r = rationalise(d, prod, depth + 1, seen)
                     ends.extend(r.ends)
 
@@ -353,16 +371,23 @@ def rationalise(d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None
                 n_prime = r3_substitute(d, c)  # R3 — substitute forward: held heads expand
                 if n_prime == c.adj:  # like for like — the supplier is the proof
                     n_prime = frozenset(nb.sig if n in nb.adj else n for nb in suppliers for n in c.adj)
+                f = rc & can(n_prime) & ~grounded if n_prime else 0  # the NEW bits the rewrite grounds
                 if not n_prime:
                     ends.append(End("R4: expansion emptied the adjacency", c, effort(c)))
-                elif n_prime == c.adj:
-                    ends.append(End("R4: substitution like for like", c, effort(c)))
+                elif not f:
+                    ends.append(End("R4: substitution grounds nothing", c, effort(c)))
                 else:
                     work |= n_prime  # the rewrite work, retained
-                    progress = True
-        if not progress:
+                    grounded |= f
+                    licensed = True
+                    shrank = True
+            if shrank:  # one grounding per round — rederive against the smaller signature
+                break
+        if not shrank:
             break
-    if work:
+        res_sig = entry.sig & ~grounded
+        res_adj = frozenset(n for n in entry.adj if not contained(n, grounded))
+    if work and licensed:
         admit(d, stores, Kline(c_e, frozenset(work)))  # R1 at S1; the licensed claim otherwise
     return Rationalisation(stores, ends, depth)
 

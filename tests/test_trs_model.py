@@ -233,12 +233,15 @@ def test_proposal_connect_from_empty_overlap():
 
 
 def test_proposal_continue_names_the_seen_bound():
-    # two crossing candidates share the U-product ⟨C,{C}⟩ — the second
-    # re-entry re-derives a processed canon and the seen memo bounds it
+    # two crossing candidates: the first grounds AB through its fit; the
+    # second's O-product re-derives a processed canon — the seen memo bounds
+    # it — and the shrunk residual ⟨C,{C}⟩ asks connect
     d = Domain([Kline(0b1011, frozenset({AB, D})), Kline(0b10011, frozenset({AB, 16}))])
     r = rationalise(d, k(ABC, A, B, C))
-    ps = [p for p in proposals(r) if p.kind == "continue"]
-    assert any(p.kline == k(C, C) and p.effort == effort(k(C, C)) for p in ps)  # the re-derived product
+    ps = proposals(r)
+    cont = [p for p in ps if p.kind == "continue"]
+    assert cont and cont[0].kline == Kline(16, frozenset({16}))  # the re-derived product
+    assert any(p.kind == "connect" and p.kline == k(C, C) for p in ps)  # the residual asks
 
 
 def test_emptied_expansion_records_its_candidate():
@@ -315,15 +318,15 @@ def test_canon_memo_is_per_run():
     assert first.ends == second.ends  # the memo leaves no residue across runs
 
 
-def test_s3_rewrite_is_retained_as_the_licensed_claim():
-    # S3 candidate ⟨C, {AB}⟩ substitutes forward (AB ↦ {A,B}); the rewrite
-    # is retained and stores as the licensed claim ⟨C, {A,B}⟩ — no
-    # intermediate identity mint, no product-returns-stores condition
+def test_s3_grounds_nothing_asks_instead_of_claiming():
+    # the forward expansion {A,B} carries no bit of the claim C — the
+    # rewrite grounds nothing of the residual: an acquire ask, not a
+    # contentless licensed claim
     d = base_domain(k(AB, A, B), k(ABC, AB))
     r = rationalise(d, k(C, C))
-    assert r.stores == [Kline(C, frozenset({A, B}))]  # the retained rewrite
-    assert not d.is_canonical(Kline(C, frozenset({A, B})))  # a licensed claim, not a canon
-    assert r.ends == []
+    assert r.stores == []
+    ends = [e for e in r.ends if e.reason == "R4: substitution grounds nothing"]
+    assert ends and ends[0].kline == k(C, AB)
 
 
 # --- §5 candidate consolidation ---
@@ -371,13 +374,14 @@ def test_partial_coverage_stores_the_fit_and_asks_the_residual():
 
 
 def test_uncovered_witnesses_stay_out_of_the_aggregate():
-    # the ⟨ABC,{CD}⟩ witness is not covered (CD ⊄ AB) — it stands alone:
-    # its S3 substitution by proof (CD ↦ ABC) stores as its own claim,
-    # while the covered aggregate is stored uncontaminated
+    # the ⟨ABC,{CD}⟩ witness is not covered (CD ⊄ AB) — it stands alone;
+    # the covered aggregate grounds the whole claim first and the loop
+    # ends: the store is exactly the aggregate, uncontaminated
     d = base_domain(k(CD, CD), k(ABC, CD), k(ABD, A, B))
     r = rationalise(d, k(AB, A, B))
-    assert r.stores == [k(AB, A, B), Kline(AB, frozenset({ABC}))]  # aggregate first, claim separate
-    assert d.is_canonical(k(AB, A, B))  # the aggregate is a canon
+    assert r.stores == [k(AB, A, B)]
+    assert r.ends == []
+    assert d.is_canonical(k(AB, A, B))
 
 
 def test_terminal_neighbours_consolidate_into_one_ask():
@@ -401,11 +405,25 @@ def test_r3_loop_runs_until_r1():
 
 def test_s3_substitutes_by_proof_when_no_head_expands():
     # the witness node C is never a held head — forward R3 is like for
-    # like; the supplying claim ⟨AC,{C}⟩ is the proof: C ↦ AC
+    # like; the supplying claim ⟨AC,{C}⟩ is the proof: C ↦ AC grounds A,
+    # the signature shrinks, and the residual B asks connect
     d = Domain([Kline(A | C, frozenset({C}))])
     r = rationalise(d, k(AB, A, B))
     assert r.stores == [Kline(AB, frozenset({A | C}))]
-    assert r.ends == []  # no like-for-like dead end
+    ps = proposals(r)
+    assert len(ps) == 1 and ps[0].kind == "connect" and ps[0].kline == k(B, B)
+
+
+def test_grounded_suppliers_drop_structurally():
+    # once the proof substitution grounds A, the stale supplier ⟨AE,{C}⟩
+    # no longer overlaps the residual ⟨B,{B}⟩ — it generates nothing; the
+    # exclusion is the smaller signature, not bookkeeping
+    d = Domain([Kline(A | C, frozenset({C})), Kline(A | 16, frozenset({C}))])
+    r = rationalise(d, k(AB, A, B))
+    assert len(r.stores) == 1 and r.stores[0].sig == AB  # one claim, not one per supplier
+    assert r.stores[0].adj <= frozenset({A | C, A | 16}) and len(r.stores[0].adj) == 1  # a single proof head
+    ps = proposals(r)
+    assert ps and ps[0].kind == "connect" and ps[0].kline == k(B, B)
 
 
 def test_s3_rewrites_accumulate_across_candidates():

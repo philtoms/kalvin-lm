@@ -348,6 +348,7 @@
 - [Observation: KNode.merge label composition made idempotent](obs-2026-10-13-knode-merge-label-composition-made-idempotent.md)
 - [Observation: TRS candidate consolidation implemented — earned state removed](obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed.md)
 - [Observation: TRS identities filtered from candidates — self-confirmation suppressed](obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su.md)
+- [Observation: TRS R3 loop carries shrinking signature — consumed set removed](obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed.md)
 - [Observation: TRS R3 rewrite loop — substitution by proof, work retained until R1](obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti.md)
 - [Operator semantics swaps: move shapes or move names — the countersign test decides](shape-swap-vs-name-swap-operator-semantics.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)

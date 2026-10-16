@@ -366,3 +366,4 @@
 {"slug":"obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed","title":"TRS candidate consolidation implemented — earned state removed","relevance":"high","timestamp":"2026-10-16T13:17:44.431Z","kind":"observe"}
 {"slug":"obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su","title":"TRS identities filtered from candidates — self-confirmation suppressed","relevance":"high","timestamp":"2026-10-16T14:17:44.288Z","kind":"observe"}
 {"slug":"obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti","title":"TRS R3 rewrite loop — substitution by proof, work retained until R1","relevance":"high","timestamp":"2026-10-16T15:30:55.335Z","kind":"observe"}
+{"slug":"obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed","title":"TRS R3 loop carries shrinking signature — consumed set removed","relevance":"high","timestamp":"2026-10-16T16:10:36.544Z","kind":"observe"}

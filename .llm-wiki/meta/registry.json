@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-16T15:30:55.424Z",
+  "last_updated": "2026-10-16T16:10:36.641Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6548,6 +6548,25 @@
       "relevance": "high",
       "observed_at": "2026-10-16T14:17:44.286Z",
       "source_context": "TRS rationalise redesign, step 2: identity neighbours filtered from candidates",
+      "created": "2026-10-16",
+      "updated": "2026-10-16"
+    },
+    "sources/obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed": {
+      "type": "source",
+      "title": "Observation: TRS R3 loop carries shrinking signature — consumed set removed",
+      "tags": [
+        "trs",
+        "rationalise",
+        "redesign",
+        "residual-signature",
+        "termination",
+        "r3-loop"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed",
+      "relevance": "high",
+      "observed_at": "2026-10-16T16:10:36.542Z",
+      "source_context": "TRS rationalise redesign, step 4: residual signature replaces consumed set",
       "created": "2026-10-16",
       "updated": "2026-10-16"
     },

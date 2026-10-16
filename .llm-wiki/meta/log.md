@@ -1106,3 +1106,6 @@
 ## [2026-10-16T15:30:55.335Z] observe
 - slug: "obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti", title: "TRS R3 rewrite loop — substitution by proof, work retained until R1", relevance: "high"
 
+## [2026-10-16T16:10:36.544Z] observe
+- slug: "obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed", title: "TRS R3 loop carries shrinking signature — consumed set removed", relevance: "high"
+

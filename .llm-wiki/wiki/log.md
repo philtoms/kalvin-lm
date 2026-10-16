@@ -2,6 +2,7 @@
 
 ## 2026-10-16
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed","title":"TRS R3 loop carries shrinking signature — consumed set removed"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti","title":"TRS R3 rewrite loop — substitution by proof, work retained until R1"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su","title":"TRS identities filtered from candidates — self-confirmation suppressed"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed","title":"TRS candidate consolidation implemented — earned state removed"}
