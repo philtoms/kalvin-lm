@@ -208,7 +208,8 @@ def effort(k: Kline, beta: Fraction = BETA) -> Fraction:
 
 def r2_products(c: Kline, k: Kline) -> tuple[list[Kline], Kline]:
     """R2 (§5 Rule R2) — same-side products for the non-empty residual
-    heads; the fit kline is earned, not re-entered."""
+    heads; the fit kline is returned separately and stores in its own
+    right."""
     t = decompose(c)
     n_f = frozenset(n for n in c.adj if contained(n, t.F))
     n_o = frozenset(n for n in c.adj if contained(n, t.O))
@@ -239,6 +240,25 @@ def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
 # --- §5 — reentry: the rationalisation runner ---
 
 
+def candidates(c_e: KNode, nbs: "list[Kline]") -> "list[tuple[Kline, tuple[Kline, ...]]]":
+    """The consolidated candidate set with its suppliers: fully covered
+    witnesses — canon ⪯ c_e — aggregate into one candidate; uncovered
+    witnesses stand alone."""
+    covered = [nb for nb in nbs if contained(can(nb.adj), c_e)]
+    out: "list[tuple[Kline, tuple[Kline, ...]]]" = []
+    if covered:
+        out.append((Kline(c_e, frozenset().union(*(nb.adj for nb in covered))), tuple(covered)))
+    out.extend((Kline(c_e, nb.adj), (nb,)) for nb in nbs if nb not in covered)
+    return out
+
+
+def admit(d: Domain, stores: "list[Kline]", c: Kline) -> None:
+    """R1 — store; idempotent, reported once per run."""
+    d.add(c)
+    if c not in stores:
+        stores.append(c)
+
+
 @dataclass(frozen=True)
 class End:
     """A terminal arrival — with the halt measure (Definition 14) where a kline halted."""
@@ -264,18 +284,20 @@ class Rationalisation:
     rounds: int
 
 
-def rationalise(
-    d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None = None, earned: Kline | None = None
-) -> Rationalisation:
+def rationalise(d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None = None) -> Rationalisation:
     """§5 as one recursive function — the standardised reentry.
 
     Every kline runs the Definition 9 pipeline as an entry (presented or
-    re-entry, Definition 8); its candidates route by band. R1 stores the
-    candidate merged with the earned composition — an S1 arrival
-    directly, or an S3 arrival whose substituted re-entry returns with
-    stores. The recursion returns at S1 — the entry stored — or S4.
-    Bounds (§7 strategy): re-entry depth 10 and a per-run memo of
-    processed entry canons.
+    re-entry, Definition 8); its candidates consolidate first and route
+    by band. R3 runs as a rewrite loop: an S3 candidate substitutes — a
+    held head expands forward, else the supplying witness substitutes by
+    proof (the node ↦ the supplier's head) — the rewrite is retained and
+    the consumed supplier leaves the list; rounds regenerate candidates
+    until none remain, then the accumulated kline stores (R1 at S1, a
+    licensed claim otherwise). An S2 split's fit stores in its own right;
+    its residual products ground for their own sake. A re-entry's halts
+    are the tree's halts; its stores are its own. Bounds (§7 strategy):
+    re-entry depth 10 and a per-run memo of processed entry canons.
     """
 
     stores: list[Kline] = []
@@ -293,51 +315,55 @@ def rationalise(
     if depth >= 10:
         ends.append(End("bound: recursion depth reached", entry, effort(entry)))
         return Rationalisation(stores, ends, depth)
-    nbs = d.overlap(entry.sig)
+    nbs = [nb for nb in d.overlap(entry.sig) if nb.adj != frozenset([nb.sig])]  # identities witness only themselves
     if not nbs:
         ends.append(End("no candidates — the entry terminates", entry, effort(entry)))
         return Rationalisation(stores, ends, depth)
-    cands = [Kline(c_e, nb.adj) for nb in nbs]  # neighbour order is §7 strategy
-    for c in cands:
-        ok = False
-        # later candidates inherit the earned adjacencies (§5)
-        b = band(c)
-        if b is Band.S1:
-            ok = True
+    if any(not nb.adj for nb in nbs):  # terminal witnesses consolidate into one ask
+        c0 = Kline(c_e, frozenset())
+        ends.append(End("R4: candidate with no adjacency", c0, effort(c0)))
+    work: set = set()  # the retained rewrite — accumulated substitutions
+    consumed: set = set()  # suppliers already processed — excluded from new candidates
+    while True:
+        live = [nb for nb in d.overlap(entry.sig) if nb not in consumed and nb.adj != frozenset([nb.sig]) and nb.adj]
+        if not live:
+            break
+        progress = False
+        for c, suppliers in candidates(c_e, live):  # candidate order is §7 strategy
+            consumed |= set(suppliers)  # every processed candidate leaves the list
+            b = band(c)
+            if b is Band.S1:
+                admit(d, stores, c)
 
-        elif b is Band.S2:
-            # the fit kline is earned — merged into the composition that
-            # rides with the split; the residual products re-enter in
-            # order, each carrying it, and ground for their own sake — no
-            # product return stores the candidate. A product with no
-            # adjacency routes to R4.
-            products, nf = r2_products(c, entry)
-            for prod in products:
-                r = rationalise(d, prod, depth + 1, seen, nf.merge(earned))
-                ends.extend(r.ends)
-                stores.extend(r.stores)
-                
-        elif b is Band.S3:
-            n_prime = r3_substitute(d, c)  # R3 — substitute the candidate
-            if not n_prime:
-                ends.append(End("R4: expansion emptied the adjacency", c, effort(c)))
-            elif n_prime == c.adj:
-                ends.append(End("R4: substitution like for like", c, effort(c)))
-            else:
-                r_prod = rationalise(d, Kline(c.sig, n_prime), depth + 1, seen)  # the claim is kept
-                ends.extend(r_prod.ends)  # the product's halts are the tree's halts
-                if r_prod.stores:
-                    ok = True
+            elif b is Band.S2:
+                # the fit stores in its own right — it is the aggregate of
+                # what the witnesses actually cover; a starved fit re-enters
+                # as its own ask. The residual products ground for their own
+                # sake — no product return stores the candidate.
+                products, k_f = r2_products(c, entry)
+                if band(k_f) is Band.S1:
+                    admit(d, stores, k_f)
+                else:
+                    products.append(k_f)
+                for prod in products:
+                    r = rationalise(d, prod, depth + 1, seen)
+                    ends.extend(r.ends)
 
-        elif b is Band.S4:
-            ends.append(End("R4: candidate with no adjacency", c, effort(c)))
-
-        if ok:
-            s = c.merge(earned)
-            d.add(s)
-            if not c in stores:
-                stores.append(s)
-        
+            elif b is Band.S3:
+                n_prime = r3_substitute(d, c)  # R3 — substitute forward: held heads expand
+                if n_prime == c.adj:  # like for like — the supplier is the proof
+                    n_prime = frozenset(nb.sig if n in nb.adj else n for nb in suppliers for n in c.adj)
+                if not n_prime:
+                    ends.append(End("R4: expansion emptied the adjacency", c, effort(c)))
+                elif n_prime == c.adj:
+                    ends.append(End("R4: substitution like for like", c, effort(c)))
+                else:
+                    work |= n_prime  # the rewrite work, retained
+                    progress = True
+        if not progress:
+            break
+    if work:
+        admit(d, stores, Kline(c_e, frozenset(work)))  # R1 at S1; the licensed claim otherwise
     return Rationalisation(stores, ends, depth)
 
 

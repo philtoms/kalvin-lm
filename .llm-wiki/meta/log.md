@@ -1097,3 +1097,12 @@
 ## [2026-10-13T09:55:06.670Z] observe
 - slug: "obs-2026-10-13-knode-merge-label-composition-made-idempotent", title: "KNode.merge label composition made idempotent", relevance: "medium"
 
+## [2026-10-16T13:17:44.431Z] observe
+- slug: "obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed", title: "TRS candidate consolidation implemented — earned state removed", relevance: "high"
+
+## [2026-10-16T14:17:44.288Z] observe
+- slug: "obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su", title: "TRS identities filtered from candidates — self-confirmation suppressed", relevance: "high"
+
+## [2026-10-16T15:30:55.335Z] observe
+- slug: "obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti", title: "TRS R3 rewrite loop — substitution by proof, work retained until R1", relevance: "high"
+

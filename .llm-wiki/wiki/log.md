@@ -1,5 +1,11 @@
 # Wiki Update Log
 
+## 2026-10-16
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti","title":"TRS R3 rewrite loop — substitution by proof, work retained until R1"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su","title":"TRS identities filtered from candidates — self-confirmation suppressed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed","title":"TRS candidate consolidation implemented — earned state removed"}
+
 ## 2026-10-13
 
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-13-knode-merge-label-composition-made-idempotent","title":"KNode.merge label composition made idempotent"}

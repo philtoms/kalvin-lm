@@ -425,6 +425,9 @@
 - [[sources/obs-2026-10-12-r2-same-side-pairing-settled-spec-5-resynced]] — Observation: R2 same-side pairing settled; spec §5 resynced *(created: 2026-10-12)*
 - [[sources/obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-]] — Observation: Runner consolidation: rationalise3 is now rationalise; nested-end propagation fixed *(created: 2026-10-12)*
 - [[sources/obs-2026-10-13-knode-merge-label-composition-made-idempotent]] — Observation: KNode.merge label composition made idempotent *(created: 2026-10-13)*
+- [[sources/obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed]] — Observation: TRS candidate consolidation implemented — earned state removed *(created: 2026-10-16)*
+- [[sources/obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su]] — Observation: TRS identities filtered from candidates — self-confirmation suppressed *(created: 2026-10-16)*
+- [[sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti]] — Observation: TRS R3 rewrite loop — substitution by proof, work retained until R1 *(created: 2026-10-16)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -435,4 +438,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-13T09:55:06.753Z* | *Total pages: 423*
+*Last updated: 2026-10-16T15:30:55.424Z* | *Total pages: 426*

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-13T09:55:06.753Z",
+  "last_updated": "2026-10-16T15:30:55.424Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6514,6 +6514,62 @@
       "source_context": "Fixing knode.merge label duplication",
       "created": "2026-10-13",
       "updated": "2026-10-13"
+    },
+    "sources/obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed": {
+      "type": "source",
+      "title": "Observation: TRS candidate consolidation implemented — earned state removed",
+      "tags": [
+        "trs",
+        "rationalise",
+        "redesign",
+        "candidate-consolidation",
+        "earned-removal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed",
+      "relevance": "high",
+      "observed_at": "2026-10-16T13:17:44.428Z",
+      "source_context": "TRS rationalise redesign, step 1: candidate consolidation",
+      "created": "2026-10-16",
+      "updated": "2026-10-16"
+    },
+    "sources/obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su": {
+      "type": "source",
+      "title": "Observation: TRS identities filtered from candidates — self-confirmation suppressed",
+      "tags": [
+        "trs",
+        "rationalise",
+        "redesign",
+        "identity-filter",
+        "self-confirmation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su",
+      "relevance": "high",
+      "observed_at": "2026-10-16T14:17:44.286Z",
+      "source_context": "TRS rationalise redesign, step 2: identity neighbours filtered from candidates",
+      "created": "2026-10-16",
+      "updated": "2026-10-16"
+    },
+    "sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti": {
+      "type": "source",
+      "title": "Observation: TRS R3 rewrite loop — substitution by proof, work retained until R1",
+      "tags": [
+        "trs",
+        "rationalise",
+        "redesign",
+        "r3",
+        "substitution-by-proof",
+        "rewrite-loop",
+        "licensed-claim"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti",
+      "relevance": "high",
+      "observed_at": "2026-10-16T15:30:55.332Z",
+      "source_context": "TRS rationalise redesign, step 3: R3 rewrite loop with proof substitution",
+      "created": "2026-10-16",
+      "updated": "2026-10-16"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

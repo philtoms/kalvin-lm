@@ -233,13 +233,12 @@ def test_proposal_connect_from_empty_overlap():
 
 
 def test_proposal_continue_names_the_seen_bound():
-    # the substitution re-derives an already-processed canon — the seen memo
-    # bounds the recursion and the halted product continues (§7, Definition 15)
-    d = base_domain(k(C, D), k(D, A, B))
-    r = rationalise(d, k(C, A, B))
+    # two crossing candidates share the U-product ⟨C,{C}⟩ — the second
+    # re-entry re-derives a processed canon and the seen memo bounds it
+    d = Domain([Kline(0b1011, frozenset({AB, D})), Kline(0b10011, frozenset({AB, 16}))])
+    r = rationalise(d, k(ABC, A, B, C))
     ps = [p for p in proposals(r) if p.kind == "continue"]
-    assert ps and ps[0].kline == k(AB, A, B)  # the re-entered product that re-met its canon
-    assert ps[0].effort == effort(ps[0].kline)
+    assert any(p.kline == k(C, C) and p.effort == effort(k(C, C)) for p in ps)  # the re-derived product
 
 
 def test_emptied_expansion_records_its_candidate():
@@ -316,12 +315,115 @@ def test_canon_memo_is_per_run():
     assert first.ends == second.ends  # the memo leaves no residue across runs
 
 
-def test_s3_candidate_stores_when_its_product_returns():
-    # S3 candidate ⟨C, {AB}⟩ → R3 product ⟨C, {A,B}⟩ re-enters: its own
-    # candidates reach S1 and the product returns with stores — the
-    # candidate stores as a licensed claim (R1 through R3)
+def test_s3_rewrite_is_retained_as_the_licensed_claim():
+    # S3 candidate ⟨C, {AB}⟩ substitutes forward (AB ↦ {A,B}); the rewrite
+    # is retained and stores as the licensed claim ⟨C, {A,B}⟩ — no
+    # intermediate identity mint, no product-returns-stores condition
     d = base_domain(k(AB, A, B), k(ABC, AB))
     r = rationalise(d, k(C, C))
-    assert k(C, AB) in r.stores  # the licensed claim — kept by the product
-    assert k(AB, AB) in d  # the product's own S1 mint (not in the outer stores)
-    assert not d.is_canonical(k(C, AB))  # a licensed claim, not a canon
+    assert r.stores == [Kline(C, frozenset({A, B}))]  # the retained rewrite
+    assert not d.is_canonical(Kline(C, frozenset({A, B})))  # a licensed claim, not a canon
+    assert r.ends == []
+
+
+# --- §5 candidate consolidation ---
+
+
+def test_covered_candidates_aggregate_into_one_s1():
+    # SVO:[S], SVO:[V], SVO:[O] — each witness fully covered by the canon;
+    # aggregated into SVO:[S,V,O], itself S1: one store, no reentry, no ends.
+    # The witnesses are cross-canons, not identities — grounding is cross-structure
+    d = Domain([k(AB, A, B), k(BC, B, C)])
+    r = rationalise(d, k(ABC, A, B, C))
+    assert r.stores == [k(ABC, A, B, C)]
+    assert r.ends == []
+    assert d.is_canonical(k(ABC, A, B, C))
+
+
+def test_identities_witness_nothing():
+    # over a pure atom substrate every neighbour is an identity — the
+    # entry cannot ground through its own reflexive decomposition; it asks
+    d = base_domain()
+    r = rationalise(d, k(ABC, A, B, C))
+    assert r.stores == []
+    assert [e.reason for e in r.ends] == ["no candidates — the entry terminates"]
+    ps = proposals(r)
+    assert ps[0].kind == "connect" and ps[0].kline == k(ABC, A, B, C)
+
+
+def test_aggregation_unions_witnesses_from_many_klines():
+    # ⟨A,{A}⟩ and ⟨ABD,{A,B}⟩ both fully covered — the aggregate carries
+    # the union {A,B} under the canon AB: the whole is S1 in one step
+    d = base_domain(k(ABD, A, B))
+    r = rationalise(d, k(AB, A, B))
+    assert r.stores == [k(AB, A, B)]
+
+
+def test_partial_coverage_stores_the_fit_and_asks_the_residual():
+    # only the AB canon witnessed: the aggregate ⟨ABC,{A,B}⟩ is S2 — its
+    # fit ⟨AB,{A,B}⟩ stores in its own right (nothing rides), the residual
+    # ⟨C,{C}⟩ meets only identities and asks connect
+    d = Domain([k(AB, A, B)])
+    r = rationalise(d, k(ABC, A, B, C))
+    assert r.stores == [k(AB, A, B)]
+    ps = proposals(r)
+    assert len(ps) == 1 and ps[0].kind == "connect" and ps[0].kline == k(C, C)
+
+
+def test_uncovered_witnesses_stay_out_of_the_aggregate():
+    # the ⟨ABC,{CD}⟩ witness is not covered (CD ⊄ AB) — it stands alone:
+    # its S3 substitution by proof (CD ↦ ABC) stores as its own claim,
+    # while the covered aggregate is stored uncontaminated
+    d = base_domain(k(CD, CD), k(ABC, CD), k(ABD, A, B))
+    r = rationalise(d, k(AB, A, B))
+    assert r.stores == [k(AB, A, B), Kline(AB, frozenset({ABC}))]  # aggregate first, claim separate
+    assert d.is_canonical(k(AB, A, B))  # the aggregate is a canon
+
+
+def test_terminal_neighbours_consolidate_into_one_ask():
+    # two terminal witnesses overlap the canon — one empty candidate, one
+    # acquire ask, not one per terminal neighbour
+    d = base_domain(k(AB), k(A | C))
+    r = rationalise(d, k(A, A))
+    halts = [e for e in r.ends if e.reason == "R4: candidate with no adjacency"]
+    assert len(halts) == 1 and halts[0].kline == k(A)
+
+
+def test_r3_loop_runs_until_r1():
+    # R3 → substitute (D ↦ {A,B} forward) → new candidate list → reenter:
+    # the rewrite covers the canon exactly — the accumulated kline is S1
+    # and stores; no halts, no asks
+    d = base_domain(k(C, D), k(D, A, B))
+    r = rationalise(d, k(C, A, B))
+    assert r.stores == [k(AB, A, B)]
+    assert r.ends == []
+
+
+def test_s3_substitutes_by_proof_when_no_head_expands():
+    # the witness node C is never a held head — forward R3 is like for
+    # like; the supplying claim ⟨AC,{C}⟩ is the proof: C ↦ AC
+    d = Domain([Kline(A | C, frozenset({C}))])
+    r = rationalise(d, k(AB, A, B))
+    assert r.stores == [Kline(AB, frozenset({A | C}))]
+    assert r.ends == []  # no like-for-like dead end
+
+
+def test_s3_rewrites_accumulate_across_candidates():
+    # subject and verb analogs: two S3 candidates, each substitutes by
+    # proof — one claim carries both rewrites, the cross-link earned
+    d = Domain([Kline(A | C, frozenset({C})), Kline(B | D, frozenset({D}))])
+    r = rationalise(d, k(AB, A, B))
+    assert r.stores == [Kline(AB, frozenset({A | C, B | D}))]
+    assert r.ends == []
+
+
+def test_starved_fit_reenters_as_its_own_ask():
+    # the crossing node BC starves the fit (⟨B,∅⟩, not S1) — it re-enters
+    # and halts at R4: the pairing's own acquire; nothing stores
+    d = base_domain(k(ABC, BC))
+    r = rationalise(d, k(AB, A, B))
+    assert r.stores == []
+    assert any(
+        e.reason == "R4: entry kline with no adjacency" and e.kline == Kline(B, frozenset())
+        for e in r.ends
+    )
