@@ -37,6 +37,12 @@ Sigless operator scope (single-line annotation):
     signature from the annotation words' initials (DFPAS), so large texts
     can be chunked without hand-writing compounds.
 
+Operator arity — `=`, `>`, `<` are one-to-one:
+
+    A denotation or connotation relates exactly one node (a same-line
+    item or a block construct). More than one node is a parse error —
+    chain (``A < B < C``) or scaffold a ``=>`` block.
+
 Inline annotations:
 
     Sig-side   S(ubject) = M   →  OperatorScope.inline_annotation
@@ -82,6 +88,11 @@ _OPERATOR_TYPES: frozenset[TokenType] = frozenset(
         TokenType.RCONNOTES,
         TokenType.DENOTES,
     }
+)
+
+#: One-to-one operators — a denotation or connotation relates one node.
+_ONE_TO_ONE_OPS: frozenset[TokenType] = frozenset(
+    {TokenType.CONNOTES, TokenType.RCONNOTES, TokenType.DENOTES}
 )
 
 
@@ -293,8 +304,10 @@ class Parser:
         """Parse an operator scope past its (already consumed) signature."""
         # Operator (optional — bare signature if absent)
         op: TokenType | None = None
+        op_tok: Token | None = None
         if not self._at_end() and self._peek().type in _OPERATOR_TYPES:
-            op = self._advance().type
+            op_tok = self._advance()
+            op = op_tok.type
 
         if op is None:
             # Bare unsigned signature
@@ -309,6 +322,18 @@ class Parser:
         if not self._at_end() and self._peek().type == TokenType.INDENT:
             child_block = self._parse_block()
 
+        if op_tok is not None and op_tok.type in _ONE_TO_ONE_OPS:
+            node_items = sum(
+                isinstance(item, (Signature, OperatorScope)) for item in items
+            )
+            block_nodes = self._count_block_nodes(child_block) if child_block else 0
+            if node_items + block_nodes > 1:
+                raise ParseError(
+                    "a connotation or denotation relates one node; chain "
+                    "operators (A < B < C) or scaffold a `=>` block for more",
+                    op_tok,
+                )
+
         return OperatorScope(
             sig=sig,
             op=op,
@@ -316,6 +341,17 @@ class Parser:
             child_block=child_block,
             inline_annotation=inline_ann,
         )
+
+    @staticmethod
+    def _count_block_nodes(block: Block) -> int:
+        """Node-bearing constructs in a block: each OperatorScope is one node."""
+        total = 0
+        for construct in block.constructs:
+            if isinstance(construct, OperatorScope):
+                total += 1
+            elif isinstance(construct, Block):
+                total += Parser._count_block_nodes(construct)
+        return total
 
     # Items  (same-line nodes within an operator scope)
 
