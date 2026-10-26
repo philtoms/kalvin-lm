@@ -54,7 +54,7 @@ from __future__ import annotations
 import contextlib
 
 from kalvin.abstract import KSignifier, KTokenizer
-from kalvin.kline import ASK_SIG, KDbg, KLine, KNode, using_resolver
+from kalvin.kline import ASK_SIG, KDbg, KLine, KNode, is_exact, using_resolver
 from kalvin.kvalue import KValue
 from kalvin.significance import SIG_S1, band_significance
 from kalvin.signifier import NLPSignifier
@@ -260,6 +260,10 @@ class TokenEncoder:
             if entry.is_expansion
             else band_significance(entry.op)
         )
+        # A canon-exact ask is a full canon — the fed band is its content
+        # (S1), not the ask's marker band.
+        if entry.op == "ASK" and is_exact(main, self._signifier):
+            band = SIG_S1
         return [(KValue(main, band), entry.is_expansion)]
 
     # Word encoding

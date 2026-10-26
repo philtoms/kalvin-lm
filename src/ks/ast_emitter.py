@@ -96,9 +96,10 @@ class SymbolicEntry(NamedTuple):
                operators, multi-item for CANONICALISES aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
         op:   One of "ASK", "CANONICALISES", "CONNOTES", "RCONNOTES",
-               "DENOTES", "IDENTITY". ("COUNTERSIGNS" is a scope
-               operator only — its scope emits an ASK entry, never an entry
-               of its own.)
+               "DENOTES", "IDENTITY", "UNKNOWN" (statement terminal with
+               no identity/canon of its own — empty nodes).
+               ("COUNTERSIGNS" is a scope operator only — its scope emits
+               an ASK entry, never an entry of its own.)
         component_labels: Resolved words per signature character (for word
                mode).  None when not applicable.
     """
@@ -170,6 +171,10 @@ class ASTEmitter:
         self._scope_annotation: str = ""
         self._pending_annotation: str = ""
 
+        # (insert-after index, resolved word) per statement leaf terminal —
+        # resolved into UNKNOWN entries by the emit() post-pass.
+        self._terminal_unknowns: list[tuple[int, str]] = []
+
     # Public API
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
@@ -183,7 +188,33 @@ class ASTEmitter:
         """
         self._pending_annotation = ""
         self._process_constructs(file.constructs)
+        self._emit_terminal_unknowns()
         return self.entries
+
+    def _emit_terminal_unknowns(self) -> None:
+        """A statement terminal that heads no entry → its own
+        S4 entry {word:[]} (one per word, after the statement that raised it).
+
+        All heads count as resolved. The head of an entry is its sig —
+        except connotations, whose sig slot is a compound: there the head
+        is the first concat component (the specific side — `A < B` heads
+        B, so in `Object < Query` Query is the head and Object is not).
+        """
+        own = {
+            e.concat[0] if e.concat else e.sig for e in self.entries
+        }
+        first: dict[str, int] = {}
+        for pos, word in self._terminal_unknowns:
+            if word not in first:
+                first[word] = pos
+        for word, pos in sorted(first.items(), key=lambda kv: kv[1], reverse=True):
+            if word in own:
+                continue
+            own.add(word)
+            self.entries.insert(
+                pos, SymbolicEntry(sig=word, nodes=[], op="UNKNOWN")
+            )
+        self._terminal_unknowns = []
 
     # Construct dispatch
 
@@ -382,6 +413,10 @@ class ASTEmitter:
             sig_resolved, resolved_nodes, op,
             canon_idx=canon_idx, canon_created=canon_created, goal=goal,
         )
+        if scope.op is not None and scope.items and isinstance(scope.items[-1], Signature):
+            self._terminal_unknowns.append(
+                (len(self.entries), resolved_nodes[len(scope.items) - 1])
+            )
         self._compile_children(scope, op, canon_idx, pushed_scope=pushed_scope)
 
         self._parent_kline_chars = saved_chars
