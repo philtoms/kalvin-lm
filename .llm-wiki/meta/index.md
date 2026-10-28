@@ -93,6 +93,7 @@
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
 - [[sources/kalvin-doc-normative-split]] — Kalvin doc normative split: algebra vs CONTEXT.md *(created: 2026-09-12)*
+- [[sources/knode-label-conventions-content-vs-identifier]] — KNode labels: one composition convention, identifiers in dbg *(created: 2026-10-27)*
 - [[sources/ks2-conformance-series-landing]] — ks2 conformance series: 6 commits to the engine entry path *(created: 2026-09-12)*
 - [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
 - [[sources/kscript-import-shared-emitter-semantics]] — kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix *(created: 2026-09-23)*
@@ -429,6 +430,17 @@
 - [[sources/obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su]] — Observation: TRS identities filtered from candidates — self-confirmation suppressed *(created: 2026-10-16)*
 - [[sources/obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed]] — Observation: TRS R3 loop carries shrinking signature — consumed set removed *(created: 2026-10-16)*
 - [[sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti]] — Observation: TRS R3 rewrite loop — substitution by proof, work retained until R1 *(created: 2026-10-16)*
+- [[sources/obs-2026-10-21-trs-reentry-stack-open-format-frames-grounded-merges-s4-empt]] — Observation: TRS reentry stack — open-format frames, grounded merges, S4 empty-kline asks *(created: 2026-10-21)*
+- [[sources/obs-2026-10-26-ask-structure-reconciled-s1-shaped-content-s4-band-by-marker]] — Observation: Ask structure reconciled: S1-shaped content, S4 band by marker; empty asks only in src/trs *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-block-scoping-is-load-bearing-multi-node-rhs-vs-chain-are-di]] — Observation: Block scoping is load-bearing; multi-node RHS vs chain are distinct structures *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-connotations-and-denotations-are-one-to-one-multi-node-suppo]] — Observation: Connotations and denotations are one-to-one — multi-node support removed *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-data-ks-md-review-orientation-doc-not-truth-doc-14-gaps]] — Observation: data/ks.md review: orientation doc, not truth doc — 14 gaps *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-ks-compiler-statement-terminal-unknowns-mint-s4-canon-exact-]] — Observation: ks compiler: statement-terminal unknowns mint S4; canon-exact asks feed S1 *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-o-object-resolution-in-mhall-stands-unresolved-is-a-knowledg]] — Observation: O→Object resolution in mhall stands; "unresolved" is a knowledge criterion *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-terminal-unknown-own-set-all-entry-heads-connotation-head-is]] — Observation: Terminal-unknown own-set = all entry heads; connotation head is the specific side *(created: 2026-10-26)*
+- [[sources/obs-2026-10-27-compiler-now-emits-pipe-composed-content-labels-on-compound-]] — Observation: Compiler now emits pipe-composed content labels on compound sigs *(created: 2026-10-27)*
+- [[sources/obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions]] — Observation: meet label extraction broken by two label conventions *(created: 2026-10-27)*
+- [[sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch]] — Observation: All non-S1 _admit stores come from the "sides resolved" branch *(created: 2026-10-28)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -439,4 +451,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-16T16:10:36.641Z* | *Total pages: 427*
+*Last updated: 2026-10-28T12:18:00.063Z* | *Total pages: 439*

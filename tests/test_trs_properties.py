@@ -269,7 +269,7 @@ def test_rationalisation_is_honest(sc):
     d, entry = sc
     r = rationalise(d, entry)
     assert all(
-        e.reason.startswith(("R4", "no candidates", "bound")) for e in r.ends
+        e.reason.startswith(("R4", "S4", "stalled", "no candidates", "bound")) for e in r.ends
     )
     # every halt records its kline and its halt measure
     assert all(e.kline is not None and e.effort is not None for e in r.ends)

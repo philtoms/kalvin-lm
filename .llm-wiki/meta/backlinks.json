@@ -17,7 +17,8 @@
     "concepts/structural-significance",
     "concepts/terminal",
     "entities/isgroundable",
-    "sources/SRC-2026-08-11-001"
+    "sources/SRC-2026-08-11-001",
+    "sources/knode-label-conventions-content-vs-identifier"
   ],
   "concepts/canonical-synthesis": [
     "concepts/cogitation",
@@ -764,6 +765,7 @@
   "sources/identity-klines-never-proposals": [],
   "sources/identity-priming-and-knowledge-restatement": [],
   "sources/kalvin-doc-normative-split": [],
+  "sources/knode-label-conventions-content-vs-identifier": [],
   "sources/ks2-conformance-series-landing": [],
   "sources/ks2-third-pass-seven-gap-resolutions": [
     "concepts/grilling"
@@ -1142,6 +1144,19 @@
   "sources/obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su": [],
   "sources/obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed": [],
   "sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti": [],
+  "sources/obs-2026-10-21-trs-reentry-stack-open-format-frames-grounded-merges-s4-empt": [],
+  "sources/obs-2026-10-26-ask-structure-reconciled-s1-shaped-content-s4-band-by-marker": [],
+  "sources/obs-2026-10-26-block-scoping-is-load-bearing-multi-node-rhs-vs-chain-are-di": [],
+  "sources/obs-2026-10-26-connotations-and-denotations-are-one-to-one-multi-node-suppo": [],
+  "sources/obs-2026-10-26-data-ks-md-review-orientation-doc-not-truth-doc-14-gaps": [],
+  "sources/obs-2026-10-26-ks-compiler-statement-terminal-unknowns-mint-s4-canon-exact-": [],
+  "sources/obs-2026-10-26-o-object-resolution-in-mhall-stands-unresolved-is-a-knowledg": [],
+  "sources/obs-2026-10-26-terminal-unknown-own-set-all-entry-heads-connotation-head-is": [],
+  "sources/obs-2026-10-27-compiler-now-emits-pipe-composed-content-labels-on-compound-": [],
+  "sources/obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions": [
+    "sources/knode-label-conventions-content-vs-identifier"
+  ],
+  "sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],

@@ -1,5 +1,29 @@
 # Wiki Update Log
 
+## 2026-10-28
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch","title":"All non-S1 _admit stores come from the \"sides resolved\" branch"}
+
+## 2026-10-27
+
+- **retro**: {"category":"architecture","slug":"knode-label-conventions-content-vs-identifier","title":"KNode labels: one composition convention, identifiers in dbg"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-27-compiler-now-emits-pipe-composed-content-labels-on-compound-","title":"Compiler now emits pipe-composed content labels on compound sigs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions","title":"meet label extraction broken by two label conventions"}
+
+## 2026-10-26
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-10-26-connotations-and-denotations-are-one-to-one-multi-node-suppo","title":"Connotations and denotations are one-to-one — multi-node support removed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-26-block-scoping-is-load-bearing-multi-node-rhs-vs-chain-are-di","title":"Block scoping is load-bearing; multi-node RHS vs chain are distinct structures"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-26-data-ks-md-review-orientation-doc-not-truth-doc-14-gaps","title":"data/ks.md review: orientation doc, not truth doc — 14 gaps"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-26-terminal-unknown-own-set-all-entry-heads-connotation-head-is","title":"Terminal-unknown own-set = all entry heads; connotation head is the specific side"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-26-o-object-resolution-in-mhall-stands-unresolved-is-a-knowledg","title":"O→Object resolution in mhall stands; \"unresolved\" is a knowledge criterion"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-26-ks-compiler-statement-terminal-unknowns-mint-s4-canon-exact-","title":"ks compiler: statement-terminal unknowns mint S4; canon-exact asks feed S1"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-26-ask-structure-reconciled-s1-shaped-content-s4-band-by-marker","title":"Ask structure reconciled: S1-shaped content, S4 band by marker; empty asks only in src/trs"}
+
+## 2026-10-21
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-21-trs-reentry-stack-open-format-frames-grounded-merges-s4-empt","title":"TRS reentry stack — open-format frames, grounded merges, S4 empty-kline asks"}
+
 ## 2026-10-16
 
 - **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed","title":"TRS R3 loop carries shrinking signature — consumed set removed"}

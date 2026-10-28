@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-16T16:10:36.641Z",
+  "last_updated": "2026-10-28T12:18:00.063Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -624,6 +624,15 @@
       "slug": "kalvin-doc-normative-split",
       "created": "2026-09-12",
       "updated": "2026-09-12"
+    },
+    "sources/knode-label-conventions-content-vs-identifier": {
+      "type": "source",
+      "title": "KNode labels: one composition convention, identifiers in dbg",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "knode-label-conventions-content-vs-identifier",
+      "created": "2026-10-27",
+      "updated": "2026-10-27"
     },
     "sources/ks2-conformance-series-landing": {
       "type": "source",
@@ -6589,6 +6598,211 @@
       "source_context": "TRS rationalise redesign, step 3: R3 rewrite loop with proof substitution",
       "created": "2026-10-16",
       "updated": "2026-10-16"
+    },
+    "sources/obs-2026-10-21-trs-reentry-stack-open-format-frames-grounded-merges-s4-empt": {
+      "type": "source",
+      "title": "Observation: TRS reentry stack — open-format frames, grounded merges, S4 empty-kline asks",
+      "tags": [
+        "trs",
+        "rationalise",
+        "frame-stack",
+        "fresh-start",
+        "open-format",
+        "grounded-merge",
+        "s4-ask"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-21-trs-reentry-stack-open-format-frames-grounded-merges-s4-empt",
+      "relevance": "high",
+      "observed_at": "2026-10-21T15:54:29.235Z",
+      "source_context": "TRS rationalise fresh start: open-format frame-stack algorithm",
+      "created": "2026-10-21",
+      "updated": "2026-10-21"
+    },
+    "sources/obs-2026-10-26-ask-structure-reconciled-s1-shaped-content-s4-band-by-marker": {
+      "type": "source",
+      "title": "Observation: Ask structure reconciled: S1-shaped content, S4 band by marker; empty asks only in src/trs",
+      "tags": [
+        "trs",
+        "asks",
+        "s4",
+        "s1",
+        "marker",
+        "kalvin-algebra",
+        "dialogue"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-26-ask-structure-reconciled-s1-shaped-content-s4-band-by-marker",
+      "relevance": "high",
+      "observed_at": "2026-10-26T11:21:32.560Z",
+      "source_context": "Reconciling scripted-ask structure (S1 identity) vs dialogue-work S4 ASK descriptions",
+      "created": "2026-10-26",
+      "updated": "2026-10-26"
+    },
+    "sources/obs-2026-10-26-block-scoping-is-load-bearing-multi-node-rhs-vs-chain-are-di": {
+      "type": "source",
+      "title": "Observation: Block scoping is load-bearing; multi-node RHS vs chain are distinct structures",
+      "tags": [
+        "ks",
+        "kscript",
+        "block-scoping",
+        "chaining",
+        "review"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-26-block-scoping-is-load-bearing-multi-node-rhs-vs-chain-are-di",
+      "relevance": "high",
+      "observed_at": "2026-10-26T17:45:04.722Z",
+      "source_context": "Reviewing data/ks.md truth-doc gaps; user pushed back that scaffolding implies chaining",
+      "created": "2026-10-26",
+      "updated": "2026-10-26"
+    },
+    "sources/obs-2026-10-26-connotations-and-denotations-are-one-to-one-multi-node-suppo": {
+      "type": "source",
+      "title": "Observation: Connotations and denotations are one-to-one — multi-node support removed",
+      "tags": [
+        "ks",
+        "kscript",
+        "language-design",
+        "parser",
+        "one-to-one"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-26-connotations-and-denotations-are-one-to-one-multi-node-suppo",
+      "relevance": "critical",
+      "observed_at": "2026-10-26T18:11:59.959Z",
+      "source_context": "Removing multi-node connotation/denotation support after data/ks.md review",
+      "created": "2026-10-26",
+      "updated": "2026-10-26"
+    },
+    "sources/obs-2026-10-26-data-ks-md-review-orientation-doc-not-truth-doc-14-gaps": {
+      "type": "source",
+      "title": "Observation: data/ks.md review: orientation doc, not truth doc — 14 gaps",
+      "tags": [
+        "docs",
+        "ks",
+        "kscript",
+        "review",
+        "truth-doc"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-26-data-ks-md-review-orientation-doc-not-truth-doc-14-gaps",
+      "relevance": "high",
+      "observed_at": "2026-10-26T15:28:53.378Z",
+      "source_context": "Reviewing data/ks.md for usefulness as a truth doc",
+      "created": "2026-10-26",
+      "updated": "2026-10-26"
+    },
+    "sources/obs-2026-10-26-ks-compiler-statement-terminal-unknowns-mint-s4-canon-exact-": {
+      "type": "source",
+      "title": "Observation: ks compiler: statement-terminal unknowns mint S4; canon-exact asks feed S1",
+      "tags": [
+        "ks",
+        "compiler",
+        "s4",
+        "unknown",
+        "terminals",
+        "asks",
+        "significance"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-26-ks-compiler-statement-terminal-unknowns-mint-s4-canon-exact-",
+      "relevance": "high",
+      "observed_at": "2026-10-26T15:05:39.998Z",
+      "source_context": "Implementing the terminal-unknown S4 rule in the ks compiler",
+      "created": "2026-10-26",
+      "updated": "2026-10-26"
+    },
+    "sources/obs-2026-10-26-o-object-resolution-in-mhall-stands-unresolved-is-a-knowledg": {
+      "type": "source",
+      "title": "Observation: O→Object resolution in mhall stands; \"unresolved\" is a knowledge criterion",
+      "tags": [
+        "ks",
+        "binding",
+        "inline-override",
+        "mhall",
+        "object",
+        "terminal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-26-o-object-resolution-in-mhall-stands-unresolved-is-a-knowledg",
+      "relevance": "high",
+      "observed_at": "2026-10-26T15:05:48.755Z",
+      "source_context": "Clarifying the terminal-unknown rule against mhall.ks L = O",
+      "created": "2026-10-26",
+      "updated": "2026-10-26"
+    },
+    "sources/obs-2026-10-26-terminal-unknown-own-set-all-entry-heads-connotation-head-is": {
+      "type": "source",
+      "title": "Observation: Terminal-unknown own-set = all entry heads; connotation head is the specific side",
+      "tags": [
+        "ks",
+        "compiler",
+        "heads",
+        "terminal",
+        "unknown",
+        "s4",
+        "ruling"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-26-terminal-unknown-own-set-all-entry-heads-connotation-head-is",
+      "relevance": "high",
+      "observed_at": "2026-10-26T15:19:57.101Z",
+      "source_context": "Refining the terminal-unknown own-set after user ruling on heads",
+      "created": "2026-10-26",
+      "updated": "2026-10-26"
+    },
+    "sources/obs-2026-10-27-compiler-now-emits-pipe-composed-content-labels-on-compound-": {
+      "type": "source",
+      "title": "Observation: Compiler now emits pipe-composed content labels on compound sigs",
+      "tags": [
+        "trs",
+        "labels",
+        "compiler",
+        "meet"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-27-compiler-now-emits-pipe-composed-content-labels-on-compound-",
+      "relevance": "high",
+      "observed_at": "2026-10-27T17:38:18.656Z",
+      "source_context": "Fixing meet label extraction (Option A: compiler-emitted content labels)",
+      "created": "2026-10-27",
+      "updated": "2026-10-27"
+    },
+    "sources/obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions": {
+      "type": "source",
+      "title": "Observation: meet label extraction broken by two label conventions",
+      "tags": [
+        "trs",
+        "labels",
+        "meet",
+        "compiler"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions",
+      "relevance": "high",
+      "observed_at": "2026-10-27T17:30:05.074Z",
+      "source_context": "Diagnosing trs.model.meet label extraction on compiled signatures",
+      "created": "2026-10-27",
+      "updated": "2026-10-27"
+    },
+    "sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch": {
+      "type": "source",
+      "title": "Observation: All non-S1 _admit stores come from the \"sides resolved\" branch",
+      "tags": [
+        "trs",
+        "r1",
+        "admit",
+        "nonsense-stores",
+        "cogitator"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch",
+      "relevance": "high",
+      "observed_at": "2026-10-28T12:17:59.963Z",
+      "source_context": "Investigating unusual _admit results from dev/dialogue/trs_harness.py",
+      "created": "2026-10-28",
+      "updated": "2026-10-28"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

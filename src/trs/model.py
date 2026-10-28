@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
 
-from kalvin.kline import KNode
+from kalvin.kline import KNode, KNone
 
 
 # --- §1 Definition 1 — Node algebra (word-bit realisation; ⊥ = 0) ---
@@ -78,6 +78,9 @@ class Kline:
     def merge(self, m: Kline | None = None) -> Kline:
         return Kline(self.sig.merge(m.sig), self.adj | m.adj) if m else self
 
+    def fingerprint(self) -> int:
+        return self.sig | can(self.adj)
+    
 # --- §2 Definition 4 — can: the composition fold ---
 
 
@@ -117,7 +120,7 @@ def band(k: Kline) -> Band:
 class Domain:
     """D ⊆_fin Kline with the first-stored witness index (Definition 6) and lookups (Definition 7)."""
 
-    def __init__(self, klines: "list[Kline] | tuple" = ()) -> None:
+    def __init__(self, klines: list[Kline] | tuple = ()) -> None:
         self._klines: set[Kline] = set()
         self._order: list[Kline] = []  # insertion order — first-stored is observable
         self._canonical: dict[KNode, frozenset[KNode]] = {}
@@ -151,15 +154,14 @@ class Domain:
         return self._canonical.get(s, frozenset())
 
     # §2 Definition 7 — three lookups
-    def exact(self, s: KNode) -> "list[Kline]":
+    def exact(self, s: KNode) -> list[Kline]:
         return [k for k in self._klines if k.sig == s]
 
-    def overlap(self, s: KNode) -> "list[Kline]":
+    def overlap(self, s: KNode) -> list[Kline]:
         return [k for k in self._klines if k.sig & s]
 
-    def covered(self, c: KNode) -> "list[Kline]":
+    def covered(self, c: KNode) -> list[Kline]:
         return [k for k in self._klines if contained(k.sig, c)]
-
 
 # --- §4 Definition 12 — decomposition ---
 
@@ -239,24 +241,44 @@ def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
 
 # --- §5 — reentry: the rationalisation runner ---
 
+@dataclass
+class Candidate:
+    """The open-format candidate — the unit of work on the reentry stack."""
 
-def candidates(c_e: KNode, nbs: "list[Kline]") -> "list[tuple[Kline, tuple[Kline, ...]]]":
-    """The consolidated candidate set with its suppliers: fully covered
-    witnesses — canon ⪯ c_e — aggregate into one candidate; uncovered
-    witnesses stand alone."""
-    covered = [nb for nb in nbs if contained(can(nb.adj), c_e)]
-    out: "list[tuple[Kline, tuple[Kline, ...]]]" = []
-    if covered:
-        out.append((Kline(c_e, frozenset().union(*(nb.adj for nb in covered))), tuple(covered)))
-    out.extend((Kline(c_e, nb.adj), (nb,)) for nb in nbs if nb not in covered)
-    return out
+    sig: KNode  # candidate signature
+    F: KNode
+    U: KNode
+    O: KNode
+    n_f: frozenset[KNode]
+    n_u: frozenset[KNode]
+    n_o: frozenset[KNode]
+    C: Kline
+    E: Kline
 
 
-def admit(d: Domain, stores: "list[Kline]", c: Kline) -> None:
-    """R1 — store; idempotent, reported once per run."""
-    d.add(c)
-    if c not in stores:
-        stores.append(c)
+def next_candidate(c: Kline, entry: Kline) -> Candidate:
+    """The popped candidate in open format: F/U/O decompose the claim
+    against the candidate, f/o carry the candidate's own nodes, u the
+    entry's."""
+    f = meet(c.sig, entry.sig)
+    t = Decomposition(F=f, O=residue(c.sig, entry.sig), U=residue(entry.sig, c.sig))
+
+    cand = Candidate(
+        sig=can(entry.adj),
+        F=t.F,
+        U=t.U,
+        O=t.O,
+        n_f=frozenset(n for n in c.adj if contained(n, t.F)),
+        n_o=frozenset(n for n in c.adj if contained(n, t.O)),
+        n_u=frozenset(n for n in entry.adj if contained(n, t.U)),
+        C=c,
+        E=entry
+    )
+    return cand
+
+def grounded(d: Domain, s: KNode) -> bool:
+    """A signature is grounded when it exists in the domain."""
+    return bool(d.exact(s))
 
 
 @dataclass(frozen=True)
@@ -283,114 +305,83 @@ class Rationalisation:
     ends: list[End]
     rounds: int
 
+class Cogitator:
 
-def rationalise(d: Domain, entry: Kline, depth: int = 0, seen: set[KNode] | None = None) -> Rationalisation:
-    """§5 as one recursive function — the standardised reentry.
+    MAX_DEPTH = 10
 
-    Every kline runs the Definition 9 pipeline as an entry (presented or
-    re-entry, Definition 8); its candidates consolidate first and route
-    by band. The loop carries an increasingly smaller signature: every
-    grounding — an S1 candidate, an S2 split's canonical fit, an S3
-    substitution whose rewrite carries claim bits (a held head expands
-    forward, else the supplying witness substitutes by proof) — shrinks
-    the residual claim, and the next round derives its candidates against
-    the residual: the grounded suppliers drop out structurally, their
-    overlap with the claim being exactly what they grounded. The loop
-    runs until the claim grounds (R1 — the accumulated kline stores, a
-    canon when exact) or the residual asks. A starved fit and the O-side
-    products ground for their own sake. Bounds (§7 strategy): re-entry
-    depth 10 and a per-run memo of processed entry canons.
-    """
+    def __init__(self, d: Domain) -> None:
+        self.d = d
+        self.stores: list[Kline] = []
+        self.ends: list[End] = []
 
-    stores: list[Kline] = []
-    ends: list[End] = []
-    if seen is None:
-        seen = set()  # the run's canon memo — §7 strategy
-    if not entry.adj:  # R4 arrival — a presented entry with no adjacency
-        ends.append(End("R4: entry kline with no adjacency", entry, effort(entry)))
-        return Rationalisation(stores, ends, depth)
-    c_e = can(entry.adj)
-    if c_e in seen:
-        ends.append(End(f"bound: recursion seen {c_e}", entry, effort(entry)))
-        return Rationalisation(stores, ends, depth)
-    seen.add(c_e)
-    if depth >= 10:
-        ends.append(End("bound: recursion depth reached", entry, effort(entry)))
-        return Rationalisation(stores, ends, depth)
-    nbs = [nb for nb in d.overlap(entry.sig) if nb.adj != frozenset([nb.sig])]  # identities witness only themselves
-    if not nbs:
-        ends.append(End("no candidates — the entry terminates", entry, effort(entry)))
-        return Rationalisation(stores, ends, depth)
-    if any(not nb.adj for nb in nbs):  # terminal witnesses consolidate into one ask
-        c0 = Kline(c_e, frozenset())
-        ends.append(End("R4: candidate with no adjacency", c0, effort(c0)))
-    grounded = 0  # the grounded bits — the residual signature shrinks as it grows
-    work: set = set()  # the witnesses that grounded the claim
-    licensed = False  # an S3 substitution grounded claim content by proof
-    res_sig, res_adj = entry.sig, entry.adj
-    while res_adj:
-        live = [nb for nb in d.overlap(res_sig) if nb.adj and nb.adj != frozenset([nb.sig])]
-        if not live:
-            if grounded and res_sig:  # the residual asks
-                res = Kline(res_sig, res_adj)
-                ends.append(End("no candidates — the entry terminates", res, effort(res)))
-            break
-        rc = can(res_adj)  # the residual canon — the round's candidate head
-        shrank = False
-        for c, suppliers in candidates(rc, live):  # candidate order is §7 strategy
-            b = band(c)
-            if b is Band.S1:
-                admit(d, stores, c)
-                work |= c.adj
-                if rc & ~grounded:
-                    grounded |= rc
-                    shrank = True
+    def _halt(self, reason: str, k: Kline) -> None:
+        """A terminal arrival — with the halt measure (Definition 14)."""
+        self.ends.append(End(reason, k, effort(k)))
 
-            elif b is Band.S2:
-                # the fit stores in its own right — it is the aggregate of
-                # what the witnesses actually cover. A canonical fit
-                # grounds its bits and the loop carries the U-side as the
-                # residual; a starved fit re-enters as its own ask. The
-                # O-side products ground for their own sake.
-                products, k_f = r2_products(c, Kline(res_sig, res_adj))
-                if band(k_f) is Band.S1:
-                    admit(d, stores, k_f)
-                    work |= k_f.adj
-                    if k_f.sig & ~grounded:
-                        grounded |= k_f.sig
-                        shrank = True
-                else:
-                    products.append(k_f)
-                for prod in products:
-                    if shrank and prod.sig == decompose(c).U:  # the loop carries the U-side
-                        continue
-                    r = rationalise(d, prod, depth + 1, seen)
-                    ends.extend(r.ends)
+    def _admit(self, c: Kline) -> None:
+        """R1 — store; idempotent, reported once per run."""
+        self.d.add(c)
+        if c not in self.stores:
+            self.stores.append(c)
 
-            elif b is Band.S3:
-                n_prime = r3_substitute(d, c)  # R3 — substitute forward: held heads expand
-                if n_prime == c.adj:  # like for like — the supplier is the proof
-                    n_prime = frozenset(nb.sig if n in nb.adj else n for nb in suppliers for n in c.adj)
-                f = rc & can(n_prime) & ~grounded if n_prime else 0  # the NEW bits the rewrite grounds
-                if not n_prime:
-                    ends.append(End("R4: expansion emptied the adjacency", c, effort(c)))
-                elif not f:
-                    ends.append(End("R4: substitution grounds nothing", c, effort(c)))
-                else:
-                    work |= n_prime  # the rewrite work, retained
-                    grounded |= f
-                    licensed = True
-                    shrank = True
-            if shrank:  # one grounding per round — rederive against the smaller signature
-                break
-        if not shrank:
-            break
-        res_sig = entry.sig & ~grounded
-        res_adj = frozenset(n for n in entry.adj if not contained(n, grounded))
-    if work and licensed:
-        admit(d, stores, Kline(c_e, frozenset(work)))  # R1 at S1; the licensed claim otherwise
-    return Rationalisation(stores, ends, depth)
+    def rationalise(self, entry: Kline, seen: set[int] = set(), framed: KNode = KNone, depth: int = 0) -> Rationalisation:
+        if entry.fingerprint() in seen:
+            return Rationalisation(self.stores, self.ends, 0)
 
+        seen.add(entry.fingerprint())
+        rounds = 0
+        cands = self._reenter(entry, framed, depth)
+        for cand in cands:
+            while True:
+                rounds += 1
+                pending = len(self.stores)
+
+                if not cand.n_u and not cand.n_o:  # the sides resolved — it grounds
+                    self._admit(Kline(cand.sig, cand.n_f))
+                    break
+
+                if cand.sig == can(cand.n_f):  # f composes the claim — ground F == C
+                    self._admit(Kline(cand.sig, cand.n_f))
+                    break
+
+                """Merge grounded side regions into f; reenter the ungrounded."""
+                if cand.n_u:
+                    if grounded(self.d, can(cand.n_u)):  # the region's witnesses compose it
+                        cand.n_f, cand.n_u = cand.n_f | cand.n_u, frozenset()
+                    else:
+                        self.rationalise(Kline(cand.U, cand.n_u), seen, framed.merge(cand.F), depth + 1)
+
+                elif cand.n_o:
+                    if grounded(self.d, can(cand.n_o)):
+                        cand.n_f, cand.n_o = cand.n_f | cand.n_o, frozenset()
+                    else:
+                        self.rationalise(Kline(cand.O, cand.n_o), seen, framed.merge(cand.F), depth + 1)
+
+                elif pending == len(self.stores):
+                    # stalled at S2~S3 — nothing pending resolves it
+                    if cand.n_u:
+                        self._halt("stalled at S2: underfit ungrounded", Kline(cand.sig, cand.n_f | cand.n_u))
+                    if cand.n_o:
+                        self._halt("stalled at S3: overfit ungrounded", Kline(cand.sig, cand.n_f | cand.n_o))
+                    break               
+
+        return Rationalisation(self.stores, self.ends, rounds)
+
+    def _reenter(self, entry: Kline, framed: KNode, depth: int) -> list[Candidate]:
+        """The reentry's guards, then its base candidate onto the stack."""
+        if not entry.adj:
+            self._halt("R4: entry kline with no adjacency", entry)
+            return []
+        if depth >= self.MAX_DEPTH:
+            self._halt("bound: recursion depth reached", entry)
+            return []
+        
+        """The candidate list: each overlapping memory kline, individually
+        formed ⟨can(entry.adj), nb.adj⟩ — identities witness only themselves.
+        Order is §7 strategy: ascending effort, ties in signature then store
+        order."""
+        nbs = [nb for nb in self.d.overlap(entry.sig) if nb.adj and nb.adj != frozenset([nb.sig]) and not contained(nb.sig, framed)]
+        return [next_candidate(nb, entry) for nb in nbs]
 
 def proposals(r: Rationalisation) -> list[Proposal]:
     """Every halt generates one proposal (§5 Definition 15), ordered by graded
@@ -399,8 +390,8 @@ def proposals(r: Rationalisation) -> list[Proposal]:
     for e in r.ends:
         if e.kline is None:
             continue
-        if e.reason.startswith("no candidates"):
-            kind = "connect"
+        if e.reason.startswith("no candidates") or e.reason.startswith("stalled at S2"):
+            kind = "connect"  # fit wanted, nobody to talk to — or underfit starved
         elif e.reason.startswith("bound"):
             kind = "continue"
         else:
