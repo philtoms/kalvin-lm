@@ -63,7 +63,7 @@ Rules established while rewriting `Cogitator.rationalise` (src/trs/model.py), tu
 ## The table-alignment resync (2026-10-30, later session)
 
 Rules 2, 4–5, 15 and the known edges are superseded by the trace-table
-alignment (see [[cogitator-trace-table-alignment]]):
+alignment (see [[sources/cogitator-trace-table-alignment]]):
 
 - **2'** Candidate order is closers first (`F == side(E)`), then least
   content. Child batches push reversed: the first candidate's subtree runs

@@ -24,7 +24,7 @@ Rewrote Cogitator.rationalise (worktree table-driven, src/trs/model.py + dev/dia
 - **Trace events**: Row carries birth/waited/closed clocks + bp rows; the harness re-emits rows per event (pair/reenter, stalled, resolved-BP/grounded) — reproducing the tables' repeated-row temporal shape. Instant rows (resolved at pairing) and exchange-arriving stalls emit once.
 - Row/_Reentry are dataclass(eq=False) — recursive __eq__ RecursionError hazard; an identity rindex map replaces rows.index()/min() comparisons.
 
-Result: mhall stores MHALL:[SVO]; wdmh stores DH:[did,have] + WDMH:[MHALL] with the DH stall→exchange row "frame DH / resolved, BP WDH, HALL" and the root stalled→grounded sequence. Tests: 171 passed, 16 xfailed (mid-migration debt: old module-level rationalise semantics, acknowledged stale since e93c192). Related: [[rationalisation-rules]] needs resync.
+Result: mhall stores MHALL:[SVO]; wdmh stores DH:[did,have] + WDMH:[MHALL] with the DH stall→exchange row "frame DH / resolved, BP WDH, HALL" and the root stalled→grounded sequence. Tests: 171 passed, 16 xfailed (mid-migration debt: old module-level rationalise semantics, acknowledged stale since e93c192). Related: [[syntheses/rationalisation-rules]] needs resync.
 
 *Category: architecture*
 
