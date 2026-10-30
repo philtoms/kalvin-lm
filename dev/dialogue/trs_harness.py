@@ -254,17 +254,29 @@ def _on_path_children(row: Row, keep: set[int]) -> list:
     return out
 
 
+def _tsupport(pair: tuple, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """A leaned-on frame with its reference — the candidate that
+    established it (an exchange, for stall-sourced frames)."""
+    v, src = pair
+    if src is None or src.candidate is None:
+        return _tframe(v, labels, alloc) + " ← exchange"
+    c = _tlabel(src.candidate.sig, labels, alloc)
+    if src.candidate.adj and can(src.candidate.adj) != src.candidate.sig:
+        c += ":" + " ".join(_tlabel(n, labels, alloc) for n in sorted(src.candidate.adj))
+    return _tframe(v, labels, alloc) + " ← " + c
+
+
 def _row_step(row: Row, labels: dict[int, str], alloc: dict[int, str], keep: set[int]) -> str:
     if row.candidate is None:
         e = _tlabel(row.entry.sig, labels, alloc)
         return f"resolved {e}" if row.exchange else f"stalled {e}"
+    parts = []
     children = [ch for ch in row.children if ch.popped]
     if children:
-        return "reenter " + ", ".join(_tlabel(ch.kline.sig, labels, alloc) for ch in children)
+        parts.append("reenter " + ", ".join(_tlabel(ch.kline.sig, labels, alloc) for ch in children))
     if row.resolved:
-        parts = _tframe(row.F, labels, alloc)
-        return f"resolved {parts}" if parts else "resolved"
-    return ""
+        parts.append("resolved " + _tlabel(row.entry.sig, labels, alloc))
+    return "; ".join(parts)
 
 
 def _table_row(row: Row, labels: dict[int, str], alloc: dict[int, str], keep: set[int]) -> list[str]:
@@ -277,7 +289,13 @@ def _table_row(row: Row, labels: dict[int, str], alloc: dict[int, str], keep: se
             )
     else:
         c = ""
-    frame = _tframe(row.frame, labels, alloc)
+    frame = ", ".join(
+        p
+        for p in (
+            ([_tframe(int(row.frame), labels, alloc)] if row.frame else [])
+            + [_tsupport(p, labels, alloc) for p in row.supports]
+        )
+    )
     return [
         str(row.depth), e, c,
         _tlabel(row.F, labels, alloc),

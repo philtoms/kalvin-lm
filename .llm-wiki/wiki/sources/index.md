@@ -371,6 +371,7 @@
 - [Observation: Orthogonal trace: one row per reentry; exchange feeds hold their slots](obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the.md)
 - [Observation: Reenter steps claim all executed reentries — the V convention](obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention.md)
 - [Observation: Root pairs with goal only — trace table shows a true path](obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path.md)
+- [Observation: S3 simplified to stalled-C match; what-framing gap; strict-flow in-path](obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo.md)
 - [Observation: Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution](obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame.md)
 - [Observation: Trace table connected: pushers take slots; exchange slots sticky](obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic.md)
 - [Observation: TRS harness renders optimal-path trace table via frame provenance](obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove.md)

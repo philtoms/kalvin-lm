@@ -450,6 +450,7 @@
 - [[sources/obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the]] — Observation: Orthogonal trace: one row per reentry; exchange feeds hold their slots *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention]] — Observation: Reenter steps claim all executed reentries — the V convention *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path]] — Observation: Root pairs with goal only — trace table shows a true path *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo]] — Observation: S3 simplified to stalled-C match; what-framing gap; strict-flow in-path *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame]] — Observation: Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic]] — Observation: Trace table connected: pushers take slots; exchange slots sticky *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove]] — Observation: TRS harness renders optimal-path trace table via frame provenance *(created: 2026-10-30)*
@@ -463,4 +464,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-30T11:58:12.695Z* | *Total pages: 451*
+*Last updated: 2026-10-30T12:36:36.973Z* | *Total pages: 452*

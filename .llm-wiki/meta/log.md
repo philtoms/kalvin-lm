@@ -1181,3 +1181,6 @@
 ## [2026-10-30T11:58:12.611Z] observe
 - slug: "obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given", title: "In-path rule by content flow; opener's fit given", relevance: "high"
 
+## [2026-10-30T12:36:36.888Z] observe
+- slug: "obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo", title: "S3 simplified to stalled-C match; what-framing gap; strict-flow in-path", relevance: "high"
+

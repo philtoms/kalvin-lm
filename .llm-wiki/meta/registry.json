@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-30T11:58:12.695Z",
+  "last_updated": "2026-10-30T12:36:36.973Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6955,6 +6955,23 @@
       "relevance": "high",
       "observed_at": "2026-10-30T09:09:32.581Z",
       "source_context": "Fixing the false path in the wdmh trace table",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo": {
+      "type": "source",
+      "title": "Observation: S3 simplified to stalled-C match; what-framing gap; strict-flow in-path",
+      "tags": [
+        "trs",
+        "s3-exchange",
+        "path-rule",
+        "trace"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo",
+      "relevance": "high",
+      "observed_at": "2026-10-30T12:36:36.886Z",
+      "source_context": "Simplifying the S3 exchange rule",
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },
