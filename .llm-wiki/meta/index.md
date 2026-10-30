@@ -95,6 +95,7 @@
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
 - [[sources/kalvin-doc-normative-split]] — Kalvin doc normative split: algebra vs CONTEXT.md *(created: 2026-09-12)*
+- [[sources/knode-label-conventions-content-vs-identifier]] — KNode labels: one composition convention, identifiers in dbg *(created: 2026-10-27)*
 - [[sources/ks2-conformance-series-landing]] — ks2 conformance series: 6 commits to the engine entry path *(created: 2026-09-12)*
 - [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
 - [[sources/kscript-import-shared-emitter-semantics]] — kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix *(created: 2026-09-23)*
@@ -431,10 +432,37 @@
 - [[sources/obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su]] — Observation: TRS identities filtered from candidates — self-confirmation suppressed *(created: 2026-10-16)*
 - [[sources/obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed]] — Observation: TRS R3 loop carries shrinking signature — consumed set removed *(created: 2026-10-16)*
 - [[sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti]] — Observation: TRS R3 rewrite loop — substitution by proof, work retained until R1 *(created: 2026-10-16)*
+- [[sources/obs-2026-10-21-trs-reentry-stack-open-format-frames-grounded-merges-s4-empt]] — Observation: TRS reentry stack — open-format frames, grounded merges, S4 empty-kline asks *(created: 2026-10-21)*
+- [[sources/obs-2026-10-26-ask-structure-reconciled-s1-shaped-content-s4-band-by-marker]] — Observation: Ask structure reconciled: S1-shaped content, S4 band by marker; empty asks only in src/trs *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-block-scoping-is-load-bearing-multi-node-rhs-vs-chain-are-di]] — Observation: Block scoping is load-bearing; multi-node RHS vs chain are distinct structures *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-connotations-and-denotations-are-one-to-one-multi-node-suppo]] — Observation: Connotations and denotations are one-to-one — multi-node support removed *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-data-ks-md-review-orientation-doc-not-truth-doc-14-gaps]] — Observation: data/ks.md review: orientation doc, not truth doc — 14 gaps *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-ks-compiler-statement-terminal-unknowns-mint-s4-canon-exact-]] — Observation: ks compiler: statement-terminal unknowns mint S4; canon-exact asks feed S1 *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-o-object-resolution-in-mhall-stands-unresolved-is-a-knowledg]] — Observation: O→Object resolution in mhall stands; "unresolved" is a knowledge criterion *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-terminal-unknown-own-set-all-entry-heads-connotation-head-is]] — Observation: Terminal-unknown own-set = all entry heads; connotation head is the specific side *(created: 2026-10-26)*
+- [[sources/obs-2026-10-27-compiler-now-emits-pipe-composed-content-labels-on-compound-]] — Observation: Compiler now emits pipe-composed content labels on compound sigs *(created: 2026-10-27)*
+- [[sources/obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions]] — Observation: meet label extraction broken by two label conventions *(created: 2026-10-27)*
+- [[sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch]] — Observation: All non-S1 _admit stores come from the "sides resolved" branch *(created: 2026-10-28)*
+- [[sources/obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry]] — Observation: Cogitator.rationalise rewritten as frame-propagating reentry runner *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota]] — Observation: Compound KNode labels switched to MTS uppercase-initial notation *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram]] — Observation: Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel]] — Observation: Exchange closure is the frame alone; child-resolution channel excluded for stalls *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-]] — Observation: Exchange visible: temporal stalls, parent-chain trace, no self-covering *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame]] — Observation: F frames required for resolution; root exchange jointly frames the parents' fits *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-framing-is-on-path-only-f-e-or-stalled-u-o-exchange]] — Observation: Framing is on-path only: F==E or stalled U==O exchange *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given]] — Observation: In-path rule by content flow; opener's fit given *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl]] — Observation: mhall/wdmh trace tables verified — rule set reconstructed, tables consistent *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-]] — Observation: MTS Uppercase Character notation for compound labels in TRS table *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the]] — Observation: Orthogonal trace: one row per reentry; exchange feeds hold their slots *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-proper-ancestor-framing-own-pairings-never-frame-own-sides]] — Observation: Proper-ancestor framing: own pairings never frame own sides *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention]] — Observation: Reenter steps claim all executed reentries — the V convention *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-resolution-without-f-gate-trace-must-root-floaters-drop]] — Observation: Resolution without F-gate; trace must root — floaters drop *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path]] — Observation: Root pairs with goal only — trace table shows a true path *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne]] — Observation: Rulings: flood-then-distill, orthogonal paths, diagnostic harness *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo]] — Observation: S3 simplified to stalled-C match; what-framing gap; strict-flow in-path *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame]] — Observation: Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic]] — Observation: Trace table connected: pushers take slots; exchange slots sticky *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove]] — Observation: TRS harness renders optimal-path trace table via frame provenance *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-]] — Observation: wdmh proves candidate retry is necessary; in-path note reads as entry-path rule *(created: 2026-10-30)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
@@ -445,5 +473,9 @@
 - [[sources/trs-spec-resync-derive-claims-not-restatements]] — Spec resync: derive claims from code, not from the doc's own restatements *(created: 2026-10-08)*
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
+## Synthesiss
+
+- [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
+
 ---
-*Last updated: 2026-10-30T17:32:18.951Z* | *Total pages: 434*
+*Last updated: 2026-10-30T18:14:18.692Z* | *Total pages: 463*
