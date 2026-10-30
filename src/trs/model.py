@@ -529,7 +529,6 @@ class Cogitator:
             # closers first — the candidate that frames the whole entry leads
             # (the resolution determinism); then least content — the
             # scaffolding before the canons
-            # least content first — the scaffolding before the canons
             if self._in_path(re_, c):
                 continue  # a candidate cannot reappear in the path it was decomposed along
             if self.claim is not None:
@@ -537,8 +536,18 @@ class Cogitator:
             fp = (id(re_), k.fingerprint(), c.fingerprint())
             if fp in self.seen:
                 continue  # each reentry is its own path — twins explore their own
+            f = meet(side(k), side(c))
+            if f == side(k) and f in self.frames and self._pre_settled(residue(side(k), side(c)), re_) and self._pre_settled(residue(side(c), side(k)), re_):
+                continue  # a proven fit with no work left — re-proving adds nothing
             self.seen.add(fp)
             batches.append(self._pair(re_, c))
+        if not batches and not re_.rows and not re_.resolved:
+            # every candidate was barred or already proven — nothing to
+            # explore and nothing to learn: the reentry stands as known
+            re_.resolved = True
+            if re_.parent is not None:
+                self._after(re_.parent)
+            return
         if self.claim is not None:
             return
         for batch in reversed(batches):
@@ -560,6 +569,11 @@ class Cogitator:
                 best = f
         return best
 
+    def _pre_settled(self, region: KNode, re_: "_Reentry") -> bool:
+        """Would the region settle without children — empty, canonically
+        witnessed, or framed by a proper ancestor row."""
+        return (not region) or bool(self.d.witness(region)) or self._onpath(region, self._chain(re_))
+
     def _pair(self, re_: _Reentry, c: Kline) -> list[_Reentry]:
         k = re_.kline
         s_e, s_c = side(k), side(c)
@@ -571,9 +585,6 @@ class Cogitator:
         re_.rows.append(row)
         self.rows.append(row)
         self.open_rows.append(row)
-        if f == s_e:  # the candidate covers the entry — the fit frames
-            row.frame = f if not row.frame else row.frame.merge(f)
-            self._frame(f, row)
         pushed: list[_Reentry] = []
         if not self._side_ok(row, row.O, "o"):
             ch = self._child(re_.depth + 1, row.O, "o", (n for n in c.adj if contained(n, row.O)), row)
@@ -586,7 +597,10 @@ class Cogitator:
         row.children = tuple(reversed(pushed))  # U first
         if self._satisfied(row):
             row.instant = True
-            self._resolve(row)
+            self._resolve(row)  # before the frame mints — the row closes, then its cascade
+        if f == s_e:  # the candidate covers the entry — the fit frames
+            row.frame = f if not row.frame else row.frame.merge(f)
+            self._frame(f, row)
         return pushed
 
     def _in_path(self, re_: "_Reentry", c: Kline) -> bool:
