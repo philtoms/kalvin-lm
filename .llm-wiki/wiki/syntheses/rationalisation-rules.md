@@ -58,3 +58,32 @@ Rules established while rewriting `Cogitator.rationalise` (src/trs/model.py), tu
 
 - wdmh's WDH row: the fit `what` frames nowhere — honest under rule 9 (the pairing is the agreement).
 - wdmh's HALL row: the `reenter ALL` side closes invisibly — the ⟨ALL⟩ reentry is already known on an ancestor's frame (rule 21 + rule 8).
+
+
+## The table-alignment resync (2026-10-30, later session)
+
+Rules 2, 4–5, 15 and the known edges are superseded by the trace-table
+alignment (see [[cogitator-trace-table-alignment]]):
+
+- **2'** Candidate order is closers first (`F == side(E)`), then least
+  content. Child batches push reversed: the first candidate's subtree runs
+  to completion before the next explores — batches are independent, so
+  candidates can explore in parallel.
+- **4'** The in-path rule now also bars any candidate whose signature
+  equals an ancestor **entry's** signature (MHALL → HALL → MHALL is
+  illegal). The content-flow rule (4–5) remains alongside.
+- **5'** A candidate never pairs an entry of its own full content
+  (like-for-like); a canonically **witnessed o-side** is settled at
+  pairing (the goal grounds itself — mhall's root SVO side; wdmh's HALL
+  has no canon, so it reenters).
+- **8'** Frames are owned by the producing **row**: a frame covers only
+  reentries strictly below that row — sibling pairings never satisfy each
+  other's children.
+- **15'** A reentry's slot goes to its earliest-**created** resolving row
+  (closers and scaffolding pair first); sticky exchange feeds displace
+  resolved-first rows, and only exchanges that admitted composing content
+  claim slots (a self-witnessing pair acknowledges, it does not learn).
+- Resolutions frame the reentry's region (a record — it never settles);
+  the grounded claim mints its o-region frame (MHALL, SVO / WDH, HALL).
+- The memo is per-reentry: twins (identical klines from different
+  parents) explore their own pairings.
