@@ -441,6 +441,9 @@
 - [[sources/obs-2026-10-27-compiler-now-emits-pipe-composed-content-labels-on-compound-]] — Observation: Compiler now emits pipe-composed content labels on compound sigs *(created: 2026-10-27)*
 - [[sources/obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions]] — Observation: meet label extraction broken by two label conventions *(created: 2026-10-27)*
 - [[sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch]] — Observation: All non-S1 _admit stores come from the "sides resolved" branch *(created: 2026-10-28)*
+- [[sources/obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry]] — Observation: Cogitator.rationalise rewritten as frame-propagating reentry runner *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-]] — Observation: MTS Uppercase Character notation for compound labels in TRS table *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove]] — Observation: TRS harness renders optimal-path trace table via frame provenance *(created: 2026-10-30)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -451,4 +454,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-28T12:18:00.063Z* | *Total pages: 439*
+*Last updated: 2026-10-30T08:34:54.084Z* | *Total pages: 442*

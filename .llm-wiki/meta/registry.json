@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-28T12:18:00.063Z",
+  "last_updated": "2026-10-30T08:34:54.084Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6803,6 +6803,59 @@
       "source_context": "Investigating unusual _admit results from dev/dialogue/trs_harness.py",
       "created": "2026-10-28",
       "updated": "2026-10-28"
+    },
+    "sources/obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry": {
+      "type": "source",
+      "title": "Observation: Cogitator.rationalise rewritten as frame-propagating reentry runner",
+      "tags": [
+        "trs",
+        "cogitator",
+        "reentry",
+        "framing",
+        "exchange"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry",
+      "relevance": "high",
+      "observed_at": "2026-10-30T07:16:01.472Z",
+      "source_context": "Rewriting Cogitator.rationalise to generate the expected ask→goal trace",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-": {
+      "type": "source",
+      "title": "Observation: MTS Uppercase Character notation for compound labels in TRS table",
+      "tags": [
+        "trs",
+        "harness",
+        "labels",
+        "mts",
+        "notation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-",
+      "relevance": "medium",
+      "observed_at": "2026-10-30T08:34:54.005Z",
+      "source_context": "MTS notation for compound KNode labels in the TRS harness table",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove": {
+      "type": "source",
+      "title": "Observation: TRS harness renders optimal-path trace table via frame provenance",
+      "tags": [
+        "trs",
+        "harness",
+        "trace-table",
+        "provenance"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove",
+      "relevance": "high",
+      "observed_at": "2026-10-30T07:37:37.476Z",
+      "source_context": "Rendering the optimal-path trace table in the TRS harness",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

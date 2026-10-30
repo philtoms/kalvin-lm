@@ -1145,3 +1145,12 @@
 ## [2026-10-28T12:17:59.966Z] observe
 - slug: "obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch", title: "All non-S1 _admit stores come from the \"sides resolved\" branch", relevance: "high"
 
+## [2026-10-30T07:16:01.474Z] observe
+- slug: "obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry", title: "Cogitator.rationalise rewritten as frame-propagating reentry runner", relevance: "high"
+
+## [2026-10-30T07:37:37.479Z] observe
+- slug: "obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove", title: "TRS harness renders optimal-path trace table via frame provenance", relevance: "high"
+
+## [2026-10-30T08:34:54.007Z] observe
+- slug: "obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-", title: "MTS Uppercase Character notation for compound labels in TRS table", relevance: "medium"
+

@@ -1157,6 +1157,9 @@
     "sources/knode-label-conventions-content-vs-identifier"
   ],
   "sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch": [],
+  "sources/obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry": [],
+  "sources/obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-": [],
+  "sources/obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],

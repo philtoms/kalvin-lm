@@ -1,5 +1,11 @@
 # Wiki Update Log
 
+## 2026-10-30
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-","title":"MTS Uppercase Character notation for compound labels in TRS table"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove","title":"TRS harness renders optimal-path trace table via frame provenance"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry","title":"Cogitator.rationalise rewritten as frame-propagating reentry runner"}
+
 ## 2026-10-28
 
 - **observe**: {"relevance":"high","slug":"obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch","title":"All non-S1 _admit stores come from the \"sides resolved\" branch"}
