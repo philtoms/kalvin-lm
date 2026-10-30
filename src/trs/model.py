@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from fractions import Fraction
 
@@ -241,44 +241,40 @@ def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
 
 # --- §5 — reentry: the rationalisation runner ---
 
+def side(k: Kline) -> KNode:
+    """The full content of a kline — its signature composed with its adjacency."""
+    return k.sig.merge(can(k.adj))
+
+
 @dataclass
-class Candidate:
-    """The open-format candidate — the unit of work on the reentry stack."""
+class Row:
+    """One reentry pairing. The candidate's content decomposes against the
+    entry's content into F (fit), U (underfit — the entry beyond the
+    candidate) and O (overfit — the candidate beyond the entry)."""
 
-    sig: KNode  # candidate signature
-    F: KNode
-    U: KNode
-    O: KNode
-    n_f: frozenset[KNode]
-    n_u: frozenset[KNode]
-    n_o: frozenset[KNode]
-    C: Kline
-    E: Kline
+    depth: int
+    entry: Kline
+    candidate: Kline | None  # None — the reentry stalled at S4
+    F: KNode = KNone
+    U: KNode = KNone
+    O: KNode = KNone
+    frame: KNode = KNone  # what the row framed
+    resolved: bool = False
+    children: tuple = ()  # the pushed reentry klines, U first
+    re: "_Reentry | None" = None
 
 
-def next_candidate(c: Kline, entry: Kline) -> Candidate:
-    """The popped candidate in open format: F/U/O decompose the claim
-    against the candidate, f/o carry the candidate's own nodes, u the
-    entry's."""
-    f = meet(c.sig, entry.sig)
-    t = Decomposition(F=f, O=residue(c.sig, entry.sig), U=residue(entry.sig, c.sig))
+@dataclass
+class _Reentry:
+    """A residual region reentered with its witness nodes."""
 
-    cand = Candidate(
-        sig=can(entry.adj),
-        F=t.F,
-        U=t.U,
-        O=t.O,
-        n_f=frozenset(n for n in c.adj if contained(n, t.F)),
-        n_o=frozenset(n for n in c.adj if contained(n, t.O)),
-        n_u=frozenset(n for n in entry.adj if contained(n, t.U)),
-        C=c,
-        E=entry
-    )
-    return cand
-
-def grounded(d: Domain, s: KNode) -> bool:
-    """A signature is grounded when it exists in the domain."""
-    return bool(d.exact(s))
+    kline: Kline
+    depth: int
+    parent: "Row | None" = None
+    side: str = ""  # "u" | "o" — which residual the reentry came from
+    rows: list = field(default_factory=list)
+    resolved: bool = False
+    stalled: "Row | None" = None
 
 
 @dataclass(frozen=True)
@@ -304,10 +300,22 @@ class Rationalisation:
     stores: list[Kline]
     ends: list[End]
     rounds: int
+    rows: list[Row] = field(default_factory=list)
+    path: list[Row] = field(default_factory=list)  # the rows that carried the opening pairing
+    claim: Kline | None = None
 
 class Cogitator:
+    """The reentry runner. Enter with the ask (and its goal as the first
+    candidate), pair the entry with each overlapping memory kline, reenter
+    the U and O residuals with the witness nodes they contain, frame the
+    fit when the candidate covers the entry, and resolve the row when
+    both sides are framed. A resolved row frames its fit and its reentry;
+    when the opening pairing resolves, the claim grounds as ⟨ask, {goal}⟩.
+    Two stalled reentries on one signature witness each other — the S3
+    root exchange."""
 
     MAX_DEPTH = 10
+    MAX_ROWS = 4096
 
     def __init__(self, d: Domain) -> None:
         self.d = d
@@ -324,64 +332,188 @@ class Cogitator:
         if c not in self.stores:
             self.stores.append(c)
 
-    def rationalise(self, entry: Kline, seen: set[int] = set(), framed: KNode = KNone, depth: int = 0) -> Rationalisation:
-        if entry.fingerprint() in seen:
-            return Rationalisation(self.stores, self.ends, 0)
+    def rationalise(self, entry: Kline, goal: Kline | None = None) -> Rationalisation:
+        self.stores, self.ends = [], []
+        self.rows: list[Row] = []
+        self.open_rows: list[Row] = []
+        self.frames: list[KNode] = []
+        self.seen: set[tuple[int, int]] = set()
+        self.stalls: dict[int, list[_Reentry]] = {}
+        self.frame_src: dict[int, list[Row]] = {}
+        self.claim: Kline | None = None
+        self.goal = goal
+        self.goal_row: Row | None = None
+        self.agenda: list[_Reentry] = []
 
-        seen.add(entry.fingerprint())
-        rounds = 0
-        cands = self._reenter(entry, framed, depth)
-        for cand in cands:
-            while True:
-                rounds += 1
-                pending = len(self.stores)
+        if goal is None:
+            if not entry.adj:
+                self._halt("R4: entry kline with no adjacency", entry)
+                return Rationalisation(self.stores, self.ends, 0, self.rows)
+            if entry.sig == can(entry.adj):
+                self._admit(entry)  # S1 grounds on receipt
+                return Rationalisation(self.stores, self.ends, 0, self.rows)
 
-                if not cand.n_u and not cand.n_o:  # the sides resolved — it grounds
-                    self._admit(Kline(cand.sig, cand.n_f))
-                    break
+        self.agenda.append(_Reentry(entry, 1))
+        self._run()
+        for waiting in self.stalls.values():
+            for re_ in waiting:
+                if not re_.resolved:
+                    self._halt("stalled at S4: no candidates", re_.kline)
+        return Rationalisation(
+            self.stores, self.ends, len(self.rows), self.rows, self._trace(), self.claim
+        )
 
-                if cand.sig == can(cand.n_f):  # f composes the claim — ground F == C
-                    self._admit(Kline(cand.sig, cand.n_f))
-                    break
+    def _run(self) -> None:
+        while self.agenda and self.claim is None and len(self.rows) < self.MAX_ROWS:
+            re_ = self.agenda.pop()
+            if re_.resolved or self._covered(re_.kline.sig):
+                re_.resolved = True
+                continue
+            self._reenter(re_)
 
-                """Merge grounded side regions into f; reenter the ungrounded."""
-                if cand.n_u:
-                    if grounded(self.d, can(cand.n_u)):  # the region's witnesses compose it
-                        cand.n_f, cand.n_u = cand.n_f | cand.n_u, frozenset()
-                    else:
-                        self.rationalise(Kline(cand.U, cand.n_u), seen, framed.merge(cand.F), depth + 1)
+    def _covered(self, x: KNode) -> bool:
+        """A region is framed when some frame contains it (⊥ always is)."""
+        return not x or any(x & f == x for f in self.frames)
 
-                elif cand.n_o:
-                    if grounded(self.d, can(cand.n_o)):
-                        cand.n_f, cand.n_o = cand.n_f | cand.n_o, frozenset()
-                    else:
-                        self.rationalise(Kline(cand.O, cand.n_o), seen, framed.merge(cand.F), depth + 1)
+    def _frame(self, x: KNode, *src: Row) -> None:
+        """Frame content — recording the row that witnessed it; resolutions
+        propagate until still."""
+        if not x or self._covered(x):
+            return
+        self.frames.append(x)
+        self.frame_src.setdefault(int(x), []).extend(src)
+        changed = True
+        while changed and self.claim is None:
+            changed = False
+            for row in list(self.open_rows):
+                if self._covered(row.U) and self._covered(row.O):
+                    self._resolve(row)
+                    changed = True
 
-                elif pending == len(self.stores):
-                    # stalled at S2~S3 — nothing pending resolves it
-                    if cand.n_u:
-                        self._halt("stalled at S2: underfit ungrounded", Kline(cand.sig, cand.n_f | cand.n_u))
-                    if cand.n_o:
-                        self._halt("stalled at S3: overfit ungrounded", Kline(cand.sig, cand.n_f | cand.n_o))
-                    break               
+    def _resolve(self, row: Row) -> None:
+        row.resolved = True
+        if row in self.open_rows:
+            self.open_rows.remove(row)
+        row.frame = row.F if not row.frame else row.frame.merge(row.F)  # resolution frames the fit
+        if row is self.goal_row:
+            self.claim = Kline(row.entry.sig, frozenset([self.goal.sig]))
+            self._admit(self.claim)  # the opening pairing resolved — the claim grounds
+        self._frame(row.F, row)
+        re_ = row.re
+        if re_ is not None and not re_.resolved:
+            re_.resolved = True
+            self._frame(re_.kline.sig, row)  # the reentry's content is proven
 
-        return Rationalisation(self.stores, self.ends, rounds)
+    def _reenter(self, re_: _Reentry) -> None:
+        k = re_.kline
+        if not k.adj:
+            self._halt("R4: entry kline with no adjacency", k)
+            return
+        if re_.depth > self.MAX_DEPTH:
+            self._halt("bound: recursion depth reached", k)
+            return
+        cands = [
+            c for c in self.d
+            if c.sig & k.sig and c.adj and c.adj != frozenset([c.sig]) and not self._covered(c.sig)
+        ]
+        if re_.depth == 1 and self.goal is not None and not re_.rows:
+            self._pair(re_, self.goal)  # the first candidate is always the goal
+            if self.claim is not None:
+                return
+        if not cands and not re_.rows:
+            row = Row(re_.depth, k, None, re=re_)
+            re_.stalled = row
+            self.rows.append(row)
+            self.stalls.setdefault(int(k.sig), []).append(re_)
+            self._exchange(int(k.sig))
+            return
+        for c in sorted(cands, key=lambda c: self._pair_effort(k, c)):
+            if self.claim is not None:
+                return
+            if re_.depth == 1 and c == self.goal:
+                continue  # the goal already paired — the first candidate
+            fp = (k.fingerprint(), c.fingerprint())
+            if fp in self.seen:
+                continue
+            self.seen.add(fp)
+            self._pair(re_, c)
 
-    def _reenter(self, entry: Kline, framed: KNode, depth: int) -> list[Candidate]:
-        """The reentry's guards, then its base candidate onto the stack."""
-        if not entry.adj:
-            self._halt("R4: entry kline with no adjacency", entry)
+    def _pair(self, re_: _Reentry, c: Kline) -> None:
+        k = re_.kline
+        s_e, s_c = side(k), side(c)
+        f = meet(s_e, s_c)
+        row = Row(re_.depth, k, c, F=f, U=residue(s_e, s_c), O=residue(s_c, s_e), re=re_)
+        if re_.depth == 1 and c == self.goal:
+            self.goal_row = row
+        re_.rows.append(row)
+        self.rows.append(row)
+        self.open_rows.append(row)
+        if f == s_e:  # the candidate covers the entry — the fit frames
+            self._frame(f, row)
+        o_child = u_child = None
+        if not self._covered(row.O):
+            o_child = self._child(re_.depth + 1, row.O, "o", (n for n in c.adj if contained(n, row.O)), row)
+        if not self._covered(row.U):
+            u_child = self._child(re_.depth + 1, row.U, "u", (n for n in k.adj if contained(n, row.U)), row)
+        row.children = tuple(ch.kline for ch in (u_child, o_child) if ch is not None)
+        if self._covered(row.U) and self._covered(row.O):
+            self._resolve(row)
+
+    def _child(self, depth: int, region: KNode, side: str, nodes, parent: Row) -> "_Reentry | None":
+        """Reenter the residual region carrying the witness nodes it
+        contains. LIFO: the U-side child, pushed last, leads."""
+        if not region:
+            return None
+        re_ = _Reentry(Kline(region, frozenset(nodes)), depth, parent, side)
+        self.agenda.append(re_)
+        return re_
+
+    def _exchange(self, sig: int) -> None:
+        """An overfit and an underfit reentry stalled at S4 on one
+        signature witness each other: the shared content grounds and both
+        chains resolve."""
+        waiting = [r for r in self.stalls.get(sig, ()) if not r.resolved]
+        while len(waiting) >= 2 and self.claim is None:
+            a = waiting[0]
+            b = next(
+                (r for r in waiting[1:] if r.side != a.side and r.parent is not a.parent),
+                None,
+            )
+            if b is None:
+                return
+            self._admit(Kline(a.kline.sig, a.kline.adj | b.kline.adj))
+            a.resolved = b.resolved = True
+            for re_ in (a, b):
+                if re_.stalled is not None:
+                    re_.stalled.resolved = True
+                    stalled = re_.stalled
+                    stalled.frame = a.kline.sig if not stalled.frame else stalled.frame.merge(a.kline.sig)
+            self._frame(a.kline.sig, a.stalled, b.stalled)
+            waiting = [r for r in self.stalls.get(sig, ()) if not r.resolved]
+
+    def _trace(self) -> list[Row]:
+        """The optimal path: the rows whose frames carried the opening
+        pairing to its resolution, in generation order."""
+        if self.claim is None or self.goal_row is None:
             return []
-        if depth >= self.MAX_DEPTH:
-            self._halt("bound: recursion depth reached", entry)
-            return []
-        
-        """The candidate list: each overlapping memory kline, individually
-        formed ⟨can(entry.adj), nb.adj⟩ — identities witness only themselves.
-        Order is §7 strategy: ascending effort, ties in signature then store
-        order."""
-        nbs = [nb for nb in self.d.overlap(entry.sig) if nb.adj and nb.adj != frozenset([nb.sig]) and not contained(nb.sig, framed)]
-        return [next_candidate(nb, entry) for nb in nbs]
+        keep: dict[int, Row] = {}
+        stack = [self.goal_row]
+        while stack:
+            row = stack.pop()
+            if id(row) in keep:
+                continue
+            keep[id(row)] = row
+            for region in (row.U, row.O):
+                for f_val, srcs in self.frame_src.items():
+                    if region and region & f_val == region:
+                        stack.extend(s for s in srcs if s is not row)
+        return [r for r in self.rows if id(r) in keep]
+
+    def _pair_effort(self, k: Kline, c: Kline) -> Fraction:
+        s_e, s_c = side(k), side(c)
+        u, o = residue(s_e, s_c), residue(s_c, s_e)
+        t = mu(s_e | s_c)
+        return Fraction(mu(u) + BETA * mu(o), t) if t else Fraction(0)
 
 def proposals(r: Rationalisation) -> list[Proposal]:
     """Every halt generates one proposal (§5 Definition 15), ordered by graded
@@ -390,8 +522,8 @@ def proposals(r: Rationalisation) -> list[Proposal]:
     for e in r.ends:
         if e.kline is None:
             continue
-        if e.reason.startswith("no candidates") or e.reason.startswith("stalled at S2"):
-            kind = "connect"  # fit wanted, nobody to talk to — or underfit starved
+        if e.reason.startswith("stalled") or "no candidates" in e.reason:
+            kind = "connect"  # fit wanted, nobody to talk to — the sides starved
         elif e.reason.startswith("bound"):
             kind = "continue"
         else:
