@@ -266,20 +266,34 @@ def _tsupport(pair: tuple, labels: dict[int, str], alloc: dict[int, str]) -> str
     return _tframe(v, labels, alloc) + " ← " + c
 
 
-def _row_step(row: Row, labels: dict[int, str], alloc: dict[int, str], keep: set[int]) -> str:
+def _row_step(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> str:
+    e = _tlabel(row.entry.sig, labels, alloc)
+    if kind == "wait":
+        return f"stalled {e}"
+    if kind == "close":
+        if row is goal_row:
+            return "resolved, grounded"
+        if row.bp:
+            peers = ", ".join(_tlabel(p.entry.sig, labels, alloc) for p in row.bp)
+            return f"resolved, BP {peers}"
+        return f"resolved {e}"
+    # the pairing emission
     if row.candidate is None:
-        e = _tlabel(row.entry.sig, labels, alloc)
-        return f"resolved {e}" if row.exchange else f"stalled {e}"
-    parts = []
+        return f"stalled {e}"
     children = [ch for ch in row.children if ch.popped]
     if children:
-        parts.append("reenter " + ", ".join(_tlabel(ch.kline.sig, labels, alloc) for ch in children))
-    if row.resolved:
-        parts.append("resolved " + _tlabel(row.entry.sig, labels, alloc))
-    return "; ".join(parts)
+        return "reenter " + ", ".join(_tlabel(ch.kline.sig, labels, alloc) for ch in children)
+    return ""
 
 
-def _table_row(row: Row, labels: dict[int, str], alloc: dict[int, str], keep: set[int]) -> list[str]:
+def _frame_str(row: Row, kind: str, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    parts = [_tframe(int(row.frame), labels, alloc)] if row.frame else []
+    if kind != "pair":  # resolutions lean — the supports join the own frame
+        parts.extend(_tsupport(p, labels, alloc) for p in row.supports)
+    return ", ".join(p for p in parts if p)
+
+
+def _table_row(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> list[str]:
     e = _tlabel(row.entry.sig, labels, alloc)
     if row.candidate is not None:
         c = _tlabel(row.candidate.sig, labels, alloc)
@@ -289,20 +303,13 @@ def _table_row(row: Row, labels: dict[int, str], alloc: dict[int, str], keep: se
             )
     else:
         c = ""
-    frame = ", ".join(
-        p
-        for p in (
-            ([_tframe(int(row.frame), labels, alloc)] if row.frame else [])
-            + [_tsupport(p, labels, alloc) for p in row.supports]
-        )
-    )
     return [
         str(row.depth), e, c,
         _tlabel(row.F, labels, alloc),
         _tlabel(row.U, labels, alloc),
         _tlabel(row.O, labels, alloc),
-        frame,
-        _row_step(row, labels, alloc, keep),
+        _frame_str(row, kind, labels, alloc),
+        _row_step(kind, row, labels, alloc, goal_row),
     ]
 
 
@@ -313,12 +320,23 @@ def _tline(k: Kline, labels: dict[int, str], alloc: dict[int, str]) -> str:
     return f"{sig}:[{nodes}]" if k.adj else f"{sig}:[]"
 
 
-def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
+def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None = None) -> list[str]:
     """The trace table: depth, entry, candidate, fit, underfit, overfit,
-    frame, step."""
+    frame, step — a row per event: the pairing, the wait, the resolution
+    (BP — back propagation). One row per reentry stays orthogonal; the
+    repeats are the trace's temporal shape."""
     hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "step"]
-    keep = {id(r) for r in rows}
-    body = [_table_row(r, labels, alloc, keep) for r in rows]
+    events: list[tuple[int, int, str, Row]] = []
+    for row in rows:
+        once = row.instant or row.exchange  # born closed — one emission
+        if not once:
+            events.append((row.birth, 0, "pair", row))
+        if row.waited is not None:
+            events.append((row.waited, 1, "wait", row))
+        if row.closed is not None and (row.bp or not row.exchange):
+            events.append((row.closed, 2, "close", row))
+    events.sort(key=lambda ev: (ev[0], ev[1]))
+    body = [_table_row(kind, row, labels, alloc, goal_row) for _, _, kind, row in events]
     widths = [
         max(len(hdr[i]), *(len(r[i]) for r in body)) if body else len(hdr[i])
         for i in range(len(hdr))
@@ -341,7 +359,7 @@ def _render_step(step: TrsStep, labels: dict[int, str], alloc: dict[int, str], v
     if rows:
         if step.result.claim is None:
             lines.append("      (no path — the goal was not reached; all rows below)")
-        lines.extend("      " + l for l in _render_table(rows, labels, alloc))
+        lines.extend("      " + l for l in _render_table(rows, labels, alloc, step.result.goal_row))
     for store in step.result.stores:
         lines.append(f"      stores    {_tline(store, labels, alloc)}")
     by_reason: dict[str, list[End]] = {}

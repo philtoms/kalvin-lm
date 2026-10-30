@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from hypothesis import assume, given, settings, strategies as st
 
 from trs import (
