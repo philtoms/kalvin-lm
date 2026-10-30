@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-30T08:34:54.084Z",
+  "last_updated": "2026-10-30T11:27:39.617Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6822,6 +6822,57 @@
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },
+    "sources/obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel": {
+      "type": "source",
+      "title": "Observation: Exchange closure is the frame alone; child-resolution channel excluded for stalls",
+      "tags": [
+        "trs",
+        "exchange",
+        "redundancy",
+        "frame-channel"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel",
+      "relevance": "high",
+      "observed_at": "2026-10-30T11:05:25.344Z",
+      "source_context": "Exchange channel redundancy found by user commenting out _admit/_frame",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-": {
+      "type": "source",
+      "title": "Observation: Exchange visible: temporal stalls, parent-chain trace, no self-covering",
+      "tags": [
+        "trs",
+        "trace-table",
+        "exchange",
+        "self-covering"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-",
+      "relevance": "high",
+      "observed_at": "2026-10-30T09:15:52.796Z",
+      "source_context": "Making the wdmh exchange causally visible in the trace table",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame": {
+      "type": "source",
+      "title": "Observation: F frames required for resolution; root exchange jointly frames the parents' fits",
+      "tags": [
+        "trs",
+        "framing",
+        "root-exchange",
+        "fits"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame",
+      "relevance": "high",
+      "observed_at": "2026-10-30T11:27:39.537Z",
+      "source_context": "Resolving how F components frame — the root exchange frames the parents' fits",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
     "sources/obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-": {
       "type": "source",
       "title": "Observation: MTS Uppercase Character notation for compound labels in TRS table",
@@ -6837,6 +6888,91 @@
       "relevance": "medium",
       "observed_at": "2026-10-30T08:34:54.005Z",
       "source_context": "MTS notation for compound KNode labels in the TRS harness table",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the": {
+      "type": "source",
+      "title": "Observation: Orthogonal trace: one row per reentry; exchange feeds hold their slots",
+      "tags": [
+        "trs",
+        "trace-table",
+        "orthogonality"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the",
+      "relevance": "high",
+      "observed_at": "2026-10-30T09:57:51.252Z",
+      "source_context": "Making the trace table orthogonal — one candidate row per entry",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention": {
+      "type": "source",
+      "title": "Observation: Reenter steps claim all executed reentries — the V convention",
+      "tags": [
+        "trs",
+        "trace-table",
+        "steps",
+        "convention"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention",
+      "relevance": "medium",
+      "observed_at": "2026-10-30T10:23:19.093Z",
+      "source_context": "Fixing missing reenter claims in the trace table step column",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path": {
+      "type": "source",
+      "title": "Observation: Root pairs with goal only — trace table shows a true path",
+      "tags": [
+        "trs",
+        "trace-table",
+        "path",
+        "root-pairing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path",
+      "relevance": "high",
+      "observed_at": "2026-10-30T09:09:32.581Z",
+      "source_context": "Fixing the false path in the wdmh trace table",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame": {
+      "type": "source",
+      "title": "Observation: Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution",
+      "tags": [
+        "trs",
+        "framing",
+        "rules",
+        "exchange",
+        "candidate-order"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame",
+      "relevance": "high",
+      "observed_at": "2026-10-30T09:33:57.625Z",
+      "source_context": "Enforcing strict frame rules after user correction",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic": {
+      "type": "source",
+      "title": "Observation: Trace table connected: pushers take slots; exchange slots sticky",
+      "tags": [
+        "trs",
+        "trace-table",
+        "connectedness",
+        "repair"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic",
+      "relevance": "high",
+      "observed_at": "2026-10-30T10:05:04.614Z",
+      "source_context": "Fixing the floating Subject reentry in the orthogonal trace table",
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },

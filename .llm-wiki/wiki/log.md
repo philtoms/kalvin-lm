@@ -2,6 +2,14 @@
 
 ## 2026-10-30
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame","title":"F frames required for resolution; root exchange jointly frames the parents' fits"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel","title":"Exchange closure is the frame alone; child-resolution channel excluded for stalls"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention","title":"Reenter steps claim all executed reentries — the V convention"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic","title":"Trace table connected: pushers take slots; exchange slots sticky"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the","title":"Orthogonal trace: one row per reentry; exchange feeds hold their slots"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame","title":"Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-","title":"Exchange visible: temporal stalls, parent-chain trace, no self-covering"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path","title":"Root pairs with goal only — trace table shows a true path"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-","title":"MTS Uppercase Character notation for compound labels in TRS table"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove","title":"TRS harness renders optimal-path trace table via frame provenance"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry","title":"Cogitator.rationalise rewritten as frame-propagating reentry runner"}

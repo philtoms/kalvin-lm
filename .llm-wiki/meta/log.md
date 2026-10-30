@@ -1154,3 +1154,27 @@
 ## [2026-10-30T08:34:54.007Z] observe
 - slug: "obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-", title: "MTS Uppercase Character notation for compound labels in TRS table", relevance: "medium"
 
+## [2026-10-30T09:09:32.583Z] observe
+- slug: "obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path", title: "Root pairs with goal only — trace table shows a true path", relevance: "high"
+
+## [2026-10-30T09:15:52.798Z] observe
+- slug: "obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-", title: "Exchange visible: temporal stalls, parent-chain trace, no self-covering", relevance: "high"
+
+## [2026-10-30T09:33:57.626Z] observe
+- slug: "obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame", title: "Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution", relevance: "high"
+
+## [2026-10-30T09:57:51.253Z] observe
+- slug: "obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the", title: "Orthogonal trace: one row per reentry; exchange feeds hold their slots", relevance: "high"
+
+## [2026-10-30T10:05:04.616Z] observe
+- slug: "obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic", title: "Trace table connected: pushers take slots; exchange slots sticky", relevance: "high"
+
+## [2026-10-30T10:23:19.095Z] observe
+- slug: "obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention", title: "Reenter steps claim all executed reentries — the V convention", relevance: "medium"
+
+## [2026-10-30T11:05:25.345Z] observe
+- slug: "obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel", title: "Exchange closure is the frame alone; child-resolution channel excluded for stalls", relevance: "high"
+
+## [2026-10-30T11:27:39.538Z] observe
+- slug: "obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame", title: "F frames required for resolution; root exchange jointly frames the parents' fits", relevance: "high"
+

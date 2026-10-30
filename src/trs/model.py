@@ -260,7 +260,8 @@ class Row:
     O: KNode = KNone
     frame: KNode = KNone  # what the row framed
     resolved: bool = False
-    children: tuple = ()  # the pushed reentry klines, U first
+    exchange: bool = False  # the stall whose arrival exchanged
+    children: tuple = ()  # the pushed child reentries, U first
     re: "_Reentry | None" = None
 
 
@@ -274,6 +275,8 @@ class _Reentry:
     side: str = ""  # "u" | "o" — which residual the reentry came from
     rows: list = field(default_factory=list)
     resolved: bool = False
+    popped: bool = False  # the reentry was reached on the agenda
+    resolved_by: "Row | None" = None  # the row whose resolution closed the reentry
     stalled: "Row | None" = None
 
 
@@ -337,6 +340,7 @@ class Cogitator:
         self.rows: list[Row] = []
         self.open_rows: list[Row] = []
         self.frames: list[KNode] = []
+        self.frame_re: list[_Reentry | None] = []  # the reentry that produced each frame
         self.seen: set[tuple[int, int]] = set()
         self.stalls: dict[int, list[_Reentry]] = {}
         self.frame_src: dict[int, list[Row]] = {}
@@ -366,43 +370,88 @@ class Cogitator:
     def _run(self) -> None:
         while self.agenda and self.claim is None and len(self.rows) < self.MAX_ROWS:
             re_ = self.agenda.pop()
-            if re_.resolved or self._covered(re_.kline.sig):
+            re_.popped = True
+            if re_.resolved or self._covered(re_.kline.sig, self._chain(re_)):
                 re_.resolved = True
                 continue
             self._reenter(re_)
 
-    def _covered(self, x: KNode) -> bool:
-        """A region is framed when some frame contains it (⊥ always is)."""
-        return not x or any(x & f == x for f in self.frames)
+    def _chain(self, re_: "_Reentry | None") -> set[int]:
+        """The reentry and its ancestors — frames they produced never cover
+        this subtree's regions."""
+        out: set[int] = set()
+        while re_ is not None:
+            out.add(id(re_))
+            re_ = re_.parent.re if re_.parent is not None else None
+        return out
 
-    def _frame(self, x: KNode, *src: Row) -> None:
-        """Frame content — recording the row that witnessed it; resolutions
-        propagate until still."""
-        if not x or self._covered(x):
+    def _covered(self, x: KNode, exclude: set[int] | None = None) -> bool:
+        """A region is framed when some frame contains it (⊥ always is) —
+        never by a frame its own subtree produced."""
+        return not x or any(
+            x & f == x
+            for f, fr in zip(self.frames, self.frame_re)
+            if fr is None or id(fr) not in (exclude or ())
+        )
+
+    def _frame(self, x: KNode, *src: Row, joint: bool = False) -> None:
+        """Frame content — recording the rows that witnessed it; resolutions
+        propagate until still. Only F==E matches and exchanges frame; a
+        value already covered elsewhere is still recorded — chains exclude
+        frames their own subtree produced, so suppressed frames are
+        load-bearing for those rows. A joint frame (the exchange's mutual
+        witness) belongs to no subtree."""
+        if not x:
+            return
+        if src:
+            self.frame_src.setdefault(int(x), []).extend(src)
+        if x in self.frames:
             return
         self.frames.append(x)
-        self.frame_src.setdefault(int(x), []).extend(src)
+        self.frame_re.append(None if joint or not src else src[0].re)
         changed = True
         while changed and self.claim is None:
             changed = False
             for row in list(self.open_rows):
-                if self._covered(row.U) and self._covered(row.O):
+                if self._satisfied(row):
                     self._resolve(row)
                     changed = True
+
+    def _side_ok(self, row: Row, region: KNode, side: str) -> bool:
+        """A side is satisfied when empty, framed outside its subtree, or
+        its reentry resolved — a stalled reentry has no rows; only the
+        exchange frame closes it."""
+        if not region or self._covered(region, self._chain(row.re)):
+            return True
+        return any(
+            ch.side == side and ch.resolved and ch.stalled is None for ch in row.children
+        )
+
+    def _satisfied(self, row: Row) -> bool:
+        # an entry is resolved when all of its components — F, U and O — are
+        # framed; the opener's fit is the claim's shared content — given
+        fit = row is self.goal_row or self._covered(row.F, self._chain(row.re))
+        return fit and self._side_ok(row, row.U, "u") and self._side_ok(row, row.O, "o")
+
+    def _after(self, row: "Row | None") -> None:
+        """A side was satisfied — the parent row may now resolve."""
+        if row is None or row.resolved or self.claim is not None:
+            return
+        if self._satisfied(row):
+            self._resolve(row)
 
     def _resolve(self, row: Row) -> None:
         row.resolved = True
         if row in self.open_rows:
             self.open_rows.remove(row)
-        row.frame = row.F if not row.frame else row.frame.merge(row.F)  # resolution frames the fit
         if row is self.goal_row:
             self.claim = Kline(row.entry.sig, frozenset([self.goal.sig]))
             self._admit(self.claim)  # the opening pairing resolved — the claim grounds
-        self._frame(row.F, row)
         re_ = row.re
         if re_ is not None and not re_.resolved:
             re_.resolved = True
-            self._frame(re_.kline.sig, row)  # the reentry's content is proven
+            re_.resolved_by = row
+            self._after(re_.parent)  # the side is satisfied — propagate backwards
 
     def _reenter(self, re_: _Reentry) -> None:
         k = re_.kline
@@ -416,10 +465,11 @@ class Cogitator:
             c for c in self.d
             if c.sig & k.sig and c.adj and c.adj != frozenset([c.sig]) and not self._covered(c.sig)
         ]
-        if re_.depth == 1 and self.goal is not None and not re_.rows:
-            self._pair(re_, self.goal)  # the first candidate is always the goal
-            if self.claim is not None:
-                return
+        if re_.depth == 1 and self.goal is not None:
+            # the opening pairing is the ask==goal claim — the first and only
+            # candidate at depth 1; the residuals do the exploring
+            self._pair(re_, self.goal)
+            return
         if not cands and not re_.rows:
             row = Row(re_.depth, k, None, re=re_)
             re_.stalled = row
@@ -427,11 +477,12 @@ class Cogitator:
             self.stalls.setdefault(int(k.sig), []).append(re_)
             self._exchange(int(k.sig))
             return
-        for c in sorted(cands, key=lambda c: self._pair_effort(k, c)):
+        for c in sorted(cands, key=lambda c: mu(side(c))):
+            # least content first — the scaffolding before the canons
+            if self._in_path(re_, c):
+                continue  # a candidate cannot reappear in the path it was decomposed along
             if self.claim is not None:
                 return
-            if re_.depth == 1 and c == self.goal:
-                continue  # the goal already paired — the first candidate
             fp = (k.fingerprint(), c.fingerprint())
             if fp in self.seen:
                 continue
@@ -449,15 +500,34 @@ class Cogitator:
         self.rows.append(row)
         self.open_rows.append(row)
         if f == s_e:  # the candidate covers the entry — the fit frames
+            row.frame = f if not row.frame else row.frame.merge(f)
             self._frame(f, row)
         o_child = u_child = None
-        if not self._covered(row.O):
+        if not self._side_ok(row, row.O, "o"):
             o_child = self._child(re_.depth + 1, row.O, "o", (n for n in c.adj if contained(n, row.O)), row)
-        if not self._covered(row.U):
+        if not self._side_ok(row, row.U, "u"):
             u_child = self._child(re_.depth + 1, row.U, "u", (n for n in k.adj if contained(n, row.U)), row)
-        row.children = tuple(ch.kline for ch in (u_child, o_child) if ch is not None)
-        if self._covered(row.U) and self._covered(row.O):
+        row.children = tuple(ch for ch in (u_child, o_child) if ch is not None)
+        if self._satisfied(row):
             self._resolve(row)
+
+    def _in_path(self, re_: "_Reentry", c: Kline) -> bool:
+        """Is the candidate in the reentry's path — the content flow from the
+        opening pairing down? An o-side child's region came from its parent
+        row's candidate, so that candidate is in its path; a u-side child
+        inherits only the parent's path. A candidate cannot reappear in the
+        path it was decomposed along."""
+        sig = int(c.sig)
+        child = re_
+        while child is not None and child.parent is not None:
+            if child.side == "o" and child.parent.candidate is not None:
+                if int(child.parent.candidate.sig) == sig:
+                    return True
+            nxt = child.parent.re
+            if nxt is None:
+                break
+            child = nxt
+        return False
 
     def _child(self, depth: int, region: KNode, side: str, nodes, parent: Row) -> "_Reentry | None":
         """Reenter the residual region carrying the witness nodes it
@@ -483,30 +553,117 @@ class Cogitator:
                 return
             self._admit(Kline(a.kline.sig, a.kline.adj | b.kline.adj))
             a.resolved = b.resolved = True
-            for re_ in (a, b):
-                if re_.stalled is not None:
-                    re_.stalled.resolved = True
-                    stalled = re_.stalled
-                    stalled.frame = a.kline.sig if not stalled.frame else stalled.frame.merge(a.kline.sig)
+            if b.stalled is not None:
+                b.stalled.resolved = True
+                b.stalled.exchange = True  # the arriving stall carries the exchange
+                b.stalled.frame = a.kline.sig if not b.stalled.frame else b.stalled.frame.merge(a.kline.sig)
+            if a.stalled is not None:
+                a.stalled.resolved = True
             self._frame(a.kline.sig, a.stalled, b.stalled)
+            # the root exchange: the waiting fits witness each other — what
+            # for had, the question's remnant answered by the verb
+            if a.parent is not None and b.parent is not None:
+                self._frame(a.parent.F, a.parent, b.parent, joint=True)
+                self._frame(b.parent.F, a.parent, b.parent, joint=True)
             waiting = [r for r in self.stalls.get(sig, ()) if not r.resolved]
 
     def _trace(self) -> list[Row]:
-        """The optimal path: the rows whose frames carried the opening
-        pairing to its resolution, in generation order."""
+        """The optimal path: the opening pairing and, for each side it rests
+        on, the one chain that carried it — the child's resolving row, the
+        exchange pair, or the source of the one frame that covers the
+        region. One row per reentry — paths stay orthogonal. In generation
+        order."""
         if self.claim is None or self.goal_row is None:
             return []
         keep: dict[int, Row] = {}
-        stack = [self.goal_row]
+        tabled: dict[int, int] = {}  # reentry id -> the row id holding its slot
+        sticky: set[int] = set()  # reentries whose holders are never displaced
+        stack: list[Row] = []
+        # the rows feeding an exchanged stall hold their reentries' slots —
+        # the S3 path is the path, not the shortcut that resolved first
+        for waiting in self.stalls.values():
+            for re_ in waiting:
+                if (
+                    re_.stalled is not None
+                    and re_.stalled.resolved
+                    and re_.parent is not None
+                    and re_.parent.re is not None
+                ):
+                    tabled[id(re_.parent.re)] = id(re_.parent)
+                    sticky.add(id(re_.parent.re))  # exchange feeds are never displaced
+                    stack.append(re_.parent)
+        stack.append(self.goal_row)
         while stack:
             row = stack.pop()
             if id(row) in keep:
                 continue
+            re_ = row.re
+            if re_ is not None and tabled.get(id(re_), id(row)) != id(row):
+                continue  # this entry already carries its row — a second candidate is another path
             keep[id(row)] = row
-            for region in (row.U, row.O):
-                for f_val, srcs in self.frame_src.items():
-                    if region and region & f_val == region:
-                        stack.extend(s for s in srcs if s is not row)
+            if re_ is not None:
+                tabled[id(re_)] = id(row)
+            if re_ is not None and re_.parent is not None:
+                stack.append(re_.parent)  # the row that pushed this reentry is on the path
+            for side, region in (("u", row.U), ("o", row.O)):
+                if not region:
+                    continue
+                child = next((ch for ch in row.children if ch.side == side), None)
+                if child is not None and child.resolved_by is not None:
+                    stack.append(child.resolved_by)  # the resolution chain
+                    continue
+                if child is not None and child.stalled is not None and child.stalled.resolved:
+                    pair = self.frame_src.get(int(child.kline.sig), [])  # the exchange pair
+                    stack.extend(pair[:2])
+                    continue
+                chain = self._chain(row.re)
+                best = None
+                for i, (f, fr) in enumerate(zip(self.frames, self.frame_re)):
+                    if fr is not None and id(fr) in chain:
+                        continue
+                    if region & f == region and (best is None or (mu(f), i) < best):
+                        best = (mu(f), i, f)
+                if best is not None:
+                    srcs = self.frame_src.get(int(best[2]), [])
+                    if srcs:
+                        stack.append(srcs[0])
+        # repair: every tabled entry is claimed by a tabled row's step — a
+        # floating row's pusher takes its reentry's slot
+        for _ in range(len(keep) + 1):
+            claimed: set[int] = set()
+            for r in keep.values():
+                for ch in r.children:
+                    if (ch.stalled is not None and id(ch.stalled) in keep) or any(
+                        id(x) in keep for x in ch.rows
+                    ):
+                        claimed.add(id(ch))
+            floating = next(
+                (
+                    r
+                    for r in keep.values()
+                    if r is not self.goal_row
+                    and r.re is not None
+                    and id(r.re) not in claimed
+                ),
+                None,
+            )
+            if floating is None:
+                break
+            pusher = floating.re.parent
+            if (
+                pusher is None
+                or pusher is self.goal_row
+                or pusher.re is None
+                or tabled.get(id(pusher.re)) == id(pusher)
+                or (id(pusher.re) in sticky and tabled.get(id(pusher.re)) != id(pusher))
+            ):
+                del keep[id(floating)]  # cannot connect it without displacing a sticky holder — drop
+                continue
+            old = tabled.get(id(pusher.re))
+            if old is not None and old in keep:
+                del keep[old]
+            keep[id(pusher)] = pusher
+            tabled[id(pusher.re)] = id(pusher)
         return [r for r in self.rows if id(r) in keep]
 
     def _pair_effort(self, k: Kline, c: Kline) -> Fraction:
@@ -514,6 +671,7 @@ class Cogitator:
         u, o = residue(s_e, s_c), residue(s_c, s_e)
         t = mu(s_e | s_c)
         return Fraction(mu(u) + BETA * mu(o), t) if t else Fraction(0)
+
 
 def proposals(r: Rationalisation) -> list[Proposal]:
     """Every halt generates one proposal (§5 Definition 15), ordered by graded

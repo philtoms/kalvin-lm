@@ -442,7 +442,15 @@
 - [[sources/obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions]] — Observation: meet label extraction broken by two label conventions *(created: 2026-10-27)*
 - [[sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch]] — Observation: All non-S1 _admit stores come from the "sides resolved" branch *(created: 2026-10-28)*
 - [[sources/obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry]] — Observation: Cogitator.rationalise rewritten as frame-propagating reentry runner *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel]] — Observation: Exchange closure is the frame alone; child-resolution channel excluded for stalls *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-]] — Observation: Exchange visible: temporal stalls, parent-chain trace, no self-covering *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame]] — Observation: F frames required for resolution; root exchange jointly frames the parents' fits *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-]] — Observation: MTS Uppercase Character notation for compound labels in TRS table *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the]] — Observation: Orthogonal trace: one row per reentry; exchange feeds hold their slots *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention]] — Observation: Reenter steps claim all executed reentries — the V convention *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path]] — Observation: Root pairs with goal only — trace table shows a true path *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame]] — Observation: Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic]] — Observation: Trace table connected: pushers take slots; exchange slots sticky *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove]] — Observation: TRS harness renders optimal-path trace table via frame provenance *(created: 2026-10-30)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
@@ -454,4 +462,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-30T08:34:54.084Z* | *Total pages: 442*
+*Last updated: 2026-10-30T11:27:39.617Z* | *Total pages: 450*

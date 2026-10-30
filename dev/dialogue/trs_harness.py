@@ -240,19 +240,34 @@ def _tframe(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
     return _tlabel(v, labels, alloc)
 
 
-def _row_step(row: Row, labels: dict[int, str], alloc: dict[int, str]) -> str:
+def _on_path_children(row: Row, keep: set[int]) -> list:
+    """The children whose reentries carried the resolution — a resolving
+    row, an exchange stall, or any kept row of the child is the continuation."""
+    out = []
+    for ch in row.children:
+        if (
+            (ch.resolved_by is not None and id(ch.resolved_by) in keep)
+            or (ch.stalled is not None and id(ch.stalled) in keep)
+            or any(id(r) in keep for r in ch.rows)
+        ):
+            out.append(ch)
+    return out
+
+
+def _row_step(row: Row, labels: dict[int, str], alloc: dict[int, str], keep: set[int]) -> str:
     if row.candidate is None:
         e = _tlabel(row.entry.sig, labels, alloc)
-        return f"resolved {e}" if row.resolved else f"stalled {e}"
-    if row.children:
-        return "reenter " + ", ".join(_tlabel(ch.sig, labels, alloc) for ch in row.children)
+        return f"resolved {e}" if row.exchange else f"stalled {e}"
+    children = [ch for ch in row.children if ch.popped]
+    if children:
+        return "reenter " + ", ".join(_tlabel(ch.kline.sig, labels, alloc) for ch in children)
     if row.resolved:
         parts = _tframe(row.F, labels, alloc)
         return f"resolved {parts}" if parts else "resolved"
     return ""
 
 
-def _table_row(row: Row, labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
+def _table_row(row: Row, labels: dict[int, str], alloc: dict[int, str], keep: set[int]) -> list[str]:
     e = _tlabel(row.entry.sig, labels, alloc)
     if row.candidate is not None:
         c = _tlabel(row.candidate.sig, labels, alloc)
@@ -269,7 +284,7 @@ def _table_row(row: Row, labels: dict[int, str], alloc: dict[int, str]) -> list[
         _tlabel(row.U, labels, alloc),
         _tlabel(row.O, labels, alloc),
         frame,
-        _row_step(row, labels, alloc),
+        _row_step(row, labels, alloc, keep),
     ]
 
 
@@ -284,7 +299,8 @@ def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str]
     """The trace table: depth, entry, candidate, fit, underfit, overfit,
     frame, step."""
     hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "step"]
-    body = [_table_row(r, labels, alloc) for r in rows]
+    keep = {id(r) for r in rows}
+    body = [_table_row(r, labels, alloc, keep) for r in rows]
     widths = [
         max(len(hdr[i]), *(len(r[i]) for r in body)) if body else len(hdr[i])
         for i in range(len(hdr))
