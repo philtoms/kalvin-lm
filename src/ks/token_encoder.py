@@ -24,7 +24,10 @@ is the OR-reduction of its component words' values — one bit per word
 ``Subject`` + ``M`` — the compound sitting in the sig's slot) is a
 compound the same way: its value is the OR of its component words — it
 never takes a word bit. The entry's ``concat`` field carries the
-components in identifier order.
+components in identifier order. A compound node's label is the MTS
+uppercase-character notation — one uppercased initial per component
+signature (``MarySubject`` → ``MS``); the joined identifier remains the
+internal registry key.
 
 Encoding rules:
   - Signature → the encoded word value, or the registered compound
@@ -238,10 +241,13 @@ class TokenEncoder:
         if entry.is_ask:
             sig_uint64 = KNode(int(sig_uint64) | ASK_SIG, entry.sig)
 
-        # 5. Debug info.
+        # 5. Debug info. A compound signature's node label (MTS initials)
+        # names it for display; entry.sig is the fallback.
         dbg = KDbg(op=entry.op)
         if self._dev:
-            dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)
+            dbg = self._build_dbg(
+                sig_uint64, getattr(sig_uint64, "label", "") or entry.sig, op=entry.op
+            )
         dbg.annotation = entry.annotation
         dbg.scope = entry.scope
         dbg.goal = entry.goal
@@ -282,9 +288,13 @@ class TokenEncoder:
                 parts.append(KNode(self._compound_sigs[c], c))
             else:
                 parts.append(self._encode_word(c))
-        value = self._signifier.signature_of(parts).with_label(label)
+        # The node label is the MTS uppercase-character notation (one
+        # uppercased initial per component signature — MarySubject → MS);
+        # the full joined identifier remains the registry key (unique:
+        # different component sets share initials).
+        value = self._signifier.signature_of(parts)
         self._compound_sigs[label] = value
-        self._compound_labels.setdefault(value, label)
+        self._compound_labels.setdefault(value, value.label or label)
         return value
 
     def _encode_word(self, word: str) -> KNode:

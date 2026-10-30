@@ -1109,3 +1109,9 @@
 ## [2026-10-16T16:10:36.544Z] observe
 - slug: "obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed", title: "TRS R3 loop carries shrinking signature — consumed set removed", relevance: "high"
 
+## [2026-10-30T14:56:51.887Z] observe
+- slug: "obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota", title: "Compound KNode labels switched to MTS uppercase-initial notation", relevance: "high"
+
+## [2026-10-30T14:56:58.833Z] retro
+- slug: "compound-label-mts-initials-notation", title: "Compound KNode labels: MTS initials, joined identifier stays registry key", category: "compiler"
+

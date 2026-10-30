@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-16T16:10:36.641Z",
+  "last_updated": "2026-10-30T14:56:58.906Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -543,6 +543,15 @@
       "format": "markdown",
       "captured": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "sources/compound-label-mts-initials-notation": {
+      "type": "source",
+      "title": "Compound KNode labels: MTS initials, joined identifier stays registry key",
+      "category": "compiler",
+      "status": "insight",
+      "slug": "compound-label-mts-initials-notation",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
     },
     "sources/compound-word-identity-label-and-dedup": {
       "type": "source",
@@ -6589,6 +6598,24 @@
       "source_context": "TRS rationalise redesign, step 3: R3 rewrite loop with proof substitution",
       "created": "2026-10-16",
       "updated": "2026-10-16"
+    },
+    "sources/obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota": {
+      "type": "source",
+      "title": "Observation: Compound KNode labels switched to MTS uppercase-initial notation",
+      "tags": [
+        "knode",
+        "labels",
+        "mts",
+        "notation",
+        "compiler"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota",
+      "relevance": "high",
+      "observed_at": "2026-10-30T14:56:51.886Z",
+      "source_context": "Switching compound KNode labels to MTS uppercase-character notation",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

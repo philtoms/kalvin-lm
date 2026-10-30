@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-10-30
+
+- **retro**: {"category":"compiler","slug":"compound-label-mts-initials-notation","title":"Compound KNode labels: MTS initials, joined identifier stays registry key"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota","title":"Compound KNode labels switched to MTS uppercase-initial notation"}
+
 ## 2026-10-16
 
 - **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed","title":"TRS R3 loop carries shrinking signature — consumed set removed"}

@@ -77,7 +77,7 @@ class NLPSignifier(KSignifier):
         if len(labels) == 1:
             label = labels[0]
         else:
-            label = "".join(l for l in labels)
+            label = "".join(l[:1].upper() for l in labels if l)
         return KSig(sig, label)
 
     def signifies(self, a: KSig, b: KSig) -> bool:

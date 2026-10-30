@@ -751,6 +751,7 @@
     "entities/kalvin",
     "entities/marys-world"
   ],
+  "sources/compound-label-mts-initials-notation": [],
   "sources/compound-word-identity-label-and-dedup": [],
   "sources/connotation-compound-relocation-encoder-design": [
     "concepts/kscript-operator"
@@ -812,7 +813,9 @@
   "sources/obs-2026-08-24-kscript-semantic-model-settled-via-grill": [],
   "sources/obs-2026-08-24-structural-supervisor-wired-at-escalation-seam": [],
   "sources/obs-2026-08-26-all-compiler-minted-knodes-labelled-mhall-run-fully-labelled": [],
-  "sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen": [],
+  "sources/obs-2026-08-26-knode-became-a-labelled-int-subclass-labels-wired-at-tokenen": [
+    "sources/compound-label-mts-initials-notation"
+  ],
   "sources/obs-2026-08-26-p-reloaded-state-banner-and-fresh-vs-held-grounding-split": [],
   "sources/obs-2026-08-27-ask-dedup-hit-clobbered-authored-compound-definition-dh-dh-b": [],
   "sources/obs-2026-08-27-ask-klines-now-sig-ask-nlp-token-with-original-canonical-sig": [],
@@ -1142,6 +1145,9 @@
   "sources/obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su": [],
   "sources/obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed": [],
   "sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti": [],
+  "sources/obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota": [
+    "sources/compound-label-mts-initials-notation"
+  ],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],

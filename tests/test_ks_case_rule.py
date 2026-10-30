@@ -161,10 +161,10 @@ class TestTerminalUnknowns:
         # its own empty unknown, placed right after its statement.
         assert out == [
             "ASK | MHALL:[Mary, had, a, little, lamb]",
-            "CONNOTES | MarySubject:[Subject]",
-            "CONNOTES | hadVerb:[Verb]",
-            "CONNOTES | QueryObject:[Object]",
-            "CONNOTES | ALLQuery:[Query]",
+            "CONNOTES | MS:[Subject]",
+            "CONNOTES | HV:[Verb]",
+            "CONNOTES | QO:[Object]",
+            "CONNOTES | AQ:[Query]",
             "DENOTES | a:[Det]",
             "UNKNOWN | Det:[]",
             "DENOTES | little:[Mod]",
@@ -237,3 +237,52 @@ class TestTerminalUnknowns:
         out = _decoded(self.MHALL)
         assert "UNKNOWN | Object:[]" in out
         assert not any("Query" in l for l in out if l.startswith("UNKNOWN"))
+
+
+class TestCompoundLabelNotation:
+    """A compound of 2+ signatures labels as MTS uppercase characters."""
+
+    MHALL = """(Mary had a little lamb) == SVO =>
+   Subject < M
+   Verb < H
+   Object < Query < ALL =>
+     A = Det
+     L = Mod
+     L = O
+"""
+
+    def test_concat_compound_labels_as_initials(self):
+        # `Subject < M` (M bound to Mary) composes MarySubject — labelled
+        # MS, one uppercased initial per component signature.
+        out = _decoded(self.MHALL)
+        assert "CONNOTES | MS:[Subject]" in out
+        assert not any("MarySubject" in l for l in out)
+
+    def test_lowercase_component_contributes_its_uppercased_initial(self):
+        # had + Verb → HV (not just V): every component contributes one
+        # character, as the sentence form does (had → H).
+        out = _decoded(self.MHALL)
+        assert "CONNOTES | HV:[Verb]" in out
+
+    def test_signature_of_joins_initials(self):
+        from kalvin.kline import KNode
+        from kalvin.signifier import NLPSignifier
+
+        sig = NLPSignifier().signature_of(
+            [KNode(1 << 32, "Mary"), KNode(2 << 32, "Subject")]
+        )
+        assert sig.label == "MS"
+
+    def test_single_signature_keeps_its_word_label(self):
+        # One node is not a compound — the full label stands.
+        from kalvin.kline import KNode
+        from kalvin.signifier import NLPSignifier
+
+        sig = NLPSignifier().signature_of([KNode(1 << 32, "Mary")])
+        assert sig.label == "Mary"
+
+    def test_authored_compound_identifier_unchanged(self):
+        # An authored ALL-UPPER identifier (MHALL, SVO) is already the
+        # notation — it stands as authored.
+        out = _decoded("MHALL = X\n")
+        assert "CANONICALISES | MHALL:[M, H, A, L, L]" in out

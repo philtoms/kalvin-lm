@@ -84,6 +84,7 @@
 
 ## Sources
 
+- [[sources/compound-label-mts-initials-notation]] — Compound KNode labels: MTS initials, joined identifier stays registry key *(created: 2026-10-30)*
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
 - [[sources/connotation-compound-relocation-encoder-design]] — Relocating a compound across the sig/node boundary requires component plumbing *(created: 2026-09-08)*
 - [[sources/connote-denote-structure-swap-compound-sig-denotation]] — CONNOTE/DENOTE structures swapped — denotation is compound-signature S2 *(created: 2026-09-09)*
@@ -429,6 +430,7 @@
 - [[sources/obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su]] — Observation: TRS identities filtered from candidates — self-confirmation suppressed *(created: 2026-10-16)*
 - [[sources/obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed]] — Observation: TRS R3 loop carries shrinking signature — consumed set removed *(created: 2026-10-16)*
 - [[sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti]] — Observation: TRS R3 rewrite loop — substitution by proof, work retained until R1 *(created: 2026-10-16)*
+- [[sources/obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota]] — Observation: Compound KNode labels switched to MTS uppercase-initial notation *(created: 2026-10-30)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -439,4 +441,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-16T16:10:36.641Z* | *Total pages: 427*
+*Last updated: 2026-10-30T14:56:58.906Z* | *Total pages: 429*
