@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-30T12:36:36.973Z",
+  "last_updated": "2026-10-30T14:14:16.627Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6873,6 +6873,23 @@
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },
+    "sources/obs-2026-10-30-framing-is-on-path-only-f-e-or-stalled-u-o-exchange": {
+      "type": "source",
+      "title": "Observation: Framing is on-path only: F==E or stalled U==O exchange",
+      "tags": [
+        "trs",
+        "framing",
+        "on-path",
+        "resolution"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-framing-is-on-path-only-f-e-or-stalled-u-o-exchange",
+      "relevance": "high",
+      "observed_at": "2026-10-30T13:31:37.753Z",
+      "source_context": "On-path framing correction",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
     "sources/obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given": {
       "type": "source",
       "title": "Observation: In-path rule by content flow; opener's fit given",
@@ -6924,6 +6941,23 @@
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },
+    "sources/obs-2026-10-30-proper-ancestor-framing-own-pairings-never-frame-own-sides": {
+      "type": "source",
+      "title": "Observation: Proper-ancestor framing: own pairings never frame own sides",
+      "tags": [
+        "trs",
+        "framing",
+        "proper-ancestor",
+        "self-framing"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-proper-ancestor-framing-own-pairings-never-frame-own-sides",
+      "relevance": "high",
+      "observed_at": "2026-10-30T14:11:33.625Z",
+      "source_context": "Fixing the HALL ← MHALL unexpected framing",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
     "sources/obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention": {
       "type": "source",
       "title": "Observation: Reenter steps claim all executed reentries — the V convention",
@@ -6938,6 +6972,23 @@
       "relevance": "medium",
       "observed_at": "2026-10-30T10:23:19.093Z",
       "source_context": "Fixing missing reenter claims in the trace table step column",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-resolution-without-f-gate-trace-must-root-floaters-drop": {
+      "type": "source",
+      "title": "Observation: Resolution without F-gate; trace must root — floaters drop",
+      "tags": [
+        "trs",
+        "resolution",
+        "trace",
+        "rootedness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-resolution-without-f-gate-trace-must-root-floaters-drop",
+      "relevance": "high",
+      "observed_at": "2026-10-30T12:52:29.399Z",
+      "source_context": "Exploring option c — dropping F-for-resolution and repairing trace rootedness",
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },
@@ -7071,6 +7122,12 @@
       "slug": "wiki-duplicate-consolidation",
       "created": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "syntheses/rationalisation-rules": {
+      "type": "synthesis",
+      "title": "Rationalisation rules",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
     }
   }
 }

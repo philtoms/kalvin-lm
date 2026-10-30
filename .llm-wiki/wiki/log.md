@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- **ensure\_page**: {"page_type":"synthesis","path":"syntheses/rationalisation-rules","title":"Rationalisation rules"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-proper-ancestor-framing-own-pairings-never-frame-own-sides","title":"Proper-ancestor framing: own pairings never frame own sides"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-framing-is-on-path-only-f-e-or-stalled-u-o-exchange","title":"Framing is on-path only: F==E or stalled U==O exchange"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-resolution-without-f-gate-trace-must-root-floaters-drop","title":"Resolution without F-gate; trace must root — floaters drop"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo","title":"S3 simplified to stalled-C match; what-framing gap; strict-flow in-path"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given","title":"In-path rule by content flow; opener's fit given"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame","title":"F frames required for resolution; root exchange jointly frames the parents' fits"}

@@ -445,10 +445,13 @@
 - [[sources/obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel]] — Observation: Exchange closure is the frame alone; child-resolution channel excluded for stalls *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-]] — Observation: Exchange visible: temporal stalls, parent-chain trace, no self-covering *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame]] — Observation: F frames required for resolution; root exchange jointly frames the parents' fits *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-framing-is-on-path-only-f-e-or-stalled-u-o-exchange]] — Observation: Framing is on-path only: F==E or stalled U==O exchange *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given]] — Observation: In-path rule by content flow; opener's fit given *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-]] — Observation: MTS Uppercase Character notation for compound labels in TRS table *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the]] — Observation: Orthogonal trace: one row per reentry; exchange feeds hold their slots *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-proper-ancestor-framing-own-pairings-never-frame-own-sides]] — Observation: Proper-ancestor framing: own pairings never frame own sides *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention]] — Observation: Reenter steps claim all executed reentries — the V convention *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-resolution-without-f-gate-trace-must-root-floaters-drop]] — Observation: Resolution without F-gate; trace must root — floaters drop *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path]] — Observation: Root pairs with goal only — trace table shows a true path *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo]] — Observation: S3 simplified to stalled-C match; what-framing gap; strict-flow in-path *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame]] — Observation: Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution *(created: 2026-10-30)*
@@ -463,5 +466,9 @@
 - [[sources/trs-spec-resync-derive-claims-not-restatements]] — Spec resync: derive claims from code, not from the doc's own restatements *(created: 2026-10-08)*
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
+## Synthesiss
+
+- [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
+
 ---
-*Last updated: 2026-10-30T12:36:36.973Z* | *Total pages: 452*
+*Last updated: 2026-10-30T14:14:16.627Z* | *Total pages: 456*

@@ -1184,3 +1184,15 @@
 ## [2026-10-30T12:36:36.888Z] observe
 - slug: "obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo", title: "S3 simplified to stalled-C match; what-framing gap; strict-flow in-path", relevance: "high"
 
+## [2026-10-30T12:52:29.401Z] observe
+- slug: "obs-2026-10-30-resolution-without-f-gate-trace-must-root-floaters-drop", title: "Resolution without F-gate; trace must root — floaters drop", relevance: "high"
+
+## [2026-10-30T13:31:37.754Z] observe
+- slug: "obs-2026-10-30-framing-is-on-path-only-f-e-or-stalled-u-o-exchange", title: "Framing is on-path only: F==E or stalled U==O exchange", relevance: "high"
+
+## [2026-10-30T14:11:33.627Z] observe
+- slug: "obs-2026-10-30-proper-ancestor-framing-own-pairings-never-frame-own-sides", title: "Proper-ancestor framing: own pairings never frame own sides", relevance: "high"
+
+## [2026-10-30T14:14:16.536Z] ensure_page
+- page_type: "synthesis", title: "Rationalisation rules", path: "syntheses/rationalisation-rules"
+

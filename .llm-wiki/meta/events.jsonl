@@ -392,3 +392,7 @@
 {"slug":"obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame","title":"F frames required for resolution; root exchange jointly frames the parents' fits","relevance":"high","timestamp":"2026-10-30T11:27:39.538Z","kind":"observe"}
 {"slug":"obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given","title":"In-path rule by content flow; opener's fit given","relevance":"high","timestamp":"2026-10-30T11:58:12.611Z","kind":"observe"}
 {"slug":"obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo","title":"S3 simplified to stalled-C match; what-framing gap; strict-flow in-path","relevance":"high","timestamp":"2026-10-30T12:36:36.888Z","kind":"observe"}
+{"slug":"obs-2026-10-30-resolution-without-f-gate-trace-must-root-floaters-drop","title":"Resolution without F-gate; trace must root — floaters drop","relevance":"high","timestamp":"2026-10-30T12:52:29.401Z","kind":"observe"}
+{"slug":"obs-2026-10-30-framing-is-on-path-only-f-e-or-stalled-u-o-exchange","title":"Framing is on-path only: F==E or stalled U==O exchange","relevance":"high","timestamp":"2026-10-30T13:31:37.754Z","kind":"observe"}
+{"slug":"obs-2026-10-30-proper-ancestor-framing-own-pairings-never-frame-own-sides","title":"Proper-ancestor framing: own pairings never frame own sides","relevance":"high","timestamp":"2026-10-30T14:11:33.627Z","kind":"observe"}
+{"page_type":"synthesis","title":"Rationalisation rules","path":"syntheses/rationalisation-rules","timestamp":"2026-10-30T14:14:16.536Z","kind":"ensure_page"}
