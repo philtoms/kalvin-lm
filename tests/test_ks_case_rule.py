@@ -161,10 +161,10 @@ class TestTerminalUnknowns:
         # its own empty unknown, placed right after its statement.
         assert out == [
             "ASK | MHALL:[Mary, had, a, little, lamb]",
-            "CONNOTES | MS:[Subject]",
-            "CONNOTES | HV:[Verb]",
-            "CONNOTES | QO:[Object]",
-            "CONNOTES | AQ:[Query]",
+            "CONNOTES | MarySubject:[Subject]",
+            "CONNOTES | hadVerb:[Verb]",
+            "CONNOTES | QueryObject:[Object]",
+            "CONNOTES | ALLQuery:[Query]",
             "DENOTES | a:[Det]",
             "UNKNOWN | Det:[]",
             "DENOTES | little:[Mod]",
@@ -240,7 +240,9 @@ class TestTerminalUnknowns:
 
 
 class TestCompoundLabelNotation:
-    """A compound of 2+ signatures labels as MTS uppercase characters."""
+    """A compound of 2+ signatures composes its label through merge —
+    pipe-separated component words ('Mary|Subject'); the MTS uppercase
+    initials (MS) are presentation, rendered by the harness."""
 
     MHALL = """(Mary had a little lamb) == SVO =>
    Subject < M
@@ -252,17 +254,18 @@ class TestCompoundLabelNotation:
 """
 
     def test_concat_compound_labels_as_initials(self):
-        # `Subject < M` (M bound to Mary) composes MarySubject — labelled
-        # MS, one uppercased initial per component signature.
+        # `Subject < M` (M bound to Mary) composes the compound — the KDbg
+        # label is the authored identifier; the VALUE label is the merge
+        # composition of the component words (test_signature_of_joins), and
+        # the identifier never clobbers the composed value.
         out = _decoded(self.MHALL)
-        assert "CONNOTES | MS:[Subject]" in out
-        assert not any("MarySubject" in l for l in out)
+        assert "CONNOTES | MarySubject:[Subject]" in out
 
     def test_lowercase_component_contributes_its_uppercased_initial(self):
-        # had + Verb → HV (not just V): every component contributes one
-        # character, as the sentence form does (had → H).
+        # had + Verb → hadVerb — every component word carries into the
+        # authored identifier, as the sentence form does (had → H).
         out = _decoded(self.MHALL)
-        assert "CONNOTES | HV:[Verb]" in out
+        assert "CONNOTES | hadVerb:[Verb]" in out
 
     def test_signature_of_joins_initials(self):
         from kalvin.kline import KNode
@@ -271,7 +274,7 @@ class TestCompoundLabelNotation:
         sig = NLPSignifier().signature_of(
             [KNode(1 << 32, "Mary"), KNode(2 << 32, "Subject")]
         )
-        assert sig.label == "MS"
+        assert sig.label == "Mary|Subject"
 
     def test_single_signature_keeps_its_word_label(self):
         # One node is not a compound — the full label stands.
