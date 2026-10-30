@@ -366,6 +366,7 @@
 - [Observation: Exchange closure is the frame alone; child-resolution channel excluded for stalls](obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel.md)
 - [Observation: Exchange visible: temporal stalls, parent-chain trace, no self-covering](obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-.md)
 - [Observation: F frames required for resolution; root exchange jointly frames the parents' fits](obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame.md)
+- [Observation: In-path rule by content flow; opener's fit given](obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given.md)
 - [Observation: MTS Uppercase Character notation for compound labels in TRS table](obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-.md)
 - [Observation: Orthogonal trace: one row per reentry; exchange feeds hold their slots](obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the.md)
 - [Observation: Reenter steps claim all executed reentries — the V convention](obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention.md)

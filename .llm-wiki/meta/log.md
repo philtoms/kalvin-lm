@@ -1178,3 +1178,6 @@
 ## [2026-10-30T11:27:39.538Z] observe
 - slug: "obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame", title: "F frames required for resolution; root exchange jointly frames the parents' fits", relevance: "high"
 
+## [2026-10-30T11:58:12.611Z] observe
+- slug: "obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given", title: "In-path rule by content flow; opener's fit given", relevance: "high"
+

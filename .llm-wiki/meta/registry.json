@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-30T11:27:39.617Z",
+  "last_updated": "2026-10-30T11:58:12.695Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -6870,6 +6870,23 @@
       "relevance": "high",
       "observed_at": "2026-10-30T11:27:39.537Z",
       "source_context": "Resolving how F components frame — the root exchange frames the parents' fits",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given": {
+      "type": "source",
+      "title": "Observation: In-path rule by content flow; opener's fit given",
+      "tags": [
+        "trs",
+        "path-rule",
+        "candidates",
+        "content-flow"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given",
+      "relevance": "high",
+      "observed_at": "2026-10-30T11:58:12.610Z",
+      "source_context": "Implementing the in-path content-flow rule for candidates",
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },

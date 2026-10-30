@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given","title":"In-path rule by content flow; opener's fit given"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame","title":"F frames required for resolution; root exchange jointly frames the parents' fits"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel","title":"Exchange closure is the frame alone; child-resolution channel excluded for stalls"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention","title":"Reenter steps claim all executed reentries — the V convention"}
