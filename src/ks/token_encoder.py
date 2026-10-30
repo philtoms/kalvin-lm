@@ -24,14 +24,15 @@ is the OR-reduction of its component words' values — one bit per word
 ``Subject`` + ``M`` — the compound sitting in the sig's slot) is a
 compound the same way: its value is the OR of its component words — it
 never takes a word bit. The entry's ``concat`` field carries the
-components in identifier order. A compound node's label is the MTS
-uppercase-character notation — one uppercased initial per component
-signature (``MarySubject`` → ``MS``); the joined identifier remains the
-internal registry key.
+components in identifier order.
 
 Encoding rules:
   - Signature → the encoded word value, or the registered compound
     signature for compound refs/defs.
+  - Labels: a compound signature carries the '|'-composition of its
+    component labels — the content label the trs model's meet/residue
+    read. Authored identifiers live in the ``_compound_sigs`` registry
+    and ``KDbg.label``.
   - Nodes → each encoded individually via ``_encode_word``.
   - Canonical encoding: a declared compound identifier's signature is
     computed once at its expansion CANONICALISES definition (OR of its resolved
@@ -209,7 +210,8 @@ class TokenEncoder:
         node_values: list[KNode] = []
         for node_str in entry.nodes or []:
             if node_str in self._compound_sigs:
-                node_values.append(KNode(self._compound_sigs[node_str], node_str))
+                ref = self._compound_sigs[node_str]
+                node_values.append(KNode(ref, ref.label or node_str))
             else:
                 node_values.append(self._encode_word(node_str))
 
@@ -230,7 +232,9 @@ class TokenEncoder:
             # under its identifier so later references reuse the value.
             sig_uint64 = self._compose_concat(entry.concat, entry.sig)
         elif is_compound_sig and not is_compound_ref:
-            sig_uint64 = self._signifier.signature_of(node_values).with_label(entry.sig)
+            # The content label rides through the fold ('had|Verb'); the
+            # authored identifier stays in the registries and dbg.
+            sig_uint64 = self._signifier.signature_of(node_values)
             if is_compound_def:
                 self._compound_sigs[entry.sig] = sig_uint64
                 self._compound_labels.setdefault(sig_uint64, entry.sig)
@@ -239,15 +243,15 @@ class TokenEncoder:
         #    with ASK_SIG OR-ed in — any signature can be an ask, its
         #    canon nodes riding along.
         if entry.is_ask:
-            sig_uint64 = KNode(int(sig_uint64) | ASK_SIG, entry.sig)
+            sig_uint64 = KNode(
+                int(sig_uint64) | ASK_SIG,
+                getattr(sig_uint64, "label", "") or entry.sig,
+            )
 
-        # 5. Debug info. A compound signature's node label (MTS initials)
-        # names it for display; entry.sig is the fallback.
+        # 5. Debug info.
         dbg = KDbg(op=entry.op)
         if self._dev:
-            dbg = self._build_dbg(
-                sig_uint64, getattr(sig_uint64, "label", "") or entry.sig, op=entry.op
-            )
+            dbg = self._build_dbg(sig_uint64, entry.sig, op=entry.op)
         dbg.annotation = entry.annotation
         dbg.scope = entry.scope
         dbg.goal = entry.goal
@@ -285,16 +289,13 @@ class TokenEncoder:
         parts: list[KNode] = []
         for c in components:
             if c in self._compound_sigs:
-                parts.append(KNode(self._compound_sigs[c], c))
+                ref = self._compound_sigs[c]
+                parts.append(KNode(ref, ref.label or c))
             else:
                 parts.append(self._encode_word(c))
-        # The node label is the MTS uppercase-character notation (one
-        # uppercased initial per component signature — MarySubject → MS);
-        # the full joined identifier remains the registry key (unique:
-        # different component sets share initials).
         value = self._signifier.signature_of(parts)
         self._compound_sigs[label] = value
-        self._compound_labels.setdefault(value, value.label or label)
+        self._compound_labels.setdefault(value, label)
         return value
 
     def _encode_word(self, word: str) -> KNode:

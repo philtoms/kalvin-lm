@@ -9,3 +9,4 @@ okf_version: "0.2"
 - [concepts/](concepts/)
 - [entities/](entities/)
 - [sources/](sources/)
+- [syntheses/](syntheses/)

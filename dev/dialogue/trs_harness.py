@@ -15,6 +15,7 @@ The presenter reports; it never judges.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,10 +31,11 @@ from trs import (
     Kline,
     Proposal,
     Rationalisation,
+    Row,
+    Cogitator,
     band,
     can,
     proposals,
-    rationalise,
 )
 
 from dev.dialogue.harness import _sig_to_label
@@ -73,7 +75,7 @@ class TrsRunner:
         self.word_bits: dict[str, int] = {}
         self.pending: list[Pending] = []
         self.stores: list[tuple[int, Kline]] = []  # (step, store)
-
+        self.cogitator = Cogitator(self.domain)
     def run(self, source: str, resolver=None) -> list[TrsStep]:
         """An ask==goal run: the `==` ask and its goal are the entries,
         everything else primes the domain before rationalisation."""
@@ -93,8 +95,8 @@ class TrsRunner:
             if other is not ask and other is not goal:
                 self.domain.add(_to_kline(other))  # primed — never an R1 store
         steps: list[TrsStep] = []
-        self._step(steps, 0, goal)  # the goal rationalises first; the ask asks
-        self._step(steps, 1, ask)
+        self._step(steps, 0, goal)  # the goal rationalises first — S1 grounds on receipt
+        self._step(steps, 1, ask, goal=_to_kline(goal))  # the ask asks — the goal is its first candidate
         return steps
 
     @staticmethod
@@ -121,10 +123,10 @@ class TrsRunner:
                 pair = (e, goal)
         return pair
 
-    def _step(self, steps: list[TrsStep], i: int, value: KValue) -> None:
+    def _step(self, steps: list[TrsStep], i: int, value: KValue, goal: Kline | None = None) -> None:
         """Present one entry: rationalise, record, discharge, file proposals."""
         kline = _to_kline(value)
-        result = rationalise(self.domain, kline)
+        result = self.cogitator.rationalise(kline, goal=goal)
         steps.append(TrsStep(i, value, kline, result))
         self._discharge(i, kline)  # only proposals from earlier steps answer
         for prop in proposals(result):
@@ -190,13 +192,176 @@ def _render(k: Kline, labels: dict[int, str], alloc: dict[int, str], verbose: bo
     return f"{_label(k.sig, labels, alloc, verbose)}:[{nodes}]"
 
 
+def _words(v: int, labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
+    """The word decomposition of a value — authored word order, no whole-signature
+    preference (the table spells regions out)."""
+    if not v:
+        return []
+    parts: list[str] = []
+    rest = int(v)
+    for bit in sorted(alloc):  # allocation order — authored word order
+        if bit & rest == bit:
+            parts.append(alloc[bit])
+            rest &= ~bit
+    if rest:
+        parts.append(f"+0x{rest:x}")
+    return parts
+
+
+def _humps(name: str) -> list[str]:
+    """The camelCase parts of a label (acronyms kept whole)."""
+    return re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])", name) or [name]
+
+
+def _initials(parts: list[str]) -> str:
+    """The Uppercase Character notation (MTS): a single signature stays
+    whole; a compound of two or more takes each part whole when it is
+    already an abbreviation, else its initial."""
+    if len(parts) <= 1:
+        return parts[0] if parts else ""
+    return "".join(p if p.isupper() else p[:1].upper() for p in parts)
+
+
+def _tlabel(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """A table label: a held label or word decomposition in MTS form —
+    MarySubject -> MS, did|have -> DH, had a little lamb -> HALL."""
+    if not v:
+        return ""
+    name = labels.get(int(v)) or getattr(v, "label", "")
+    if name and "|" in name:
+        return _initials([p for p in name.split("|") if p])
+    if name and "∖" not in name and "∧" not in name and name != "⊥":
+        return _initials(_humps(name))
+    return _initials(_words(v, labels, alloc))
+
+
+def _tframe(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """Frame/step parts in MTS form."""
+    return _tlabel(v, labels, alloc)
+
+
+def _on_path_children(row: Row, keep: set[int]) -> list:
+    """The children whose reentries carried the resolution — a resolving
+    row, an exchange stall, or any kept row of the child is the continuation."""
+    out = []
+    for ch in row.children:
+        if (
+            (ch.resolved_by is not None and id(ch.resolved_by) in keep)
+            or (ch.stalled is not None and id(ch.stalled) in keep)
+            or any(id(r) in keep for r in ch.rows)
+        ):
+            out.append(ch)
+    return out
+
+
+def _tsupport(pair: tuple, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """A leaned-on frame with its reference — the candidate that
+    established it (an exchange, for stall-sourced frames)."""
+    v, src = pair
+    if src is None or src.candidate is None:
+        return _tframe(v, labels, alloc) + " ← exchange"
+    c = _tlabel(src.candidate.sig, labels, alloc)
+    if src.candidate.adj and can(src.candidate.adj) != src.candidate.sig:
+        c += ":" + " ".join(_tlabel(n, labels, alloc) for n in sorted(src.candidate.adj))
+    return _tframe(v, labels, alloc) + " ← " + c
+
+
+def _row_step(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> str:
+    e = _tlabel(row.entry.sig, labels, alloc)
+    if kind == "wait":
+        return f"stalled {e}"
+    if kind == "close":
+        if row is goal_row:
+            return "resolved, grounded"
+        if row.bp:
+            peers = ", ".join(_tlabel(p.entry.sig, labels, alloc) for p in row.bp)
+            return f"resolved, BP {peers}"
+        return f"resolved {e}"
+    # the pairing emission
+    if row.candidate is None:
+        return f"stalled {e}"
+    children = [ch for ch in row.children if ch.popped]
+    if children:
+        return "reenter " + ", ".join(_tlabel(ch.kline.sig, labels, alloc) for ch in children)
+    return ""
+
+
+def _frame_str(row: Row, kind: str, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    parts = [_tframe(int(row.frame), labels, alloc)] if row.frame else []
+    if kind != "pair":  # resolutions lean — the supports join the own frame
+        parts.extend(_tsupport(p, labels, alloc) for p in row.supports)
+    return ", ".join(p for p in parts if p)
+
+
+def _table_row(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> list[str]:
+    e = _tlabel(row.entry.sig, labels, alloc)
+    if row.candidate is not None:
+        c = _tlabel(row.candidate.sig, labels, alloc)
+        if row.candidate.adj and can(row.candidate.adj) != row.candidate.sig:
+            c += ":" + " ".join(
+                _tlabel(n, labels, alloc) for n in sorted(row.candidate.adj)
+            )
+    else:
+        c = ""
+    return [
+        str(row.depth), e, c,
+        _tlabel(row.F, labels, alloc),
+        _tlabel(row.U, labels, alloc),
+        _tlabel(row.O, labels, alloc),
+        _frame_str(row, kind, labels, alloc),
+        _row_step(kind, row, labels, alloc, goal_row),
+    ]
+
+
+def _tline(k: Kline, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """A kline in table form — sig in MTS form, nodes spelled out."""
+    sig = _tlabel(k.sig, labels, alloc)
+    nodes = ", ".join(_tlabel(n, labels, alloc) for n in sorted(k.adj))
+    return f"{sig}:[{nodes}]" if k.adj else f"{sig}:[]"
+
+
+def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None = None) -> list[str]:
+    """The trace table: depth, entry, candidate, fit, underfit, overfit,
+    frame, step — a row per event: the pairing, the wait, the resolution
+    (BP — back propagation). One row per reentry stays orthogonal; the
+    repeats are the trace's temporal shape."""
+    hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "step"]
+    events: list[tuple[int, int, str, Row]] = []
+    for row in rows:
+        once = row.instant or row.exchange  # born closed — one emission
+        if not once:
+            events.append((row.birth, 0, "pair", row))
+        if row.waited is not None:
+            events.append((row.waited, 1, "wait", row))
+        if row.closed is not None and (row.bp or not row.exchange):
+            events.append((row.closed, 2, "close", row))
+    events.sort(key=lambda ev: (ev[0], ev[1]))
+    body = [_table_row(kind, row, labels, alloc, goal_row) for _, _, kind, row in events]
+    widths = [
+        max(len(hdr[i]), *(len(r[i]) for r in body)) if body else len(hdr[i])
+        for i in range(len(hdr))
+    ]
+    lines = [
+        "| " + " | ".join(hdr[i].ljust(widths[i]) for i in range(len(hdr))) + " |",
+        "|" + "|".join("-" * (widths[i] + 2) for i in range(len(hdr))) + "|",
+    ]
+    for r in body:
+        lines.append("| " + " | ".join(r[i].ljust(widths[i]) for i in range(len(hdr))) + " |")
+    return lines
+
+
 def _render_step(step: TrsStep, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
     lines = [
         f"── Step {step.index + 1}  {band(step.kline).value}  "
         f"{_render(step.kline, labels, alloc, verbose)} ──"
     ]
+    rows = step.result.path if step.result.claim is not None else step.result.rows
+    if rows:
+        if step.result.claim is None:
+            lines.append("      (no path — the goal was not reached; all rows below)")
+        lines.extend("      " + l for l in _render_table(rows, labels, alloc, step.result.goal_row))
     for store in step.result.stores:
-        lines.append(f"      stores    {_render(store, labels, alloc, verbose)}")
+        lines.append(f"      stores    {_tline(store, labels, alloc)}")
     by_reason: dict[str, list[End]] = {}
     for e in step.result.ends:
         by_reason.setdefault(e.reason, []).append(e)
@@ -204,7 +369,7 @@ def _render_step(step: TrsStep, labels: dict[int, str], alloc: dict[int, str], v
         exemplars = [e for e in ends if e.kline is not None][:2]
         for e in exemplars:
             lines.append(
-                f"      halt      {reason} — {_render(e.kline, labels, alloc, verbose)}"
+                f"      halt      {reason} — {_tline(e.kline, labels, alloc)}"
                 f"  E={e.effort}"
             )
         rest = len(ends) - len(exemplars)

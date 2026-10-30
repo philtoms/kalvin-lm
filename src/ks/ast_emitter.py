@@ -486,7 +486,7 @@ class ASTEmitter:
             if nodes == [sig]:
                 self._emit_entry(sig, [sig], "IDENTITY")
             elif nodes:
-                # A = B ⇒ A:[B] — the signature denotes each node.
+                # A = B ⇒ A:[B] — the signature denotes the node.
                 self._emit_entry(sig, list(nodes), "DENOTES")
 
         elif op == "RCONNOTES":
@@ -498,7 +498,7 @@ class ASTEmitter:
                 # BA:[A] — the compound in reading order (nodes then sig),
                 # the node side the original signature. concat so the
                 # encoder composes the signature instead of encoding the
-                # joined string as a word. Multi-node: A < B C ⇒ BCA:[A].
+                # joined string as a word.
                 self._emit_entry(
                     "".join(nodes) + sig, [sig], "CONNOTES",
                     concat=[*nodes, sig],
