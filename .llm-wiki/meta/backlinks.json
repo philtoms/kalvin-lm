@@ -751,6 +751,7 @@
     "entities/kalvin",
     "entities/marys-world"
   ],
+  "sources/cogitator-trace-table-alignment": [],
   "sources/compound-label-mts-initials-notation": [],
   "sources/compound-word-identity-label-and-dedup": [],
   "sources/connotation-compound-relocation-encoder-design": [
@@ -1148,6 +1149,10 @@
   "sources/obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota": [
     "sources/compound-label-mts-initials-notation"
   ],
+  "sources/obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram": [],
+  "sources/obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl": [],
+  "sources/obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne": [],
+  "sources/obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],

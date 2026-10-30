@@ -2,6 +2,11 @@
 
 ## 2026-10-30
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram","title":"Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution"}
+- **retro**: {"category":"architecture","slug":"cogitator-trace-table-alignment","title":"Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne","title":"Rulings: flood-then-distill, orthogonal paths, diagnostic harness"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-","title":"wdmh proves candidate retry is necessary; in-path note reads as entry-path rule"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl","title":"mhall/wdmh trace tables verified — rule set reconstructed, tables consistent"}
 - **retro**: {"category":"compiler","slug":"compound-label-mts-initials-notation","title":"Compound KNode labels: MTS initials, joined identifier stays registry key"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota","title":"Compound KNode labels switched to MTS uppercase-initial notation"}
 

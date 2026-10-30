@@ -1115,3 +1115,18 @@
 ## [2026-10-30T14:56:58.833Z] retro
 - slug: "compound-label-mts-initials-notation", title: "Compound KNode labels: MTS initials, joined identifier stays registry key", category: "compiler"
 
+## [2026-10-30T16:25:05.527Z] observe
+- slug: "obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl", title: "mhall/wdmh trace tables verified — rule set reconstructed, tables consistent", relevance: "high"
+
+## [2026-10-30T16:25:05.528Z] observe
+- slug: "obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-", title: "wdmh proves candidate retry is necessary; in-path note reads as entry-path rule", relevance: "high"
+
+## [2026-10-30T16:47:34.021Z] observe
+- slug: "obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne", title: "Rulings: flood-then-distill, orthogonal paths, diagnostic harness", relevance: "high"
+
+## [2026-10-30T17:04:06.488Z] retro
+- slug: "cogitator-trace-table-alignment", title: "Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo", category: "architecture"
+
+## [2026-10-30T17:32:18.864Z] observe
+- slug: "obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram", title: "Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution", relevance: "high"
+

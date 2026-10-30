@@ -84,6 +84,7 @@
 
 ## Sources
 
+- [[sources/cogitator-trace-table-alignment]] — Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo *(created: 2026-10-30)*
 - [[sources/compound-label-mts-initials-notation]] — Compound KNode labels: MTS initials, joined identifier stays registry key *(created: 2026-10-30)*
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
 - [[sources/connotation-compound-relocation-encoder-design]] — Relocating a compound across the sig/node boundary requires component plumbing *(created: 2026-09-08)*
@@ -431,6 +432,10 @@
 - [[sources/obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed]] — Observation: TRS R3 loop carries shrinking signature — consumed set removed *(created: 2026-10-16)*
 - [[sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti]] — Observation: TRS R3 rewrite loop — substitution by proof, work retained until R1 *(created: 2026-10-16)*
 - [[sources/obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota]] — Observation: Compound KNode labels switched to MTS uppercase-initial notation *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram]] — Observation: Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl]] — Observation: mhall/wdmh trace tables verified — rule set reconstructed, tables consistent *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne]] — Observation: Rulings: flood-then-distill, orthogonal paths, diagnostic harness *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-]] — Observation: wdmh proves candidate retry is necessary; in-path note reads as entry-path rule *(created: 2026-10-30)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -441,4 +446,4 @@
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
 ---
-*Last updated: 2026-10-30T14:56:58.906Z* | *Total pages: 429*
+*Last updated: 2026-10-30T17:32:18.951Z* | *Total pages: 434*

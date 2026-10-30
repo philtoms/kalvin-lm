@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-30T14:56:58.906Z",
+  "last_updated": "2026-10-30T17:32:18.951Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -543,6 +543,15 @@
       "format": "markdown",
       "captured": "2026-08-11",
       "updated": "2026-08-11"
+    },
+    "sources/cogitator-trace-table-alignment": {
+      "type": "source",
+      "title": "Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "cogitator-trace-table-alignment",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
     },
     "sources/compound-label-mts-initials-notation": {
       "type": "source",
@@ -6614,6 +6623,83 @@
       "relevance": "high",
       "observed_at": "2026-10-30T14:56:51.886Z",
       "source_context": "Switching compound KNode labels to MTS uppercase-character notation",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram": {
+      "type": "source",
+      "title": "Observation: Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution",
+      "tags": [
+        "trs",
+        "mhall",
+        "trace",
+        "entry-sequence",
+        "closers",
+        "no-op-guard",
+        "r4"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram",
+      "relevance": "high",
+      "observed_at": "2026-10-30T17:32:18.862Z",
+      "source_context": "Fixing the mhall entry sequence after user review of the trace tables",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl": {
+      "type": "source",
+      "title": "Observation: mhall/wdmh trace tables verified — rule set reconstructed, tables consistent",
+      "tags": [
+        "trs",
+        "trace-table",
+        "verification",
+        "mhall",
+        "wdmh",
+        "framing",
+        "exchange"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl",
+      "relevance": "high",
+      "observed_at": "2026-10-30T16:25:05.525Z",
+      "source_context": "Verifying mhall/wdmh trace tables before rewriting Cogitator.rationalise",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne": {
+      "type": "source",
+      "title": "Observation: Rulings: flood-then-distill, orthogonal paths, diagnostic harness",
+      "tags": [
+        "trs",
+        "rulings",
+        "parallelism",
+        "flood",
+        "distill",
+        "orthogonality"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne",
+      "relevance": "high",
+      "observed_at": "2026-10-30T16:47:34.019Z",
+      "source_context": "Implementing Cogitator.rationalise fixes after trace-table verification",
+      "created": "2026-10-30",
+      "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-": {
+      "type": "source",
+      "title": "Observation: wdmh proves candidate retry is necessary; in-path note reads as entry-path rule",
+      "tags": [
+        "trs",
+        "in-path",
+        "retry-necessity",
+        "candidate-order",
+        "wdmh"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-",
+      "relevance": "high",
+      "observed_at": "2026-10-30T16:25:05.528Z",
+      "source_context": "Verifying mhall/wdmh trace tables before rewriting Cogitator.rationalise",
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },
