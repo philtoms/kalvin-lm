@@ -1,9 +1,12 @@
 """The dialogue harness.
 
 A minimal, synchronous, non-judging loop. Compiles a KScript source and
-runs it as an ask==goal configuration: the script's last `==` ask and its
-goal kline are the two entries — the ask first, the goal answers — and
-every other kline primes the domain before rationalisation. Priming is a
+runs it as a sequence of ask==goal scenarios: every `==` ask whose named
+goal resolves to a kline entry is one scenario — the ask authored first,
+the goal answering — and every other kline primes the domain before
+rationalisation. Scenarios run in ask order over one live domain; an
+earlier scenario's stores and proposals persist into the later ones.
+Priming is a
 harness fact, never a model admission: R1 remains the sole way the run
 itself learns. Nothing is checked at presentation; unheld references
 find no neighbours.
@@ -87,8 +90,10 @@ class TrsRunner:
         self.cogitator = Cogitator(self.domain)
 
     def run(self, source: str, resolver=None) -> list[TrsStep]:
-        """An ask==goal run: the `==` ask and its goal are the entries,
-        everything else primes the domain before rationalisation."""
+        """An ask==goal run: every `==` ask with a resolvable goal is one
+        scenario, everything else primes the domain before rationalisation.
+        Scenarios run in ask order over the one live domain — an earlier
+        scenario's stores and proposals persist into the later ones."""
         entries = compile_source(
             source,
             tokenizer=self.tokenizer,
@@ -97,25 +102,26 @@ class TrsRunner:
             word_bits=self.word_bits,
             resolver=resolver,
         )
-        pair = self._ask_goal_pair(entries)
-        if pair is None:
+        pairs = self._ask_goal_pairs(entries)
+        if not pairs:
             raise ValueError("ask==goal: no `==` ask with a findable goal kline")
-        ask, goal = pair
+        paired = {id(e) for pair in pairs for e in pair}
         for other in entries:
-            if other is not ask and other is not goal:
+            if id(other) not in paired:
                 self.domain.add(_to_kline(other))  # primed — never an R1 store
         steps: list[TrsStep] = []
-        self._step(steps, 0, goal)  # the goal rationalises first — S1 grounds on receipt
-        self._step(steps, 1, ask, goal=_to_kline(goal))  # the ask asks — the goal is its first candidate
+        for ask, goal in pairs:
+            self._step(steps, len(steps), goal)  # the goal rationalises first — S1 grounds on receipt
+            self._step(steps, len(steps), ask, goal=_to_kline(goal))  # the ask asks — the goal is its first candidate
         return steps
 
     @staticmethod
-    def _ask_goal_pair(entries: list[KValue]) -> tuple[KValue, KValue] | None:
-        """The script's last `==` ask whose named goal resolves to a kline
-        entry — the final question is the point of the script. The goal is
-        the last label match (the fullest authored definition): has nodes,
-        not itself an ask."""
-        pair: tuple[KValue, KValue] | None = None
+    def _ask_goal_pairs(entries: list[KValue]) -> list[tuple[KValue, KValue]]:
+        """Every `==` ask whose named goal resolves to a kline entry, in ask
+        order — each pair one scenario; an imported module's ask precedes
+        the importing script's. The goal is the last label match (the fullest
+        authored definition): has nodes, not itself an ask."""
+        pairs: list[tuple[KValue, KValue]] = []
         for e in entries:
             d = e.kline.dbg
             if d is None or d.op != "ASK" or not d.goal:
@@ -130,8 +136,8 @@ class TrsRunner:
                 ):
                     goal = g
             if goal is not None:
-                pair = (e, goal)
-        return pair
+                pairs.append((e, goal))
+        return pairs
 
     def _step(self, steps: list[TrsStep], i: int, value: KValue, goal: Kline | None = None) -> None:
         """Present one entry: rationalise, record, discharge, file proposals."""

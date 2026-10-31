@@ -1148,3 +1148,12 @@
 ## [2026-10-31T15:26:03.236Z] observe
 - slug: "obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban", title: "TRS name retired — rationalisation rules doc written, T1–T3 banked", relevance: "critical"
 
+## [2026-10-31T16:11:44.184Z] observe
+- slug: "obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in", title: "Verifier found exhaustion-grounds-without-evidence defect in _in_path", relevance: "critical"
+
+## [2026-10-31T22:54:39.732Z] observe
+- slug: "obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios", title: "Harness runs multiple ask==goal scenarios", relevance: "high"
+
+## [2026-10-31T22:54:48.123Z] observe
+- slug: "obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored", title: "Stale trs1 stash still in list; dev/probes gitignored", relevance: "medium"
+

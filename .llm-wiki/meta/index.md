@@ -466,10 +466,13 @@
 - [[sources/obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-]] — Observation: wdmh proves candidate retry is necessary; in-path note reads as entry-path rule *(created: 2026-10-30)*
 - [[sources/obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module]] — Observation: Dialogue harnesses consolidated — TRS-only module *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib]] — Observation: Exchange guard challenge verified: store-rule kept, feed-visibility decoupled *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios]] — Observation: Harness runs multiple ask==goal scenarios *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet]] — Observation: Known resolutions trace as rows — the Object twin surfaces between pair and close *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record]] — Observation: Ruling: S3 exchange stores nothing — the frame is the record *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored]] — Observation: Stale trs1 stash still in list; dev/probes gitignored *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support]] — Observation: trs/model.py stripped to Cogitator-only support *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban]] — Observation: TRS name retired — rationalisation rules doc written, T1–T3 banked *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in]] — Observation: Verifier found exhaustion-grounds-without-evidence defect in _in_path *(created: 2026-10-31)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -484,4 +487,4 @@
 - [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
 
 ---
-*Last updated: 2026-10-31T15:26:03.361Z* | *Total pages: 469*
+*Last updated: 2026-10-31T22:54:48.231Z* | *Total pages: 472*

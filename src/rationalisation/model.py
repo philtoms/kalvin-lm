@@ -443,7 +443,7 @@ class Cogitator:
         self.clock += 1
         return self.clock
 
-    def _known(self, re_: "_Reentry") -> None:
+    def _known(self, re_: _Reentry) -> None:
         """A reentry resolved without exploring — its region is already
         framed or every candidate is proven. It still traces: a known row,
         so the causality it carries stays visible."""
@@ -539,7 +539,7 @@ class Cogitator:
                 best = f
         return best
 
-    def _pre_settled(self, region: KNode, re_: "_Reentry") -> bool:
+    def _pre_settled(self, region: KNode, re_: _Reentry) -> bool:
         """Would the region settle without children — empty, canonically
         witnessed, or framed by a proper ancestor row."""
         return (not region) or bool(self.d.witness(region)) or self._onpath(region, self._chain(re_))
@@ -573,7 +573,7 @@ class Cogitator:
             self._frame(f, row)
         return pushed
 
-    def _in_path(self, re_: "_Reentry", c: Kline) -> bool:
+    def _in_path(self, re_: _Reentry, c: Kline) -> bool:
         """Is the candidate in the reentry's path — the entry path and the
         content flow from the opening pairing down? A candidate must not
         exist in the entry path: MHALL -> HALL -> MHALL re-derives what the

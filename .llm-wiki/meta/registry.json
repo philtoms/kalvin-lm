@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-31T15:26:03.361Z",
+  "last_updated": "2026-10-31T22:54:48.231Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7227,6 +7227,22 @@
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },
+    "sources/obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios": {
+      "type": "source",
+      "title": "Observation: Harness runs multiple ask==goal scenarios",
+      "tags": [
+        "dialogue-dev",
+        "harness",
+        "kscript"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios",
+      "relevance": "high",
+      "observed_at": "2026-10-31T22:54:39.729Z",
+      "source_context": "Modifying the dialogue harness to run multiple ask==goal scenarios",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
     "sources/obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet": {
       "type": "source",
       "title": "Observation: Known resolutions trace as rows — the Object twin surfaces between pair and close",
@@ -7265,6 +7281,23 @@
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },
+    "sources/obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored": {
+      "type": "source",
+      "title": "Observation: Stale trs1 stash still in list; dev/probes gitignored",
+      "tags": [
+        "git",
+        "recovery",
+        "stash",
+        "footgun"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored",
+      "relevance": "medium",
+      "observed_at": "2026-10-31T22:54:48.122Z",
+      "source_context": "Recovering the working tree after an accidental stash pop during harness verification",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
     "sources/obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support": {
       "type": "source",
       "title": "Observation: trs/model.py stripped to Cogitator-only support",
@@ -7297,6 +7330,25 @@
       "relevance": "critical",
       "observed_at": "2026-10-31T15:26:03.232Z",
       "source_context": "Answering whether the implementation is still a term rewriting system; writing docs/rationalisation.md",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
+    "sources/obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in": {
+      "type": "source",
+      "title": "Observation: Verifier found exhaustion-grounds-without-evidence defect in _in_path",
+      "tags": [
+        "rationalisation",
+        "soundness",
+        "certificate",
+        "verifier",
+        "bug-found",
+        "determinism"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in",
+      "relevance": "critical",
+      "observed_at": "2026-10-31T16:11:44.181Z",
+      "source_context": "Phase 2: certificate verifier + property tests over the rationalisation model",
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },
