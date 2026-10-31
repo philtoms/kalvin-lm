@@ -362,7 +362,6 @@ class Cogitator:
         self.agenda: list[_Reentry] = []
         self.clock = 0  # the event clock — pairing, wait, resolution order
         self.rframes: list[tuple[KNode, Row]] = []  # resolution frames — record, never settle
-        self.realx: set[int] = set()  # stall-row ids of exchanges that admitted a witness
 
         if goal is None:
             if not entry.adj:
@@ -654,7 +653,6 @@ class Cogitator:
             union = a.kline.adj | b.kline.adj
             if any(n != a.kline.sig for n in union):
                 self._admit(Kline(a.kline.sig, union))
-                self.realx.update({id(r) for r in (a.stalled, b.stalled) if r is not None})
             a.resolved = b.resolved = True
             if b.stalled is not None:
                 b.stalled.resolved = True
@@ -679,26 +677,12 @@ class Cogitator:
         rindex: dict[int, int] = {id(r): i for i, r in enumerate(self.rows)}  # identity — Row eq recurses
         keep: dict[int, Row] = {}
         tabled: dict[int, int] = {}  # reentry id -> the row id holding its slot
-        sticky: set[int] = set()  # reentries whose holders are never displaced
         via_frame: set[int] = set()  # rows kept as frame sources — they pull no pushers
-        stack: list[Row] = []
-        # the rows feeding an exchanged stall are tabled in their own right —
-        # the S3 path is a path, not a replacement: the shortcut that resolved
-        # first (if any) stays visible alongside it. Paths stay orthogonal —
-        # no row serves two reentries, a reentry may table several paths.
-        feeds: set[int] = set()  # exchange-feed rows — a second path, never displaced
-        for waiting in self.stalls.values():
-            for re_ in waiting:
-                if (
-                    re_.stalled is not None
-                    and id(re_.stalled) in self.realx
-                    and re_.stalled.resolved
-                    and re_.parent is not None
-                    and re_.parent.re is not None
-                ):
-                    feeds.add(id(re_.parent))
-                    stack.append(re_.parent)
-        stack.append(self.goal_row)
+        # rows reached through exchange causality table alongside the slot —
+        # the S3 path and the shortcut that resolved first are two orthogonal
+        # paths of one reentry; no row serves two reentries.
+        feeds: set[int] = set()
+        stack: list[Row] = [self.goal_row]
         while stack:
             row = stack.pop()
             if id(row) in keep:
@@ -707,8 +691,8 @@ class Cogitator:
             if re_ is not None and tabled.get(id(re_), id(row)) != id(row) and id(row) not in feeds:
                 continue  # this entry already carries its row — a feed is a second path
             keep[id(row)] = row
-            if re_ is not None:
-                tabled[id(re_)] = id(row)
+            if re_ is not None and id(row) not in feeds:
+                tabled[id(re_)] = id(row)  # feeds table alongside, never claiming the slot
             if (
                 re_ is not None
                 and re_.parent is not None
@@ -727,8 +711,11 @@ class Cogitator:
                     stack.append(slot)
                     continue
                 if child is not None and child.stalled is not None and child.stalled.resolved:
-                    pair = self.frame_src.get(int(child.kline.sig), [])  # the exchange pair
-                    stack.extend(pair[:2])
+                    for sr in self.frame_src.get(int(child.kline.sig), [])[:2]:  # the exchange pair
+                        stack.append(sr)
+                        if sr.re is not None and sr.re.parent is not None:
+                            feeds.add(id(sr.re.parent))  # the row that fed the stall — a second path
+                            stack.append(sr.re.parent)
                     continue
                 chain = self._chain(row.re)
                 best = None
