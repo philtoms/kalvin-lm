@@ -6,7 +6,7 @@ import pytest
 
 from hypothesis import given, settings, strategies as st
 
-from trs import (
+from rationalisation import (
     Band,
     Domain,
     Kline,

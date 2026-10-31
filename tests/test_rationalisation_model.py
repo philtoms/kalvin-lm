@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fractions import Fraction
 
-from trs import (
+from rationalisation import (
     BETA,
     Band,
     Domain,

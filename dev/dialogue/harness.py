@@ -36,7 +36,7 @@ from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source, path_resolver
 
-from trs import (
+from rationalisation import (
     Domain,
     End,
     Kline,

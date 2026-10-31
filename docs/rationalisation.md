@@ -1,6 +1,6 @@
 # Kalvin — the rationalisation model
 
-The rules of the model in `src/trs/model.py`, where the code is truth and
+The rules of the model in `src/rationalisation/model.py`, where the code is truth and
 this document is the rules the code implements. It replaces
 `docs/attic/trs-significance.md`, which named the mechanism a term
 rewriting system. It is not one, and the name is retired: nothing here
@@ -127,7 +127,7 @@ Bounds: `MAX_DEPTH = 10`, `MAX_ROWS = 4096`.
 
 ### 2.3 The rules
 
-Each rule names its anchor in `src/trs/model.py`.
+Each rule names its anchor in `src/rationalisation/model.py`.
 
 **POP** (`_run`). Pop the agenda. Stop when the agenda is empty, the
 claim has grounded, or `len(rows)` reaches the cap. If the reentry is
@@ -151,9 +151,13 @@ fingerprint unseen          each reentry pairs each candidate once
 
 plus the **proven-fit skip**: a candidate whose fit already frames the
 whole entry side and whose both residuals would settle without children
-adds nothing — skip. One more ordering fact: the search is **closers
-first**, then least content — but the candidate order is D's insertion
-order; the subtrees explore least-first via the stack (below).
+adds nothing — skip. A reentry whose every candidate is barred or
+skipped this way also resolves as **known** (the exhausted-candidates
+known) — see §3 for what that does to the certificate. Candidates are
+taken in D's insertion order (a closers-first, least-content sort
+exists in the code's history but is not active); the stack then
+explores the first candidate's subtree to completion before the next,
+and within a subtree the u-side leads.
 
 **PAIR** (`_pair`). For the reentry's kline `k` and candidate `c`, on
 sides:
@@ -271,16 +275,21 @@ Grounding is not a verdict the search asserts; it is a fact the run
 records. Define the **justification** of a settled side, by cases:
 
 1. *empty* — the region is `⊥`;
-2. *resolved child* — the child reentry resolved, whose own row's sides
-   carry justifications (recurse), or it was an exchange party (case 4);
+2. *resolved child* — the child reentry resolved: through its own
+   pairing (whose sides carry justifications — recurse), through an
+   exchange party (case 4), or without exploration at all (KNOWN — its
+   region settles by case 4 or case 5);
 3. *witness* — the domain holds a canon with this signature: a domain
    fact, checkable by lookup;
 4. *frame* — the region is covered by a frame, which is either an
    **earned frame** (some explored pairing where the candidate's side
-   contained the entry's whole side — evidence: a held kline whose full
-   content covers the frame value) or a **joint frame** (two stalled
-   reentries on the same value — evidence: mutual witness, nothing
-   more).
+   contained the entry's whole side — evidence: a held kline, or the
+   goal itself — the run's given — whose full content covers the frame
+   value) or a **joint frame** (two stalled reentries on the same value
+   — evidence: mutual witness, nothing more);
+5. *proven* — the exhausted-candidates known: a covering candidate
+   exists, the fit value is framed (any owner, evidenced as case 4),
+   and the overfit settles by case 1, 3, or 4.
 
 **Theorem.** If the claim grounds, the justifications of the opening
 pairing's two sides form a finite tree — the **certificate** — whose
@@ -298,6 +307,17 @@ The exchange case is the certificate's honest weakest link: it records
 that two subgoals coincided, not that the domain supports them. The
 certificate says so, in the open, rather than laundering it through a
 store.
+
+**Known defect.** The exhausted-candidates known can fire on bars
+alone: `_in_path` compares signature values, so a held kline sharing
+only a signature with an ancestor entry is barred as a re-derivation,
+and when it was the only candidate the reentry resolves with none of
+the five leaves behind it. Minimal shape: identities plus `9:[1]`
+primed, entry `9:[32,1]`, goal `1:[1]` — the claim `⟨9, {1}⟩` grounds
+with the `40` region backed by nothing. The property test
+(`tests/test_rationalisation_certificate.py`) is marked xfail on this
+defect; T3 as stated holds for every corpus script and every scenario
+the defect does not reach.
 
 **Corollary.** Grounding can be checked without re-running the search:
 a verifier given `(D₀, ask, goal)` and the run's frames, sources, and

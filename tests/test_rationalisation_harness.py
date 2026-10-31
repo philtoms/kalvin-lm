@@ -5,7 +5,7 @@ from __future__ import annotations
 from fractions import Fraction
 
 from dev.dialogue.harness import Pending, TrsRunner, _to_kline
-from trs import Domain, Kline, can, effort
+from rationalisation import Domain, Kline, can, effort
 
 
 SCRIPT = """

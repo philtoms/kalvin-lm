@@ -1,6 +1,6 @@
 """The rationalisation model (docs/rationalisation.md)."""
 
-from trs.model import (
+from rationalisation.model import (
     BETA,
     Band,
     Decomposition,
