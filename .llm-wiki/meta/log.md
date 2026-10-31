@@ -1130,3 +1130,12 @@
 ## [2026-10-30T17:32:18.864Z] observe
 - slug: "obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram", title: "Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution", relevance: "high"
 
+## [2026-10-31T08:27:38.673Z] observe
+- slug: "obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib", title: "Exchange guard challenge verified: store-rule kept, feed-visibility decoupled", relevance: "high"
+
+## [2026-10-31T08:30:16.636Z] observe
+- slug: "obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record", title: "Ruling: S3 exchange stores nothing — the frame is the record", relevance: "high"
+
+## [2026-10-31T08:40:25.249Z] observe
+- slug: "obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support", title: "trs/model.py stripped to Cogitator-only support", relevance: "high"
+

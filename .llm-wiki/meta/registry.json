@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-30T18:14:18.692Z",
+  "last_updated": "2026-10-31T08:40:25.345Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7190,6 +7190,61 @@
       "source_context": "Verifying mhall/wdmh trace tables before rewriting Cogitator.rationalise",
       "created": "2026-10-30",
       "updated": "2026-10-30"
+    },
+    "sources/obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib": {
+      "type": "source",
+      "title": "Observation: Exchange guard challenge verified: store-rule kept, feed-visibility decoupled",
+      "tags": [
+        "trs",
+        "exchange",
+        "guard",
+        "verification",
+        "bundling",
+        "feed-visibility"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib",
+      "relevance": "high",
+      "observed_at": "2026-10-31T08:27:38.671Z",
+      "source_context": "Verifying user challenge to the _exchange composition guard",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
+    "sources/obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record": {
+      "type": "source",
+      "title": "Observation: Ruling: S3 exchange stores nothing — the frame is the record",
+      "tags": [
+        "trs",
+        "exchange",
+        "ruling",
+        "stores",
+        "s3",
+        "frame-record"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record",
+      "relevance": "high",
+      "observed_at": "2026-10-31T08:30:16.636Z",
+      "source_context": "User ruling on the S3 exchange store after the guard challenge",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
+    "sources/obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support": {
+      "type": "source",
+      "title": "Observation: trs/model.py stripped to Cogitator-only support",
+      "tags": [
+        "trs",
+        "refactor",
+        "dead-code",
+        "cogs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support",
+      "relevance": "high",
+      "observed_at": "2026-10-31T08:40:25.247Z",
+      "source_context": "Refactoring src/trs/model.py to strip non-Cogitator code",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

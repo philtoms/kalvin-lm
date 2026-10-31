@@ -1,5 +1,11 @@
 # Wiki Update Log
 
+## 2026-10-31
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support","title":"trs/model.py stripped to Cogitator-only support"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record","title":"Ruling: S3 exchange stores nothing — the frame is the record"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib","title":"Exchange guard challenge verified: store-rule kept, feed-visibility decoupled"}
+
 ## 2026-10-30
 
 - **observe**: {"relevance":"high","slug":"obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram","title":"Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution"}
