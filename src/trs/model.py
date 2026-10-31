@@ -641,18 +641,14 @@ class Cogitator:
     def _exchange(self, sig: int) -> None:
         """Reentries stalled at S4 on one signature witness each other:
         the shared C frames and both chains resolve by back propagation —
-        when stalled, C is a U or an O by definition. The mutual witness
-        stores only where it composes content beyond the signature — a
-        self-witnessing pair (Mod:[Mod]) acknowledges, it does not learn."""
+        when stalled, C is a U or an O by definition. The exchange needs no
+        store: the frame is the record, memory learns nothing here."""
         waiting = [r for r in self.stalls.get(sig, ()) if not r.resolved]
         while len(waiting) >= 2 and self.claim is None:
             a = waiting[0]
             b = next((r for r in waiting[1:] if r.parent is not a.parent), None)
             if b is None:
                 return
-            union = a.kline.adj | b.kline.adj
-            if any(n != a.kline.sig for n in union):
-                self._admit(Kline(a.kline.sig, union))
             a.resolved = b.resolved = True
             if b.stalled is not None:
                 b.stalled.resolved = True
