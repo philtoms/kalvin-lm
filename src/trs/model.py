@@ -682,8 +682,11 @@ class Cogitator:
         sticky: set[int] = set()  # reentries whose holders are never displaced
         via_frame: set[int] = set()  # rows kept as frame sources — they pull no pushers
         stack: list[Row] = []
-        # the rows feeding an exchanged stall hold their reentries' slots —
-        # the S3 path is the path, not the shortcut that resolved first
+        # the rows feeding an exchanged stall are tabled in their own right —
+        # the S3 path is a path, not a replacement: the shortcut that resolved
+        # first (if any) stays visible alongside it. Paths stay orthogonal —
+        # no row serves two reentries, a reentry may table several paths.
+        feeds: set[int] = set()  # exchange-feed rows — a second path, never displaced
         for waiting in self.stalls.values():
             for re_ in waiting:
                 if (
@@ -693,8 +696,7 @@ class Cogitator:
                     and re_.parent is not None
                     and re_.parent.re is not None
                 ):
-                    tabled[id(re_.parent.re)] = id(re_.parent)
-                    sticky.add(id(re_.parent.re))  # exchange feeds are never displaced
+                    feeds.add(id(re_.parent))
                     stack.append(re_.parent)
         stack.append(self.goal_row)
         while stack:
@@ -702,8 +704,8 @@ class Cogitator:
             if id(row) in keep:
                 continue
             re_ = row.re
-            if re_ is not None and tabled.get(id(re_), id(row)) != id(row):
-                continue  # this entry already carries its row — a second candidate is another path
+            if re_ is not None and tabled.get(id(re_), id(row)) != id(row) and id(row) not in feeds:
+                continue  # this entry already carries its row — a feed is a second path
             keep[id(row)] = row
             if re_ is not None:
                 tabled[id(re_)] = id(row)
