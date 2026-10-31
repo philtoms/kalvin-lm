@@ -275,8 +275,9 @@ def _row_step(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str]
             return "grounded"
         if row.bp:
             peers = ", ".join(_tlabel(p.entry.sig, labels, alloc) for p in row.bp)
-            return f"BP {peers}"
-        return f"resolved {e}"
+            verb = "known, BP" if row.known else "BP"
+            return f"{verb} {peers}"
+        return f"{'already known' if row.known else 'resolved'} {e}"
     # the pairing emission
     if row.candidate is None:
         return f"stalled {e}"
@@ -328,7 +329,7 @@ def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str]
     hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "step"]
     events: list[tuple[int, int, str, Row]] = []
     for row in rows:
-        once = row.instant or row.exchange  # born closed — one emission
+        once = row.instant or row.exchange or row.known  # born closed — one emission
         if not once:
             events.append((row.birth, 0, "pair", row))
         if row.waited is not None:

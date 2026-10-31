@@ -225,6 +225,7 @@ class Row:
     closed: int | None = None  # the resolution clock
     bp: tuple = ()  # the rows the resolution back-propagated to
     instant: bool = False  # resolved at pairing — one trace emission
+    known: bool = False  # resolved without exploring — already known
 
 
 @dataclass(eq=False)
@@ -336,7 +337,7 @@ class Cogitator:
             re_ = self.agenda.pop()
             re_.popped = True
             if re_.resolved or self._onpath(re_.kline.sig, self._chain(re_)):
-                re_.resolved = True
+                self._known(re_)  # framed by a proper ancestor — already known
                 continue
             self._reenter(re_)
 
@@ -442,6 +443,27 @@ class Cogitator:
         self.clock += 1
         return self.clock
 
+    def _known(self, re_: "_Reentry") -> None:
+        """A reentry resolved without exploring — its region is already
+        framed or every candidate is proven. It still traces: a known row,
+        so the causality it carries stays visible."""
+        if re_.resolved:
+            return
+        row = Row(re_.depth, re_.kline, None, re=re_)
+        row.known = True
+        row.birth = self._tick()
+        row.resolved = True
+        row.instant = True  # one emission
+        row.closed = self._tick()
+        re_.rows.append(row)
+        self.rows.append(row)
+        re_.resolved = True
+        re_.resolved_by = row
+        self.rframes.append((re_.kline.sig, row))
+        if re_.parent is not None:
+            row.bp = (re_.parent,)
+            self._after(re_.parent)
+
     def _reenter(self, re_: _Reentry) -> None:
         k = re_.kline
         if not k.adj:
@@ -493,9 +515,7 @@ class Cogitator:
         if not batches and not re_.rows and not re_.resolved:
             # every candidate was barred or already proven — nothing to
             # explore and nothing to learn: the reentry stands as known
-            re_.resolved = True
-            if re_.parent is not None:
-                self._after(re_.parent)
+            self._known(re_)
             return
         if self.claim is not None:
             return
