@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from hypothesis import assume, given, settings, strategies as st
+from hypothesis import given, settings, strategies as st
 
 from trs import (
     Band,
@@ -18,8 +18,6 @@ from trs import (
     entropy,
     proposals,
     rationalise,
-    r2_products,
-    r3_substitute,
     significance,
 )
 
@@ -68,30 +66,6 @@ def scenarios(draw) -> tuple[Domain, Kline]:
     held = sorted({k.sig for k in d})
     entry = Kline(draw(st.sampled_from(held)), draw(adjacencies(held, max_size=3)))
     return d, entry
-
-
-@st.composite
-def s2_scenarios(draw) -> tuple[Domain, Kline]:
-    """An I-1-closed domain and an admissible S2 kline: F ≠ ⊥, short of canonical."""
-    d = draw(closed_domains())
-    held = sorted({k.sig for k in d})
-    nodes = draw(adjacencies(held, max_size=4))
-    a_hat = can(nodes)
-    pool = [s for s in ALL_SIGS if s & a_hat and s != a_hat]
-    assume(pool)
-    return d, Kline(draw(st.sampled_from(pool)), nodes)
-
-
-@st.composite
-def s3_scenarios(draw) -> tuple[Domain, Kline]:
-    """An I-1-closed domain and an admissible S3 kline: no correspondence."""
-    d = draw(closed_domains())
-    held = sorted({k.sig for k in d})
-    nodes = draw(adjacencies(held, min_size=1, max_size=4))
-    a_hat = can(nodes)
-    pool = [s for s in ALL_SIGS if s & a_hat == 0]
-    assume(pool)
-    return d, Kline(draw(st.sampled_from(pool)), nodes)
 
 
 # --- §4 Definition 11: the band ---
@@ -192,61 +166,6 @@ def test_effort_properties(k):
     else:
         assert 0 < effort(k) < 1  # S2 — both kinds
     assert effort(k, beta=Fraction(1)) == entropy(k)  # β → 1 recovers H
-
-
-@settings(deadline=None)
-@given(s2_scenarios())
-def test_r2_reconstruction_same_side_discharges_surprise(sc):
-    """Same-side pairing: every product re-pairs with content from its own
-    side — can(N_h) ⪯ h, never S3; a node-clean split (no node of N or N_E
-    crosses head boundaries) lands every product at S1, discharging the
-    pairing's surprise entirely (Definition 13)."""
-    d, k = sc
-    entry = Kline(k.sig, frozenset(b for b in ATOMS if b & k.sig))  # can(N_E) = σ
-    t = decompose(k)
-    products, k_f = r2_products(k, entry)
-    for p in [*products, k_f]:
-        assert contained(can(p.adj), p.sig)  # same side — never S3
-    node_clean = all(contained(n, t.F) or contained(n, t.O) for n in k.adj) and all(
-        contained(n, t.F) or contained(n, t.U) for n in entry.adj
-    )
-    if node_clean:
-        assert all(band(p) is Band.S1 for p in [*products, k_f])
-
-
-@settings(deadline=None)
-@given(s2_scenarios())
-def test_r2_reconstruction_well_formed(sc):
-    d, k = sc
-    entry = Kline(k.sig, frozenset(b for b in ATOMS if b & k.sig))
-    t = decompose(k)
-    products, k_f = r2_products(k, entry)
-    assert k_f.sig == t.F  # the fit kline — S2 guarantees F ≠ ⊥
-    assert k_f.adj == frozenset(n for n in k.adj if contained(n, t.F))
-    expected = {
-        t.U: frozenset(n for n in entry.adj if contained(n, t.U)),
-        t.O: frozenset(n for n in k.adj if contained(n, t.O)),
-    }
-    for p in products:
-        assert p.sig != 0
-        assert p.adj == expected[p.sig]
-    assert {p.sig for p in products} == {h for h in (t.U, t.O) if h}
-
-
-# --- §5 R2/R3: product well-formedness ---
-
-
-@settings(deadline=None)
-@given(s3_scenarios())
-def test_r3_product_well_formed(sc):
-    d, k = sc
-    assert band(k) is Band.S3
-    held_sigs = {kk.sig for kk in d}
-    assert all(n in held_sigs for n in k.adj)  # admissible: references held
-    n_prime = r3_substitute(d, k)
-    if n_prime:
-        assert can(n_prime) != 0  # the product's head is legal (Definition 2)
-    assert all(n in held_sigs for n in n_prime)  # substitution keeps references held
 
 
 # --- §5: rationalisation preserves the invariants ---

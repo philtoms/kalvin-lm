@@ -1,4 +1,5 @@
-"""Significance-routed model — reference implementation of docs/trs-significance.md."""
+"""The significance-routed model — node algebra, the kline domain, the
+grading measures, and the Cogitator reentry runner under the TRS harness."""
 
 from __future__ import annotations
 
@@ -75,9 +76,6 @@ class Kline:
         if self.sig == 0:
             raise ValueError("signature must be non-empty (Definition 2)")
 
-    def merge(self, m: Kline | None = None) -> Kline:
-        return Kline(self.sig.merge(m.sig), self.adj | m.adj) if m else self
-
     def fingerprint(self) -> int:
         return self.sig | can(self.adj)
     
@@ -146,22 +144,9 @@ class Domain:
     def __iter__(self):
         return iter(self._order)
 
-    def __len__(self) -> int:
-        return len(self._klines)
-
     # §2 Definition 6 — witness (total)
     def witness(self, s: KNode) -> frozenset[KNode]:
         return self._canonical.get(s, frozenset())
-
-    # §2 Definition 7 — three lookups
-    def exact(self, s: KNode) -> list[Kline]:
-        return [k for k in self._klines if k.sig == s]
-
-    def overlap(self, s: KNode) -> list[Kline]:
-        return [k for k in self._klines if k.sig & s]
-
-    def covered(self, c: KNode) -> list[Kline]:
-        return [k for k in self._klines if contained(k.sig, c)]
 
 # --- §4 Definition 12 — decomposition ---
 
@@ -203,40 +188,6 @@ def effort(k: Kline, beta: Fraction = BETA) -> Fraction:
     t = decompose(k)
     total = mu(k.sig | can(k.adj))
     return Fraction(mu(t.U) + beta * mu(t.O), total)
-
-
-# --- §5 — the rewrite rules ---
-
-
-def r2_products(c: Kline, k: Kline) -> tuple[list[Kline], Kline]:
-    """R2 (§5 Rule R2) — same-side products for the non-empty residual
-    heads; the fit kline is returned separately and stores in its own
-    right."""
-    t = decompose(c)
-    n_f = frozenset(n for n in c.adj if contained(n, t.F))
-    n_o = frozenset(n for n in c.adj if contained(n, t.O))
-    n_u = frozenset(n for n in k.adj if contained(n, t.U))
-    products = []
-    k_f = Kline(t.F, n_f)
-    if t.U:
-        products.append(Kline(t.U, n_u))  # ⟨U, N_U⟩ — the entry's U-side
-    if t.O:
-        products.append(Kline(t.O, n_o))  # ⟨O, N_O⟩ — the candidate's O-side
-    return products, k_f
-
-
-def r3_substitute(d: Domain, k: Kline) -> frozenset[KNode]:
-    """R3 — single pass: replace occurring covered signatures by their adjacencies.
-
-    Several covered klines may share a signature; the fold order is §7
-    strategy, and the reference takes them sorted by (sig, adjacency)."""
-    c_n = can(k.adj)
-    n_prime = set(k.adj)
-    for nb in sorted(d.covered(c_n), key=lambda x: (x.sig, tuple(sorted(x.adj)))):
-        if nb.sig in k.adj and nb.adj != frozenset([nb.sig]):  # like for like is no substitution
-            n_prime.discard(nb.sig)
-            n_prime |= nb.adj
-    return frozenset(n_prime)
 
 
 # --- §5 — reentry: the rationalisation runner ---
@@ -313,7 +264,6 @@ class Proposal:
 class Rationalisation:
     stores: list[Kline]
     ends: list[End]
-    rounds: int
     rows: list[Row] = field(default_factory=list)
     path: list[Row] = field(default_factory=list)  # the rows that carried the opening pairing
     claim: Kline | None = None
@@ -366,10 +316,10 @@ class Cogitator:
         if goal is None:
             if not entry.adj:
                 self._halt("R4: entry kline with no adjacency", entry)
-                return Rationalisation(self.stores, self.ends, 0, self.rows)
+                return Rationalisation(self.stores, self.ends, self.rows)
             if entry.sig == can(entry.adj):
                 self._admit(entry)  # S1 grounds on receipt
-                return Rationalisation(self.stores, self.ends, 0, self.rows)
+                return Rationalisation(self.stores, self.ends, self.rows)
 
         self.agenda.append(_Reentry(entry, 1))
         self._run()
@@ -378,7 +328,7 @@ class Cogitator:
                 if not re_.resolved:
                     self._halt("stalled at S4: no candidates", re_.kline)
         return Rationalisation(
-            self.stores, self.ends, len(self.rows), self.rows, self._trace(), self.claim, self.goal_row
+            self.stores, self.ends, self.rows, self._trace(), self.claim, self.goal_row
         )
 
     def _run(self) -> None:
@@ -810,12 +760,6 @@ class Cogitator:
                 if p[0] != own and not (p[0], id(p[1])) in seen and not seen.add((p[0], id(p[1])))
             )
         return [r for r in self.rows if id(r) in keep]
-
-    def _pair_effort(self, k: Kline, c: Kline) -> Fraction:
-        s_e, s_c = side(k), side(c)
-        u, o = residue(s_e, s_c), residue(s_c, s_e)
-        t = mu(s_e | s_c)
-        return Fraction(mu(u) + BETA * mu(o), t) if t else Fraction(0)
 
 
 def proposals(r: Rationalisation) -> list[Proposal]:

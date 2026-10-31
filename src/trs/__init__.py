@@ -20,8 +20,6 @@ from trs.model import (
     mu,
     proposals,
     rationalise,
-    r2_products,
-    r3_substitute,
     residue,
     significance,
 )
@@ -46,8 +44,6 @@ __all__ = [
     "mu",
     "proposals",
     "rationalise",
-    "r2_products",
-    "r3_substitute",
     "residue",
     "significance",
 ]

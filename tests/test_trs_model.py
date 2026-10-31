@@ -18,8 +18,6 @@ from trs import (
     proposals,
     rationalise,
     significance,
-    r2_products,
-    r3_substitute,
 )
 
 A, B, C, D = 1, 2, 4, 8
@@ -98,59 +96,6 @@ def test_decomposition_partition_and_flow_sides():
     assert t2.U == CD and t2.O == 0
     t3 = decompose(k(AB, A, B, C))
     assert t3.U == 0 and t3.O == C
-
-
-# --- §5 Rule R2: same-side products — the fit kline earns, the residual products re-enter ---
-
-
-def test_r2_reconstruction_same_side_pairing():
-    e = k(ABC, A, B, C)  # can(N_E) = ABC
-    c = k(ABC, A, B, D)  # â = ABD; F=AB, U=C, O=D — node-clean
-    products, k_f = r2_products(c, e)
-    # each head carries its own side: U the entry's U-side, O the candidate's O-side
-    assert [(p.sig, sorted(p.adj)) for p in products] == [(C, [C]), (D, [D])]
-    assert (k_f.sig, sorted(k_f.adj)) == (AB, [A, B])
-
-
-def test_r2_reconstruction_crossing_node_starves_the_sides():
-    # B lives inside the crossing node BC: nothing in N is ⪯ B or ⪯ C —
-    # the fit kline starves and O carries no O-side content; U re-pairs
-    # with the entry's own A (Definition 12/13)
-    e = k(AB, A, B)
-    c = k(AB, BC)  # F=B, U=A, O=C
-    products, k_f = r2_products(c, e)
-    assert [(p.sig, sorted(p.adj)) for p in products] == [(A, [A]), (C, [])]
-    assert (k_f.sig, sorted(k_f.adj)) == (B, [])
-
-
-def test_r2_reconstruction_pure_overfit_skips_empty_head():
-    e = k(AB, A, B)
-    c = k(AB, A, B, C)  # U = ⊥
-    products, k_f = r2_products(c, e)
-    assert [(p.sig, sorted(p.adj)) for p in products] == [(C, [C])]
-    assert (k_f.sig, sorted(k_f.adj)) == (AB, [A, B])
-
-
-# --- §5 R3: substitute, canonicalise, re-enter ---
-
-
-def test_r3_substitution_expands_reference():
-    d = base_domain(k(AB, A, B))
-    n_prime = r3_substitute(d, k(CD, AB))
-    assert n_prime == frozenset({A, B})
-
-
-def test_r3_single_pass():
-    # b's kline would substitute b → {b, c}; single pass forbids the second round
-    d = base_domain(k(AB, A, B), k(B, B, C))
-    n_prime = r3_substitute(d, k(CD, AB))
-    assert n_prime == frozenset({A, B})
-
-
-def test_r3_emptied_expansion():
-    d = base_domain(k(AB))  # terminal kline headed AB
-    n_prime = r3_substitute(d, k(CD, AB))
-    assert n_prime == frozenset()  # routes to R4
 
 
 # --- §4 Definition 13: entropy and graded significance ---
