@@ -263,7 +263,7 @@ def _tsupport(pair: tuple, labels: dict[int, str], alloc: dict[int, str]) -> str
     c = _tlabel(src.candidate.sig, labels, alloc)
     if src.candidate.adj and can(src.candidate.adj) != src.candidate.sig:
         c += ":" + " ".join(_tlabel(n, labels, alloc) for n in sorted(src.candidate.adj))
-    return _tframe(v, labels, alloc) + " ← " + c
+    return _tframe(v, labels, alloc)# + " ← " + c
 
 
 def _row_step(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> str:
@@ -272,10 +272,10 @@ def _row_step(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str]
         return f"stalled {e}"
     if kind == "close":
         if row is goal_row:
-            return "resolved, grounded"
+            return "grounded"
         if row.bp:
             peers = ", ".join(_tlabel(p.entry.sig, labels, alloc) for p in row.bp)
-            return f"resolved, BP {peers}"
+            return f"BP {peers}"
         return f"resolved {e}"
     # the pairing emission
     if row.candidate is None:
