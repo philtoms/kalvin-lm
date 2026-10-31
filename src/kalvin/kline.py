@@ -63,21 +63,28 @@ class KNode(int):
         """A copy of this node carrying ``label``."""
         return KNode(self, label)
 
-    def merge(self, other: int) -> "KNode":
+    def merge(self, other: KNode) -> "KNode":
         """A new node OR-combined with *other*, labels composed with ``|``.
 
         The node-level counterpart of the Signifier's OR-reduction
         (``signature_of``): accumulates values into a running signature
         where no Signifier is at hand. Unlike ``|``, the result stays a
-        KNode. An empty label on either side yields the other side's
-        label; both empty stays empty.
+        KNode. Label composition is idempotent: the ``|``-parts of both
+        sides union with order preserved, so ``A.merge(A)`` stays ``A``.
+        An empty label on either side yields the other side's label;
+        both empty stays empty.
         """
-        parts = (self.label, getattr(other, "label", ""))
-        return KNode(self | other, "|".join(p for p in parts if p))
+        parts: list[str] = []
+        for label in (self.label, getattr(other, "label", "")):
+            for part in label.split("|"):
+                if part and part not in parts:
+                    parts.append(part)
+        return KNode(self | other, "|".join(parts))
 
     def __repr__(self) -> str:
         return f"KNode({int(self)}, {self.label!r})" if self.label else f"KNode({int(self)})"
 
+KNone = KNode(0, "None")
 
 # Accepted input representations for KLine's ``nodes`` parameter.
 # Sequence (covariant) so list[KNode] is assignable to it.

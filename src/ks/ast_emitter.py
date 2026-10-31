@@ -12,10 +12,15 @@ SymbolicEntry tuples to encoded uint64 values.
 
   - ASK (op=None):        {sig: []}   — bare ask; word-bound sigs emit
                          IDENTITY instead
-  - COUNTERSIGNS (==):   {sig: []}   — the queued ask; the goal scope's
+  - COUNTERSIGNS (==):   {sig: [canon_nodes]} — the queued ask; the goal scope's
                          block canon (the nested ``B =>`` item) is the
                          implied goal the trainer grades K's proposals
-                         against. No reciprocal pair is emitted.
+                         against. No reciprocal pair is emitted. When the
+                         scope's sig freshly expanded a compound canon, the
+                         ask REPLACES that expansion entry in place — the ask
+                         carries the canon nodes, so the standalone canon
+                         kline is a redundant unasked twin; only the ask is
+                         stored.
   - DENOTES (=):         {sig: [nodes]}        — forward association
   - CONNOTES (>):        {sig+nodes: [nodes]}  — compound signature
   - RCONNOTES (<):       {nodes+sig: [sig]}    — compound signature, reversed
@@ -59,8 +64,9 @@ SymbolicEntry tuples to encoded uint64 values.
 **Key design constraints:**
   - nodes field is ALWAYS list[str] — never None, never a bare string,
     never singleton-unwrapped.  Singleton unwrapping happens in TokenEncoder.
-  - No COUNTERSIGNS entry written — a `==` scope emits the ASK; self-
-    reference (A = A / A > A) collapses to IDENTITY.
+  - No COUNTERSIGNS entry written — a `==` scope emits the ASK (replacing
+    its own fresh expansion canon); self-reference (A = A / A > A)
+    collapses to IDENTITY.
   - No general deduplication beyond CANONICALISES dedup.
 """
 
@@ -90,9 +96,10 @@ class SymbolicEntry(NamedTuple):
                operators, multi-item for CANONICALISES aggregation.  Never None,
                never a bare string, never singleton-unwrapped.
         op:   One of "ASK", "CANONICALISES", "CONNOTES", "RCONNOTES",
-               "DENOTES", "IDENTITY". ("COUNTERSIGNS" is a scope
-               operator only — its scope emits an ASK entry, never an entry
-               of its own.)
+               "DENOTES", "IDENTITY", "UNKNOWN" (statement terminal with
+               no identity/canon of its own — empty nodes).
+               ("COUNTERSIGNS" is a scope operator only — its scope emits
+               an ASK entry, never an entry of its own.)
         component_labels: Resolved words per signature character (for word
                mode).  None when not applicable.
     """
@@ -164,6 +171,10 @@ class ASTEmitter:
         self._scope_annotation: str = ""
         self._pending_annotation: str = ""
 
+        # (insert-after index, resolved word) per statement leaf terminal —
+        # resolved into UNKNOWN entries by the emit() post-pass.
+        self._terminal_unknowns: list[tuple[int, str]] = []
+
     # Public API
 
     def emit(self, file: KScriptFile) -> list[SymbolicEntry]:
@@ -177,7 +188,33 @@ class ASTEmitter:
         """
         self._pending_annotation = ""
         self._process_constructs(file.constructs)
+        self._emit_terminal_unknowns()
         return self.entries
+
+    def _emit_terminal_unknowns(self) -> None:
+        """A statement terminal that heads no entry → its own
+        S4 entry {word:[]} (one per word, after the statement that raised it).
+
+        All heads count as resolved. The head of an entry is its sig —
+        except connotations, whose sig slot is a compound: there the head
+        is the first concat component (the specific side — `A < B` heads
+        B, so in `Object < Query` Query is the head and Object is not).
+        """
+        own = {
+            e.concat[0] if e.concat else e.sig for e in self.entries
+        }
+        first: dict[str, int] = {}
+        for pos, word in self._terminal_unknowns:
+            if word not in first:
+                first[word] = pos
+        for word, pos in sorted(first.items(), key=lambda kv: kv[1], reverse=True):
+            if word in own:
+                continue
+            own.add(word)
+            self.entries.insert(
+                pos, SymbolicEntry(sig=word, nodes=[], op="UNKNOWN")
+            )
+        self._terminal_unknowns = []
 
     # Construct dispatch
 
@@ -372,8 +409,14 @@ class ASTEmitter:
                 ),
                 "",
             )
-        self._emit_operator_entries(sig_resolved, resolved_nodes, op,
-                                    canon_idx=canon_idx, goal=goal)
+        self._emit_operator_entries(
+            sig_resolved, resolved_nodes, op,
+            canon_idx=canon_idx, canon_created=canon_created, goal=goal,
+        )
+        if scope.op is not None and scope.items and isinstance(scope.items[-1], Signature):
+            self._terminal_unknowns.append(
+                (len(self.entries), resolved_nodes[len(scope.items) - 1])
+            )
         self._compile_children(scope, op, canon_idx, pushed_scope=pushed_scope)
 
         self._parent_kline_chars = saved_chars
@@ -389,6 +432,7 @@ class ASTEmitter:
         op: str,
         canon_idx: int | None = None,
         goal: str = "",
+        canon_created: bool = False,
     ) -> None:
         """Emit operator-specific entries based on the operator type."""
         if op == "COUNTERSIGNS":
@@ -400,10 +444,27 @@ class ASTEmitter:
             # carries the signature's compound canon nodes (a compound's
             # decomposition — what the engine's candidate selection reads);
             # a single-char sig has none.
-            canon_nodes = (
-                list(self.entries[canon_idx].nodes) if canon_idx is not None else []
-            )
-            self._emit_entry(sig, canon_nodes, "ASK", is_ask=True, goal=goal)
+            #
+            # When THIS scope freshly expanded the sig's canon, the ask
+            # replaces that expansion entry in place (mirroring the bare
+            # compound ask): the ask already stores the canon nodes, so the
+            # separate canon kline is the same relationship unasked — only
+            # the ask is stored. A canon shared with an earlier scope
+            # (dedup hit) stands untouched — that scope's authored
+            # statement — and the ask appends fresh with the canon's nodes.
+            if canon_idx is not None and canon_created:
+                canon = self.entries[canon_idx]
+                self._canon_seen.pop((canon.sig, tuple(canon.nodes)), None)
+                self.entries[canon_idx] = canon._replace(
+                    op="ASK", is_ask=True, is_expansion=False, goal=goal,
+                    scope=self._scope_level(),
+                    annotation=self._scope_annotation,
+                )
+            else:
+                canon_nodes = (
+                    list(self.entries[canon_idx].nodes) if canon_idx is not None else []
+                )
+                self._emit_entry(sig, canon_nodes, "ASK", is_ask=True, goal=goal)
 
         elif op == "CONNOTES":
             if nodes == [sig]:
@@ -425,7 +486,7 @@ class ASTEmitter:
             if nodes == [sig]:
                 self._emit_entry(sig, [sig], "IDENTITY")
             elif nodes:
-                # A = B ⇒ A:[B] — the signature denotes each node.
+                # A = B ⇒ A:[B] — the signature denotes the node.
                 self._emit_entry(sig, list(nodes), "DENOTES")
 
         elif op == "RCONNOTES":
@@ -437,7 +498,7 @@ class ASTEmitter:
                 # BA:[A] — the compound in reading order (nodes then sig),
                 # the node side the original signature. concat so the
                 # encoder composes the signature instead of encoding the
-                # joined string as a word. Multi-node: A < B C ⇒ BCA:[A].
+                # joined string as a word.
                 self._emit_entry(
                     "".join(nodes) + sig, [sig], "CONNOTES",
                     concat=[*nodes, sig],

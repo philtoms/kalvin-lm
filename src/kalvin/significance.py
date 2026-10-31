@@ -117,6 +117,7 @@ _OP_TO_SIG: dict[str, int] = {
     "IDENTITY": SIG_S1,
     "ASK": SIG_S4,
     "EXPANSION": SIG_S1,
+    "UNKNOWN": SIG_S4,  # a statement terminal with no identity/canon of its own
 }
 
 

@@ -84,6 +84,8 @@
 
 ## Sources
 
+- [[sources/cogitator-trace-table-alignment]] — Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo *(created: 2026-10-30)*
+- [[sources/compound-label-mts-initials-notation]] — Compound KNode labels: MTS initials, joined identifier stays registry key *(created: 2026-10-30)*
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
 - [[sources/connotation-compound-relocation-encoder-design]] — Relocating a compound across the sig/node boundary requires component plumbing *(created: 2026-09-08)*
 - [[sources/connote-denote-structure-swap-compound-sig-denotation]] — CONNOTE/DENOTE structures swapped — denotation is compound-signature S2 *(created: 2026-09-09)*
@@ -93,9 +95,11 @@
 - [[sources/identity-klines-never-proposals]] — Identity klines are never proposals *(created: 2026-08-26)*
 - [[sources/identity-priming-and-knowledge-restatement]] — Identity priming; engine stopped restating knowledge *(created: 2026-08-27)*
 - [[sources/kalvin-doc-normative-split]] — Kalvin doc normative split: algebra vs CONTEXT.md *(created: 2026-09-12)*
+- [[sources/knode-label-conventions-content-vs-identifier]] — KNode labels: one composition convention, identifiers in dbg *(created: 2026-10-27)*
 - [[sources/ks2-conformance-series-landing]] — ks2 conformance series: 6 commits to the engine entry path *(created: 2026-09-12)*
 - [[sources/ks2-third-pass-seven-gap-resolutions]] — ks2 third pass: seven gap resolutions fixing the formal algebra *(created: 2026-09-10)*
 - [[sources/kscript-import-shared-emitter-semantics]] — kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix *(created: 2026-09-23)*
+- [[sources/maude-lexing-and-kind-pitfalls-kalvin-template]] — Maude lexing and kind pitfalls in the Kalvin template *(created: 2026-09-23)*
 - [[sources/model-state-graph-layer-rendering]] — Model-state graph design: klines deduped with layer glyphs, strongest-layer styling *(created: 2026-09-08)*
 - [[sources/obs-2026-08-11-all-kalvin-wiki-stub-pages-filled-in]] — Observation: All Kalvin wiki stub pages filled in *(created: 2026-08-11)*
 - [[sources/obs-2026-08-11-enginestate-four-store-model-grounded-ltm-stm-disconnected]] — Observation: EngineState four-store model: grounded→ltm, STM disconnected *(created: 2026-08-11)*
@@ -340,22 +344,143 @@
 - [[sources/obs-2026-09-23-b-departure-tightened-bridges-stay-within-b-never-the-type-m]] — Observation: B-departure tightened: bridges stay within B, never the type — mhall proposes the walked answer *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-countersignature-removed-from-algebra-one-goal-given-vs-sele]] — Observation: Countersignature removed from algebra: one "goal", given vs selected; standing vs composed evidence *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-engine-pure-algebraic-pairing-lives-harness-side-explicit-b-]] — Observation: Engine pure-algebraic: pairing lives harness-side; explicit-B derivations marked (given) *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-fit-table-cases-4-5-fixed-def-14-consumed-nodes-clause-tight]] — Observation: Fit table cases 4–5 fixed; Def 14 consumed-nodes clause tightened to "every" *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-given-goal-feed-removed-engine-pure-algebra-mhall-honestly-s]] — Observation: Given-goal feed removed: engine pure algebra, mhall honestly silent *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-goal-vs-target-disambiguated-def-22-selects-goals-gives-the-]] — Observation: Goal vs target disambiguated: Def 22 selects goals, == gives the target *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc]] — Observation: KNode labels preserved through the walk into cogitate's batch *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk]] — Observation: kscript import statement implemented (shared-emitter walk) *(created: 2026-09-23)*
+- [[sources/obs-2026-09-23-maude-template-updated-to-def-15-meeting-walk-def-13-inertne]] — Observation: Maude template updated to Def 15 meeting walk + Def 13 inertness + one-ask structure *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-no-pure-underfit-law-needed-stuck-is-the-honest-mirror-of-th]] — Observation: No pure-underfit law needed: stuck is the honest mirror of the appendix's pure-overfit ruling *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-no-s4-law-uniform-selection-the-real-seam-is-the-pure-underf]] — Observation: No S4 law: uniform selection; the real seam is the pure-underfit relationship *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-removed-from-algebra-ask-is-an-unmatched-underfit-no-goal-no]] — Observation: == removed from algebra: ask is an unmatched underfit, no goal, no witness *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-selection-trace-live-supplied-goals-stall-at-entry-selected-]] — Observation: Selection trace live: supplied goals stall at entry, selected goals canonicalise, supplied finishes *(created: 2026-09-23)*
 - [[sources/obs-2026-09-23-walk-coverage-selection-in-svo-selected-both-scripts-reach-d]] — Observation: Walk-coverage selection in: SVO selected, both scripts reach done — with cascade + head-adoption side-effects *(created: 2026-09-23)*
+- [[sources/obs-2026-09-29-a-1-deleted-unheld-residual-is-s4-creation-only-at-entry-sto]] — Observation: A-1 deleted: unheld residual is S4; creation only at entry/store *(created: 2026-09-29)*
+- [[sources/obs-2026-09-29-docs-trs-significance-md-written-consolidated-trs-spec-draft]] — Observation: docs/trs-significance.md written: consolidated TRS spec draft *(created: 2026-09-29)*
+- [[sources/obs-2026-09-29-trs-dialogue-reviewed-sound-kernel-not-yet-spec-ready]] — Observation: TRS dialogue reviewed: sound kernel, not yet spec-ready *(created: 2026-09-29)*
+- [[sources/obs-2026-09-29-trs-spec-amended-mirror-pairing-d7-materialisation-a-1]] — Observation: TRS spec amended: mirror pairing D7, materialisation A-1 *(created: 2026-09-29)*
+- [[sources/obs-2026-09-30-r3-outcome-anchored-product-is-a-definition-8-entry-no-re-en]] — Observation: R3 outcome anchored: product IS a Definition-8 entry; no re-entry mechanism *(created: 2026-09-30)*
+- [[sources/obs-2026-09-30-trs-spec-all-oqs-resolved-band-terminology-no-splice-admissi]] — Observation: TRS spec: all OQs resolved — band terminology, no splice, admission iff S1 *(created: 2026-09-30)*
+- [[sources/obs-2026-09-30-trs-spec-terminology-aligned-underfit-can-n-overfit-can-n]] — Observation: TRS spec terminology aligned: underfit=σ∖can(N), overfit=can(N)∖σ *(created: 2026-09-30)*
+- [[sources/obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo]] — Observation: TRS spec: unpaired residual adjacencies, canonical re-entry loop *(created: 2026-09-30)*
+- [[sources/obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend]] — Observation: Amendment 15: proposals ordered by graded significance (ascending effort) *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic]] — Observation: Amendment 16: D-liveness stated; R3 fold pinned deterministic *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-amendment-16-repaired-i-2-dissolution-direction-drop-uniquen]] — Observation: Amendment 16 repaired; I-2 dissolution direction: drop uniqueness, witnesses coexist *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation]] — Observation: decode renamed witness: strict converse of canonicalisation *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned]] — Observation: derive → rationalise: the loop's name, engine-aligned *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b]] — Observation: Effort defined: E discounts repairable residual; S3 strictly below S4 *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-graded-significance-defined-h-1-f-entropy-flow-theorems]] — Observation: Graded significance defined: H = 1 − μ(F)/μ(σ∨â), entropy flow theorems *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-i-2-seam-on-hold-dissolves-at-continuous-operation-spec-work]] — Observation: I-2 seam on hold — dissolves at continuous-operation spec work *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-proposals-built-acquire-connect-continue-at-every-halt-ranke]] — Observation: Proposals built: acquire/connect/continue at every halt, ranked by effort *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida]] — Observation: R1 rewritten: S1 arrival licenses the trace's opening candidate *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat]] — Observation: R2 produces three reentrant klines; R3 unified to S3-candidate input *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-ruling-d-growing-during-a-rationalisation-run-is-desired-sem]] — Observation: Ruling: D growing during a rationalisation run is desired semantics *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired]] — Observation: trs.md references dropped from spec; dialogue retired *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0]] — Observation: TRS milestone: spec → code, committed 2aaa2e0 *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem]] — Observation: TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular]] — Observation: TRS spec: decode total; rules use only defined kline vocabulary *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie]] — Observation: TRS spec implemented and tested: one spec defect fixed (emptied expansion) *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-]] — Observation: TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7 *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome]] — Observation: TRS spec: S4 at reentry via empty adjacency; R3 single outcome; R4 single arrival *(created: 2026-10-01)*
+- [[sources/obs-2026-10-01-trs-spec-sweep-rules-state-behaviour-prohibitions-demoted-to]] — Observation: TRS spec sweep: rules state behaviour; prohibitions demoted to properties *(created: 2026-10-01)*
+- [[sources/obs-2026-10-06-ask-goal-configuration-two-entries-rest-primes-the-domain]] — Observation: ask==goal configuration: two entries, rest primes the domain *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-derived-heads-labelled-by-content-phantom-edit-corruption-cl]] — Observation: Derived heads labelled by content; phantom-edit corruption cleaned *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-halted-entries-relabelled-via-allocation-bit-decomposition]] — Observation: Halted entries relabelled via allocation-bit decomposition *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-i-1-enforcement-code-removed-no-neighbours-halt-is-the-ask]] — Observation: I-1 enforcement code removed; no-neighbours halt is the ask *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi]] — Observation: I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-knode-throughout-derived-values-carry-provenance-labels]] — Observation: KNode throughout: derived values carry provenance labels *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-note-for-redesign-neighbour-sig-ascending-is-not-algebraic]] — Observation: Note for redesign: neighbour-sig ascending is not algebraic *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-rationalise2-corrections-always-store-r1-sole-via-dispatch]] — Observation: rationalise2 corrections: always-store, R1 sole via dispatch *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-rationalise2-knode-candidate-fallback-r1-stores-first-candid]] — Observation: rationalise2: KNode, candidate fallback, R1 stores first candidate *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-rationalise2-prototype-step-1-2-matches-the-hand-trace-no-di]] — Observation: rationalise2 prototype: step 1.2 matches the hand-trace, no divergence *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-root-cause-unmasked-ops-over-cargo-bits-model-now-content-sp]] — Observation: Root cause: unmasked ops over cargo bits; model now content-space *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers]] — Observation: Runner reworked: LIFO stack, duplicates, per-work-entry openers *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq]] — Observation: Seeding withdrawn: unrecognised nodes route through S4 as acquire asks *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-trs-block-committed-harness-knode-realisation-lifo-runner-i-]] — Observation: TRS block committed: harness, KNode realisation, LIFO runner, I-1 removal *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-trs-harness-ask-goal-is-the-only-run-mode]] — Observation: TRS harness: ask==goal is the only run mode *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed]] — Observation: TRS harness hooked up: .ks scripts run the significance-routed model *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r]] — Observation: TRS spec de-historicised: decisions table and amendment log removed *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-verify-step-1-1-confirmed-neighbours-first-candidate-s2-f-su]] — Observation: Verify step 1.1 confirmed: neighbours, first candidate S2 F=Subject *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-verify-step-1-2-r2-consumption-diverges-recursion-on-u-f-acc]] — Observation: Verify step 1.2: R2 consumption diverges — recursion on U, F accumulates *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-verify-step-1-2-r2-single-response-design-vs-current-queued-]] — Observation: Verify step 1.2: R2 single-response design vs current queued products *(created: 2026-10-06)*
+- [[sources/obs-2026-10-06-verify-step-1-settled-goal-rationalises-before-the-ask]] — Observation: Verify step 1 settled: goal rationalises before the ask *(created: 2026-10-06)*
+- [[sources/obs-2026-10-07-10-observations-captured-harness-boundary-s2-singleton-split]] — Observation: 10 observations captured: harness boundary, S2 singleton split, tail recursion *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-committed-91033a1-reentry-spec-fix]] — Observation: Committed 91033a1: reentry spec fix *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-f-suppression-experiment-word-canons-are-f-arrivals-reverted]] — Observation: F-suppression experiment: word canons are F-arrivals; reverted *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-r2-ruled-witness-products-singleton-withdrawn-def-10-candida]] — Observation: R2 ruled: witness products (singleton withdrawn); Def 10 = Candidate pairing *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-]] — Observation: R2 spec language is the target; implementation incomplete — do not sync *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter]] — Observation: R3 amended by user: procedure stated in-rule, product re-enters at Def 8 *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline]] — Observation: Reentry fixed: Def 8 owns entry/re-entry/trace; Def 9 pipeline-only; R3 follows R2 *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical]] — Observation: Spec R3 synced: substitute and re-enter in-chain, no canonicalisation *(created: 2026-10-07)*
+- [[sources/obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op]] — Observation: User updates absorbed: next-candidate opener, R3 reentry on opener *(created: 2026-10-07)*
+- [[sources/obs-2026-10-08-c-e-subscripts-removed-role-named-c-and-e-throughout]] — Observation: C₀/E₀ subscripts removed — role-named C and E throughout *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-def-8-trace-rewritten-descends-from-a-candidate-returns-at-s]] — Observation: Def 8 trace rewritten: descends from a candidate, returns at S1 or S4 *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-goal-canon-stores-via-accumulated-intermediates-spec-states-]] — Observation: Goal canon stores via accumulated intermediates; spec states the composition *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-like-for-like-filter-kills-vacuous-r3-det-grounds-via-the-tr]] — Observation: Like-for-like filter kills vacuous R3; Det grounds via the transformative path *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-opener-the-candidate-itself-ask-stores-the-full-sentence-can]] — Observation: Opener = the candidate itself; ask stores the full-sentence canon *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-r2-owns-the-cross-candidate-accumulation-spec-and-code-align]] — Observation: R2 owns the cross-candidate accumulation; spec and code aligned *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-r2-products-by-reconstruction-f-o-from-the-candidate-s-adjac]] — Observation: R2 products by reconstruction: F/O from the candidate's adjacency, U from the entry's *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-spec-r2-now-states-reconstruction-f-o-from-candidate-s-witne]] — Observation: Spec R2 now states reconstruction: F/O from candidate's witness, U from entry's canon *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-trace-concept-removed-r1-stores-the-returning-candidate-ask-]] — Observation: Trace concept removed; R1 stores the returning candidate; ask ping-pongs *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-]] — Observation: TRS recommendations implemented: filter deleted, per-run seen memo, r2_products3 tested *(created: 2026-10-08)*
+- [[sources/obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-]] — Observation: TRS spec §5 resynced to rationalise3: fit product earns, split returns on first cross S1 *(created: 2026-10-08)*
+- [[sources/obs-2026-10-12-d13-r2-entropy-theorem-inverted-by-same-side-pairing]] — Observation: D13 R2 entropy theorem inverted by same-side pairing *(created: 2026-10-12)*
+- [[sources/obs-2026-10-12-r2-same-side-pairing-settled-spec-5-resynced]] — Observation: R2 same-side pairing settled; spec §5 resynced *(created: 2026-10-12)*
+- [[sources/obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-]] — Observation: Runner consolidation: rationalise3 is now rationalise; nested-end propagation fixed *(created: 2026-10-12)*
+- [[sources/obs-2026-10-13-knode-merge-label-composition-made-idempotent]] — Observation: KNode.merge label composition made idempotent *(created: 2026-10-13)*
+- [[sources/obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed]] — Observation: TRS candidate consolidation implemented — earned state removed *(created: 2026-10-16)*
+- [[sources/obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su]] — Observation: TRS identities filtered from candidates — self-confirmation suppressed *(created: 2026-10-16)*
+- [[sources/obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed]] — Observation: TRS R3 loop carries shrinking signature — consumed set removed *(created: 2026-10-16)*
+- [[sources/obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti]] — Observation: TRS R3 rewrite loop — substitution by proof, work retained until R1 *(created: 2026-10-16)*
+- [[sources/obs-2026-10-21-trs-reentry-stack-open-format-frames-grounded-merges-s4-empt]] — Observation: TRS reentry stack — open-format frames, grounded merges, S4 empty-kline asks *(created: 2026-10-21)*
+- [[sources/obs-2026-10-26-ask-structure-reconciled-s1-shaped-content-s4-band-by-marker]] — Observation: Ask structure reconciled: S1-shaped content, S4 band by marker; empty asks only in src/trs *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-block-scoping-is-load-bearing-multi-node-rhs-vs-chain-are-di]] — Observation: Block scoping is load-bearing; multi-node RHS vs chain are distinct structures *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-connotations-and-denotations-are-one-to-one-multi-node-suppo]] — Observation: Connotations and denotations are one-to-one — multi-node support removed *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-data-ks-md-review-orientation-doc-not-truth-doc-14-gaps]] — Observation: data/ks.md review: orientation doc, not truth doc — 14 gaps *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-ks-compiler-statement-terminal-unknowns-mint-s4-canon-exact-]] — Observation: ks compiler: statement-terminal unknowns mint S4; canon-exact asks feed S1 *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-o-object-resolution-in-mhall-stands-unresolved-is-a-knowledg]] — Observation: O→Object resolution in mhall stands; "unresolved" is a knowledge criterion *(created: 2026-10-26)*
+- [[sources/obs-2026-10-26-terminal-unknown-own-set-all-entry-heads-connotation-head-is]] — Observation: Terminal-unknown own-set = all entry heads; connotation head is the specific side *(created: 2026-10-26)*
+- [[sources/obs-2026-10-27-compiler-now-emits-pipe-composed-content-labels-on-compound-]] — Observation: Compiler now emits pipe-composed content labels on compound sigs *(created: 2026-10-27)*
+- [[sources/obs-2026-10-27-meet-label-extraction-broken-by-two-label-conventions]] — Observation: meet label extraction broken by two label conventions *(created: 2026-10-27)*
+- [[sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch]] — Observation: All non-S1 _admit stores come from the "sides resolved" branch *(created: 2026-10-28)*
+- [[sources/obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry]] — Observation: Cogitator.rationalise rewritten as frame-propagating reentry runner *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota]] — Observation: Compound KNode labels switched to MTS uppercase-initial notation *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram]] — Observation: Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-exchange-closure-is-the-frame-alone-child-resolution-channel]] — Observation: Exchange closure is the frame alone; child-resolution channel excluded for stalls *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-exchange-visible-temporal-stalls-parent-chain-trace-no-self-]] — Observation: Exchange visible: temporal stalls, parent-chain trace, no self-covering *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-f-frames-required-for-resolution-root-exchange-jointly-frame]] — Observation: F frames required for resolution; root exchange jointly frames the parents' fits *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-framing-is-on-path-only-f-e-or-stalled-u-o-exchange]] — Observation: Framing is on-path only: F==E or stalled U==O exchange *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-in-path-rule-by-content-flow-opener-s-fit-given]] — Observation: In-path rule by content flow; opener's fit given *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl]] — Observation: mhall/wdmh trace tables verified — rule set reconstructed, tables consistent *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-mts-uppercase-character-notation-for-compound-labels-in-trs-]] — Observation: MTS Uppercase Character notation for compound labels in TRS table *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-orthogonal-trace-one-row-per-reentry-exchange-feeds-hold-the]] — Observation: Orthogonal trace: one row per reentry; exchange feeds hold their slots *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-proper-ancestor-framing-own-pairings-never-frame-own-sides]] — Observation: Proper-ancestor framing: own pairings never frame own sides *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-reenter-steps-claim-all-executed-reentries-the-v-convention]] — Observation: Reenter steps claim all executed reentries — the V convention *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-resolution-without-f-gate-trace-must-root-floaters-drop]] — Observation: Resolution without F-gate; trace must root — floaters drop *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-root-pairs-with-goal-only-trace-table-shows-a-true-path]] — Observation: Root pairs with goal only — trace table shows a true path *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne]] — Observation: Rulings: flood-then-distill, orthogonal paths, diagnostic harness *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-s3-simplified-to-stalled-c-match-what-framing-gap-strict-flo]] — Observation: S3 simplified to stalled-C match; what-framing gap; strict-flow in-path *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-strict-frame-rules-f-e-only-sides-via-subtree-excluded-frame]] — Observation: Strict frame rules: F==E only; sides via subtree-excluded frames or child resolution *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic]] — Observation: Trace table connected: pushers take slots; exchange slots sticky *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove]] — Observation: TRS harness renders optimal-path trace table via frame provenance *(created: 2026-10-30)*
+- [[sources/obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-]] — Observation: wdmh proves candidate retry is necessary; in-path note reads as entry-path rule *(created: 2026-10-30)*
+- [[sources/obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module]] — Observation: Dialogue harnesses consolidated — TRS-only module *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib]] — Observation: Exchange guard challenge verified: store-rule kept, feed-visibility decoupled *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet]] — Observation: Known resolutions trace as rows — the Object twin surfaces between pair and close *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record]] — Observation: Ruling: S3 exchange stores nothing — the frame is the record *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support]] — Observation: trs/model.py stripped to Cogitator-only support *(created: 2026-10-31)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-003]] — kalvin-vision.md *(created: unknown)*
 - [[sources/stm-cascade-removals-orphan-check]] — STM cascade removals must be orphan-checked *(created: 2026-08-11)*
 - [[sources/structural-significance-coverage-semantics]] — Structural significance is coverage-based — S2 has ≥1 covered node, S3 none *(created: 2026-09-10)*
+- [[sources/trs-spec-resync-derive-claims-not-restatements]] — Spec resync: derive claims from code, not from the doc's own restatements *(created: 2026-10-08)*
 - [[sources/wiki-duplicate-consolidation]] — Consolidated wiki duplicate concept pages *(created: 2026-08-11)*
 
+## Synthesiss
+
+- [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
+
 ---
-*Last updated: 2026-09-23T16:09:18.522Z* | *Total pages: 346*
+*Last updated: 2026-10-31T09:04:54.466Z* | *Total pages: 468*

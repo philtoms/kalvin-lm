@@ -66,19 +66,14 @@ class NLPSignifier(KSignifier):
         Every node contributes its entire 64-bit value; the result
         accumulates the word words of all nodes. Lossy of order and
         multiplicity (``{A, B}`` and ``{A, A, B}`` reduce identically).
-        The returned KNode is labelled with the whole label of the single
-        node, or the first character of each node's label uppercased and
-        concatenated.
+        The returned KNode's label composes the component labels with
+        ``|`` (the :meth:`KNode.merge` convention): order-preserving union
+        of their parts, empties dropped.
         """
-        sig = 0
+        sig = KNode(0)
         for node in nodes:
-            sig |= node
-        labels = [getattr(n, "label", "") for n in nodes]
-        if len(labels) == 1:
-            label = labels[0]
-        else:
-            label = "".join(l for l in labels)
-        return KSig(sig, label)
+            sig = sig.merge(node)
+        return KSig(int(sig), sig.label)
 
     def signifies(self, a: KSig, b: KSig) -> bool:
         """Test whether two values share a word-word bit.

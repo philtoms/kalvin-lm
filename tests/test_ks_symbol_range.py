@@ -24,20 +24,20 @@ def _decoded(source: str) -> list[str]:
 
 class TestCaselessWords:
     def test_digit_word_node(self):
-        assert _decoded("A = 42\n") == ["DENOTES | A:[42]"]
+        assert _decoded("A = 42\n") == ["DENOTES | A:[42]", "UNKNOWN | 42:[]"]
 
     def test_punctuated_digit_word(self):
-        assert _decoded("Pi = 3.14\n") == ["DENOTES | Pi:[3.14]"]
+        assert _decoded("Pi = 3.14\n") == ["DENOTES | Pi:[3.14]", "UNKNOWN | 3.14:[]"]
 
     def test_hyphenated_word(self):
-        assert _decoded("X = a-b\n") == ["DENOTES | X:[a-b]"]
+        assert _decoded("X = a-b\n") == ["DENOTES | X:[a-b]", "UNKNOWN | a-b:[]"]
 
     def test_apostrophe_word(self):
-        assert _decoded("Word = don't\n") == ["DENOTES | Word:[don't]"]
+        assert _decoded("Word = don't\n") == ["DENOTES | Word:[don't]", "UNKNOWN | don't:[]"]
 
     def test_caseless_first_sig(self):
         # 7up: caseless-first, no MTS, no expansion — a literal word sig.
-        assert _decoded("7up = X\n") == ["DENOTES | 7up:[X]"]
+        assert _decoded("7up = X\n") == ["DENOTES | 7up:[X]", "UNKNOWN | X:[]"]
 
     def test_bare_caseless_word_is_ask(self):
         assert _decoded("42\n") == ["ASK | 42:[42]"]
@@ -45,7 +45,7 @@ class TestCaselessWords:
     def test_caseless_never_attracts(self):
         # The bare digit is a literal word even under a word list
         # containing it — ambient attraction is uppercase-only.
-        assert _decoded("(2 fast)\n2 = X\n") == ["DENOTES | 2:[X]"]
+        assert _decoded("(2 fast)\n2 = X\n") == ["DENOTES | 2:[X]", "UNKNOWN | X:[]"]
 
     def test_punctuated_word_matches_prose(self):
         # The word-list tier carries punctuated words; the kline-position
@@ -60,7 +60,7 @@ class TestCompoundGuard:
     def test_punctured_identifier_is_not_a_compound(self):
         # A-1 isupper() is True (uncased chars ignored) but not alnum:
         # no MTS canon, just the word.
-        assert _decoded("A-1 = X\n") == ["DENOTES | A-1:[X]"]
+        assert _decoded("A-1 = X\n") == ["DENOTES | A-1:[X]", "UNKNOWN | X:[]"]
 
     def test_alnum_compound_still_fires(self):
         assert "CANONICALISES | M2:[M, 2]" in _decoded("M2 = X\n")
@@ -105,5 +105,11 @@ class TestReservedSymbols:
     def test_reserved_punctuated_word_via_bracketed_witness(self):
         # `? ! ,` stay reserved: punctuated words are written bracketed
         # (the tail is free-form text), and attraction already matches them.
-        assert _decoded("w(hat?) = Q\n") == ["DENOTES | what?:[Q]"]
-        assert _decoded("(what? yes!)\nW = X\n") == ["DENOTES | what?:[X]"]
+        assert _decoded("w(hat?) = Q\n") == [
+            "DENOTES | what?:[Q]",
+            "UNKNOWN | Q:[]",
+        ]
+        assert _decoded("(what? yes!)\nW = X\n") == [
+            "DENOTES | what?:[X]",
+            "UNKNOWN | X:[]",
+        ]

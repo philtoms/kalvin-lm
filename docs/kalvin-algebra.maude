@@ -1,22 +1,26 @@
 --- Kalvin — Maude template.  Translation of docs/kalvin-algebra.md (normative source).
 --- Maude 3.x — https://maude.cs.illinois.edu/
 ---
----   KALVIN-VALUE       §1            atoms, values, Boolean operations (§0.1)
+---   KALVIN-VALUE       §0.1, §1      atoms, values, the five capabilities, ASK marker
 ---   KALVIN-SEQ         §2            node sequences (free monoid), σ, replacement helpers
----   KALVIN-KLINE       §3, §7        klines, memory (the correspondence graph)
+---   KALVIN-KLINE       §3            klines, memory (the correspondence graph)
 ---   KALVIN-FIT         §4            fit classifier, bands
 ---   KALVIN-STATE       §5, §6, §8    C(A,B), derivation states, licensing predicates
----   KALVIN-MEASURE     §10 Defs 17–20 J, δ, γ (depths are inputs — provenance is strategy-side)
+---   KALVIN-MEASURE     §10 Defs 17–20 J, sig, complexity, γ (depths are inputs — provenance is strategy-side)
 ---   KALVIN-WITNESSED   §6, §7        replace — witnessed licence (canon expand / contract)
 ---   KALVIN-TARGETING   §6, §7        replace — targeting licence (strict mismatch decrease)
 ---   KALVIN-DERIVE      §6–§9         both licences, one rewrite operation
----   KALVIN-WALK        §6  Def 15    slot walks (occurrence licence)
+---   KALVIN-MEET        §6  Def 15    the slot walk — a meeting of two walks; the bridge
 ---   KALVIN-KSCRIPT     §13           surface syntax → klines
 ---   MARY-HAD, MARY-STUCK, MARY-FRAGMENT   §9 worked example + appendix
 ---
---- Outside the algebra (§11 loop, §14): loop control, re-entry, memory growth between
---- hops, ratification, tier mechanics.  search deduplicates states; witnessed cycles
---- and traversal still need strategy bounds (§8 T2).
+--- Outside the rewrite template: §11 strategy (Def 21 hop, Def 22 selection —
+--- witness-path coverage in descending γ order, Def 23 scope — the dual-rooted
+--- trawl) drives these rules; §14 adds ratification, tier mechanics, orchestration.
+--- Writes go to memory, never to the scope: a derivation never consumes what it
+--- writes (Def 12) — later hops alone reach them.  Bounds are strategy: T1
+--- targets, T2 witnessed cycles and the meeting walk's edge bound (an ascent
+--- admits mutual-coverage cycles).  search deduplicates states.
 
 --- --------------------------------------------------------------------- §1 ---
 
@@ -25,6 +29,9 @@ fmod KALVIN-VALUE is
 
   sort Atom .
   ops a b c d h l m o w : -> Atom [ctor] .              --- template atom set — edit here
+  op ASK : -> Atom [ctor] .                             --- §0.1 the ask marker — identity,
+                                                        --- never content; only compilation
+                                                        --- mints it, into signatures alone
 
   sort Value .
   subsort Atom < Value .
@@ -42,31 +49,34 @@ fmod KALVIN-VALUE is
   eq rmAll(X, none) = none .
   eq rmAll(X, (Y ; V)) = if X == Y then rmAll(X, V) else Y ; rmAll(X, V) fi .
 
-  op _-_ : Value Value -> Value .                       --- v ∖ w
+  op mask : Value -> Value .                            --- the content projection — every
+  eq mask(V) = rmAll(ASK, V) .                          --- content read masks the marker out
+
+  op _-_ : Value Value -> Value .                       --- v ∖ w — residue
   eq V - none = V .
   eq V - (Y ; W) = rmAll(Y, V) - W .
 
-  op FULL : -> Value .                                  --- A (Def 1)
-  eq FULL = a ; b ; c ; d ; h ; l ; m ; o ; w .
+  op FULL : -> Value .                                  --- A (Def 2) — the marker is not
+  eq FULL = a ; b ; c ; d ; h ; l ; m ; o ; w .         --- content: ¬ ranges over A only
 
   op ~_ : Value -> Value .                              --- ¬v, complement within A
   eq ~ V = FULL - V .
 
-  op _&_ : Value Value -> Value .                       --- v ∧ w
+  op _&_ : Value Value -> Value .                       --- v ∧ w — overlap
   eq none & W = none .
   eq V & none = none .
   eq (X ; V) & W = if X in W then X ; (V & W) else V & W fi .
 
-  op _\/_ : Value Value -> Value .                      --- deduplicating union
+  op _\/_ : Value Value -> Value .                      --- deduplicating union — v ∨ w
   eq none \/ W = W .
   eq V \/ none = V .
   eq (X ; V) \/ W = if X in W then V \/ W else X ; (V \/ W) fi .
 
-  op card : Value -> Nat .                              --- |x|
+  op card : Value -> Nat .                              --- μ(v), |v| — exact by requirement
   eq card(none) = 0 .
   eq card(Y ; V) = 1 + card(rmAll(Y, V)) .
 
-  op symdiff : Value Value -> Value .                   --- x Δ y
+  op symdiff : Value Value -> Value .                   --- x Δ y (misfit mass is |x Δ y|)
   eq symdiff(V, W) = (V - W) ; (W - V) .
 endfm
 
@@ -77,15 +87,16 @@ fmod KALVIN-SEQ is
 
   --- Def 3 — (V ∖ {∅})*: order and multiplicity retained, no equations identify sequences.
   --- Nodes are non-empty values by construction discipline; nil is the empty sequence.
+  --- No node carries the ASK marker — only signatures do (appendix).
   sort NodeSeq .
   subsort Value < NodeSeq .
   op nil : -> NodeSeq [ctor] .
   op __ : NodeSeq NodeSeq -> NodeSeq [ctor assoc id: nil] .
 
-  vars V W : Value .
+  vars V W U : Value .
   vars NS XS : NodeSeq .
 
-  op sigma : NodeSeq -> Value .                         --- σ (Def 4)
+  op sigma : NodeSeq -> Value .                         --- σ (Def 4) — a monoid homomorphism
   eq sigma(nil) = none .
   eq sigma(V NS) = V \/ sigma(NS) .
 
@@ -96,6 +107,10 @@ fmod KALVIN-SEQ is
   op _occursIn_ : Value NodeSeq -> Bool .               --- occurrence is multiset-wise (§6)
   eq V occursIn nil = false .
   eq V occursIn (W NS) = (V == W) or (V occursIn NS) .
+
+  op allCarry : NodeSeq Value -> Bool .                 --- every node carries u-content (Def 14)
+  eq allCarry(nil, U) = true .
+  eq allCarry(V NS, U) = ((V & U) =/= none) and allCarry(NS, U) .
 
   --- Replacement helpers (Def 13).
 
@@ -167,11 +182,16 @@ fmod KALVIN-FIT is
   vars V W : Value .
   vars NS XS : NodeSeq .
 
-  op covered : NodeSeq Value -> Bool .                  --- Def 8
+  op covered : NodeSeq Value -> Bool .                  --- Def 8 — coverage is overlap
   eq covered(nil, V) = false .
   eq covered(V NS, W) = if (V & W) == none then covered(NS, W) else true fi .
 
   op fit : Value NodeSeq -> Shape .                     --- Def 10, cases in table order
+  ceq fit(V, NS) = unknown if ASK in V .                --- 0  the ask's own band is S4 — the
+                                                        ---    marker overrides (§4); structurally
+                                                        ---    the identity shape, marked (§13).
+                                                        ---    Licences read the relationship's
+                                                        ---    band, never the ask's own.
   ceq fit(V, NS) = unknown if NS == nil .               --- 1
   ceq fit(V, NS) = unknown if V == none .               --- 1
   ceq fit(V, NS) = identity if NS == V .                --- 2  ν = [s]
@@ -195,25 +215,29 @@ fmod KALVIN-STATE is
   vars NS GS : NodeSeq .
   eq C(S : NS, T : GS) = sigma(NS) : GS .
 
-  --- Def 12 — queued head (inert: §§6–9 never read it), current nodes, goal nodes, memory.
+  --- Def 12 — the derivation state.  The queued head rides inert: nothing in
+  --- §§6–9 reads s but the one licence that bars it from its own witness.
+  --- The memory is the derivation's scope — fixed as trawled at
+  --- entry (Def 23); writes go to memory, never the scope.
   sort DerivState .
   op <_|_|_|_> : Value NodeSeq NodeSeq Memory -> DerivState .
 
   op mismatch : NodeSeq NodeSeq -> Nat .                --- |σ(νA) Δ σ(νB)| (Def 14, T1)
   eq mismatch(NS, GS) = card(symdiff(sigma(NS), sigma(GS))) .
 
-  op isDone : DerivState -> Bool .                      --- Def 16 done: value equality
-  var M : Memory .
-  eq isDone(< S | NS | GS | M >) = sigma(NS) == sigma(GS) .
+  op isDone : DerivState -> Bool .                      --- Def 16 done — by calculation:
+  var M : Memory .                                      --- sig(σ(νA), σ(νB)) = 1.0, which is
+  eq isDone(< S | NS | GS | M >) = sigma(NS) == sigma(GS) .  --- exactly content equality;
+                                                        --- never witness equality (§7)
 
   --- Def 14 — licensing predicates on C(A,B).
 
-  op targetable : NodeSeq NodeSeq -> Bool .             --- S2 or S3; S1 done, S4 stuck
-  eq targetable(NS, GS) =
+  op targetable : NodeSeq NodeSeq -> Bool .             --- S2 or S3; S1 done, S4 stuck —
+  eq targetable(NS, GS) =                               --- an ask's own band licenses nothing
     (band(fit(sigma(NS), GS)) == S2) or (band(fit(sigma(NS), GS)) == S3) .
 
   op fwdLicensed : Value NodeSeq NodeSeq NodeSeq -> Bool .
-    --- departed node carries underfit, or arriving witness adopts overfit
+    --- departed node carries the underfit, or arriving witness adopts the overfit
   vars N : Value . var NuK : NodeSeq .
   eq fwdLicensed(N, NuK, NS, GS) =
     if band(fit(sigma(NS), GS)) == S3
@@ -223,11 +247,12 @@ fmod KALVIN-STATE is
     fi .
 
   op revLicensed : NodeSeq Value NodeSeq NodeSeq -> Bool .
-    --- consumed nodes carry the underfit, or arriving head lands in the overfit
+    --- every consumed node carries the underfit — the whole move stays in the
+    --- misfit region — or the arriving head lands in the overfit
   eq revLicensed(NuK, N, NS, GS) =
     if band(fit(sigma(NS), GS)) == S3
     then true
-    else ((sigma(NuK) & (sigma(NS) - sigma(GS))) =/= none)
+    else (allCarry(NuK, (sigma(NS) - sigma(GS))))
          or ((N & (sigma(GS) - sigma(NS))) =/= none)
     fi .
 endfm
@@ -236,7 +261,7 @@ fmod KALVIN-MEASURE is
   protecting KALVIN-VALUE .
   protecting RAT .
 
-  op J : Value Value -> Rat .                           --- §10 Def 17 Jaccard overlap
+  op J : Value Value -> Rat .                           --- §10 Def 17 Jaccard overlap — forced
   vars X Y : Value .
   eq J(X, Y) = card(X & Y) / card(X ; Y) .
 
@@ -248,8 +273,18 @@ fmod KALVIN-MEASURE is
   op delta : -> Rat .                                   --- 0 < δ < 1
   eq delta = 1/2 .
 
-  op gamma : Value Value Nat -> Rat .                   --- γ = J · δ^(D̄+Ĥ); depths as inputs
-  eq gamma(X, Y, N) = J(X, Y) * pow(delta, N) .
+  op sig : Value Value -> Rat .                         --- Def 20 significance — γ at entry
+  eq sig(X, Y) = J(X, Y) .                              --- depths; 1.0 exactly at value
+                                                        --- equality (done, Def 16); it selects
+                                                        --- the band and travels with the proposal
+
+  op complexity : Nat -> Rat .                          --- Def 20 complexity — 1 − δ^(D̄+Ĥ),
+  eq complexity(N) = 1 - pow(delta, N) .                --- work spent; never selects a band;
+                                                        --- depths are inputs (Defs 18–19 —
+                                                        --- stored provenance)
+
+  op gamma : Value Value Nat -> Rat .                   --- γ = significance × (1 − complexity)
+  eq gamma(X, Y, N) = sig(X, Y) * (1 - complexity(N)) .
 endfm
 
 --- --------------------------------------------------------------------- §7 ---
@@ -259,6 +294,9 @@ mod KALVIN-WITNESSED is
 
   --- replace under the witnessed licence: canon expand / contract.  Content-preserving,
   --- memory-licensed, goal-independent.  Identity is inert; unknown has no witness.
+  --- Def 13 — evidence carrying the queued head s, as signature or as witness
+  --- node, is inert: nothing held licenses writing s into ν_A, so the signature
+  --- never enters node position and s:[s] is unreachable as a derivation result.
   vars S N : Value .
   vars NS GS NuK : NodeSeq .
   var M : Memory .
@@ -268,13 +306,17 @@ mod KALVIN-WITNESSED is
     => < S | replace(N, NS, NuK) | GS | ((N : NuK) , M) >
     if fit(N, NuK) == canon
     /\ N occursIn NS
-    /\ not (N occursIn NuK) .
+    /\ not (N occursIn NuK)
+    /\ S =/= N
+    /\ not (S occursIn NuK) .
 
   crl [contract] :                                      --- νK ⇉ [n] — canonicalisation (§6)
     < S | NS | GS | ((N : NuK) , M) >
     => < S | splice(NS, N, NuK) | GS | ((N : NuK) , M) >
     if fit(N, NuK) == canon
-    /\ NuK subseqOf NS .
+    /\ NuK subseqOf NS
+    /\ S =/= N
+    /\ not (S occursIn NuK) .
 endm
 
 mod KALVIN-TARGETING is
@@ -283,6 +325,7 @@ mod KALVIN-TARGETING is
   --- replace under the targeting licence: changes content and strictly decreases the
   --- goal mismatch (T1); scoped by C(A,B) and the misfit region.  Unknown evidence has
   --- no witness (νK ≠ nil); canon evidence can never satisfy the decrease condition.
+  --- The same Def 13 inertness applies: evidence carrying s writes nothing.
   vars S N : Value .
   vars NS GS NuK : NodeSeq .
   var M : Memory .
@@ -294,7 +337,9 @@ mod KALVIN-TARGETING is
     /\ NuK =/= nil
     /\ N occursIn NS
     /\ fwdLicensed(N, NuK, NS, GS)
-    /\ mismatch(replace(N, NS, NuK), GS) < mismatch(NS, GS) .
+    /\ mismatch(replace(N, NS, NuK), GS) < mismatch(NS, GS)
+    /\ S =/= N
+    /\ not (S occursIn NuK) .
 
   crl [target-rev] :                                    --- νK ⇉ [n]
     < S | NS | GS | ((N : NuK) , M) >
@@ -303,35 +348,107 @@ mod KALVIN-TARGETING is
     /\ NuK =/= nil
     /\ NuK subseqOf NS
     /\ revLicensed(NuK, N, NS, GS)
-    /\ mismatch(splice(NS, N, NuK), GS) < mismatch(NS, GS) .
+    /\ mismatch(splice(NS, N, NuK), GS) < mismatch(NS, GS)
+    /\ S =/= N
+    /\ not (S occursIn NuK) .
 endm
 
 mod KALVIN-DERIVE is
   including KALVIN-WITNESSED .
   including KALVIN-TARGETING .
+
+  --- §7 — one rewrite operation, two licences: what changes vs what permits
+  --- the change.  Terminals are targeting-closed, not rule-closed: an S1
+  --- relationship is done, yet its nodes may still expand under a held
+  --- well-founded witness.
 endm
 
---- -------------------------------------------------------------------- §10 ---
+--- --------------------------------------------------------------------- §6 ---
 
-mod KALVIN-WALK is
+mod KALVIN-MEET is
   including KALVIN-STATE .
 
-  --- Def 15 — slot walk: goal-less derivation seeded at a slot identity n:[n], licensed
-  --- by occurrence of either side of a held kline, not by the targeting-scoping rule.
-  sort WalkState .
-  op walk : NodeSeq Memory -> WalkState .
+  --- Def 15 — the slot walk is a meeting of two walks, one from each party.
+  --- A departs an underfit slot of νA — a node carrying the gap; B departs a
+  --- held value of its own — a node or compound of νB containing the overfit,
+  --- never a value carrying content beyond B, never B's head (the type is not
+  --- a slot).  A pure overfit has no A-side slot: no walk to meet (appendix).
+  ---
+  --- Step forms: a descent crosses a held kline the current value heads, from
+  --- its signature to its witness — the whole witness, never a partial one:
+  --- its siblings would dangle.  A crosses single-node witnesses only, while
+  --- B reads νB's klines as walk material, every node accounted.  An ascent
+  --- steps into the head of a held kline whose content contains the current
+  --- value's — heading licenses the bridge alone — never re-traversing the
+  --- kline the party stands on.  Occurrence of a witness licenses nothing; a
+  --- value with no headed kline and no containing head is a walk's end.
+  ---
+  --- The meeting — a shared value delivered by distinct klines on the two
+  --- sides; one kline cannot meet itself, and a party's own delivery is not a
+  --- second witness — writes the bridge slot_a:[slot_b]: the A-side departure
+  --- replaced by the B-side departure, acquisition depth the edges both walks
+  --- crossed (Def 19 — provenance rides the write, not the licence).  The
+  --- goal is never rewritten; νB's klines are walk material, read and never
+  --- changed.  The edge bound is strategy (T2).
 
-  vars N : Value .
-  vars NS NuK : NodeSeq .
+  sorts Posn MeetState MeetOutcome Meeting .
+  subsorts MeetState MeetOutcome < Meeting .
+  op _via_ : Value Kline -> Posn [ctor] .               --- standing on the value; the kline that delivered it
+  op root : -> Kline [ctor] .                           --- no delivering kline — the departure
+  op <_|_|_|_|_|_> : Value Value Posn Value Posn Memory -> MeetState [ctor] .
+                                                        --- < s | aDep | aPos | bDep | bPos | M >
+  op bridged : Kline -> MeetOutcome [ctor] .            --- the meeting's write
+
+  vars S V T N W AD BD : Value .
+  vars XS YS NuK : NodeSeq .
   var M : Memory .
+  vars KA KB : Kline .
+  vars AP BP : Posn .
 
-  crl [walk-fwd] :
-    walk(NS, ((N : NuK) , M)) => walk(replace(N, NS, NuK), ((N : NuK) , M))
-    if NuK =/= nil /\ N occursIn NS .
+  --- walk evidence: a witness, not inert (identity / unknown), not carrying
+  --- the queued head (Def 13)
+  op walkUsable : Value Kline -> Bool .
+  eq walkUsable(S, (N : NuK)) =
+    (fit(N, NuK) =/= unknown) and (fit(N, NuK) =/= identity)
+    and (N =/= S) and (not (S occursIn NuK)) .
 
-  crl [walk-rev] :
-    walk(NS, ((N : NuK) , M)) => walk(splice(NS, N, NuK), ((N : NuK) , M))
-    if NuK =/= nil /\ NuK subseqOf NS .
+  crl [a-descent] :                                     --- A crosses a single-node witness whole
+    < S | AD | (V via KA) | BD | BP | ((T : N) , M) >
+    => < S | AD | (N via (T : N)) | BD | BP | ((T : N) , M) >
+    if T == V
+    /\ T =/= N
+    /\ walkUsable(S, T : N) .
+
+  crl [b-descent] :                                     --- B's descent — every node of the
+    < S | AD | AP | BD | (V via KB) | ((T : (XS N YS)) , M) >   --- witness accounted
+    => < S | AD | AP | BD | (N via (T : (XS N YS))) | ((T : (XS N YS)) , M) >
+    if T == V
+    /\ walkUsable(S, T : (XS N YS))
+    /\ not (T occursIn (XS N YS)) .
+
+  crl [a-ascent] :                                      --- into a containing head — never the
+    < S | AD | (V via KA) | BD | BP | ((T : NuK) , M) >         --- standing kline's own edge
+    => < S | AD | (T via (T : NuK)) | BD | BP | ((T : NuK) , M) >
+    if (T : NuK) =/= KA
+    /\ V =/= T
+    /\ (V - T) == none
+    /\ walkUsable(S, T : NuK) .
+
+  crl [b-ascent] :
+    < S | AD | AP | BD | (V via KB) | ((T : NuK) , M) >
+    => < S | AD | AP | BD | (T via (T : NuK)) | ((T : NuK) , M) >
+    if (T : NuK) =/= KB
+    /\ V =/= T
+    /\ (V - T) == none
+    /\ walkUsable(S, T : NuK) .
+
+  crl [meet] :                                          --- a shared value, distinct klines, two sides
+    < S | AD | (V via KA) | BD | (W via KB) | M >
+    => bridged (AD : BD)
+    if V == W
+    /\ KA =/= KB
+    /\ KA =/= root
+    /\ KB =/= root .
 endm
 
 --- -------------------------------------------------------------------- §13 ---
@@ -341,27 +458,30 @@ fmod KALVIN-KSCRIPT is
 
   vars A B : Value . var NS : NodeSeq .
 
-  op _expandsTo_ : Value NodeSeq -> Kline .             --- a => b c d      a:[b,c,d]
-  eq A expandsTo NS = A : NS .
+  op _expandsTo_ : Value NodeSeq -> Kline .             --- a => b c d      a:[b,c,d] — a composition
+  eq A expandsTo NS = A : NS .                          --- claim, not itself a licence (§13)
 
-  op _<=>_ : Value Value -> Memory .                    --- a == b      a:[b] and b:[a]
-  eq A <=> B = ((A : B) , (B : A)) .
+  op _inside_ : Value Value -> Kline .                  --- a > b           ab:[b] — a Connotation
+  eq A inside B = (A \/ B) : B .                        --- when a ≠ b (a > a → a:[a], S1)
 
-  op _inside_ : Value Value -> Kline .                  --- a > b        ab:[b] (a > a → a:[a])
-  eq A inside B = (A \/ B) : B .
+  op _names_ : Value Value -> Kline .                   --- a = b           a:[b] — a Denotation
+  eq A names B = A : B .                                --- when disjoint (a = a → a:[a], S1)
 
-  op _names_ : Value Value -> Kline .                   --- a = b        a:[b]
-  eq A names B = A : B .
-
-  op ask_ : Value -> Kline .                            --- a            a:[] — the ask
-  eq ask A = A : nil .
+  op ask_ : Value -> Kline .                            --- a               a|ASK:[a] — S4, the ask.
+  eq ask A = (A ; ASK) : A .                            --- One ask structure: the marker on the
+                                                        --- signature, the canon's nodes riding
+                                                        --- along.  The marker is identity, not
+                                                        --- content: every content read masks it;
+                                                        --- store keys and lookups see it.  An ask
+                                                        --- never heads a goal list, nor does its
+                                                        --- canon (Def 22).
 endfm
 
 --- --------------------------------------------------------------------- §9 ---
 
 mod MARY-HAD is
   including KALVIN-DERIVE .
-  including KALVIN-WALK .
+  including KALVIN-MEET .
 
   op M0 : -> Memory .
   eq M0 =
@@ -376,20 +496,24 @@ mod MARY-HAD is
   op Q0 : -> DerivState .                               --- A0 = wdmh:[w,d,m,h], B = mhall
   eq Q0 = < (w ; d ; m ; h) | (w d m h) | (m h a l l) | M0 > .
 
-  op M1 : -> Memory .                                   --- + composed correspondence w:[a,l,l] (§9 Step 3)
-  eq M1 = (w : (a l l)) , M0 .
+  op M1 : -> Memory .                                   --- + the bridge w:[all] — the meeting's
+  eq M1 = (w : (a ; l)) , M0 .                          --- write, acquisition depth 2 (§9 Step 3)
 
   op Q1 : -> DerivState .
   eq Q1 = < (w ; d ; m ; h) | (w d m h) | (m h a l l) | M1 > .
 
-  op W0 : -> WalkState .                                --- slot identity w:[w]
-  eq W0 = walk(w, M0) .
+  op W0 : -> MeetState .                                --- the meeting: A departs the underfit
+  eq W0 =                                               --- slot w; B departs all — the held value
+    < (w ; d ; m ; h) | w | (w via root) | (a ; l) | ((a ; l) via root) | M0 > .
+                                                        --- containing the overfit, within B,
+                                                        --- never the type
 endm
 
 mod MARY-STUCK is
   including KALVIN-DERIVE .
 
-  --- §9: had the Denotations not been held, no replace reaches the object underfit.
+  --- §9: had the Denotations not been held, no descent would leave w and no
+  --- meeting could form — the misfit asks.
   op M2 : -> Memory .
   eq M2 =
     ((m ; h ; a ; l) : (m h a l l)) ,
@@ -404,9 +528,13 @@ endm
 
 mod MARY-FRAGMENT is
   including KALVIN-DERIVE .
-  including KALVIN-WALK .
+  including KALVIN-MEET .
 
-  --- Appendix — pure overfit: the only bridge is the νB walk from the overfit slot.
+  --- Appendix — pure overfit: the underfit is empty, so A has no slot to
+  --- depart from and no meeting can form; no bridge is written.  B's lone
+  --- descent all → o → m (all:[o], o:[m]) delivers m, a node of νA — an
+  --- anchor arrival: a lone descent is not a meeting, and anchor arrival is
+  --- an open licence question, not a licence.  The misfit asks.
   op M0F : -> Memory .
   eq M0F =
     ((m ; h ; a ; l) : (m h (a ; l))) ,                 --- mhall:[m,h,all]  Canon
@@ -417,15 +545,6 @@ mod MARY-FRAGMENT is
 
   op Q0F : -> DerivState .                              --- A0 = mh:[m,h], B = mhall
   eq Q0F = < (m ; h) | (m h) | (m h (a ; l)) | M0F > .
-
-  op M1F : -> Memory .                                  --- + composed correspondence m:[m,all], depth 2
-  eq M1F = (m : (m (a ; l))) , M0F .
-
-  op Q1F : -> DerivState .
-  eq Q1F = < (m ; h) | (m h) | (m h (a ; l)) | M1F > .
-
-  op W0F : -> WalkState .                               --- overfit slot: goal node all
-  eq W0F = walk((a ; l), M0F) .
 endm
 
 --- ---------------------------------------------------------------------------
@@ -444,34 +563,37 @@ endm
 ---   red in KALVIN-FIT : fit((a ; b), (b c)) .                   --- underover
 ---   red in MARY-HAD : fit((w ; d ; m ; h), (m h a l l)) .       --- underover — C(A0,B)
 ---   red in MARY-HAD : mismatch((w d m h), (m h a l l)) .        --- 4 — Δ0 (T1 bound)
----   red in KALVIN-MEASURE : gamma((m ; h), (m ; h ; a ; l), 2) .  --- 1/8
+---   red in KALVIN-KSCRIPT : ask a .                             --- a|ASK:[a] — one ask structure
+---   red in KALVIN-FIT : fit((a ; ASK), (a)) .                   --- unknown — the ask's band is S4
+---   red in KALVIN-VALUE : mask((a ; ASK)) .                     --- a — the content projection
+---   red in KALVIN-MEASURE : gamma((m ; h), (m ; h ; a ; l), 2) .  --- 1/8 — sig 1/2, δ^2 1/4
 ---
----   Slot walk (§9 Step 3, Def 15): from the slot identity w:[w] to content
----   overlapping the overfit {a,l}.  Solutions: [a,l] and [a,l,l] — the walk
----   crossed w → [o] → [all] → [a,l,l], the crossover at the shared node o:
----     search in MARY-HAD : W0 =>* walk(NS:NodeSeq, M:Memory)
----       such that (sigma(NS:NodeSeq) & (a ; l)) =/= none .
+---   Meeting walk (§9 Step 3, Def 15): A departs the underfit slot w, B
+---   departs all.  Two descents, w → o (w:[o]) and all → o (all:[o]), meet
+---   at o — a value delivered by two distinct klines, one from each side.
+---   The bridge is w:[all], acquisition depth 2 — the edges both crossed:
+---     search in MARY-HAD : W0 =>* bridged(K:Kline) .
+---     --- Solution 1: bridged w:[all]
+---     --- No more solutions
 ---
----   Without the composed correspondence, done is unreachable — w ⇉ [o] merely
----   swaps one misfit atom for another (mismatch stays 4, no decrease, no licence):
+---   Without the bridge, done is unreachable — w ⇉ [o] merely swaps one
+---   misfit atom for another (mismatch stays 4, no decrease, no licence):
 ---     search in MARY-HAD : Q0 =>* D:DerivState such that isDone(D:DerivState) .
 ---     --- No solution
 ---
----   With the walk terminal written into memory (M1 = M0 + w:[a,l,l]), done is
----   reached in three witnesses of the same value (completion is value equality,
----   not witness equality, §7): [a,l,l,h,m], the contracted [all,h,m], and the
----   full canonicalisation [mhall] via mhall:[m,h,a,l,l]:
+---   With the bridge written into memory (M1 = M0 + w:[all]), done is reached
+---   in three witnesses of the same value (completion is value equality, not
+---   witness equality, §7): [all,h,m], the expanded [a,l,l,h,m], and the full
+---   canonicalisation [mhall] via mhall:[m,h,a,l,l].  The §9 measurement
+---   reads the adopted compound at acquisition depth 2 — Ĥ = 2/3, γ = 2^(−2/3);
+---   fractional depths are outside the Nat-encoded γ above:
 ---     search [3] in MARY-HAD : Q1 =>* D:DerivState such that isDone(D:DerivState) .
 ---
 ---   Stuck (§8, §9): the Denotations absent, the derivation closes on [w,h,m]
 ---   and the misfit asks:
 ---     search in MARY-STUCK : Q2 =>! D:DerivState such that not isDone(D:DerivState) .
 ---
----   Appendix (pure overfit): stuck at entry; the walk from the goal-side slot
----   all reaches the anchor m ([m] overlaps σ(νA) = {m,h}); adoption m ⇉ [m,all]
----   is done — and the goal's nodes never change:
+---   Appendix (pure overfit): stuck at entry — no A-side slot, no meeting,
+---   no bridge; B's lone descent delivering m licenses nothing:
 ---     search in MARY-FRAGMENT : Q0F =>! D:DerivState such that not isDone(D:DerivState) .
----     search in MARY-FRAGMENT : W0F =>* walk(NS:NodeSeq, M:Memory)
----       such that (sigma(NS:NodeSeq) & (m ; h)) =/= none .
----     search [3] in MARY-FRAGMENT : Q1F =>* D:DerivState such that isDone(D:DerivState) .
 --- ---------------------------------------------------------------------------

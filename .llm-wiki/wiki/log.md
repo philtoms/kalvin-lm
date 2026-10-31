@@ -1,7 +1,133 @@
 # Wiki Update Log
 
+## 2026-10-31
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module","title":"Dialogue harnesses consolidated — TRS-only module"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet","title":"Known resolutions trace as rows — the Object twin surfaces between pair and close"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support","title":"trs/model.py stripped to Cogitator-only support"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record","title":"Ruling: S3 exchange stores nothing — the frame is the record"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib","title":"Exchange guard challenge verified: store-rule kept, feed-visibility decoupled"}
+
+## 2026-10-30
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-entry-sequence-fix-no-op-closer-guard-row-closes-before-fram","title":"Entry-sequence fix: no-op closer guard, row-closes-before-frame, quiet known-resolution"}
+- **retro**: {"category":"architecture","slug":"cogitator-trace-table-alignment","title":"Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-rulings-flood-then-distill-orthogonal-paths-diagnostic-harne","title":"Rulings: flood-then-distill, orthogonal paths, diagnostic harness"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-","title":"wdmh proves candidate retry is necessary; in-path note reads as entry-path rule"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-mhall-wdmh-trace-tables-verified-rule-set-reconstructed-tabl","title":"mhall/wdmh trace tables verified — rule set reconstructed, tables consistent"}
+- **retro**: {"category":"compiler","slug":"compound-label-mts-initials-notation","title":"Compound KNode labels: MTS initials, joined identifier stays registry key"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota","title":"Compound KNode labels switched to MTS uppercase-initial notation"}
+
+## 2026-10-16
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-r3-loop-carries-shrinking-signature-consumed-set-removed","title":"TRS R3 loop carries shrinking signature — consumed set removed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-r3-rewrite-loop-substitution-by-proof-work-retained-unti","title":"TRS R3 rewrite loop — substitution by proof, work retained until R1"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-identities-filtered-from-candidates-self-confirmation-su","title":"TRS identities filtered from candidates — self-confirmation suppressed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-16-trs-candidate-consolidation-implemented-earned-state-removed","title":"TRS candidate consolidation implemented — earned state removed"}
+
+## 2026-10-13
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-13-knode-merge-label-composition-made-idempotent","title":"KNode.merge label composition made idempotent"}
+
+## 2026-10-12
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-12-runner-consolidation-rationalise3-is-now-rationalise-nested-","title":"Runner consolidation: rationalise3 is now rationalise; nested-end propagation fixed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-12-d13-r2-entropy-theorem-inverted-by-same-side-pairing","title":"D13 R2 entropy theorem inverted by same-side pairing"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-12-r2-same-side-pairing-settled-spec-5-resynced","title":"R2 same-side pairing settled; spec §5 resynced"}
+
+## 2026-10-08
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-trs-recommendations-implemented-filter-deleted-per-run-seen-","title":"TRS recommendations implemented: filter deleted, per-run seen memo, r2_products3 tested"}
+- **retro**: {"category":"trs","slug":"trs-spec-resync-derive-claims-not-restatements","title":"Spec resync: derive claims from code, not from the doc's own restatements"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-trs-spec-5-resynced-to-rationalise3-fit-product-earns-split-","title":"TRS spec §5 resynced to rationalise3: fit product earns, split returns on first cross S1"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-like-for-like-filter-kills-vacuous-r3-det-grounds-via-the-tr","title":"Like-for-like filter kills vacuous R3; Det grounds via the transformative path"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-08-r2-owns-the-cross-candidate-accumulation-spec-and-code-align","title":"R2 owns the cross-candidate accumulation; spec and code aligned"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-goal-canon-stores-via-accumulated-intermediates-spec-states-","title":"Goal canon stores via accumulated intermediates; spec states the composition"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-spec-r2-now-states-reconstruction-f-o-from-candidate-s-witne","title":"Spec R2 now states reconstruction: F/O from candidate's witness, U from entry's canon"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-r2-products-by-reconstruction-f-o-from-the-candidate-s-adjac","title":"R2 products by reconstruction: F/O from the candidate's adjacency, U from the entry's"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-trace-concept-removed-r1-stores-the-returning-candidate-ask-","title":"Trace concept removed; R1 stores the returning candidate; ask ping-pongs"}
+- **observe**: {"relevance":"low","slug":"obs-2026-10-08-c-e-subscripts-removed-role-named-c-and-e-throughout","title":"C₀/E₀ subscripts removed — role-named C and E throughout"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-08-def-8-trace-rewritten-descends-from-a-candidate-returns-at-s","title":"Def 8 trace rewritten: descends from a candidate, returns at S1 or S4"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-08-opener-the-candidate-itself-ask-stores-the-full-sentence-can","title":"Opener = the candidate itself; ask stores the full-sentence canon"}
+
+## 2026-10-07
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-07-f-suppression-experiment-word-canons-are-f-arrivals-reverted","title":"F-suppression experiment: word canons are F-arrivals; reverted"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-r2-ruled-witness-products-singleton-withdrawn-def-10-candida","title":"R2 ruled: witness products (singleton withdrawn); Def 10 = Candidate pairing"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-10-observations-captured-harness-boundary-s2-singleton-split","title":"10 observations captured: harness boundary, S2 singleton split, tail recursion"}
+- **observe**: {"relevance":"low","slug":"obs-2026-10-07-committed-91033a1-reentry-spec-fix","title":"Committed 91033a1: reentry spec fix"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-r3-amended-by-user-procedure-stated-in-rule-product-re-enter","title":"R3 amended by user: procedure stated in-rule, product re-enters at Def 8"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-reentry-fixed-def-8-owns-entry-re-entry-trace-def-9-pipeline","title":"Reentry fixed: Def 8 owns entry/re-entry/trace; Def 9 pipeline-only; R3 follows R2"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-07-r2-spec-language-is-the-target-implementation-incomplete-do-","title":"R2 spec language is the target; implementation incomplete — do not sync"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-07-spec-r3-synced-substitute-and-re-enter-in-chain-no-canonical","title":"Spec R3 synced: substitute and re-enter in-chain, no canonicalisation"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-07-user-updates-absorbed-next-candidate-opener-r3-reentry-on-op","title":"User updates absorbed: next-candidate opener, R3 reentry on opener"}
+
+## 2026-10-06
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-derived-heads-labelled-by-content-phantom-edit-corruption-cl","title":"Derived heads labelled by content; phantom-edit corruption cleaned"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-rationalise2-knode-candidate-fallback-r1-stores-first-candid","title":"rationalise2: KNode, candidate fallback, R1 stores first candidate"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-rationalise2-corrections-always-store-r1-sole-via-dispatch","title":"rationalise2 corrections: always-store, R1 sole via dispatch"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-rationalise2-prototype-step-1-2-matches-the-hand-trace-no-di","title":"rationalise2 prototype: step 1.2 matches the hand-trace, no divergence"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-verify-step-1-2-r2-consumption-diverges-recursion-on-u-f-acc","title":"Verify step 1.2: R2 consumption diverges — recursion on U, F accumulates"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-note-for-redesign-neighbour-sig-ascending-is-not-algebraic","title":"Note for redesign: neighbour-sig ascending is not algebraic"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-verify-step-1-2-r2-single-response-design-vs-current-queued-","title":"Verify step 1.2: R2 single-response design vs current queued products"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-verify-step-1-1-confirmed-neighbours-first-candidate-s2-f-su","title":"Verify step 1.1 confirmed: neighbours, first candidate S2 F=Subject"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-verify-step-1-settled-goal-rationalises-before-the-ask","title":"Verify step 1 settled: goal rationalises before the ask"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-trs-harness-ask-goal-is-the-only-run-mode","title":"TRS harness: ask==goal is the only run mode"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-ask-goal-configuration-two-entries-rest-primes-the-domain","title":"ask==goal configuration: two entries, rest primes the domain"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-i-1-enforcement-code-removed-no-neighbours-halt-is-the-ask","title":"I-1 enforcement code removed; no-neighbours halt is the ask"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-trs-spec-de-historicised-decisions-table-and-amendment-log-r","title":"TRS spec de-historicised: decisions table and amendment log removed"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-trs-block-committed-harness-knode-realisation-lifo-runner-i-","title":"TRS block committed: harness, KNode realisation, LIFO runner, I-1 removal"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-seeding-withdrawn-unrecognised-nodes-route-through-s4-as-acq","title":"Seeding withdrawn: unrecognised nodes route through S4 as acquire asks"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-runner-reworked-lifo-stack-duplicates-per-work-entry-openers","title":"Runner reworked: LIFO stack, duplicates, per-work-entry openers"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-knode-throughout-derived-values-carry-provenance-labels","title":"KNode throughout: derived values carry provenance labels"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-root-cause-unmasked-ops-over-cargo-bits-model-now-content-sp","title":"Root cause: unmasked ops over cargo bits; model now content-space"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-06-halted-entries-relabelled-via-allocation-bit-decomposition","title":"Halted entries relabelled via allocation-bit decomposition"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-trs-harness-hooked-up-ks-scripts-run-the-significance-routed","title":"TRS harness hooked up: .ks scripts run the significance-routed model"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-06-i-2-withdrawn-amendment-17-witnesses-coexist-first-stored-wi","title":"I-2 withdrawn (amendment 17): witnesses coexist, first-stored wins"}
+
+## 2026-10-01
+
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-amendment-16-repaired-i-2-dissolution-direction-drop-uniquen","title":"Amendment 16 repaired; I-2 dissolution direction: drop uniqueness, witnesses coexist"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-amendment-16-d-liveness-stated-r3-fold-pinned-deterministic","title":"Amendment 16: D-liveness stated; R3 fold pinned deterministic"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-i-2-seam-on-hold-dissolves-at-continuous-operation-spec-work","title":"I-2 seam on hold — dissolves at continuous-operation spec work"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-ruling-d-growing-during-a-rationalisation-run-is-desired-sem","title":"Ruling: D growing during a rationalisation run is desired semantics"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-amendment-15-proposals-ordered-by-graded-significance-ascend","title":"Amendment 15: proposals ordered by graded significance (ascending effort)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-proposals-built-acquire-connect-continue-at-every-halt-ranke","title":"Proposals built: acquire/connect/continue at every halt, ranked by effort"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-effort-defined-e-discounts-repairable-residual-s3-strictly-b","title":"Effort defined: E discounts repairable residual; S3 strictly below S4"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-graded-significance-defined-h-1-f-entropy-flow-theorems","title":"Graded significance defined: H = 1 − μ(F)/μ(σ∨â), entropy flow theorems"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-r1-rewritten-s1-arrival-licenses-the-trace-s-opening-candida","title":"R1 rewritten: S1 arrival licenses the trace's opening candidate"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-property-suite-10-tests-green-i-2-seam-confirmed-and-dem","title":"TRS property suite: 10 tests green; I-2 seam confirmed and demonstrated"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-milestone-spec-code-committed-2aaa2e0","title":"TRS milestone: spec → code, committed 2aaa2e0"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-implemented-and-tested-one-spec-defect-fixed-emptie","title":"TRS spec implemented and tested: one spec defect fixed (emptied expansion)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-derive-rationalise-the-loop-s-name-engine-aligned","title":"derive → rationalise: the loop's name, engine-aligned"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-01-trs-md-references-dropped-from-spec-dialogue-retired","title":"trs.md references dropped from spec; dialogue retired"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-decode-renamed-witness-strict-converse-of-canonicalisation","title":"decode renamed witness: strict converse of canonicalisation"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-decode-total-rules-use-only-defined-kline-vocabular","title":"TRS spec: decode total; rules use only defined kline vocabulary"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-s4-at-reentry-via-empty-adjacency-r3-single-outcome","title":"TRS spec: S4 at reentry via empty adjacency; R3 single outcome; R4 single arrival"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-r2-produces-three-reentrant-klines-r3-unified-to-s3-candidat","title":"R2 produces three reentrant klines; R3 unified to S3-candidate input"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-properties-section-deleted-three-load-bearing-bits-","title":"TRS spec: Properties section deleted; three load-bearing bits folded into §5/§7"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-01-trs-spec-sweep-rules-state-behaviour-prohibitions-demoted-to","title":"TRS spec sweep: rules state behaviour; prohibitions demoted to properties"}
+
+## 2026-09-30
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-30-trs-spec-terminology-aligned-underfit-can-n-overfit-can-n","title":"TRS spec terminology aligned: underfit=σ∖can(N), overfit=can(N)∖σ"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-30-r3-outcome-anchored-product-is-a-definition-8-entry-no-re-en","title":"R3 outcome anchored: product IS a Definition-8 entry; no re-entry mechanism"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-30-trs-spec-unpaired-residual-adjacencies-canonical-re-entry-lo","title":"TRS spec: unpaired residual adjacencies, canonical re-entry loop"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-30-trs-spec-all-oqs-resolved-band-terminology-no-splice-admissi","title":"TRS spec: all OQs resolved — band terminology, no splice, admission iff S1"}
+
+## 2026-09-29
+
+- **observe**: {"relevance":"high","slug":"obs-2026-09-29-a-1-deleted-unheld-residual-is-s4-creation-only-at-entry-sto","title":"A-1 deleted: unheld residual is S4; creation only at entry/store"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-29-trs-spec-amended-mirror-pairing-d7-materialisation-a-1","title":"TRS spec amended: mirror pairing D7, materialisation A-1"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-29-docs-trs-significance-md-written-consolidated-trs-spec-draft","title":"docs/trs-significance.md written: consolidated TRS spec draft"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-29-trs-dialogue-reviewed-sound-kernel-not-yet-spec-ready","title":"TRS dialogue reviewed: sound kernel, not yet spec-ready"}
+
 ## 2026-09-23
 
+- **observe**: {"relevance":"high","slug":"obs-2026-09-23-fit-table-cases-4-5-fixed-def-14-consumed-nodes-clause-tight","title":"Fit table cases 4–5 fixed; Def 14 consumed-nodes clause tightened to \"every\""}
+- **retro**: {"category":"formal-spec","slug":"maude-lexing-and-kind-pitfalls-kalvin-template","title":"Maude lexing and kind pitfalls in the Kalvin template"}
+- **observe**: {"relevance":"high","slug":"obs-2026-09-23-maude-template-updated-to-def-15-meeting-walk-def-13-inertne","title":"Maude template updated to Def 15 meeting walk + Def 13 inertness + one-ask structure"}
 - **retro**: {"category":"architecture","slug":"kscript-import-shared-emitter-semantics","title":"kscript import: shared-emitter semantics and the ask-never-heads-a-goal fix"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-09-23-kscript-import-statement-implemented-shared-emitter-walk","title":"kscript import statement implemented (shared-emitter walk)"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-09-23-knode-labels-preserved-through-the-walk-into-cogitate-s-batc","title":"KNode labels preserved through the walk into cogitate's batch"}

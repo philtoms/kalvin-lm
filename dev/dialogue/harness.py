@@ -1,10 +1,19 @@
-"""The dialogue training harness.
+"""The dialogue harness.
 
-A minimal, synchronous, non-judging loop. Compile a KScript source, feed
-compiled entry to the rationaliser one block at a time, cogitate, and present
-the batch. The harness is feeder, driver, and
-presenter — it never judges. The trainer (a pi agent, outside the loop) reads
-the trace, makes decisions, edits the rationaliser and/or the source, and re-runs.
+A minimal, synchronous, non-judging loop. Compiles a KScript source and
+runs it as an ask==goal configuration: the script's last `==` ask and its
+goal kline are the two entries — the ask first, the goal answers — and
+every other kline primes the domain before rationalisation. Priming is a
+harness fact, never a model admission: R1 remains the sole way the run
+itself learns. Nothing is checked at presentation; unheld references
+find no neighbours.
+
+Proposals persist across steps: a later presented entry discharges a
+pending proposal when its content overlaps the target (Definition 15).
+The presenter reports; it never judges.
+
+Each step's trace table prints by default; the end-of-run state (the
+held domain, the open proposals) only with ``-v``.
 
 Usage::
 
@@ -15,557 +24,151 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import os
+import re
 import sys
-from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
 
-from kalvin.derivation import DerivationResult
-from kalvin.cogitator import cogitate
-from kalvin.rationaliser import Rationaliser
-from kalvin.memory import Memory
-from kalvin.kline import (
-    KLine,
-    KNode,
-    canon_key,
-    classify_misfit,
-    is_ask,
-    is_canon,
-    is_connotation,
-    is_denotation,
-    is_identity,
-    is_relationship,
-    is_unknown,
-    using_resolver,
-)
-from kalvin.kvalue import KValue
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin.significance import (
-    SIG_MASK,
-    SIG_S1,
-    SIG_S3,
-    SIG_S4,
-    BandLayout,
-    gamma_to_byte,
-    word_atom_count,
-)
+from kalvin.kline import KNode, is_ask
+from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
-from ks.compiler import compile_source
-from training.trainer.curriculum_document import (
-    CurriculumDocument,
-    CurriculumParseError,
+from ks.compiler import compile_source, path_resolver
+
+from trs import (
+    Domain,
+    End,
+    Kline,
+    Proposal,
+    Rationalisation,
+    Row,
+    Cogitator,
+    band,
+    can,
+    proposals,
 )
 
-_BAND_ORDER = ("S1", "S2", "S3", "S4")
-
-# Classifies an ask's significance byte into its band on the S1–S4 spectrum.
-_LAYOUT = BandLayout()
-
-
-@dataclass
-class Turn:
-    """One rationalise→cogitate call within a step: the feeds and its response."""
-
-    feeds: list[KValue]
-    grounds: list[KValue] = field(default_factory=list)
-    asks: list[KValue] = field(default_factory=list)
-    #: The selection trace: per cogitated kline, its derivation results
-    #: (goal, source, ending, significance) — the presentation renders
-    #: what the engine selected and why.
-    derivations: list[tuple[KLine, list[DerivationResult]]] = field(
-        default_factory=list
-    )
-    #: The supervisor's responses to this turn's escalated proposals,
-    #: paired with the proposal index in ``asks`` they answer.
-    escalations: list[tuple[int, KValue]] = field(default_factory=list)
+# The appendix's content mask: the word half is content; the token half is
+# inert encoding cargo, masked off at every content read. The TRS model
+# operates in content space — values are masked once, here at the boundary.
+WORD_MASK = 0x7FFF_FFFF_0000_0000
 
 
 @dataclass
-class StepResult:
-    """One loop iteration: the input entry, the rationaliser's asks, and the
-    ratifying answers the harness fed back. """
+class TrsStep:
+    """One presented entry and what its rationalisation produced."""
 
     index: int
-    entry: KValue
-    turns: list[Turn] = field(default_factory=list)
-    answers: list[KValue] = field(default_factory=list)
-    stopped_on: KValue | None = None
+    entry: KValue  # the compiled entry (annotation/label live here)
+    kline: Kline  # the TRS form
+    result: Rationalisation
 
 
-class Harness:
-    """Compile a source, then feed each compiled entry to the rationaliser in turn
-    and cogitate.
+@dataclass
+class Pending:
+    """A proposal awaiting an answer, and its fate."""
 
-    The rationaliser and its state are the only participants. The harness holds no
-    verdict logic — it records what the turn returned and hands it to the
-    presenter. Both ``tokenizer`` and ``rationaliser`` are supplied fully
-    constructed; see :func:`make_rationaliser` / :func:`load_rationaliser` for the
-    single construction path.
-    """
+    prop: Proposal
+    raised_at: int
+    discharged_at: int | None = None
 
-    def __init__(
-        self,
-        tokenizer: BPETokenizer,
-        rationaliser: Rationaliser,
-        escalate: Callable[[KValue], KValue] | None = None,
-        scaffolding: Literal["batch", "on-demand"] = "batch",
-        resolver: Callable[[str], str] | None = None,
-    ) -> None:
-        self._tokenizer = tokenizer
-        self._rationaliser = rationaliser
-        # How a group's scaffolding reaches the rationaliser: "batch" delivers
-        # all compiled klines with the opening entry (current); "on-demand"
-        # feeds only the opener and releases scaffolding as K asks for it.
-        self.scaffolding = scaffolding
-        # The escalation point: an ask the script cannot answer goes to the
-        # supervisor, who decides its significance (ratify at S1 to ground it;
-        # decline at S4 to refuse). Default: decline.
-        self._escalate = escalate or (lambda ask: KValue(ask.kline, SIG_S4))
-        # The word→bit table compiles share; persisted with the state so a
-        # reloaded state's node values mean the same words.
+
+class TrsRunner:
+    """Compile → present → rationalise → record, over one live Domain."""
+
+    def __init__(self, tokenizer: BPETokenizer | None = None) -> None:
+        self.tokenizer = tokenizer or BPETokenizer()
+        self.signifier = NLPSignifier()
+        self.domain = Domain()
         self.word_bits: dict[str, int] = {}
-        # The prior state's words in acquisition order — the compile's
-        # outermost word list, binding chars the script cannot bind itself.
-        self.known_words: list[str] = []
-        # Module name → source, for scripts with ``import`` statements.
-        self.resolver: Callable[[str], str] | None = resolver
+        self.pending: list[Pending] = []
+        self.stores: list[tuple[int, Kline]] = []  # (step, store)
+        self.cogitator = Cogitator(self.domain)
 
-    @property
-    def rationaliser(self) -> Rationaliser:
-        return self._rationaliser
-
-    @property
-    def state(self) -> Memory:
-        return self._rationaliser.state
-
-    @property
-    def signifier(self) -> NLPSignifier:
-        # make_rationaliser/load_rationaliser store an NLPSignifier; the state types it as
-        # KSignifier.
-        return cast(NLPSignifier, self._rationaliser.state.signifier)
-
-    def run(self, source: str) -> list[StepResult]:
-        """Compile ``source``, open each sub-script's dialogue, and let the
-        rationaliser→cogitator drive.
-
-        A sub-script is a root-level (scope-0) entry plus the nested and
-        expansion entries that follow it; it opens with the scope-0 entry. In
-        ``"batch"`` scaffolding the group's remaining entries are fed first,
-        priming K, and the opener follows once their asks have settled; in
-        ``"on-demand"`` only the opener is fed and the group's remaining
-        entries answer the rationaliser's asks. From there the rationaliser asks; the
-        harness answers each ask from the script or the run stops.
-        """
+    def run(self, source: str, resolver=None) -> list[TrsStep]:
+        """An ask==goal run: the `==` ask and its goal are the entries,
+        everything else primes the domain before rationalisation."""
         entries = compile_source(
-            source, tokenizer=self._tokenizer, signifier=self.signifier, dev=True,
-            word_bits=self.word_bits, known_words=self.known_words,
-            resolver=self.resolver,
+            source,
+            tokenizer=self.tokenizer,
+            signifier=self.signifier,
+            dev=True,
+            word_bits=self.word_bits,
+            resolver=resolver,
         )
-        # A `==` ask feeds at its subjective significance toward the goal
-        # (Def 20): fresh content carries zero depths, so γ(A, B) = J of the
-        # two contents. The structural band (the ask's S4 shape) is
-        # recomputed from structure by the rationaliser — never the fed byte.
-        # The ask signature carries the ASK marker; goals key on the marked
-        # out base so the ask and its canon look up the same goal.
-        goals: dict[int, KValue] = {}
+        pair = self._ask_goal_pair(entries)
+        if pair is None:
+            raise ValueError("ask==goal: no `==` ask with a findable goal kline")
+        ask, goal = pair
+        for other in entries:
+            if other is not ask and other is not goal:
+                self.domain.add(_to_kline(other))  # primed — never an R1 store
+        steps: list[TrsStep] = []
+        self._step(steps, 0, goal)  # the goal rationalises first — S1 grounds on receipt
+        self._step(steps, 1, ask, goal=_to_kline(goal))  # the ask asks — the goal is its first candidate
+        return steps
+
+    @staticmethod
+    def _ask_goal_pair(entries: list[KValue]) -> tuple[KValue, KValue] | None:
+        """The script's last `==` ask whose named goal resolves to a kline
+        entry — the final question is the point of the script. The goal is
+        the last label match (the fullest authored definition): has nodes,
+        not itself an ask."""
+        pair: tuple[KValue, KValue] | None = None
         for e in entries:
             d = e.kline.dbg
             if d is None or d.op != "ASK" or not d.goal:
                 continue
-            goal = next(
-                (
-                    g for g in entries
-                    if g.kline.dbg and g.kline.dbg.label == d.goal
-                    and g.kline.nodes and not is_ask(g.kline.signature)
-                ),
-                None,
-            )
-            if goal is not None:
-                goals[canon_key(e.kline.signature)] = goal
-
-        def graded(entry: KValue) -> KValue:
-            """The ask, graded; every other entry feeds as compiled."""
-            base = canon_key(entry.kline.signature)
-            if not is_ask(entry.kline.signature) or base not in goals:
-                return entry
-            goal = goals[base]
-            a, b = int(entry.kline.signature), int(goal.kline.signature)
-            union = word_atom_count(a | b)
-            j = word_atom_count(a & b) / union if union else 1.0
-            return KValue(entry.kline, gamma_to_byte(j))
-
-        def is_ask_content(entry: KValue) -> bool:
-            """The ask's content form (its canon) — the answer to the
-            question, never the feed. It still joins the answering
-            pools: the harness releases it when the rationaliser asks."""
-            return (
-                bool(entry.kline.nodes)
-                and not is_ask(entry.kline.signature)
-                and canon_key(entry.kline.signature) in goals
-            )
-        tokens = {
-            sig: word
-            for sig, word in self._single_token_labels(source).items()
-        }
-        # Sub-scripts: a group opens at every root-level (scope-0) entry;
-        # nested and expansion entries join the current group positionally.
-        groups: list[list[KValue]] = []
-        for entry in entries:
-            scope = entry.kline.dbg.scope if entry.kline.dbg else 0
-            if not groups or scope == 0:
-                groups.append([])
-            groups[-1].append(entry)
-        # The answering pools grow as groups open — the harness never answers
-        # from a sub-script the dialogue has not reached (no look-ahead).
-        heads: dict[int, list[KValue]] = {}
-        exact: dict[tuple[int, tuple[int, ...]], KValue] = {}
-        words: set[int] = set(tokens)
-        # An opening group is a step; its entries join the answering pools
-        # when it opens (cumulative — past and current groups only).
-        steps: list[tuple[list[KValue], KValue]] = []
-        for group in groups:
-            steps.append((group, group[0]))
-        # Scaffold groups open before ask groups: the trainer primes K
-        # before asking, so the ask's hops trawl the scaffold from memory.
-        # Stable within each class — authored order preserved.
-        steps.sort(key=lambda s: bool(s[1].kline.dbg and s[1].kline.dbg.op == "ASK"))
-        results: list[StepResult] = []
-        for i, (group, opener) in enumerate(steps):
-            # Fresh answers per authored group: a repeated group is a second
-            # ask, not a replay of the first one's dedup ledger.
-            answered: set[tuple[int, tuple[int, ...]]] = set()
-            for entry in group:
-                kline = entry.kline
-                heads.setdefault(kline.signature, []).append(entry)
-                exact.setdefault(
-                    (kline.signature, tuple(kline.nodes)), entry
-                )
-                observe = getattr(self._escalate, "observe", None)
-                if observe is not None:
-                    observe(entry)
+            goal = None
+            for g in entries:
                 if (
-                    kline.nodes != [kline.signature]
-                    and kline.signature == self.signifier.signature_of(kline.nodes)
+                    g.kline.dbg
+                    and g.kline.dbg.label == d.goal
+                    and g.kline.nodes
+                    and not is_ask(g.kline.signature)
                 ):
-                    # A compound self-ref (e.g. DH unpacking to did, have):
-                    # its nodes are script-known words.
-                    words.update(kline.nodes)
-            step = StepResult(i, opener)
-            results.append(step)
-            # The opening feeds: "batch" primes K with all the group's
-            # scaffolding first, then the entry rationalises against it once
-            # grounded (easier for K and for early development). "on-demand"
-            # withholds the scaffolding — only the opener enters, and the
-            # group's entries answer asks.
-            # Terminal words the feeds use whose identities the script
-            # never compiled ride along at S1 — without them the words never
-            # become known.
-            def build_batch(sources: list[KValue]) -> list[KValue]:
-                batch = [
-                    graded(e) for e in sources
-                    if not self.state.is_grounded(e.kline)
-                    and not is_ask_content(e)
-                ]
-                fed = {
-                    (e.kline.signature, tuple(e.kline.nodes)) for e in batch
-                }
-                for entry in sources:
-                    for node in entry.kline.nodes:
-                        identity = (node, (node,))
-                        if (
-                            node in words
-                            and identity not in fed
-                            and not self.state.is_grounded(KLine(node, [node]))
-                        ):
-                            batch.append(KValue(KLine(node, [node]), SIG_S1))
-                            fed.add(identity)
-                return batch
+                    goal = g
+            if goal is not None:
+                pair = (e, goal)
+        return pair
 
-            if self.scaffolding == "batch":
-                scaffolding = build_batch(
-                    [e for e in group if e is not opener]
-                )
-                if scaffolding:
-                    self._drive(step, [scaffolding], heads, exact, words,
-                                answered, goals)
-                if not self.state.is_grounded(opener.kline):
-                    self._drive(step, [[graded(opener)]], heads, exact, words,
-                                answered, goals)
-            else:
-                self._drive(step, [build_batch([opener])], heads, exact,
-                            words, answered, goals)
-        return results
+    def _step(self, steps: list[TrsStep], i: int, value: KValue, goal: Kline | None = None) -> None:
+        """Present one entry: rationalise, record, discharge, file proposals."""
+        kline = _to_kline(value)
+        result = self.cogitator.rationalise(kline, goal=goal)
+        steps.append(TrsStep(i, value, kline, result))
+        self._discharge(i, kline)  # only proposals from earlier steps answer
+        for prop in proposals(result):
+            self.pending.append(Pending(prop, i))
+        for store in result.stores:
+            self.stores.append((i, store))
 
-    def _drive(
-        self,
-        step: StepResult,
-        queue: list[list[KValue]],
-        heads: dict[int, list[KValue]],
-        exact: dict[tuple[int, tuple[int, ...]], KValue],
-        words: set[int],
-        answered: set[tuple[int, tuple[int, ...]]],
-        goals: dict[int, KValue],
-    ) -> None:
-        """Run the feed→ask→answer loop until ``queue`` drains."""
-        while queue:
-            feeds = queue.pop(0)
-            before = _grounded_snapshot(self.state)
-            derivations: list[tuple[KLine, list[DerivationResult]]] = []
-            with using_resolver(self.state.find):
-                self._rationaliser.rationalise(feeds)
-                batch: list[KValue] = []
-                while True:
-                    size = len(self.state.work_list)
-                    batch.extend(cogitate(self.state, collect=derivations))
-                    if len(self.state.work_list) == size:
-                        break
-            deduped = _dedup(batch)
-            after = _grounded_snapshot(self.state)
-            grounds = [
-                KValue(kl, SIG_S1)
-                for key, kl in after.items() if key not in before
-            ]
-            replies: list[KValue] = []
-            turn = Turn(feeds, grounds, deduped, derivations)
-            step.turns.append(turn)
-            for prop_i, proposal in enumerate(deduped):
-                if self.state.is_grounded(proposal.kline):
-                    # K stating knowledge it already holds — not a
-                    # question. No reply, no escalation.
-                    continue
-                reply = self._answer(proposal, heads, exact, words, answered)
-                if reply is None:
-                    if is_ask(proposal.kline.signature):
-                        # An ask is signature discovery, not a
-                        # proposal — nothing for a supervisor to decide.
-                        replies.append(KValue(proposal.kline, SIG_S4))
-                        continue
-                    graded = self._grade_proposal(proposal, goals)
-                    if graded is not None:
-                        # A proposal under a `==` goal grades at γ of the
-                        # two contents — the byte is the trainer's answer,
-                        # never the S4 decline.
-                        replies.append(graded)
-                        continue
-                    # Off-script: escalate — the supervisor decides.
-                    response = self._escalate(proposal)
-                    turn.escalations.append((prop_i, response))
-                    replies.append(response)
-                    continue
-                replies.extend(reply)
-            if replies:
-                step.answers.extend(replies)
-                queue.append(replies)
-
-    def _grade_proposal(
-        self, proposal: KValue, goals: dict[int, KValue]
-    ) -> KValue | None:
-        """A proposal under a ``==`` goal, graded at γ of the proposal's
-        content against the goal's target — its signature value (Def 20 —
-        fresh depths, so γ = J): the proposal that reached its goal is
-        ratified at S1 — the answer just granted; one off the goal grades
-        low and refuses on re-feed. ``None`` when no goal pairs with the
-        proposal's head."""
-        base = canon_key(proposal.kline.signature)
-        goal = goals.get(base)
-        if goal is None or not proposal.kline.nodes:
-            return None
-        a = int(self.signifier.signature_of(proposal.kline.nodes))
-        b = int(goal.kline.signature)
-        union = word_atom_count(a | b)
-        j = word_atom_count(a & b) / union if union else 1.0
-        return KValue(proposal.kline, gamma_to_byte(j))
-
-    def _single_token_labels(self, source: str) -> dict[int, str]:
-        """``{signature: word}`` for every single-token word in the source.
-
-        A word that encodes to one typed token is its own signature, so its
-        identity ``X:[X]`` is derivable from the tokenizer alone (e.g. an
-        abbreviation RHS like ``M(od)`` that never heads a script entry).
-        """
-        from ks.compiler import Compiler
-        from ks.lexer import Lexer
-        from ks.parser import Parser
-        compiler = Compiler(self._tokenizer, signifier=self.signifier, dev=True,
-                            word_bits=self.word_bits,
-                            known_words=self.known_words,
-                            resolver=self.resolver)
-        compiler.compile(Parser(Lexer(source).tokenize()).parse())
-        return {
-            sig: word
-            for sig, word in compiler.node_labels.items()
-            if self._tokenizer.encode(word) == [sig]
-        }
-
-    def _answer(
-        self,
-        ask: KValue,
-        heads: dict[int, list[KValue]],
-        exact: dict[tuple[int, tuple[int, ...]], KValue],
-        words: set[int],
-        answered: set[tuple[int, tuple[int, ...]]],
-    ) -> list[KValue] | None:
-        """The ratifying reply to ``ask``, or ``None`` when the script cannot
-        answer it.
-
-        An ask-marked kline is answered by the script klines under its
-        unmarked base (its canon — the answer), plus an identity when the
-        base is a terminal word. A proposal ``A:[B]`` is answered by the
-        matching script kline plus its countersignatures.
-        """
-        kline = ask.kline
-        key = (kline.signature, tuple(kline.nodes))
-        if key in answered:
-            return []
-        answered.add(key)
-        if is_ask(kline.signature):
-            # The ASK marker is not an atom: the question and its canon
-            # share the unmarked base — the release pools key on it.
-            base = canon_key(kline.signature)
-            script_klines = [
-                e for e in heads.get(base, [])
-                if e.kline.nodes != [base]
-                # K already holds it: grounded, or attending to it in the work list
-                # (re-feeding the asked question re-arms a refused ask).
-                and not self.state.is_grounded(e.kline)
-                and not any(
-                    entry.signature == e.kline.signature
-                    and entry.nodes == e.kline.nodes
-                    for entry in self.state.work_list
-                )
-            ]
-            is_word = base in words or any(
-                e.kline.nodes == [base]
-                for e in heads.get(base, [])
-            )
-            if not script_klines and not is_word:
-                return None
-            # Only terminals (single-token words) get a generated identity;
-            # a non-terminal's word form must come from the script.
-            if not is_word:
-                return [*script_klines]
-            identity = KValue(KLine(base, [base]), SIG_S1)
-            return [identity, *script_klines]
-        hit = exact.get(key)
-        if hit is None:
-            # An identity proposal X:[X] for a terminal word is the
-            # tokenizer's own fact — answer it without the supervisor.
-            if (
-                kline.nodes == [kline.signature]
-                and kline.signature in words
-            ):
-                return [KValue(kline, SIG_S1)]
-            return None
-        countersigns = [
-            KValue(KLine(node, [kline.signature]), SIG_S3)
-            for node in kline.nodes
-        ]
-        return [hit, *countersigns]
+    def _discharge(self, step_index: int, entry: Kline) -> None:
+        """A presented entry overlapping a pending target discharges it —
+        proposals from earlier steps only (the raiser never answers itself)."""
+        content = entry.sig | can(entry.adj)
+        for p in self.pending:
+            if p.raised_at < step_index and p.discharged_at is None and content & p.prop.kline.sig:
+                p.discharged_at = step_index
 
 
-# ── Construction (single source of truth) ────────────────────────────────
-#
-# The factories wire signifier → state → rationaliser → harness so the signifier
-# lives in one place (the Memory).
-
-def make_rationaliser(
-    tokenizer: BPETokenizer,
-    scaffolding: Literal["batch", "on-demand"] = "batch",
-) -> Harness:
-    """Build a harness over a fresh state: new signifier → state → rationaliser."""
-    state = Memory(NLPSignifier())
-    return Harness(tokenizer, Rationaliser(state), scaffolding=scaffolding)
+def _to_kline(value: KValue) -> Kline:
+    """The compiled entry as a content-space kline (appendix: cargo masked,
+    labels preserved — nodes stay KNode throughout)."""
+    sig = value.kline.signature
+    masked_sig = KNode(int(sig) & WORD_MASK, getattr(sig, "label", ""))
+    adj = frozenset(
+        KNode(int(n) & WORD_MASK, getattr(n, "label", "")) for n in value.kline.nodes
+    )
+    return Kline(masked_sig, adj)
 
 
-def load_rationaliser(
-    path: str | Path,
-    tokenizer: BPETokenizer,
-    scaffolding: Literal["batch", "on-demand"] = "batch",
-) -> Harness:
-    """Build a harness over a loaded prior state (reusing its signifier)."""
-    signifier = NLPSignifier()
-    state = Memory.load(signifier, path)
-    harness = Harness(tokenizer, Rationaliser(state), scaffolding=scaffolding)
-    # Compiles must continue the loaded state's word→bit mapping.
-    harness.word_bits = dict(state.word_bits or {})
-    # And its word binding: the state's words bind chars the script
-    # cannot bind itself (the underfit question script's answer chars).
-    harness.known_words = list(state.word_bits or {})
-    return harness
-
-
-# ── Presentation ──────────────────────────────────────────────────────────
-
-
-def _dedup(batch: list[KValue]) -> list[KValue]:
-    """First occurrence of each (signature, nodes, band) in emission order."""
-    seen: set[tuple[int, tuple[int, ...], int]] = set()
-    out: list[KValue] = []
-    for v in batch:
-        key = (v.kline.signature, tuple(v.kline.nodes), v.significance)
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(v)
-    return out
-
-
-def _label(signature: int, labels: dict[int, str], verbose: bool) -> str:
-    # Script labels are authoritative; a loaded state's kline label is the
-    # fallback for words the current script never mentions.
-    name = labels.get(signature) or getattr(signature, "label", "")
-    if verbose:
-        return f"{name}|0x{signature:x}" if name else f"0x{signature:x}"
-    return name or f"0x{signature:x}"
-
-
-def _render_kline_struct(kline: KLine, labels: dict[int, str], verbose: bool) -> str:
-    sig = _label(kline.signature, labels, verbose)
-    nodes = ", ".join(_label(n, labels, verbose) for n in kline.nodes)
-    return f"{sig}:[{nodes}]"
-
-
-def _render_kline(value: KValue, labels: dict[int, str], verbose: bool) -> str:
-    return _render_kline_struct(value.kline, labels, verbose)
-
-
-def _band(value: KValue) -> str:
-    return _LAYOUT.classify(value.significance)
-
-
-def _sig_display(value: KValue) -> str:
-    return f"{_band(value)} {value.significance & SIG_MASK}"
-
-
-def _state_labels(state: Memory) -> dict[int, str]:
-    """{value: label} off held klines — prior-lesson compound forms and word
-    bindings the current script never names."""
-    out: dict[int, str] = {}
-
-    def take(v) -> None:
-        label = getattr(v, "label", "")
-        if label:
-            out.setdefault(int(v), label)
-
-    for store in (state.frame, state.ltm):
-        for bucket in store.values():
-            for k in bucket:
-                take(k.signature)
-                for n in k.nodes:
-                    take(n)
-    for k in state.work_list:
-        take(k.signature)
-        for n in k.nodes:
-            take(n)
-    return out
+# ── Labels ────────────────────────────────────────────────────────────────
 
 
 def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
                   word_bits: dict[str, int] | None = None,
-                  state: Memory | None = None,
                   resolver: Callable[[str], str] | None = None) -> dict[int, str]:
     """Recompile once to recover ``{signature: scripted label}`` for display.
 
@@ -587,713 +190,318 @@ def _sig_to_label(source: str, tokenizer: BPETokenizer, signifier: NLPSignifier,
         label = d.label
         if label:
             out.setdefault(e.kline.signature, label)
-    if state is not None:
-        for value, label in _state_labels(state).items():
-            out.setdefault(value, label)
     return out
 
 
-def _render_step(step: StepResult, labels: dict[int, str], verbose: bool) -> str:
-    lines = [f"── Step {step.index + 1}  in  {_band(step.entry)}  "
-             f"{_render_kline(step.entry, labels, verbose)} ──"]
-    for t, turn in enumerate(step.turns, 1):
-        feeds = " + ".join(
-            f"{_render_kline(v, labels, verbose)} {_band(v)}" for v in turn.feeds
-        )
-        lines.append(f"  T{t:02d}  feed    {feeds}")
-        for v in turn.grounds:
-            lines.append(f"        grounds {_render_kline(v, labels, verbose)}")
-        seen_derives: set[tuple[int, tuple[int, ...], int, str, str, float]] = set()
-        for queued, results in turn.derivations:
-            for r in results:
-                if r.goal is None:
-                    continue
-                key = (
-                    int(queued.signature),
-                    tuple(int(n) for n in r.trace[0]),
-                    int(r.goal.signature),
-                    tuple(int(n) for n in r.goal.nodes),
-                    r.ending,
-                    round(r.j1, 3),
-                )
-                if key in seen_derives:
-                    continue
-                seen_derives.add(key)
-                entry = ", ".join(
-                    _label(n, labels, verbose) for n in r.trace[0]
-                )
-                lines.append(
-                    f"        {'derives':<8} "
-                    f"{_label(queued.signature, labels, verbose)}:[{entry}] → "
-                    f"{_render_kline_struct(r.goal, labels, verbose)} "
-                    f"{r.ending} j1={r.j1:.3f}"
-                )
-        escalations = {i: r for i, r in turn.escalations}
-        for i, v in enumerate(turn.asks):
-            if v.kline.nodes:
-                lines.append(
-                    f"        {'proposes':<8} {_render_kline(v, labels, verbose)} {_sig_display(v)}"
-                )
-            else:
-                lines.append(f"        {'asks':<8} {_render_kline(v, labels, verbose)}")
-            if i in escalations:
-                r = escalations[i]
-                verdict = (
-                    "ratified" if _band(r) == "S1" else
-                    "graded" if _band(r) in ("S2", "S3") else
-                    "declined"
-                )
-                lines.append(f"        {'supervisor':<8} {verdict} ({_band(r)})")
-    if step.stopped_on is not None:
-        lines.append(
-            f"  stop    unanswerable ask  {_render_kline(step.stopped_on, labels, verbose)}"
-        )
-    return "\n".join(lines)
+# ── Presentation ──────────────────────────────────────────────────────────
 
 
-def _grounded_snapshot(state: Memory) -> dict[tuple[KNode, tuple[KNode, ...]], KLine]:
-    """Every grounded kline in frame and LTM, keyed by (signature, nodes)."""
-    snap: dict[tuple[KNode, tuple[KNode, ...]], KLine] = {}
-    for store in (state.frame, state.ltm):
-        for signature, bucket in store.items():
-            for kl in bucket:
-                snap.setdefault((signature, tuple(kl.nodes)), kl)
-    return snap
+def _cover(v: int, labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
+    """Decompose a derived value into labelled parts (display only — the
+    algebra never looks inside a node). Whole known signatures cover first,
+    then the one-bit-per-word allocation region."""
+    parts: list[str] = []
+    rest = v
+    for sig in sorted(labels, key=lambda s: (s.bit_count(), s), reverse=True):
+        if sig and sig & rest == sig:
+            parts.append(labels[sig])
+            rest &= ~sig
+    for bit in alloc:  # allocation order — authored word order
+        if bit & rest == bit:
+            parts.append(alloc[bit])
+            rest &= ~bit
+    if rest:
+        parts.append(f"+0x{rest:x}")
+    return parts
 
 
-def _render_grounded(state: Memory, labels: dict[int, str], verbose: bool,
-                        pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
-    if not state.ltm:
-        return "  (grounded nothing)"
-    lines = []
-    reloaded: list[str] = []
-    for signature in sorted(state.ltm, key=lambda s: (s.bit_length(), s)):
-        bucket = state.ltm[signature]
-        for kl in bucket:
-            nodes = ", ".join(_label(n, labels, verbose) for n in kl.nodes)
-            line = f"      {_label(kl.signature, labels, verbose)}:[{nodes}]"
-            if pre_grounded is not None and (signature, tuple(kl.nodes)) in pre_grounded:
-                reloaded.append(line)
-            else:
-                lines.append(line)
-    if pre_grounded is not None:
-        lines.append("    (reloaded, held before this run)")
-        lines.extend(reloaded)
-    return "\n".join(lines)
+def _label(v: int, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
+    name = labels.get(v) or getattr(v, "label", "")
+    if not name:
+        # A derived value (an R2 residual, a substituted canon): compose
+        # its label from the words it covers.
+        name = "|".join(_cover(v, labels, alloc)) if v else "⊥"
+    if verbose:
+        return f"{name}|0x{v:x}"
+    return name
 
 
-def _render_frame(state: Memory, labels: dict[int, str], verbose: bool) -> str:
-    """Frame entries with no isomorphic (signature, nodes) entry in LTM."""
-    lines: list[str] = []
-    for signature in sorted(state.frame, key=lambda s: (s.bit_length(), s)):
-        for kl in state.frame[signature]:
-            if any(
-                existing.nodes == kl.nodes
-                for existing in state.ltm.get(signature, [])
-            ):
-                continue
-            nodes = ", ".join(_label(n, labels, verbose) for n in kl.nodes)
-            lines.append(f"      {_label(kl.signature, labels, verbose)}:[{nodes}]")
-    return "\n".join(lines) if lines else "  (empty)"
+def _render(k: Kline, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
+    nodes = ", ".join(_label(n, labels, alloc, verbose) for n in sorted(k.adj))
+    return f"{_label(k.sig, labels, alloc, verbose)}:[{nodes}]"
 
 
-def _render_work_list(state: Memory, labels: dict[int, str], verbose: bool) -> str:
-    if not state.work_list:
-        return "  (empty)"
-    return "\n".join(
-        f"      {_render_kline_struct(kl, labels, verbose)}" for kl in state.work_list
-    )
+def _words(v: int, labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
+    """The word decomposition of a value — authored word order, no whole-signature
+    preference (the table spells regions out)."""
+    if not v:
+        return []
+    parts: list[str] = []
+    rest = int(v)
+    for bit in sorted(alloc):  # allocation order — authored word order
+        if bit & rest == bit:
+            parts.append(alloc[bit])
+            rest &= ~bit
+    if rest:
+        parts.append(f"+0x{rest:x}")
+    return parts
 
 
-# ── Model graph ───────────────────────────────────────────────────────────
-
-_GRAPH_LAYERS = ("L", "F", "W", "R")  # ltm, frame, work_list, refused
-
-# ANSI stand-ins for the renderer fills (ltm green, frame yellow, work
-# blue, refused red); enabled on a tty unless NO_COLOR is set.
-_ANSI = {"L": "\033[32m", "F": "\033[33m", "W": "\033[34m", "R": "\033[31m"}
-_COLOUR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+def _humps(name: str) -> list[str]:
+    """The camelCase parts of a label (acronyms kept whole)."""
+    return re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])", name) or [name]
 
 
-def _paint(text: str, layers: str | set[str]) -> str:
-    if not _COLOUR:
-        return text
-    return f"{_ANSI[min(layers, key=_GRAPH_LAYERS.index)]}{text}\033[0m"
+def _initials(parts: list[str]) -> str:
+    """The Uppercase Character notation (MTS): a single signature stays
+    whole; a compound of two or more takes each part whole when it is
+    already an abbreviation, else its initial."""
+    if len(parts) <= 1:
+        return parts[0] if parts else ""
+    return "".join(p if p.isupper() else p[:1].upper() for p in parts)
 
 
-def _structure_class(kline: KLine, signifier: NLPSignifier) -> str:
-    if is_unknown(kline):
-        return "unknown"
-    if is_identity(kline):
-        return "id"
-    if is_canon(kline, signifier):
-        return "canon"
-    if is_relationship(kline):
-        # Case 4 vs case 6 by coverage (overlap); the covered shapes with
-        # excess (A:[AB], AB:[BC]) fall through to the multi-node classes.
-        if is_denotation(kline, signifier):
-            return "denotation"
-        if is_connotation(kline, signifier):
-            return "connotation"
-    under, over = classify_misfit(kline, signifier)
-    if under and not over:
-        return "under"
-    if over and not under:
-        return "over"
-    return "misfit"
+def _tlabel(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """A table label: a held label or word decomposition in MTS form —
+    MarySubject -> MS, did|have -> DH, had a little lamb -> HALL."""
+    if not v:
+        return ""
+    name = labels.get(int(v)) or getattr(v, "label", "")
+    if name and "|" in name:
+        return _initials([p for p in name.split("|") if p])
+    if name and "∖" not in name and "∧" not in name and name != "⊥":
+        return _initials(_humps(name))
+    return _initials(_words(v, labels, alloc))
 
 
-def _model_graph(
-    state: Memory,
-) -> tuple[dict[tuple[KNode, tuple[KNode, ...]], tuple[str, KLine]],
-           dict[KNode, set[str]]]:
-    """The model across all layers as ``(klines, values)``.
-
-    ``klines`` maps each distinct (signature, nodes) to the layer glyphs
-    holding it plus a representative kline (ltm → frame → work list →
-    refused). ``values`` maps each value to the layers it appears in, in
-    any role.
-    """
-    klines: dict[tuple[KNode, tuple[KNode, ...]], tuple[str, KLine]] = {}
-
-    def add(kl: KLine, glyph: str) -> None:
-        key = (kl.signature, tuple(kl.nodes))
-        held, _ = klines.get(key, ("", kl))
-        klines[key] = (held + glyph, kl)
-
-    for bucket in state.ltm.values():
-        for kl in bucket:
-            add(kl, "L")
-    for bucket in state.frame.values():
-        for kl in bucket:
-            add(kl, "F")
-    for kl in state.work_list:
-        add(kl, "W")
-    for sig, nodes in state.refused:
-        add(KLine(sig, list(nodes)), "R")
-
-    values: dict[KNode, set[str]] = {}
-    for (sig, nodes), (layers, _) in klines.items():
-        values.setdefault(sig, set()).update(layers)
-        for n in nodes:
-            values.setdefault(n, set()).update(layers)
-    return klines, values
+def _tframe(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """Frame/step parts in MTS form."""
+    return _tlabel(v, labels, alloc)
 
 
-def _graph_name(node: KNode, labels: dict[int, str], verbose: bool, signifier = None) -> str:
-    return _label(node, labels, verbose)
+def _on_path_children(row: Row, keep: set[int]) -> list:
+    """The children whose reentries carried the resolution — a resolving
+    row, an exchange stall, or any kept row of the child is the continuation."""
+    out = []
+    for ch in row.children:
+        if (
+            (ch.resolved_by is not None and id(ch.resolved_by) in keep)
+            or (ch.stalled is not None and id(ch.stalled) in keep)
+            or any(id(r) in keep for r in ch.rows)
+        ):
+            out.append(ch)
+    return out
 
 
-def _sorted_values(values: dict[KNode, set[str]]) -> list[KNode]:
-    return sorted(values, key=lambda n: (n.bit_length(), n))
+def _tsupport(pair: tuple, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """A leaned-on frame with its reference — the candidate that
+    established it (an exchange, for stall-sourced frames)."""
+    v, src = pair
+    if src is None or src.candidate is None:
+        return _tframe(v, labels, alloc) + " ← exchange"
+    c = _tlabel(src.candidate.sig, labels, alloc)
+    if src.candidate.adj and can(src.candidate.adj) != src.candidate.sig:
+        c += ":" + " ".join(_tlabel(n, labels, alloc) for n in sorted(src.candidate.adj))
+    return _tframe(v, labels, alloc)# + " ← " + c
 
 
-def _compound_of(kline: KLine, signifier: NLPSignifier) -> KNode | None:
-    """The composed node of a multi-node kline — the OR-reduction of its
-    nodes, labelled by their concatenation (e.g. SubjectVerbObject)."""
-    if len(kline.nodes) < 2:
-        return None
-    return signifier.signature_of(kline.nodes)
+def _row_step(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> str:
+    e = _tlabel(row.entry.sig, labels, alloc)
+    if kind == "wait":
+        return f"stalled {e}"
+    if kind == "close":
+        if row is goal_row:
+            return "grounded"
+        if row.bp:
+            peers = ", ".join(_tlabel(p.entry.sig, labels, alloc) for p in row.bp)
+            verb = "known, BP" if row.known else "BP"
+            return f"{verb} {peers}"
+        return f"{'already known' if row.known else 'resolved'} {e}"
+    # the pairing emission
+    if row.candidate is None:
+        return f"stalled {e}"
+    children = [ch for ch in row.children if ch.popped]
+    if children:
+        return "reenter " + ", ".join(_tlabel(ch.kline.sig, labels, alloc) for ch in children)
+    return ""
 
 
-def _compound_name(compound: KNode, verbose: bool) -> str:
-    # The composed label (node labels concatenated), never the script label
-    # a same-valued signature may carry — the compound names what composes it.
-    name = compound.label or f"0x{int(compound):x}"
-    return f"{name}|0x{int(compound):x}" if verbose else name
+def _frame_str(row: Row, kind: str, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    parts = [_tframe(int(row.frame), labels, alloc)] if row.frame else []
+    if kind != "pair":  # resolutions lean — the supports join the own frame
+        parts.extend(_tsupport(p, labels, alloc) for p in row.supports)
+    return ", ".join(p for p in parts if p)
 
 
-def _graph_heads(
-    klines: dict[tuple[KNode, tuple[KNode, ...]], tuple[str, KLine]],
-) -> tuple[set[KNode], dict[KNode, str], set[KNode]]:
-    """Values heading a non-identity kline, held identities by layer glyphs,
-    and values appearing as nodes of multi-node klines."""
-    heads = {
-        kl.signature for (_, _), (_, kl) in klines.items() if not is_identity(kl)
-    }
-    identities = {
-        kl.signature: layers
-        for (_, _), (layers, kl) in klines.items()
-        if is_identity(kl)
-    }
-    compound_members = {
-        n
-        for (_, _), (_, kl) in klines.items()
-        if len(kl.nodes) > 1
-        for n in kl.nodes
-    }
-    return heads, identities, compound_members
+def _table_row(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> list[str]:
+    e = _tlabel(row.entry.sig, labels, alloc)
+    if row.candidate is not None:
+        c = _tlabel(row.candidate.sig, labels, alloc)
+        if row.candidate.adj and can(row.candidate.adj) != row.candidate.sig:
+            c += ":" + " ".join(
+                _tlabel(n, labels, alloc) for n in sorted(row.candidate.adj)
+            )
+    else:
+        c = ""
+    return [
+        str(row.depth), e, c,
+        _tlabel(row.F, labels, alloc),
+        _tlabel(row.U, labels, alloc),
+        _tlabel(row.O, labels, alloc),
+        _frame_str(row, kind, labels, alloc),
+        _row_step(kind, row, labels, alloc, goal_row),
+    ]
 
 
-def _render_model_graph(state: Memory, labels: dict[int, str],
-                        verbose: bool) -> str:
-    signifier = state.signifier
-    klines, values = _model_graph(state)
-    if not values:
-        return "── model graph ──\n  (empty)"
-    heads, identities, compound_members = _graph_heads(klines)
-    by_head: dict[KNode, list[tuple[str, KLine]]] = {}
-    for (sig, _nodes), (layers, kl) in klines.items():
-        by_head.setdefault(sig, []).append((layers, kl))
-    key = "  ".join(
-        _paint(f"● {n}", g)
-        for g, n in (("L", "ltm"), ("F", "frame"), ("W", "work"), ("R", "refused"))
-    )
+def _tline(k: Kline, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """A kline in table form — sig in MTS form, nodes spelled out."""
+    sig = _tlabel(k.sig, labels, alloc)
+    nodes = ", ".join(_tlabel(n, labels, alloc) for n in sorted(k.adj))
+    return f"{sig}:[{nodes}]" if k.adj else f"{sig}:[]"
+
+
+def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None = None) -> list[str]:
+    """The trace table: depth, entry, candidate, fit, underfit, overfit,
+    frame, step — a row per event: the pairing, the wait, the resolution
+    (BP — back propagation). One row per reentry stays orthogonal; the
+    repeats are the trace's temporal shape."""
+    hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "step"]
+    events: list[tuple[int, int, str, Row]] = []
+    for row in rows:
+        once = row.instant or row.exchange or row.known  # born closed — one emission
+        if not once:
+            events.append((row.birth, 0, "pair", row))
+        if row.waited is not None:
+            events.append((row.waited, 1, "wait", row))
+        if row.closed is not None and (row.bp or not row.exchange):
+            events.append((row.closed, 2, "close", row))
+    events.sort(key=lambda ev: (ev[0], ev[1]))
+    body = [_table_row(kind, row, labels, alloc, goal_row) for _, _, kind, row in events]
+    widths = [
+        max(len(hdr[i]), *(len(r[i]) for r in body)) if body else len(hdr[i])
+        for i in range(len(hdr))
+    ]
     lines = [
-        f"── model graph ──  {key}  *=heads klines of its own",
-        "    multi-node klines: sig ---> compound ---> identity-held members",
+        "| " + " | ".join(hdr[i].ljust(widths[i]) for i in range(len(hdr))) + " |",
+        "|" + "|".join("-" * (widths[i] + 2) for i in range(len(hdr))) + "|",
     ]
-    leaves: list[str] = []
-    for node in _sorted_values(values):
-        name = _graph_name(node, labels, verbose)
-        if node in heads:
-            lines.append(f"  {_paint(name, values[node])}")
-            seen_compounds: set[int] = set()
-            for klayers, kl in by_head[node]:
-                if is_identity(kl):
-                    continue
-                cls = _structure_class(kl, signifier)
-                compound = _compound_of(kl, signifier)
-                if compound is not None:
-                    if int(compound) in seen_compounds:
-                        continue
-                    seen_compounds.add(int(compound))
-                    lines.append(
-                        f"      {cls:<11} {_paint('--->', klayers)} "
-                        f"{_compound_name(compound, verbose)}"
-                    )
-                    for n in kl.nodes:
-                        if n not in identities:
-                            continue
-                        lines.append(
-                            f"{' ':27}{_paint('--->', identities[n])} "
-                            f"{_graph_name(n, labels, verbose)}"
-                            f"{'*' if n in heads else ''}"
-                        )
-                elif kl.nodes:
-                    n = kl.nodes[0]
-                    lines.append(
-                        f"      {cls:<11} {_paint('--->', klayers)} "
-                        f"{_graph_name(n, labels, verbose)}"
-                        f"{'*' if n in heads else ''}"
-                    )
-                else:
-                    lines.append(f"      {cls:<11} {_paint('--->', klayers)} ∅")
-        elif node in identities and node not in compound_members:
-            lines.append(f"  {_paint(name, values[node])}")
-        elif node not in identities:
-            leaves.append(f"  {_paint(name, values[node])}")
-            continue
-        else:
-            continue
-        if node in identities and node not in compound_members:
-            lines.append(f"      {'id':<11} [{_paint(name, identities[node])}]")
-    if leaves:
-        lines.append("  -- referenced, never headed --")
-        lines.extend(leaves)
-    return "\n".join(lines)
+    for r in body:
+        lines.append("| " + " | ".join(r[i].ljust(widths[i]) for i in range(len(hdr))) + " |")
+    return lines
 
 
-def _graph_fill(layers: str | set[str]) -> str:
-    strongest = min(layers, key=_GRAPH_LAYERS.index)
-    return {
-        "L": "#d5e8d4", "F": "#fff2cc", "W": "#dae8fc", "R": "#f8cecc",
-    }[strongest]
-
-
-def _graph_class(layers: str | set[str]) -> str:
-    return {_GRAPH_LAYERS[i]: name
-            for i, name in enumerate(("ltm", "frame", "work", "refused"))}[
-        min(layers, key=_GRAPH_LAYERS.index)
-    ]
-
-
-def _render_model_graph_dot(state: Memory, labels: dict[int, str],
-                            verbose: bool) -> str:
-    signifier = state.signifier
-    klines, values = _model_graph(state)
-    heads, identities, compound_members = _graph_heads(klines)
-
-    def nid(n: KNode) -> str:
-        return f"n{int(n):x}"
-
-    def esc(text: str) -> str:
-        return text.replace("\\", "\\\\").replace('"', '\\"')
-
+def _render_step(step: TrsStep, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
     lines = [
-        "digraph model {",
-        "  rankdir=BT;",
-        '  graph [labelloc=b, '
-        'label="green=ltm  yellow=frame  blue=work  red=refused"];',
-        '  node [shape=ellipse, style=filled, fontname="Helvetica"];',
-        '  edge [fontname="Helvetica", fontsize=10];',
+        f"── Step {step.index + 1}  {band(step.kline).value}  "
+        f"{_render(step.kline, labels, alloc, verbose)} ──"
     ]
-    for node in _sorted_values(values):
-        name = esc(_graph_name(node, labels, verbose, signifier))
-        lines.append(
-            f'  {nid(node)} [label="{name}", '
-            f'fillcolor="{_graph_fill(values[node])}"];'
-        )
-    compounds: dict[int, KNode] = {}
-    for (_, _), (_, kl) in klines.items():
-        compound = _compound_of(kl, signifier)
-        if compound is not None:
-            compounds.setdefault(int(compound), compound)
-    for value, compound in sorted(compounds.items()):
-        lines.append(
-            f'  c{value:x} [label="'
-            f'{esc(_compound_name(compound, verbose))}", '
-            f'shape=box, style="filled,dashed", fillcolor="#ffffff"];'
-        )
-    edge_style = {
-        "canon": "",
-        "under": ' style="dashed" penwidth="2"',
-        "over": ' style="dashed" penwidth="2"',
-        "misfit": ' style="dashed" penwidth="2"',
-        "connotation": ' style="dashed"',
-        "denotation": ' style="dashed"',
-        "identity": ' style="dotted"',
-        "unknown": "",
-    }
-    member_edges: set[tuple[int, int]] = set()
-    compound_edges: set[tuple[int, int]] = set()
-    for (_sig, _nodes), (_layers, kl) in klines.items():
-        if is_identity(kl):
-            if kl.signature not in compound_members:
-                lines.append(
-                    f"  {nid(kl.signature)} -> {nid(kl.signature)}"
-                    f"[{edge_style['identity']}];"
-                )
-            continue
-        cls = _structure_class(kl, signifier)
-        style = edge_style[cls]
-        compound = _compound_of(kl, signifier)
-        if compound is not None:
-            edge_key = (int(kl.signature), int(compound))
-            if edge_key not in compound_edges:
-                compound_edges.add(edge_key)
-                lines.append(
-                    f'  {nid(kl.signature)} -> c{edge_key[1]:x} '
-                    f'[label="{cls}"{style}];'
-                )
-            for n in kl.nodes:
-                key = (int(compound), int(n))
-                if n in identities and key not in member_edges:
-                    member_edges.add(key)
-                    lines.append(
-                        f"  c{key[0]:x} -> {nid(n)}"
-                        f"[{edge_style['identity']}];"
-                    )
-        else:
-            for n in kl.nodes:
-                lines.append(
-                    f'  {nid(kl.signature)} -> {nid(n)} [label="{cls}"{style}];'
-                )
-    lines.append("}")
+    rows = step.result.path if step.result.claim is not None else step.result.rows
+    if rows:
+        if step.result.claim is None:
+            lines.append("      (no path — the goal was not reached; all rows below)")
+        lines.extend("      " + l for l in _render_table(rows, labels, alloc, step.result.goal_row))
+    for store in step.result.stores:
+        lines.append(f"      stores    {_tline(store, labels, alloc)}")
+    by_reason: dict[str, list[End]] = {}
+    for e in step.result.ends:
+        by_reason.setdefault(e.reason, []).append(e)
+    for reason, ends in by_reason.items():
+        exemplars = [e for e in ends if e.kline is not None][:2]
+        for e in exemplars:
+            lines.append(
+                f"      halt      {reason} — {_tline(e.kline, labels, alloc)}"
+                f"  E={e.effort}"
+            )
+        rest = len(ends) - len(exemplars)
+        if rest > 0:
+            lines.append(f"      halt      {reason} ×{len(ends)} (+{rest} more)")
     return "\n".join(lines)
 
 
-def _render_model_graph_mermaid(state: Memory, labels: dict[int, str],
-                                verbose: bool) -> str:
-    signifier = state.signifier
-    klines, values = _model_graph(state)
-    heads, identities, compound_members = _graph_heads(klines)
-
-    def nid(n: KNode) -> str:
-        return f"n{int(n):x}"
-
-    lines = ["flowchart BT"]
-    for cls, fill in (("ltm", "#d5e8d4"), ("frame", "#fff2cc"),
-                      ("work", "#dae8fc"), ("refused", "#f8cecc")):
-        lines.append(f"  classDef {cls} fill:{fill}")
-    lines.append("  classDef compound fill:#ffffff,stroke-dasharray: 5 5")
-    for node in _sorted_values(values):
-        name = _graph_name(node, labels, verbose, signifier).replace('"', "")
-        lines.append(
-            f'  {nid(node)}("{name}")'
-            f":::{_graph_class(values[node])}"
-        )
-    compounds: dict[int, KNode] = {}
-    for (_, _), (_, kl) in klines.items():
-        compound = _compound_of(kl, signifier)
-        if compound is not None:
-            compounds.setdefault(int(compound), compound)
-    for value, compound in sorted(compounds.items()):
-        name = _compound_name(compound, verbose).replace('"', "")
-        lines.append(f'  c{value:x}("{name}"):::compound')
-    member_edges: set[tuple[int, int]] = set()
-    compound_edges: set[tuple[int, int]] = set()
-    for (_sig, _nodes), (layers, kl) in klines.items():
-        if is_identity(kl):
-            if kl.signature not in compound_members:
-                lines.append(f"  {nid(kl.signature)} --> {nid(kl.signature)}")
-            continue
-        cls = _structure_class(kl, signifier)
-        compound = _compound_of(kl, signifier)
-        if compound is not None:
-            edge_key = (int(kl.signature), int(compound))
-            if edge_key not in compound_edges:
-                compound_edges.add(edge_key)
-                lines.append(
-                    f'  {nid(kl.signature)} -->|"{cls}"| c{edge_key[1]:x}'
-                )
-            for n in kl.nodes:
-                key = (int(compound), int(n))
-                if n in identities and key not in member_edges:
-                    member_edges.add(key)
-                    lines.append(f"  c{key[0]:x} --> {nid(n)}")
-        else:
-            for n in kl.nodes:
-                lines.append(f'  {nid(kl.signature)} -->|"{cls}"| {nid(n)}')
-    return "\n".join(lines)
-
-
-_GRAPH_RENDERERS = {
-    "ascii": _render_model_graph,
-    "dot": _render_model_graph_dot,
-    "mermaid": _render_model_graph_mermaid,
-}
-
-
-def _render_summary(results: list[StepResult], state: Memory,
-                    labels: dict[int, str], verbose: bool,
-                    pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None) -> str:
-    bands: Counter = Counter()
-    for step in results:
-        for turn in step.turns:
-            for v in turn.asks:
-                bands[_band(v)] += 1
-    band_str = "  ".join(f"{b}={bands.get(b, 0)}" for b in _BAND_ORDER) or "-"
-    return (
-        f"── summary ──\n"
-        f"  steps: {len(results)}\n"
-        f"  asks by band: {band_str}\n"
-        f"  grounded:\n{_render_grounded(state, labels, verbose, pre_grounded)}\n"
-        f"  frame (framed, not yet grounded):\n{_render_frame(state, labels, verbose)}\n"
-        f"  work_list (attending to at end of run):\n{_render_work_list(state, labels, verbose)}"
-    )
-
-
-def present(results: list[StepResult], state: Memory, source: str,
-            tokenizer: BPETokenizer, signifier: NLPSignifier, *, verbose: bool,
-            pre_grounded: set[tuple[KNode, tuple[KNode, ...]]] | None = None,
-            word_bits: dict[str, int] | None = None,
-            graph: Literal["ascii", "dot", "mermaid"] | None = None,
-            resolver: Callable[[str], str] | None = None) -> None:
-    labels = _sig_to_label(source, tokenizer, signifier, word_bits, state, resolver)
+def present(
+    steps: list[TrsStep],
+    domain: Domain,
+    pending: list[Pending],
+    source: str,
+    tokenizer: BPETokenizer,
+    signifier: NLPSignifier,
+    *,
+    verbose: bool,
+    word_bits: dict[str, int] | None = None,
+    resolver: Callable[[str], str] | None = None,
+) -> None:
+    """Each step's trace table; with ``verbose``, the end-of-run state too —
+    the held domain and the open proposals."""
+    labels = _sig_to_label(source, tokenizer, signifier, word_bits, resolver=resolver)
+    # Script labels key on full compiled values; content-space values need
+    # their labels carried over under the mask.
+    content_labels: dict[int, str] = {}
+    for sig, label in labels.items():
+        masked = sig & WORD_MASK
+        if masked and masked not in content_labels:
+            content_labels[masked] = label
+    labels = {**content_labels, **labels}
+    # The one-bit-per-word allocation region — how derived values decompose.
+    alloc = {(bit << 32): word for word, bit in (word_bits or {}).items()}
     last_annotation: str | None = None
-    for step in results:
+    for step in steps:
         annotation = step.entry.kline.dbg.annotation if step.entry.kline.dbg else ""
         if annotation and annotation != last_annotation:
             print(f"\n[{annotation}]")
             last_annotation = annotation
-        print(_render_step(step, labels, verbose))
-    print()
-    print(_render_summary(results, state, labels, verbose, pre_grounded))
-    if graph is not None:
-        print()
-        print(_GRAPH_RENDERERS[graph](state, labels, verbose))
-
-
-# ── CLI ───────────────────────────────────────────────────────────────────
-
-
-def _queue_supervisor(
-    queue: list[str], labels: dict[int, str], verbose: bool
-) -> Callable[[KValue], KValue]:
-    """Answer escalations from a fixed response queue; return to the
-    supervisor when it runs out.
-
-    Lets a supervisor concentrate on successive proposals as the script
-    evolves: grade the expected escalations up front, run unattended. The
-    first escalation beyond the queue is prompted for — control returns to
-    the supervisor, whose queued grades remain spent.
-    """
-    return _interactive_supervisor(labels, verbose, queue)
-
-
-def _interactive_supervisor(
-    labels: dict[int, str], verbose: bool, queue: list[str] | None = None
-) -> Callable[[KValue], KValue]:
-    """Prompt on each off-script ask: the supervisor decides significance.
-
-    With ``queue``, its grades are spent first, unattended; the first
-    escalation beyond it returns control to the prompt.
-
-    1 ratifies at S1 (K grounds the kline in LTM — the fast path next
-    time); 2/3 grade and decline; 4 (or empty) declines outright.
-    """
-    sig_map = {"1": SIG_S1, "2": 0x80, "3": 0x40, "4": 0}
-    it = iter(queue or [])
-
-    def supervise(ask: KValue) -> KValue:
-        print(f"\n  ⚠ escalated ask: {_render_kline(ask, labels, verbose)}")
-        choice = next(it, None)
-        if choice is not None:
-            choice = choice.strip()
-            if choice not in sig_map:
-                choice = ""
-            sig = sig_map.get(choice, 0)
-            verdict = "ratified" if sig == SIG_S1 else "declined"
-            print(
-                f"  supervisor ({choice or '4'}): {verdict} "
-                f"({_band(KValue(ask.kline, sig))})"
-            )
-            return KValue(ask.kline, sig)
-        while True:
-            try:
-                choice = input(
-                    "  ratify? [1=S1 ratify  2=S2  3=S3  4/enter=decline S4] > "
-                ).strip()
-            except EOFError:
-                choice = ""  # no supervisor input left: decline
-                break
-            if choice in sig_map or choice == "":
-                break
-            print("  enter 1, 2, 3, 4, or empty")
-        sig = sig_map.get(choice, 0)
-        verdict = "ratified" if sig == SIG_S1 else "declined"
-        print(f"  supervisor: {verdict} ({_band(KValue(ask.kline, sig))})")
-        return KValue(ask.kline, sig)
-
-    return supervise
+        print(_render_step(step, labels, alloc, verbose))
+    if not verbose:
+        return
+    print("\n── domain (held at end of run) ──")
+    for k in sorted(domain, key=lambda x: (x.sig.bit_length(), x.sig)):
+        mark = "canon " if can(k.adj) == k.sig else "claim "
+        print(f"      {mark}{_render(k, labels, alloc, verbose)}")
+    print("\n── pending proposals (open at end of run) ──")
+    open_props = [p for p in pending if p.discharged_at is None]
+    open_props.sort(key=lambda p: p.prop.effort)  # most significant first (Definition 15)
+    for p in open_props[:8]:
+        print(
+            f"      {p.prop.kind:<8} raised at step {p.raised_at + 1}  "
+            f"{_render(p.prop.kline, labels, alloc, verbose)}  E={p.prop.effort}"
+        )
+    if len(open_props) > 8:
+        print(f"      … +{len(open_props) - 8} more")
+    if not open_props:
+        print("      (none)")
+    discharged = [p for p in pending if p.discharged_at is not None]
+    if discharged:
+        print(
+            f"\n── discharged: {len(discharged)} proposals answered by later entries ──"
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Run a script (markdown plan) or KScript source through the "
-             "rationaliser and present the trace.",
-    )
-    parser.add_argument("source", help="Path to a markdown plan file or a .ks KScript file")
+    parser = argparse.ArgumentParser(description="Run a .ks script through the TRS model.")
+    parser.add_argument("source", help="Path to a .ks KScript file")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
-        help="Show hex signatures alongside scripted labels.",
-    )
-    parser.add_argument(
-        "-s", "--supervise", nargs="?", const="interactive", default=None,
-        metavar="BANDS",
-        help="Supervisor for off-script asks: a comma list of bands "
-             "(e.g. '1,4,1') answers escalations from a response queue, "
-             "declining once exhausted; bare '-s' prompts interactively. "
-             "1 ratifies at S1 (grounds in LTM), 2/3 grade and decline, "
-             "4 declines.",
-    )
-    parser.add_argument(
-        "-e", "--structural", action="store_true",
-        help="Grade off-script asks with the structural supervisor: compiler "
-             "evidence (canons, countersigns, connotations) decides the band, "
-             "S1 only when the script's proof completes.",
-    )
-    parser.add_argument(
-        "--scaffolding", choices=("batch", "on-demand"), default="batch",
-        help="How a group's scaffolding reaches the rationaliser: 'batch' (default) "
-             "delivers all compiled klines with the opening entry; 'on-demand' "
-             "feeds only the opener and withholds scaffolding until K asks.",
-    )
-    parser.add_argument(
-        "-g", "--graph", nargs="?", const="ascii", default=None,
-        choices=("ascii", "dot", "mermaid"),
-        help="After the summary, print a graph of the end-of-run model state "
-             "across all layers (L ltm, F frame, W work list, R refused): "
-             "'ascii' in the terminal (the default when bare), 'dot' as "
-             "Graphviz DOT, 'mermaid' as a Mermaid flowchart.",
-    )
-
-    parser.add_argument(
-        "-p", "--persist", nargs="?", const="auto", default=None, metavar="PATH",
-        help="Load rationaliser state before the run and save it after. PATH "
-             "defaults to data/dialogue/{script_name}.json. Also writes a "
-             "graph of the end-of-run state next to the saved file (as .dot, "
-             "or .mmd with --graph mermaid) for VSCode preview extensions.",
+        help="Show the end-of-run state (held domain, open proposals) and hex "
+             "signatures alongside labels.",
     )
     args = parser.parse_args(argv)
 
-    source_path = Path(args.source)
-    if source_path.suffix == ".ks":
-        try:
-            source = source_path.read_text(encoding="utf-8")
-        except OSError as exc:
-            print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
-            return 2
-        tok = BPETokenizer()
-        scaffolding = cast(Literal["batch", "on-demand"], args.scaffolding)
-        state_path = (
-            Path(f"data/dialogue/{source_path.stem}.json")
-            if args.persist == "auto"
-            else Path(args.persist) if args.persist else None
-        )
-        if state_path is not None and state_path.exists():
-            harness = load_rationaliser(state_path, tok, scaffolding=scaffolding)
-            n = sum(len(b) for b in harness.state.ltm.values())
-            print(f"── running on reloaded state: {n} grounded klines "
-                  f"from {state_path} ──")
-        else:
-            harness = make_rationaliser(tok, scaffolding=scaffolding)
-        # ``import`` statements resolve against the script's own directory.
-        from ks.compiler import path_resolver
-        harness.resolver = path_resolver(source_path.parent)
-        if args.structural:
-            from dev.dialogue.structural import SemanticEvidence, StructuralSupervisor
-
-            labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state,
-                                   harness.resolver)
-            render = lambda v: _render_kline(v, labels, args.verbose)  # noqa: E731
-            supervisor = StructuralSupervisor(
-                SemanticEvidence(harness.signifier), harness.state, render
-            )
-            harness._escalate = supervisor
-        if args.supervise:
-            labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state,
-                                   harness.resolver)
-            harness._escalate = (
-                _interactive_supervisor(labels, args.verbose)
-                if args.supervise == "interactive"
-                else _queue_supervisor(args.supervise.split(","), labels, args.verbose)
-            )
-        pre_grounded = (
-            {(sig, tuple(kl.nodes))
-             for sig, bucket in harness.state.ltm.items() for kl in bucket}
-            if state_path is not None and state_path.exists() else None
-        )
-        results = harness.run(source)
-        present(results, harness.state, source, tok, harness.signifier,
-                verbose=args.verbose, pre_grounded=pre_grounded,
-                word_bits=harness.word_bits, graph=args.graph,
-                resolver=harness.resolver)
-        if state_path is not None:
-            harness.state.word_bits = harness.word_bits
-            # Always save state to script named path
-            state_path = Path(f"data/dialogue/{source_path.stem}.json")
-            harness.state.save(state_path)
-            fmt = args.graph if args.graph in ("dot", "mermaid") else "dot"
-            graph_path = state_path.with_suffix(".dot" if fmt == "dot" else ".mmd")
-            labels = _sig_to_label(source, tok, harness.signifier,
-                                   harness.word_bits, harness.state,
-                                   harness.resolver)
-            graph_path.write_text(
-                _GRAPH_RENDERERS[fmt](harness.state, labels, args.verbose)
-            )
-            print(f"── model graph written to {graph_path} ──")
-        return 0
-
+    path = Path(args.source)
     try:
-        document = CurriculumDocument.from_file(source_path)
-    except (CurriculumParseError, OSError) as exc:
-        print(f"harness: could not read source {args.source!r}: {exc}", file=sys.stderr)
+        source = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
         return 2
-
-    tok = BPETokenizer()
-    harness = make_rationaliser(tok)
-    cumulative = ""
-    for lesson in document.lessons:
-        source = "\n".join(lesson.kscript)
-        cumulative = f"{cumulative}\n{source}"
-        print(f"\n══ lesson {lesson.label} ══")
-        results = harness.run(source)
-        present(results, harness.state, cumulative, tok, harness.signifier,
-                verbose=args.verbose, graph=args.graph)
+    runner = TrsRunner()
+    try:
+        steps = runner.run(source, resolver=path_resolver(path.parent))
+    except ValueError as exc:
+        print(f"harness: {exc}", file=sys.stderr)
+        return 2
+    present(
+        steps, runner.domain, runner.pending, source, runner.tokenizer,
+        runner.signifier, verbose=args.verbose, word_bits=runner.word_bits,
+        resolver=path_resolver(path.parent),
+    )
     return 0
 
 
