@@ -1,5 +1,5 @@
-"""The significance-routed model — node algebra, the kline domain, the
-grading measures, and the Cogitator reentry runner under the TRS harness."""
+"""The rationalisation model — node algebra, the kline domain, the
+grading measures, and the Cogitator reentry runner (docs/rationalisation.md)."""
 
 from __future__ import annotations
 
@@ -496,7 +496,8 @@ class Cogitator:
             self._exchange(int(k.sig))
             return
         batches: list[list[_Reentry]] = []
-        for c in sorted(cands, key=lambda c: (0 if meet(side(k), side(c)) == side(k) else 1, mu(side(c)))):
+        # for c in sorted(cands, key=lambda c: (0 if meet(side(k), side(c)) == side(k) else 1, mu(side(c)))):
+        for c in cands:
             # closers first — the candidate that frames the whole entry leads
             # (the resolution determinism); then least content — the
             # scaffolding before the canons

@@ -1,4 +1,4 @@
-"""Significance-routed model (docs/trs-significance.md)."""
+"""The rationalisation model (docs/rationalisation.md)."""
 
 from trs.model import (
     BETA,

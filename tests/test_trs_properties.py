@@ -1,4 +1,4 @@
-"""TRS model — property-based tests over the invariants (docs/trs-significance.md)."""
+"""The model — property-based tests over the invariants (docs/rationalisation.md)."""
 
 from __future__ import annotations
 

@@ -10,7 +10,7 @@
 
 ## Thinking discipline
 
-- docs/trs-significance.md is the vision document for expected behaviour. IT IS OUT OF DATE - but it is useful history.
+- docs/rationalisation.md is the rules document for the model — read it before changing src/trs. docs/attic/ holds retired history, not truth.
 - src/trs is the truth document for current behaviour only - not future behaviour.
 - read CONTEXT.md only when you need to navigate the domain.
 - If you have questions or gaps - stop and ask. Do not keep going.

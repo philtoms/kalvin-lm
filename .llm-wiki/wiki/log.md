@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban","title":"TRS name retired — rationalisation rules doc written, T1–T3 banked"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module","title":"Dialogue harnesses consolidated — TRS-only module"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet","title":"Known resolutions trace as rows — the Object twin surfaces between pair and close"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support","title":"trs/model.py stripped to Cogitator-only support"}

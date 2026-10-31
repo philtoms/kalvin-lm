@@ -1145,3 +1145,6 @@
 ## [2026-10-31T09:04:54.368Z] observe
 - slug: "obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module", title: "Dialogue harnesses consolidated — TRS-only module", relevance: "high"
 
+## [2026-10-31T15:26:03.236Z] observe
+- slug: "obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban", title: "TRS name retired — rationalisation rules doc written, T1–T3 banked", relevance: "critical"
+

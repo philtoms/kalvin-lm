@@ -390,6 +390,7 @@
 - [Observation: Known resolutions trace as rows — the Object twin surfaces between pair and close](obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet.md)
 - [Observation: Ruling: S3 exchange stores nothing — the frame is the record](obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record.md)
 - [Observation: trs/model.py stripped to Cogitator-only support](obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support.md)
+- [Observation: TRS name retired — rationalisation rules doc written, T1–T3 banked](obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban.md)
 - [Operator semantics swaps: move shapes or move names — the countersign test decides](shape-swap-vs-name-swap-operator-semantics.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)

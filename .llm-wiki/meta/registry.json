@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-31T09:04:54.466Z",
+  "last_updated": "2026-10-31T15:26:03.361Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7279,6 +7279,24 @@
       "relevance": "high",
       "observed_at": "2026-10-31T08:40:25.247Z",
       "source_context": "Refactoring src/trs/model.py to strip non-Cogitator code",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
+    "sources/obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban": {
+      "type": "source",
+      "title": "Observation: TRS name retired — rationalisation rules doc written, T1–T3 banked",
+      "tags": [
+        "trs",
+        "rationalisation",
+        "spec",
+        "rulings",
+        "terminology"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban",
+      "relevance": "critical",
+      "observed_at": "2026-10-31T15:26:03.232Z",
+      "source_context": "Answering whether the implementation is still a term rewriting system; writing docs/rationalisation.md",
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },

@@ -1,4 +1,4 @@
-"""TRS model — tests against docs/trs-significance.md."""
+"""The model — tests against docs/rationalisation.md."""
 
 from __future__ import annotations
 

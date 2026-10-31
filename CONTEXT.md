@@ -95,11 +95,34 @@ The unit of exchange between participants — a KLine paired with a significance
 How a participant tests a kline's structural claim against what Kalvin actually holds.
 
 **Rationalisation**:
-The process of producing, using, and consolidating the evidence represented in memory (§12).
+One run of the model: an entry (with its goal) paired against the held domain, its residuals reentered and discharged until the claim grounds or the run halts (docs/rationalisation.md §2).
 
-**Cogitation**:
-The slow path of rationalisation — the strategy loop (select → scope → derive → add → re-enter) steered by γ's rate of change (§11).
-_Avoid_: thinking, background thread, the cogitator
+**Cogitator**:
+The search that runs a rationalisation — the reentry stack, its pairings, frames and resolutions (docs/rationalisation.md §2.2).
+
+**Side**:
+A kline's full content — its signature composed with its adjacency; every pairing is between sides.
+
+**Row**:
+One pairing of an entry against a candidate — fit, underfit, overfit, and its fate; an event, never a value.
+
+**Reentry**:
+A residual region re-entered as a fresh entry, remembering the row and side it came from.
+
+**Frame**:
+Covered content the run holds evidence for — earned when a candidate covers an entry's whole side, or joint from an exchange; frames settle the regions they cover.
+
+**Stall**:
+A reentry with no candidates at all — the S4 halt; two stalls on one value can exchange.
+
+**Exchange**:
+Two stalled reentries on the same value witnessing each other — both resolve, a joint frame records it, nothing is stored.
+
+**Claim**:
+The grounded outcome of an ask run — ⟨ask, {goal}⟩, stored when the opening pairing resolves.
+
+**Domain**:
+The insertion-ordered set of held klines — the model's memory; it only grows, and the first-stored canon per signature is its witness index.
 
 **Hop**:
 The strategy unit of one queued kline: goals from the top of its candidate list in order, each scoped and derived to an ending (Def 21).

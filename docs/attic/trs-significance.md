@@ -1,5 +1,10 @@
 # Kalvin — A Significance-Routed Term Rewriting System
 
+> **Retired.** The model outgrew this framing: the mechanism is a bounded
+> coverage search, not term rewriting, and the code moved past these rules.
+> The rules of the implemented model live in `docs/rationalisation.md`.
+> This document is history, not truth.
+
 **Status:** Draft — normative. This document is the single normative definition of the significance-routed model: an alternative to the goal-directed algebra of `docs/kalvin-algebra.md`. That document remains normative for the engine; this one is normative for this model.
 
 Both models share one centre: the significance valuation of the pairing of one side's evaluated content against the other side's witness (§6) — graded there (`J`), banded here. They differ in what drives rewriting. The engine derives toward a goal kline under a strict-decrease licence; this model has no goal — the band alone routes the rationalisation.

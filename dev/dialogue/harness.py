@@ -50,7 +50,7 @@ from trs import (
 )
 
 # The appendix's content mask: the word half is content; the token half is
-# inert encoding cargo, masked off at every content read. The TRS model
+# inert encoding cargo, masked off at every content read. The model
 # operates in content space — values are masked once, here at the boundary.
 WORD_MASK = 0x7FFF_FFFF_0000_0000
 
@@ -61,7 +61,7 @@ class TrsStep:
 
     index: int
     entry: KValue  # the compiled entry (annotation/label live here)
-    kline: Kline  # the TRS form
+    kline: Kline  # the model form
     result: Rationalisation
 
 
@@ -476,7 +476,7 @@ def present(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run a .ks script through the TRS model.")
+    parser = argparse.ArgumentParser(description="Run a .ks script through the rationalisation model.")
     parser.add_argument("source", help="Path to a .ks KScript file")
     parser.add_argument(
         "-v", "--verbose", action="store_true",
