@@ -96,9 +96,8 @@ src/
         └── snapshots.py  #     Code/config snapshots across runs
 
 dev/
-└── dialogue/             # Development harness (engine tuning)
-    ├── harness.py        #   The non-judging compile→feed→present loop + CLI
-    ├── structural.py     #   Structural supervisor (harness escalation seam)
+└── dialogue/             # Development harness (TRS tuning)
+    ├── harness.py        #   The non-judging ask==goal run + trace table CLI
     ├── decoder.py        #   Dialogue-table decoder (table → DecodedTurns)
     └── probe_*.py        #   Ad-hoc investigative scripts (kept)
 ```

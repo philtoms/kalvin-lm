@@ -1,10 +1,10 @@
-"""TRS dialogue path — the scripted-run hookup (dev/dialogue/trs_harness.py)."""
+"""The dialogue path — the scripted-run hookup (dev/dialogue/harness.py)."""
 
 from __future__ import annotations
 
 from fractions import Fraction
 
-from dev.dialogue.trs_harness import Pending, TrsRunner, _to_kline
+from dev.dialogue.harness import Pending, TrsRunner, _to_kline
 from trs import Domain, Kline, can, effort
 
 

@@ -2,6 +2,8 @@
 
 ## 2026-10-31
 
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module","title":"Dialogue harnesses consolidated — TRS-only module"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet","title":"Known resolutions trace as rows — the Object twin surfaces between pair and close"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support","title":"trs/model.py stripped to Cogitator-only support"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record","title":"Ruling: S3 exchange stores nothing — the frame is the record"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib","title":"Exchange guard challenge verified: store-rule kept, feed-visibility decoupled"}

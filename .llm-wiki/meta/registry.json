@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-31T08:40:25.345Z",
+  "last_updated": "2026-10-31T09:04:54.466Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7191,6 +7191,23 @@
       "created": "2026-10-30",
       "updated": "2026-10-30"
     },
+    "sources/obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module": {
+      "type": "source",
+      "title": "Observation: Dialogue harnesses consolidated — TRS-only module",
+      "tags": [
+        "harness",
+        "trs",
+        "refactor",
+        "consolidation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module",
+      "relevance": "high",
+      "observed_at": "2026-10-31T09:04:54.366Z",
+      "source_context": "Consolidating the engine and TRS dialogue harnesses into one module",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
     "sources/obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib": {
       "type": "source",
       "title": "Observation: Exchange guard challenge verified: store-rule kept, feed-visibility decoupled",
@@ -7207,6 +7224,25 @@
       "relevance": "high",
       "observed_at": "2026-10-31T08:27:38.671Z",
       "source_context": "Verifying user challenge to the _exchange composition guard",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
+    "sources/obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet": {
+      "type": "source",
+      "title": "Observation: Known resolutions trace as rows — the Object twin surfaces between pair and close",
+      "tags": [
+        "trs",
+        "wdmh",
+        "trace",
+        "visibility",
+        "known-resolutions",
+        "quiet-branch"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet",
+      "relevance": "high",
+      "observed_at": "2026-10-31T08:47:42.257Z",
+      "source_context": "Fixing invisible already-known reentry resolutions after user review",
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },

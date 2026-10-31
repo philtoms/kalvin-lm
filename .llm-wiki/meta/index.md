@@ -464,7 +464,9 @@
 - [[sources/obs-2026-10-30-trace-table-connected-pushers-take-slots-exchange-slots-stic]] — Observation: Trace table connected: pushers take slots; exchange slots sticky *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-trs-harness-renders-optimal-path-trace-table-via-frame-prove]] — Observation: TRS harness renders optimal-path trace table via frame provenance *(created: 2026-10-30)*
 - [[sources/obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-]] — Observation: wdmh proves candidate retry is necessary; in-path note reads as entry-path rule *(created: 2026-10-30)*
+- [[sources/obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module]] — Observation: Dialogue harnesses consolidated — TRS-only module *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib]] — Observation: Exchange guard challenge verified: store-rule kept, feed-visibility decoupled *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet]] — Observation: Known resolutions trace as rows — the Object twin surfaces between pair and close *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record]] — Observation: Ruling: S3 exchange stores nothing — the frame is the record *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support]] — Observation: trs/model.py stripped to Cogitator-only support *(created: 2026-10-31)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
@@ -481,4 +483,4 @@
 - [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
 
 ---
-*Last updated: 2026-10-31T08:40:25.345Z* | *Total pages: 466*
+*Last updated: 2026-10-31T09:04:54.466Z* | *Total pages: 468*

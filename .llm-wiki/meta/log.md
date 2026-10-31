@@ -1139,3 +1139,9 @@
 ## [2026-10-31T08:40:25.249Z] observe
 - slug: "obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support", title: "trs/model.py stripped to Cogitator-only support", relevance: "high"
 
+## [2026-10-31T08:47:42.258Z] observe
+- slug: "obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet", title: "Known resolutions trace as rows — the Object twin surfaces between pair and close", relevance: "high"
+
+## [2026-10-31T09:04:54.368Z] observe
+- slug: "obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module", title: "Dialogue harnesses consolidated — TRS-only module", relevance: "high"
+

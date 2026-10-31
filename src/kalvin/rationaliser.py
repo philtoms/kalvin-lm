@@ -6,8 +6,7 @@ the work list. It never cogitates — the work-list pass lives in
 :mod:`kalvin.cogitator`; the harness runs rationalise, then cogitate.
 
 The rationaliser is pure mechanism: it holds an :class:`Memory` and
-mutates it in place. The factories that
-assemble signifier, state, and rationaliser live in :mod:`dev.dialogue.harness`.
+mutates it in place.
 """
 
 from __future__ import annotations
