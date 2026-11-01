@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-01T08:32:49.747Z",
+  "last_updated": "2026-11-01T22:29:59.074Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7371,6 +7371,24 @@
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },
+    "sources/obs-2026-11-01-containment-bar-dominates-sig-bar-fix-a-rejection-was-a-b-v1": {
+      "type": "source",
+      "title": "Observation: Containment bar dominates sig-bar — fix-A rejection was a B-v1 confound",
+      "tags": [
+        "rationalisation",
+        "completeness",
+        "in-path",
+        "containment-bar",
+        "churn"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-containment-bar-dominates-sig-bar-fix-a-rejection-was-a-b-v1",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T09:12:55.696Z",
+      "source_context": "Pursuing the measured completeness gap — why relaxing the path bar broke mhall",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
     "sources/obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene": {
       "type": "source",
       "title": "Observation: Existence checker built — refusal prediction banked, completeness gap measured at ~20%",
@@ -7387,6 +7405,103 @@
       "relevance": "critical",
       "observed_at": "2026-11-01T08:32:49.644Z",
       "source_context": "Building the T4 certificate existence checker and measuring completeness",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-fit-is-e-candidate-signature-mhall-identical-wdmh-1-honestly": {
+      "type": "source",
+      "title": "Observation: Fit is E × candidate signature — mhall identical, wdmh-1 honestly refuses",
+      "tags": [
+        "ruling",
+        "fit",
+        "signature",
+        "semantics",
+        "correction",
+        "mhall"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-fit-is-e-candidate-signature-mhall-identical-wdmh-1-honestly",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T14:03:12.019Z",
+      "source_context": "Correcting the pairing to E × candidate signature after the user's table reading",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-fit-settled-e-offering-sig-adjacency-both-scripts-ground": {
+      "type": "source",
+      "title": "Observation: Fit settled: E × offering (sig ∪ adjacency) — both scripts ground",
+      "tags": [
+        "ruling",
+        "fit",
+        "offering",
+        "adjacency",
+        "exchange",
+        "s3",
+        "settled"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-fit-settled-e-offering-sig-adjacency-both-scripts-ground",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T14:10:41.702Z",
+      "source_context": "Settling the fit semantics through the wdmh S3 exchange correction",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-": {
+      "type": "source",
+      "title": "Observation: Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair",
+      "tags": [
+        "ruling",
+        "pairing",
+        "claim-fit",
+        "split-beyonds",
+        "fingerprint-removed",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T15:06:20.744Z",
+      "source_context": "Implementing the claim-fit + split-beyonds pairing per the user's ruling",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti": {
+      "type": "source",
+      "title": "Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed",
+      "tags": [
+        "rationalisation",
+        "doc",
+        "kline-make-up",
+        "claim",
+        "construction",
+        "optimisation",
+        "committed"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T22:29:58.981Z",
+      "source_context": "Finishing: doc rewrite with kline make-up roles and the optimisation framing, commit",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci": {
+      "type": "source",
+      "title": "Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work",
+      "tags": [
+        "ruling",
+        "semantics",
+        "signature",
+        "adjacency",
+        "fingerprint",
+        "rationalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T10:00:32.166Z",
+      "source_context": "The user's ruling on signature/adjacency role semantics after the MHSVO frame investigation",
       "created": "2026-11-01",
       "updated": "2026-11-01"
     },

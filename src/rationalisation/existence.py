@@ -24,7 +24,7 @@ can ground the scenario.
 
 from __future__ import annotations
 
-from rationalisation.model import Kline, can, side
+from rationalisation.model import Kline, can
 
 
 def _canon_sigs(d0) -> frozenset[int]:
@@ -52,8 +52,8 @@ class _Checker:
         # (reentry key, candidate index) -> (u child key, o child key)
         self.children: dict[tuple[tuple[int, frozenset], int], tuple] = {}
         self.entry_key = self._enqueue(int(entry.sig), frozenset(entry.adj), tag="open")
-        self.goal_side = int(side(goal))
-        self.entry_side = int(side(entry))
+        self.goal_side = int(goal.fingerprint())
+        self.entry_side = int(entry.fingerprint())
         # the opening pairing mints its frame when the goal covers the
         # entry's whole side (the goal-given evidence)
         if self.entry_side & self.goal_side == self.entry_side:
@@ -87,7 +87,7 @@ class _Checker:
             else:
                 c = self.cands[cand_index]
                 c_adj = c.adj
-            se, sc = self._re_side(re_key), int(side(c))
+            se, sc = self._re_side(re_key), int(c.fingerprint())
             u, o = se & ~sc, sc & ~se
             re_nodes = re_key[2]
             u_key = (
@@ -131,7 +131,7 @@ class _Checker:
         region = re_key[1]
         if not int(c.sig) & region:
             return False  # overlap — no-neighbours never pairs
-        if int(side(c)) == self._re_side(re_key):
+        if int(c.fingerprint()) == self._re_side(re_key):
             return False  # like for like
         return True
 

@@ -474,7 +474,13 @@
 - [[sources/obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support]] — Observation: trs/model.py stripped to Cogitator-only support *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban]] — Observation: TRS name retired — rationalisation rules doc written, T1–T3 banked *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in]] — Observation: Verifier found exhaustion-grounds-without-evidence defect in _in_path *(created: 2026-10-31)*
+- [[sources/obs-2026-11-01-containment-bar-dominates-sig-bar-fix-a-rejection-was-a-b-v1]] — Observation: Containment bar dominates sig-bar — fix-A rejection was a B-v1 confound *(created: 2026-11-01)*
 - [[sources/obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene]] — Observation: Existence checker built — refusal prediction banked, completeness gap measured at ~20% *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-fit-is-e-candidate-signature-mhall-identical-wdmh-1-honestly]] — Observation: Fit is E × candidate signature — mhall identical, wdmh-1 honestly refuses *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-fit-settled-e-offering-sig-adjacency-both-scripts-ground]] — Observation: Fit settled: E × offering (sig ∪ adjacency) — both scripts ground *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-]] — Observation: Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti]] — Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci]] — Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work *(created: 2026-11-01)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -489,4 +495,4 @@
 - [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
 
 ---
-*Last updated: 2026-11-01T08:32:49.747Z* | *Total pages: 474*
+*Last updated: 2026-11-01T22:29:59.074Z* | *Total pages: 480*

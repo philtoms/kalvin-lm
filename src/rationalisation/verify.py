@@ -28,7 +28,6 @@ from rationalisation.model import (
     Rationalisation,
     Row,
     can,
-    side,
 )
 
 
@@ -111,7 +110,7 @@ def verify(
                 return True
             return False
         c = owner.candidate
-        if c is None or side(c) & f != f:
+        if c is None or c.fingerprint() & f != f:
             return False
         if c in dom:
             cert.leaves["witness-held"] += 1
@@ -145,7 +144,7 @@ def verify(
         if not fit_framed:
             return False
         for c in dom:
-            sc = side(c)
+            sc = c.fingerprint()
             if sk & sc != sk:
                 continue
             over = int(sc) & ~int(sk)

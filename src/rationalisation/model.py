@@ -192,15 +192,6 @@ def effort(k: Kline, beta: Fraction = BETA) -> Fraction:
 
 # --- §5 — reentry: the rationalisation runner ---
 
-def side(k: Kline) -> KNode:
-    """The full content of a kline — its signature composed with its adjacency."""
-    sig = k.sig if isinstance(k.sig, KNode) else KNode(int(k.sig))
-    if any(not isinstance(n, KNode) for n in k.adj):  # bare ints — the word-bit substrate
-        adj = frozenset(KNode(int(n)) for n in k.adj)
-        return sig.merge(can(adj))
-    return sig.merge(can(k.adj))
-
-
 @dataclass(eq=False)
 class Row:
     """One reentry pairing. The candidate's content decomposes against the
@@ -399,7 +390,8 @@ class Cogitator:
         grounds itself."""
         if not region:
             return True
-        if any(ch.side == side and ch.resolved for ch in row.children):
+        kids = [ch for ch in row.children if ch.side == side]
+        if kids and all(ch.resolved for ch in kids):
             return True
         if side == "o" and self.d.witness(region):
             return True
@@ -478,7 +470,7 @@ class Cogitator:
             if c.sig & k.sig
             and c.adj
             and c.adj != frozenset([c.sig])
-            and side(c) != side(k)  # like for like — the entry never pairs itself
+            and c.fingerprint() != k.sig  # like for like — the candidate offers exactly the entry
             and not self._covered(c.sig)
         ]
         if re_.depth == 1 and self.goal is not None:
@@ -497,16 +489,17 @@ class Cogitator:
             return
         batches: list[list[_Reentry]] = []
         turned_away = False  # a candidate refused while the region stood unproven
-        # for c in sorted(cands, key=lambda c: (0 if meet(side(k), side(c)) == side(k) else 1, mu(side(c)))):
         for c in cands:
             # closers first — the candidate that frames the whole entry leads
             # (the resolution determinism); then least content — the
             # scaffolding before the canons
-            f = meet(side(k), side(c))
+            e = k.sig
+            cs = c.sig
+            beyond = residue(cs, e) | residue(can(c.adj), e)
             proven = (
-                f == side(k) and f in self.frames
-                and self._pre_settled(residue(side(k), side(c)), re_)
-                and self._pre_settled(residue(side(c), side(k)), re_)
+                e & cs == e and e in self.frames
+                and self._pre_settled(e & ~cs, re_)
+                and self._pre_settled(beyond, re_)
             )
             if self._in_path(re_, c):
                 # a candidate cannot reappear in the path it was decomposed
@@ -561,9 +554,17 @@ class Cogitator:
 
     def _pair(self, re_: _Reentry, c: Kline) -> list[_Reentry]:
         k = re_.kline
-        s_e, s_c = side(k), side(c)
-        f = meet(s_e, s_c)
-        row = Row(re_.depth, k, c, F=f, U=residue(s_e, s_c), O=residue(s_c, s_e), re=re_)
+        e = k.sig
+        cs = c.sig  # the claim
+        ca = can(c.adj)  # the decomposition, composed
+        # the entry meets the claim; the candidate's two beyonds — the
+        # claim's extension and the decomposition's offering — are the
+        # o-side, split into their own reentries
+        row = Row(
+            re_.depth, k, c,
+            F=meet(e, cs), U=residue(e, cs),
+            O=residue(cs, e) | residue(ca, e), re=re_,
+        )
         row.birth = self._tick()
         if re_.depth == 1 and c == self.goal:
             self.goal_row = row
@@ -572,20 +573,28 @@ class Cogitator:
         self.open_rows.append(row)
         pushed: list[_Reentry] = []
         if not self._side_ok(row, row.O, "o"):
-            ch = self._child(re_.depth + 1, row.O, "o", (n for n in c.adj if contained(n, row.O)), row)
-            if ch is not None:
-                pushed.append(ch)
+            made = []
+            for region in (residue(cs, e), residue(ca, e)):
+                if not region or region in made:
+                    continue  # one reentry per content — both beyonds may name it
+                made.append(region)
+                ch = self._child(
+                    re_.depth + 1, region, "o",
+                    (n for n in c.adj if contained(n, region)), row,
+                )
+                if ch is not None:
+                    pushed.append(ch)
         if not self._side_ok(row, row.U, "u"):
             ch = self._child(re_.depth + 1, row.U, "u", (n for n in k.adj if contained(n, row.U)), row)
             if ch is not None:
                 pushed.append(ch)
-        row.children = tuple(reversed(pushed))  # U first
+        row.children = tuple(reversed(pushed))  # U first, then the offerings, then the extensions
         if self._satisfied(row):
             row.instant = True
             self._resolve(row)  # before the frame mints — the row closes, then its cascade
-        if f == s_e:  # the candidate covers the entry — the fit frames
-            row.frame = f if not row.frame else row.frame.merge(f)
-            self._frame(f, row)
+        if row.F == e:  # E == F — the claim covers the entry
+            row.frame = e if not row.frame else row.frame.merge(e)
+            self._frame(e, row)
         return pushed
 
     def _in_path(self, re_: _Reentry, c: Kline) -> bool:

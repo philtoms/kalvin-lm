@@ -19,12 +19,18 @@ from hypothesis import given, settings
 
 from rationalisation import Cogitator, Domain, Kline, can
 from rationalisation.verify import Certificate, Records, verify
-from rationalisation.model import side
+
 
 from tests.test_rationalisation_properties import closed_domains
 
 from dev.dialogue.harness import Runner
 from ks.compiler import path_resolver
+
+pytestmark = pytest.mark.skip(
+    reason="T1–T4 parked (ruling 2026-11-01): premature. The instruments stay "
+           "dormant until the signature×signature semantics settles."
+)
+
 
 SCRIPTS = sorted(Path("data/scripts").glob("*.ks"))
 

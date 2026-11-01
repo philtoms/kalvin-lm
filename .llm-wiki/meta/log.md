@@ -1163,3 +1163,21 @@
 ## [2026-11-01T08:32:49.645Z] observe
 - slug: "obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene", title: "Existence checker built — refusal prediction banked, completeness gap measured at ~20%", relevance: "critical"
 
+## [2026-11-01T09:12:55.697Z] observe
+- slug: "obs-2026-11-01-containment-bar-dominates-sig-bar-fix-a-rejection-was-a-b-v1", title: "Containment bar dominates sig-bar — fix-A rejection was a B-v1 confound", relevance: "critical"
+
+## [2026-11-01T10:00:32.169Z] observe
+- slug: "obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci", title: "Ruling: signatures prime, fingerprints control loops, adjacencies do the work", relevance: "critical"
+
+## [2026-11-01T14:03:12.020Z] observe
+- slug: "obs-2026-11-01-fit-is-e-candidate-signature-mhall-identical-wdmh-1-honestly", title: "Fit is E × candidate signature — mhall identical, wdmh-1 honestly refuses", relevance: "critical"
+
+## [2026-11-01T14:10:41.703Z] observe
+- slug: "obs-2026-11-01-fit-settled-e-offering-sig-adjacency-both-scripts-ground", title: "Fit settled: E × offering (sig ∪ adjacency) — both scripts ground", relevance: "critical"
+
+## [2026-11-01T15:06:20.745Z] observe
+- slug: "obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-", title: "Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair", relevance: "critical"
+
+## [2026-11-01T22:29:58.983Z] observe
+- slug: "obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti", title: "Rules doc rewritten: claim/construction make-up, union as optimisation — committed", relevance: "critical"
+
