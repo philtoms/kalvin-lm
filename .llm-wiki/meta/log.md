@@ -1157,3 +1157,9 @@
 ## [2026-10-31T22:54:48.123Z] observe
 - slug: "obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored", title: "Stale trs1 stash still in list; dev/probes gitignored", relevance: "medium"
 
+## [2026-10-31T23:05:53.732Z] observe
+- slug: "obs-2026-10-31-fix-b-landed-exhaustion-halts-unless-proven-fix-a-rejected-b", title: "Fix B landed (exhaustion halts unless proven); fix A rejected — broke mhall", relevance: "critical"
+
+## [2026-11-01T08:32:49.645Z] observe
+- slug: "obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene", title: "Existence checker built — refusal prediction banked, completeness gap measured at ~20%", relevance: "critical"
+

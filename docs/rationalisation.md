@@ -323,17 +323,32 @@ exchanges either reconstructs the tree or rejects. That verifier is the
 next piece of work, with property tests asserting T1–T3 over the script
 corpus.
 
-## 4. Not claimed
+## 4. Prediction and the measured gap
 
-- **Completeness.** That the search finds a certificate whenever one
-  exists within the bounds is not claimed. Every bar in CANDIDATES
-  prunes, and each needs its own argument before the claim could be
-  made; until then, a script can fail to ground for search reasons as
-  well as content reasons, and the two are not yet distinguishable.
+The certificate existence checker
+(`src/rationalisation/existence.py`) decides, without running the
+search, whether any covering certificate is available for a scenario —
+an over-approximation of the run: frames serve globally, the path,
+seen and covered-sig bars are ignored, exchanges need two reachings of
+a value rather than two stalls, and the run's bounds do not apply.
+
+**Refusal prediction — machine-checked.** With T3, an available-certificate
+verdict of ``False`` is a refusal: no schedule, no order, no bounds can
+ground the scenario (`tests/test_rationalisation_existence.py`). Every
+corpus grounding has a certificate available; the exhaustion regression
+is refused before running.
+
+**Completeness — measured, not claimed.** A 400-scenario sweep: ~60%
+ground, ~20% are refused (no certificate — correctly), and ~20% carry
+a certificate the deterministic run misses. The attribution is
+dominated by the in_path bar: the run halts *exhausted* on a pairing
+the checker rightly explores. The completeness probe stays xfailed as
+the instrument — each future search change that xpasses it narrows the
+measured gap. Until the gap closes, a script can fail to ground for
+search reasons as well as content reasons, and the checker now tells
+the two apart.
+
 - **Trace canonicity.** The presented path (which rows the table shows)
   is a policy over the records — earliest-created sources, one row per
   reentry. The records are deterministic (T2); the policy is a display
   choice.
-- **Prediction.** Syntactic conditions on a script that guarantee
-  grounding (or refusal) — the goal-directed reading of scripts — wait
-  on completeness or stand alone as later work.

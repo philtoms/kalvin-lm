@@ -1,7 +1,12 @@
 # Wiki Update Log
 
+## 2026-11-01
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene","title":"Existence checker built — refusal prediction banked, completeness gap measured at ~20%"}
+
 ## 2026-10-31
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-10-31-fix-b-landed-exhaustion-halts-unless-proven-fix-a-rejected-b","title":"Fix B landed (exhaustion halts unless proven); fix A rejected — broke mhall"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored","title":"Stale trs1 stash still in list; dev/probes gitignored"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios","title":"Harness runs multiple ask==goal scenarios"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in","title":"Verifier found exhaustion-grounds-without-evidence defect in _in_path"}

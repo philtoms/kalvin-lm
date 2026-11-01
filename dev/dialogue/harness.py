@@ -77,7 +77,7 @@ class Pending:
     discharged_at: int | None = None
 
 
-class TrsRunner:
+class Runner:
     """Compile → present → rationalise → record, over one live Domain."""
 
     def __init__(self, tokenizer: BPETokenizer | None = None) -> None:
@@ -497,7 +497,7 @@ def main(argv: list[str] | None = None) -> int:
     except OSError as exc:
         print(f"harness: could not read {args.source!r}: {exc}", file=sys.stderr)
         return 2
-    runner = TrsRunner()
+    runner = Runner()
     try:
         steps = runner.run(source, resolver=path_resolver(path.parent))
     except ValueError as exc:

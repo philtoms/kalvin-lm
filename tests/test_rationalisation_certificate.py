@@ -23,13 +23,13 @@ from rationalisation.model import side
 
 from tests.test_rationalisation_properties import closed_domains
 
-from dev.dialogue.harness import TrsRunner
+from dev.dialogue.harness import Runner
 from ks.compiler import path_resolver
 
 SCRIPTS = sorted(Path("data/scripts").glob("*.ks"))
 
 
-class RecordingRunner(TrsRunner):
+class RecordingRunner(Runner):
     """Captures the cogitator's records after each step — rationalise()
     rebinds its arrays per run, so each run's records survive by reference."""
 
@@ -198,11 +198,11 @@ _DIGEST = """
 import hashlib, sys
 sys.path.insert(0, "src"); sys.path.insert(0, ".")
 from pathlib import Path
-from dev.dialogue.harness import TrsRunner
+from dev.dialogue.harness import Runner
 from ks.compiler import path_resolver
 digest = hashlib.sha256()
 for p in sorted(Path("data/scripts").glob("*.ks")):
-    runner = TrsRunner()
+    runner = Runner()
     steps = runner.run(p.read_text(), resolver=path_resolver(p.parent))
     for st in steps:
         digest.update(repr(st.result.claim).encode())

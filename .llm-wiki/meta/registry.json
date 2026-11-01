@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-31T22:54:48.231Z",
+  "last_updated": "2026-11-01T08:32:49.747Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7227,6 +7227,25 @@
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },
+    "sources/obs-2026-10-31-fix-b-landed-exhaustion-halts-unless-proven-fix-a-rejected-b": {
+      "type": "source",
+      "title": "Observation: Fix B landed (exhaustion halts unless proven); fix A rejected — broke mhall",
+      "tags": [
+        "rationalisation",
+        "soundness",
+        "fix",
+        "exhaustion",
+        "rejected-fix",
+        "scenario-harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-fix-b-landed-exhaustion-halts-unless-proven-fix-a-rejected-b",
+      "relevance": "critical",
+      "observed_at": "2026-10-31T23:05:53.730Z",
+      "source_context": "Implementing fixes A+B for the exhaustion soundness defect",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
     "sources/obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios": {
       "type": "source",
       "title": "Observation: Harness runs multiple ask==goal scenarios",
@@ -7351,6 +7370,25 @@
       "source_context": "Phase 2: certificate verifier + property tests over the rationalisation model",
       "created": "2026-10-31",
       "updated": "2026-10-31"
+    },
+    "sources/obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene": {
+      "type": "source",
+      "title": "Observation: Existence checker built — refusal prediction banked, completeness gap measured at ~20%",
+      "tags": [
+        "rationalisation",
+        "t4",
+        "completeness",
+        "refusal",
+        "prediction",
+        "existence-checker"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T08:32:49.644Z",
+      "source_context": "Building the T4 certificate existence checker and measuring completeness",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",
