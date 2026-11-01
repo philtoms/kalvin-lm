@@ -24,13 +24,24 @@ from dataclasses import dataclass, field
 from typing import Iterable
 
 from rationalisation.model import (
-    Cogitator,
     Kline,
     Rationalisation,
     Row,
     can,
     side,
 )
+
+
+@dataclass
+class Records:
+    """One rationalisation's bookkeeping — frames and owners, stall
+    groups, rows. The cogitator rebinds these per run; capture them at
+    the moment (they survive by reference)."""
+
+    frames: list
+    frame_re: list
+    stalls: dict
+    rows: list
 
 
 def _chain(row: Row | None) -> set[int]:
@@ -60,7 +71,7 @@ class Certificate:
 
 def verify(
     r: Rationalisation,
-    cog: Cogitator,
+    records: Records,
     d0: Iterable[Kline],
     entry: Kline,
     goal: Kline,
@@ -84,7 +95,7 @@ def verify(
 
     def stall_pair(sig: int) -> bool:
         """Two stalled reentries on ``sig`` from different parent rows."""
-        waiting = cog.stalls.get(sig, ())
+        waiting = records.stalls.get(sig, ())
         return any(
             a.parent is not b.parent and a.stalled is not None and b.stalled is not None
             for i, a in enumerate(waiting) for b in waiting[i + 1:]
@@ -113,7 +124,7 @@ def verify(
     def framed(region: int, chain: set[int]) -> bool:
         """A frame covering ``region``, owned by a chain ancestor or joint,
         itself carried by evidence."""
-        for f, owner in zip(cog.frames, cog.frame_re):
+        for f, owner in zip(records.frames, records.frame_re):
             if region & f != region:
                 continue
             if owner is not None and id(owner) not in chain:
@@ -129,7 +140,7 @@ def verify(
         sk = side(k)
         fit_framed = any(
             int(f) == int(sk) and frame_evidence(f, owner)
-            for f, owner in zip(cog.frames, cog.frame_re)
+            for f, owner in zip(records.frames, records.frame_re)
         )
         if not fit_framed:
             return False

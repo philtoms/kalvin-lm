@@ -496,29 +496,44 @@ class Cogitator:
             self._exchange(int(k.sig))
             return
         batches: list[list[_Reentry]] = []
+        turned_away = False  # a candidate refused while the region stood unproven
         # for c in sorted(cands, key=lambda c: (0 if meet(side(k), side(c)) == side(k) else 1, mu(side(c)))):
         for c in cands:
             # closers first — the candidate that frames the whole entry leads
             # (the resolution determinism); then least content — the
             # scaffolding before the canons
+            f = meet(side(k), side(c))
+            proven = (
+                f == side(k) and f in self.frames
+                and self._pre_settled(residue(side(k), side(c)), re_)
+                and self._pre_settled(residue(side(c), side(k)), re_)
+            )
             if self._in_path(re_, c):
-                continue  # a candidate cannot reappear in the path it was decomposed along
+                # a candidate cannot reappear in the path it was decomposed
+                # along — but a proven one carried its evidence already
+                if not proven:
+                    turned_away = True
+                continue
             if self.claim is not None:
                 break
             fp = (id(re_), k.fingerprint(), c.fingerprint())
             if fp in self.seen:
                 continue  # each reentry is its own path — twins explore their own
-            f = meet(side(k), side(c))
-            if f == side(k) and f in self.frames and self._pre_settled(residue(side(k), side(c)), re_) and self._pre_settled(residue(side(c), side(k)), re_):
+            if proven:
                 continue  # a proven fit with no work left — re-proving adds nothing
             self.seen.add(fp)
             batches.append(self._pair(re_, c))
-        if not batches and not re_.rows and not re_.resolved:
-            # every candidate was barred or already proven — nothing to
-            # explore and nothing to learn: the reentry stands as known
-            self._known(re_)
-            return
         if self.claim is not None:
+            return
+        if not batches and not re_.rows and not re_.resolved:
+            # every candidate was skipped. All proven — the region stands,
+            # nothing to explore, nothing to learn: known. Any turned away
+            # by a path bar — exhaustion is not evidence: the reentry halts
+            # rather than resolve on a policy bar alone.
+            if turned_away:
+                self._halt("exhausted: candidate barred without proof", k)
+                return
+            self._known(re_)
             return
         for batch in reversed(batches):
             # the least candidate's subtree leads — the reductive chain runs to
@@ -576,12 +591,16 @@ class Cogitator:
     def _in_path(self, re_: _Reentry, c: Kline) -> bool:
         """Is the candidate in the reentry's path — the entry path and the
         content flow from the opening pairing down? A candidate must not
-        exist in the entry path: MHALL -> HALL -> MHALL re-derives what the
-        decomposition already established. Beyond that, an o-side child's
-        region came from its parent row's candidate, so that candidate
-        enters its path; a u-side child inherits only the parent's path.
-        A reentry may re-meet its own origin — the candidate it was
-        isolated from — but no other candidate in its strict path."""
+        be an ancestor entry kline: MHALL -> HALL -> MHALL re-derives what
+        the decomposition already established. The comparison is the
+        kline — signature and adjacency together — never the signature
+        alone: a held kline sharing only a signature with an ancestor
+        entry makes a different claim and may pair. Beyond that, an
+        o-side child's region came from its parent row's candidate, so
+        that candidate enters its path; a u-side child inherits only the
+        parent's path. A reentry may re-meet its own origin — the
+        candidate it was isolated from — but no other candidate in its
+        strict path."""
         sig = int(c.sig)
         chain = re_
         while chain is not None:  # the entry path — no candidate may re-derive an ancestor entry

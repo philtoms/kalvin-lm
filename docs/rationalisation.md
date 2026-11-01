@@ -95,12 +95,14 @@ proposals of a run: least entropy first, ties in generation order.
 ### 2.1 The harness configuration
 
 A script compiles to entries. The harness (`dev/dialogue/harness.py`)
-builds an **ask==goal run**: the script's last `==` ask and its named
-goal are the two presented entries, every other entry is **primed** into
-D verbatim first (a harness fact — priming is never a store the model
-earned). The goal is presented alone: if it is a canon it grounds on
-receipt (S1, stored); if not, it rationalises goal-less — a full search
-in its own right. The ask is then presented with the goal attached.
+builds **ask==goal scenarios**: every `==` ask with a resolvable goal is
+one scenario, and every other entry is **primed** into D verbatim first
+(a harness fact — priming is never a store the model earned). Each
+scenario presents its goal alone — if it is a canon it grounds on
+receipt (S1, stored); if not, it rationalises goal-less — then presents
+the ask with the goal attached. Scenarios run in ask order over the one
+live domain: an earlier scenario's stores are later scenarios' prior
+knowledge.
 
 ### 2.2 The machine's state
 
@@ -145,15 +147,21 @@ c.adj is not empty          a bare signature offers nothing
 c.adj != {c.sig}            an identity is not a partner
 side(c) != side(k)          like for like never pairs with itself
 c.sig not framed            a covered signature has nothing to teach
-c not in the reentry's path no re-deriving what decomposition established
+c not in the reentry's path no candidate may share a signature with an
+                          ancestor entry — re-deriving what decomposition
+                          established (signature-level by design; see the
+                          exhaustion rule below for what a bar may settle)
 fingerprint unseen          each reentry pairs each candidate once
 ```
 
 plus the **proven-fit skip**: a candidate whose fit already frames the
 whole entry side and whose both residuals would settle without children
-adds nothing — skip. A reentry whose every candidate is barred or
-skipped this way also resolves as **known** (the exhausted-candidates
-known) — see §3 for what that does to the certificate. Candidates are
+adds nothing — skip. A reentry whose every candidate is skipped
+resolves as **known** only when every skip was proven — the region
+stands on framed evidence, and a path-barred candidate that is itself a
+proven fit counts as proven. A path bar on an unproven region is not
+proof: the reentry halts there (**exhaustion is not evidence**).
+Candidates are
 taken in D's insertion order (a closers-first, least-content sort
 exists in the code's history but is not active); the stack then
 explores the first candidate's subtree to completion before the next,
@@ -220,8 +228,9 @@ nothing is stored — the frame is the record; the domain learns nothing
 from a mutual stall.
 
 **HALT / PROPOSAL** (`_halt`, `proposals`). Terminal arrivals: a kline
-with no adjacency (the run's R4), the depth bound, and — reported after
-the loop — every unresolved stall. Each halt becomes a **proposal**: the
+with no adjacency (the run's R4), the depth bound, a candidate turned
+away without proof (exhausted), and — reported after the loop — every
+unresolved stall. Each halt becomes a **proposal**: the
 halted kline read as a request, ordered by ascending effort. Kinds:
 `connect` (stalled — nobody to pair with), `continue` (bound), `acquire`
 (everything else).
@@ -307,17 +316,6 @@ The exchange case is the certificate's honest weakest link: it records
 that two subgoals coincided, not that the domain supports them. The
 certificate says so, in the open, rather than laundering it through a
 store.
-
-**Known defect.** The exhausted-candidates known can fire on bars
-alone: `_in_path` compares signature values, so a held kline sharing
-only a signature with an ancestor entry is barred as a re-derivation,
-and when it was the only candidate the reentry resolves with none of
-the five leaves behind it. Minimal shape: identities plus `9:[1]`
-primed, entry `9:[32,1]`, goal `1:[1]` — the claim `⟨9, {1}⟩` grounds
-with the `40` region backed by nothing. The property test
-(`tests/test_rationalisation_certificate.py`) is marked xfail on this
-defect; T3 as stated holds for every corpus script and every scenario
-the defect does not reach.
 
 **Corollary.** Grounding can be checked without re-running the search:
 a verifier given `(D₀, ask, goal)` and the run's frames, sources, and
