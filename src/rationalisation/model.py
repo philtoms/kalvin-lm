@@ -211,11 +211,7 @@ class Row:
     exchange: bool = False  # the stall whose arrival exchanged
     children: tuple = ()  # the pushed child reentries, U first
     re: "_Reentry | None" = None
-    birth: int = 0  # the pairing clock
-    waited: int | None = None  # a side settled, the row still waits
-    closed: int | None = None  # the resolution clock
     bp: tuple = ()  # the rows the resolution back-propagated to
-    instant: bool = False  # resolved at pairing — one trace emission
     known: bool = False  # resolved without exploring — already known
 
 
@@ -260,6 +256,7 @@ class Rationalisation:
     path: list[Row] = field(default_factory=list)  # the rows that carried the opening pairing
     claim: Kline | None = None
     goal_row: Row | None = None  # the opening pairing — the grounded claim's row
+    events: list[tuple] = field(default_factory=list)  # the run's notes in order — reporting only
 
 class Cogitator:
     """The reentry runner. Enter with the ask (and its goal as the first
@@ -302,7 +299,7 @@ class Cogitator:
         self.goal = goal
         self.goal_row: Row | None = None
         self.agenda: list[_Reentry] = []
-        self.clock = 0  # the event clock — pairing, wait, resolution order
+        self.events: list[tuple[Row, str]] = []  # (row, "pair"|"wait"|"close") — noted in order, never read
         self.rframes: list[tuple[KNode, Row]] = []  # resolution frames — record, never settle
 
         if goal is None:
@@ -320,7 +317,8 @@ class Cogitator:
                 if not re_.resolved:
                     self._halt("stalled at S4: no candidates", re_.kline)
         return Rationalisation(
-            self.stores, self.ends, self.rows, self._trace(), self.claim, self.goal_row
+            self.stores, self.ends, self.rows, self._trace(), self.claim, self.goal_row,
+            self.events,
         )
 
     def _run(self) -> None:
@@ -408,12 +406,12 @@ class Cogitator:
             return
         if self._satisfied(row):
             self._resolve(row)
-        elif row.waited is None:
-            row.waited = self._tick()  # a side settled, the row still waits — stalled
+        else:
+            self.events.append((row, "wait"))  # a side settled, the row still waits — stalled
 
     def _resolve(self, row: Row) -> None:
         row.resolved = True
-        row.closed = self._tick()
+        self.events.append((row, "close"))
         if row in self.open_rows:
             self.open_rows.remove(row)
         if row is self.goal_row:
@@ -430,11 +428,6 @@ class Cogitator:
                 row.bp = (re_.parent,)
                 self._after(re_.parent)  # the side is satisfied — propagate backwards
 
-    def _tick(self) -> int:
-        """The event clock — pairing, wait and resolution order."""
-        self.clock += 1
-        return self.clock
-
     def _known(self, re_: _Reentry) -> None:
         """A reentry resolved without exploring — its region is already
         framed or every candidate is proven. It still traces: a known row,
@@ -443,10 +436,9 @@ class Cogitator:
             return
         row = Row(re_.depth, re_.kline, None, re=re_)
         row.known = True
-        row.birth = self._tick()
+        self.events.append((row, "pair"))
         row.resolved = True
-        row.instant = True  # one emission
-        row.closed = self._tick()
+        self.events.append((row, "close"))
         re_.rows.append(row)
         self.rows.append(row)
         re_.resolved = True
@@ -481,7 +473,7 @@ class Cogitator:
             return
         if not cands and not re_.rows:
             row = Row(re_.depth, k, None, U=k.sig, re=re_)  # the whole content is underfit
-            row.birth = self._tick()
+            self.events.append((row, "pair"))
             re_.stalled = row
             self.rows.append(row)
             self.stalls.setdefault(int(k.sig), []).append(re_)
@@ -565,7 +557,7 @@ class Cogitator:
             F=meet(e, cs), U=residue(e, cs),
             O=residue(ca, e), re=re_,
         )
-        row.birth = self._tick()
+        self.events.append((row, "pair"))
         if re_.depth == 1 and c == self.goal:
             self.goal_row = row
         re_.rows.append(row)
@@ -585,7 +577,6 @@ class Cogitator:
                 pushed.append(ch)
         row.children = tuple(reversed(pushed))  # U first, then the offering
         if self._satisfied(row):
-            row.instant = True
             self._resolve(row)  # before the frame mints — the row closes, then its cascade
         if row.F == e:  # E == F — the claim covers the entry
             row.frame = e if not row.frame else row.frame.merge(e)
@@ -649,7 +640,7 @@ class Cogitator:
                 b.stalled.exchange = True  # the arriving stall carries the exchange
                 b.stalled.O = b.kline.sig  # the matched content arrives as overfit
                 b.stalled.frame = a.kline.sig if not b.stalled.frame else b.stalled.frame.merge(a.kline.sig)
-                b.stalled.closed = self._tick()
+                self.events.append((b.stalled, "close"))
                 b.stalled.bp = tuple(p for p in (a.parent, b.parent) if p is not None)
             if a.stalled is not None:
                 a.stalled.resolved = True  # resolved through the exchange — silently

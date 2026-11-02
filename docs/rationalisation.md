@@ -76,7 +76,9 @@ One `Cogitator` per rationalisation: an `agenda` (a LIFO stack of
 **reentries**), `rows` (every pairing, in creation order), `open_rows`,
 `frames` (covered content, each with its source row), `stalls`
 (reentries halted at S4, by signature), `seen` (pairing fingerprints,
-for loop control), a `clock`, and the `claim` — set at most once.
+for loop control), the run's `events` (pair/wait/close notes —
+reporting only, never read by the search), and the `claim` — set at
+most once.
 
 A **reentry** is an unconstructed kline: a region-signature remembering
 the row and side it came from. A **row** is one pairing — `F`, `U`,
@@ -169,7 +171,7 @@ ascending effort.
 
 ### 2.4 Invariants
 
-- D only grows; frames only grow; the clock only advances.
+- D only grows; frames only grow; the events list only appends.
 - Each reentry resolves at most once; the claim grounds at most once.
 - Every frame is a signature; every reentry is a signature. No
   composite value — no `σ | can(N)` of any kline — is ever fitted,

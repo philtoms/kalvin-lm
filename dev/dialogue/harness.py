@@ -366,21 +366,30 @@ def _tline(k: Kline, labels: dict[int, str], alloc: dict[int, str]) -> str:
     return f"{sig}:[{nodes}]" if k.adj else f"{sig}:[]"
 
 
-def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None = None) -> list[str]:
+def _render_table(rows: list[Row], notes: list[tuple], labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None = None) -> list[str]:
     """The trace table: depth, entry, candidate, fit, underfit, overfit,
     frame, step — a row per event: the pairing, the wait, the resolution
     (BP — back propagation). One row per reentry stays orthogonal; the
-    repeats are the trace's temporal shape."""
+    repeats are the trace's temporal shape — read from the run's notes
+    (pair/wait/close in note order). A row born closed — its close noted
+    straight after its pair, no wait between — emits once."""
     hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "step"]
+    firsts: dict[tuple[int, str], int] = {}
+    for i, (row, kind) in enumerate(notes):
+        firsts.setdefault((id(row), kind), i)
     events: list[tuple[int, int, str, Row]] = []
     for row in rows:
-        once = row.instant or row.exchange or row.known  # born closed — one emission
-        if not once:
-            events.append((row.birth, 0, "pair", row))
-        if row.waited is not None:
-            events.append((row.waited, 1, "wait", row))
-        if row.closed is not None and (row.bp or not row.exchange):
-            events.append((row.closed, 2, "close", row))
+        pair_i = firsts.get((id(row), "pair"))
+        wait_i = firsts.get((id(row), "wait"))
+        close_i = firsts.get((id(row), "close"))
+        born_closed = pair_i is not None and close_i == pair_i + 1  # resolved at pairing
+        once = born_closed or row.exchange or row.known  # one emission
+        if not once and pair_i is not None:
+            events.append((pair_i, 0, "pair", row))
+        if wait_i is not None:
+            events.append((wait_i, 1, "wait", row))
+        if close_i is not None and (row.bp or not row.exchange):
+            events.append((close_i, 2, "close", row))
     events.sort(key=lambda ev: (ev[0], ev[1]))
     body = [_table_row(kind, row, labels, alloc, goal_row) for _, _, kind, row in events]
     widths = [
@@ -405,7 +414,7 @@ def _render_step(step: TrsStep, labels: dict[int, str], alloc: dict[int, str], v
     if rows:
         if step.result.claim is None:
             lines.append("      (no path — the goal was not reached; all rows below)")
-        lines.extend("      " + l for l in _render_table(rows, labels, alloc, step.result.goal_row))
+        lines.extend("      " + l for l in _render_table(rows, step.result.events, labels, alloc, step.result.goal_row))
     for store in step.result.stores:
         lines.append(f"      stores    {_tline(store, labels, alloc)}")
     by_reason: dict[str, list[End]] = {}
