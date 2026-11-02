@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-02T10:14:34.024Z",
+  "last_updated": "2026-11-02T12:20:01.534Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7505,6 +7505,61 @@
       "created": "2026-11-01",
       "updated": "2026-11-01"
     },
+    "sources/obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo": {
+      "type": "source",
+      "title": "Observation: Clock removed, notes in: events list separates model from reporting",
+      "tags": [
+        "clock",
+        "events",
+        "separation",
+        "diagnostics",
+        "rendering",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo",
+      "relevance": "high",
+      "observed_at": "2026-11-02T11:57:09.455Z",
+      "source_context": "Investigating whether _tick/clock is functional and separating rationalisation from diagnostic reporting",
+      "created": "2026-11-02",
+      "updated": "2026-11-02"
+    },
+    "sources/obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model": {
+      "type": "source",
+      "title": "Observation: _cover_frame moved to trace.py; audit confirms remaining model surface is semantic",
+      "tags": [
+        "refactor",
+        "trace",
+        "audit",
+        "cover-frame",
+        "run-records",
+        "boundary"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model",
+      "relevance": "high",
+      "observed_at": "2026-11-02T12:18:38.479Z",
+      "source_context": "Pulling trace-related methods and state out of model per user directive",
+      "created": "2026-11-02",
+      "updated": "2026-11-02"
+    },
+    "sources/obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc": {
+      "type": "source",
+      "title": "Observation: Narration separation committed (413eb9c) — model 659 lines, search only",
+      "tags": [
+        "committed",
+        "trace",
+        "separation",
+        "boundary"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc",
+      "relevance": "medium",
+      "observed_at": "2026-11-02T12:20:01.430Z",
+      "source_context": "Committing the model/harness narration separation",
+      "created": "2026-11-02",
+      "updated": "2026-11-02"
+    },
     "sources/obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1": {
       "type": "source",
       "title": "Observation: Offering-only o-side landed: claim extension was never owed — 181→120 rows",
@@ -7521,6 +7576,25 @@
       "relevance": "critical",
       "observed_at": "2026-11-02T10:11:17.882Z",
       "source_context": "User challenged the two-beyonds o-side with the offering-only Row constructor",
+      "created": "2026-11-02",
+      "updated": "2026-11-02"
+    },
+    "sources/obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn": {
+      "type": "source",
+      "title": "Observation: _trace extracted to dev/dialogue/trace.py — model searches, harness narrates",
+      "tags": [
+        "refactor",
+        "trace",
+        "separation",
+        "model",
+        "harness",
+        "diagnostics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn",
+      "relevance": "high",
+      "observed_at": "2026-11-02T12:14:27.802Z",
+      "source_context": "Exploring table-tracing responsibility moved out of model into harness via trace(cog)",
       "created": "2026-11-02",
       "updated": "2026-11-02"
     },

@@ -2,6 +2,10 @@
 
 ## 2026-11-02
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc","title":"Narration separation committed (413eb9c) — model 659 lines, search only"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model","title":"_cover_frame moved to trace.py; audit confirms remaining model surface is semantic"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn","title":"_trace extracted to dev/dialogue/trace.py — model searches, harness narrates"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo","title":"Clock removed, notes in: events list separates model from reporting"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com","title":"Union-fit history removed from doc; offering-only pairing committed"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1","title":"Offering-only o-side landed: claim extension was never owed — 181→120 rows"}
 

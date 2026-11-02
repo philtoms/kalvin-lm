@@ -39,6 +39,7 @@ from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source, path_resolver
 
+from dev.dialogue.trace import trace
 from rationalisation import (
     Domain,
     End,
@@ -143,6 +144,7 @@ class Runner:
         """Present one entry: rationalise, record, discharge, file proposals."""
         kline = _to_kline(value)
         result = self.cogitator.rationalise(kline, goal=goal)
+        result.path = trace(self.cogitator)  # the harness's reading of the run
         steps.append(TrsStep(i, value, kline, result))
         self._discharge(i, kline)  # only proposals from earlier steps answer
         for prop in proposals(result):

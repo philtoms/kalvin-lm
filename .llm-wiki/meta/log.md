@@ -1187,3 +1187,15 @@
 ## [2026-11-02T10:14:33.939Z] observe
 - slug: "obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com", title: "Union-fit history removed from doc; offering-only pairing committed", relevance: "high"
 
+## [2026-11-02T11:57:09.459Z] observe
+- slug: "obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo", title: "Clock removed, notes in: events list separates model from reporting", relevance: "high"
+
+## [2026-11-02T12:14:27.805Z] observe
+- slug: "obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn", title: "_trace extracted to dev/dialogue/trace.py — model searches, harness narrates", relevance: "high"
+
+## [2026-11-02T12:18:38.481Z] observe
+- slug: "obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model", title: "_cover_frame moved to trace.py; audit confirms remaining model surface is semantic", relevance: "high"
+
+## [2026-11-02T12:20:01.431Z] observe
+- slug: "obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc", title: "Narration separation committed (413eb9c) — model 659 lines, search only", relevance: "medium"
+
