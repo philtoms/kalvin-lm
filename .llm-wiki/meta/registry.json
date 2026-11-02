@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-10-31T15:26:03.361Z",
+  "last_updated": "2026-11-02T10:14:34.024Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7227,6 +7227,41 @@
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },
+    "sources/obs-2026-10-31-fix-b-landed-exhaustion-halts-unless-proven-fix-a-rejected-b": {
+      "type": "source",
+      "title": "Observation: Fix B landed (exhaustion halts unless proven); fix A rejected — broke mhall",
+      "tags": [
+        "rationalisation",
+        "soundness",
+        "fix",
+        "exhaustion",
+        "rejected-fix",
+        "scenario-harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-fix-b-landed-exhaustion-halts-unless-proven-fix-a-rejected-b",
+      "relevance": "critical",
+      "observed_at": "2026-10-31T23:05:53.730Z",
+      "source_context": "Implementing fixes A+B for the exhaustion soundness defect",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
+    "sources/obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios": {
+      "type": "source",
+      "title": "Observation: Harness runs multiple ask==goal scenarios",
+      "tags": [
+        "dialogue-dev",
+        "harness",
+        "kscript"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios",
+      "relevance": "high",
+      "observed_at": "2026-10-31T22:54:39.729Z",
+      "source_context": "Modifying the dialogue harness to run multiple ask==goal scenarios",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
     "sources/obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet": {
       "type": "source",
       "title": "Observation: Known resolutions trace as rows — the Object twin surfaces between pair and close",
@@ -7265,6 +7300,23 @@
       "created": "2026-10-31",
       "updated": "2026-10-31"
     },
+    "sources/obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored": {
+      "type": "source",
+      "title": "Observation: Stale trs1 stash still in list; dev/probes gitignored",
+      "tags": [
+        "git",
+        "recovery",
+        "stash",
+        "footgun"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored",
+      "relevance": "medium",
+      "observed_at": "2026-10-31T22:54:48.122Z",
+      "source_context": "Recovering the working tree after an accidental stash pop during harness verification",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
     "sources/obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support": {
       "type": "source",
       "title": "Observation: trs/model.py stripped to Cogitator-only support",
@@ -7299,6 +7351,196 @@
       "source_context": "Answering whether the implementation is still a term rewriting system; writing docs/rationalisation.md",
       "created": "2026-10-31",
       "updated": "2026-10-31"
+    },
+    "sources/obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in": {
+      "type": "source",
+      "title": "Observation: Verifier found exhaustion-grounds-without-evidence defect in _in_path",
+      "tags": [
+        "rationalisation",
+        "soundness",
+        "certificate",
+        "verifier",
+        "bug-found",
+        "determinism"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in",
+      "relevance": "critical",
+      "observed_at": "2026-10-31T16:11:44.181Z",
+      "source_context": "Phase 2: certificate verifier + property tests over the rationalisation model",
+      "created": "2026-10-31",
+      "updated": "2026-10-31"
+    },
+    "sources/obs-2026-11-01-containment-bar-dominates-sig-bar-fix-a-rejection-was-a-b-v1": {
+      "type": "source",
+      "title": "Observation: Containment bar dominates sig-bar — fix-A rejection was a B-v1 confound",
+      "tags": [
+        "rationalisation",
+        "completeness",
+        "in-path",
+        "containment-bar",
+        "churn"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-containment-bar-dominates-sig-bar-fix-a-rejection-was-a-b-v1",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T09:12:55.696Z",
+      "source_context": "Pursuing the measured completeness gap — why relaxing the path bar broke mhall",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene": {
+      "type": "source",
+      "title": "Observation: Existence checker built — refusal prediction banked, completeness gap measured at ~20%",
+      "tags": [
+        "rationalisation",
+        "t4",
+        "completeness",
+        "refusal",
+        "prediction",
+        "existence-checker"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T08:32:49.644Z",
+      "source_context": "Building the T4 certificate existence checker and measuring completeness",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-fit-is-e-candidate-signature-mhall-identical-wdmh-1-honestly": {
+      "type": "source",
+      "title": "Observation: Fit is E × candidate signature — mhall identical, wdmh-1 honestly refuses",
+      "tags": [
+        "ruling",
+        "fit",
+        "signature",
+        "semantics",
+        "correction",
+        "mhall"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-fit-is-e-candidate-signature-mhall-identical-wdmh-1-honestly",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T14:03:12.019Z",
+      "source_context": "Correcting the pairing to E × candidate signature after the user's table reading",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-fit-settled-e-offering-sig-adjacency-both-scripts-ground": {
+      "type": "source",
+      "title": "Observation: Fit settled: E × offering (sig ∪ adjacency) — both scripts ground",
+      "tags": [
+        "ruling",
+        "fit",
+        "offering",
+        "adjacency",
+        "exchange",
+        "s3",
+        "settled"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-fit-settled-e-offering-sig-adjacency-both-scripts-ground",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T14:10:41.702Z",
+      "source_context": "Settling the fit semantics through the wdmh S3 exchange correction",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-": {
+      "type": "source",
+      "title": "Observation: Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair",
+      "tags": [
+        "ruling",
+        "pairing",
+        "claim-fit",
+        "split-beyonds",
+        "fingerprint-removed",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T15:06:20.744Z",
+      "source_context": "Implementing the claim-fit + split-beyonds pairing per the user's ruling",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti": {
+      "type": "source",
+      "title": "Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed",
+      "tags": [
+        "rationalisation",
+        "doc",
+        "kline-make-up",
+        "claim",
+        "construction",
+        "optimisation",
+        "committed"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T22:29:58.981Z",
+      "source_context": "Finishing: doc rewrite with kline make-up roles and the optimisation framing, commit",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci": {
+      "type": "source",
+      "title": "Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work",
+      "tags": [
+        "ruling",
+        "semantics",
+        "signature",
+        "adjacency",
+        "fingerprint",
+        "rationalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci",
+      "relevance": "critical",
+      "observed_at": "2026-11-01T10:00:32.166Z",
+      "source_context": "The user's ruling on signature/adjacency role semantics after the MHSVO frame investigation",
+      "created": "2026-11-01",
+      "updated": "2026-11-01"
+    },
+    "sources/obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1": {
+      "type": "source",
+      "title": "Observation: Offering-only o-side landed: claim extension was never owed — 181→120 rows",
+      "tags": [
+        "ruling",
+        "pairing",
+        "offering",
+        "claim-fit",
+        "simplification",
+        "measurement"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1",
+      "relevance": "critical",
+      "observed_at": "2026-11-02T10:11:17.882Z",
+      "source_context": "User challenged the two-beyonds o-side with the offering-only Row constructor",
+      "created": "2026-11-02",
+      "updated": "2026-11-02"
+    },
+    "sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com": {
+      "type": "source",
+      "title": "Observation: Union-fit history removed from doc; offering-only pairing committed",
+      "tags": [
+        "ruling",
+        "offering",
+        "doc",
+        "committed",
+        "pairing-final"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com",
+      "relevance": "high",
+      "observed_at": "2026-11-02T10:14:33.938Z",
+      "source_context": "Removing the union-shape section and committing the offering-only pairing",
+      "created": "2026-11-02",
+      "updated": "2026-11-02"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

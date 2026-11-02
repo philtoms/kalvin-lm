@@ -7,7 +7,7 @@ updated: 2026-10-30
 
 # Rationalisation rules
 
-Rules established while rewriting `Cogitator.rationalise` (src/trs/model.py), tuned against mhall.ks and wdmh.ks. Simple language; the source is the truth.
+Rules established while rewriting `Cogitator.rationalise` (src/rationalisation/model.py), tuned against mhall.ks and wdmh.ks. Simple language; the source is the truth.
 
 ## The opening
 
@@ -26,7 +26,7 @@ Rules established while rewriting `Cogitator.rationalise` (src/trs/model.py), tu
 7. All framing is on-path. Exactly two rules frame:
    - **F = E** — the candidate covers the entry, so the fit frames.
    - **U = O, stalled** — two stalled reentries with the same content witness each other (the exchange) and the shared content frames jointly.
-   Nothing else frames. The global frame pool is the learning record (stores), never an input to resolution.
+     Nothing else frames. The global frame pool is the learning record (stores), never an input to resolution.
 8. A frame covers a side only when a **proper ancestor** produced it. A reentry's own pairings never frame its own sides (no self-satisfaction through sibling rows).
 
 ## Resolution
@@ -58,7 +58,6 @@ Rules established while rewriting `Cogitator.rationalise` (src/trs/model.py), tu
 
 - wdmh's WDH row: the fit `what` frames nowhere — honest under rule 9 (the pairing is the agreement).
 - wdmh's HALL row: the `reenter ALL` side closes invisibly — the ⟨ALL⟩ reentry is already known on an ancestor's frame (rule 21 + rule 8).
-
 
 ## The table-alignment resync (2026-10-30, later session)
 

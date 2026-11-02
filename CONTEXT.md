@@ -7,10 +7,10 @@ Kalvin is a rationalising system whose entire world is built from klines. This g
 The objective shape of a kline and the claim that shape makes on its own — no model, no observer.
 
 **KLine**:
-The fundamental unit of the domain and the unit the model rationalises: a nonzero **signature** paired with an **adjacency** set of nodes — a claim that the signature is the composition of the nodes.
+The fundamental unit of the domain and the unit the model rationalises: a nonzero **signature** (the claim) paired with an **adjacency** set of nodes (the construction — references to other klines' signatures); a canon is a claim exactly fulfilled by its construction (docs/rationalisation.md §1).
 
 **Signature**:
-The value in a kline's head position — the claim its nodes compose to, and what other klines hold as a node.
+The value in a kline's head position — the claim: what the kline asserts itself to be, and what other klines hold as a node. A signature alone is a kline that has not been formally constructed; signatures prime candidates and fit pairings (docs/rationalisation.md §2.3).
 _Avoid_: head (positional name for the same thing)
 
 **Node**:
@@ -76,17 +76,14 @@ One run of the model: an entry (with its goal) paired against the held domain, i
 **Cogitator**:
 The search that runs a rationalisation — the reentry stack, its pairings, frames and resolutions (docs/rationalisation.md §2.2).
 
-**Side**:
-A kline's full content — its signature composed with its adjacency; every pairing is between sides.
-
 **Row**:
 One pairing of an entry against a candidate — fit, underfit, overfit, and its fate; an event, never a value.
 
 **Reentry**:
-A residual region re-entered as a fresh entry, remembering the row and side it came from.
+An unconstructed kline — a signature reentered as a fresh entry, remembering the row and side it came from.
 
 **Frame**:
-Covered content the run holds evidence for — earned when a candidate covers an entry's whole side, or joint from an exchange; frames settle the regions they cover.
+Covered content the run holds evidence for — earned when a candidate's claim covers the entry signature, or joint from an exchange; every frame is a signature, and frames settle the regions they cover.
 
 **Stall**:
 A reentry with no candidates at all — the S4 halt; two stalls on one value can exchange.
@@ -96,6 +93,9 @@ Two stalled reentries on the same value witnessing each other — both resolve, 
 
 **Claim**:
 The grounded outcome of an ask run — ⟨ask, {goal}⟩, stored when the opening pairing resolves.
+
+**Fingerprint**:
+A kline's identity for loop control — `sig | can(adj)`; never content: never fitted against, never minted, never reentered (docs/rationalisation.md §1).
 
 **Domain**:
 The insertion-ordered set of held klines — the model's memory; it only grows, and the first-stored canon per signature is its witness index.

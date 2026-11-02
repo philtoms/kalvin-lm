@@ -30,7 +30,7 @@ Encoding rules:
   - Signature → the encoded word value, or the registered compound
     signature for compound refs/defs.
   - Labels: a compound signature carries the '|'-composition of its
-    component labels — the content label the trs model's meet/residue
+    component labels — the content label the model's meet/residue
     read. Authored identifiers live in the ``_compound_sigs`` registry
     and ``KDbg.label``.
   - Nodes → each encoded individually via ``_encode_word``.

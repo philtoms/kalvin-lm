@@ -1,7 +1,26 @@
 # Wiki Update Log
 
+## 2026-11-02
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com","title":"Union-fit history removed from doc; offering-only pairing committed"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1","title":"Offering-only o-side landed: claim extension was never owed — 181→120 rows"}
+
+## 2026-11-01
+
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti","title":"Rules doc rewritten: claim/construction make-up, union as optimisation — committed"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-","title":"Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-01-fit-settled-e-offering-sig-adjacency-both-scripts-ground","title":"Fit settled: E × offering (sig ∪ adjacency) — both scripts ground"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-01-fit-is-e-candidate-signature-mhall-identical-wdmh-1-honestly","title":"Fit is E × candidate signature — mhall identical, wdmh-1 honestly refuses"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci","title":"Ruling: signatures prime, fingerprints control loops, adjacencies do the work"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-01-containment-bar-dominates-sig-bar-fix-a-rejection-was-a-b-v1","title":"Containment bar dominates sig-bar — fix-A rejection was a B-v1 confound"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene","title":"Existence checker built — refusal prediction banked, completeness gap measured at ~20%"}
+
 ## 2026-10-31
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-10-31-fix-b-landed-exhaustion-halts-unless-proven-fix-a-rejected-b","title":"Fix B landed (exhaustion halts unless proven); fix A rejected — broke mhall"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored","title":"Stale trs1 stash still in list; dev/probes gitignored"}
+- **observe**: {"relevance":"high","slug":"obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios","title":"Harness runs multiple ask==goal scenarios"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in","title":"Verifier found exhaustion-grounds-without-evidence defect in _in_path"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban","title":"TRS name retired — rationalisation rules doc written, T1–T3 banked"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module","title":"Dialogue harnesses consolidated — TRS-only module"}
 - **observe**: {"relevance":"high","slug":"obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet","title":"Known resolutions trace as rows — the Object twin surfaces between pair and close"}

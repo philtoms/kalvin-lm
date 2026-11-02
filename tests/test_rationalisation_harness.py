@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fractions import Fraction
 
-from dev.dialogue.harness import Pending, TrsRunner, _to_kline
+from dev.dialogue.harness import Pending, Runner, _to_kline
 from rationalisation import Domain, Kline, can, effort
 
 
@@ -22,13 +22,13 @@ MHALL == SVO =>
 
 def test_scripts_run_and_store():
     # Every run is an ask==goal run: two steps, everything else primes.
-    runner = TrsRunner()
+    runner = Runner()
     steps = runner.run(SCRIPT)
     assert len(steps) == 2
 
 
 def test_the_two_entries_are_goal_then_ask():
-    runner = TrsRunner()
+    runner = Runner()
     steps = runner.run(SCRIPT)
     assert len(steps[0].kline.adj) == 3  # the goal canon: Subject, Verb, Object
     assert len(steps[1].kline.adj) == 5  # the MHALL ask: the full sentence
@@ -37,7 +37,7 @@ def test_the_two_entries_are_goal_then_ask():
 
 
 def test_a_script_without_an_ask_is_rejected():
-    runner = TrsRunner()
+    runner = Runner()
     try:
         runner.run("(nothing to ask)")
     except ValueError as exc:
@@ -47,7 +47,7 @@ def test_a_script_without_an_ask_is_rejected():
 
 
 def test_proposal_discharge_is_by_a_later_entry():
-    runner = TrsRunner()
+    runner = Runner()
     runner.domain = Domain([Kline(1, frozenset([1]))])  # seed the substrate
     runner._discharge(0, Kline(1, frozenset([2])))  # step 0 presents, raises
     p = Pending.__new__(Pending)  # a proposal raised at step 0, target 4
@@ -64,7 +64,7 @@ def test_proposal_discharge_is_by_a_later_entry():
 
 
 def test_compiled_entry_maps_to_a_kline():
-    runner = TrsRunner()
+    runner = Runner()
     steps = runner.run(SCRIPT)
     entry = steps[0]
     assert entry.kline.adj  # the compiled nodes carried over

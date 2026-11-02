@@ -192,15 +192,6 @@ def effort(k: Kline, beta: Fraction = BETA) -> Fraction:
 
 # --- §5 — reentry: the rationalisation runner ---
 
-def side(k: Kline) -> KNode:
-    """The full content of a kline — its signature composed with its adjacency."""
-    sig = k.sig if isinstance(k.sig, KNode) else KNode(int(k.sig))
-    if any(not isinstance(n, KNode) for n in k.adj):  # bare ints — the word-bit substrate
-        adj = frozenset(KNode(int(n)) for n in k.adj)
-        return sig.merge(can(adj))
-    return sig.merge(can(k.adj))
-
-
 @dataclass(eq=False)
 class Row:
     """One reentry pairing. The candidate's content decomposes against the
@@ -399,7 +390,8 @@ class Cogitator:
         grounds itself."""
         if not region:
             return True
-        if any(ch.side == side and ch.resolved for ch in row.children):
+        kids = [ch for ch in row.children if ch.side == side]
+        if kids and all(ch.resolved for ch in kids):
             return True
         if side == "o" and self.d.witness(region):
             return True
@@ -443,7 +435,7 @@ class Cogitator:
         self.clock += 1
         return self.clock
 
-    def _known(self, re_: "_Reentry") -> None:
+    def _known(self, re_: _Reentry) -> None:
         """A reentry resolved without exploring — its region is already
         framed or every candidate is proven. It still traces: a known row,
         so the causality it carries stays visible."""
@@ -478,7 +470,7 @@ class Cogitator:
             if c.sig & k.sig
             and c.adj
             and c.adj != frozenset([c.sig])
-            and side(c) != side(k)  # like for like — the entry never pairs itself
+            and c.fingerprint() != k.sig  # like for like — the candidate offers exactly the entry
             and not self._covered(c.sig)
         ]
         if re_.depth == 1 and self.goal is not None:
@@ -496,29 +488,44 @@ class Cogitator:
             self._exchange(int(k.sig))
             return
         batches: list[list[_Reentry]] = []
-        # for c in sorted(cands, key=lambda c: (0 if meet(side(k), side(c)) == side(k) else 1, mu(side(c)))):
+        turned_away = False  # a candidate refused while the region stood unproven
         for c in cands:
             # closers first — the candidate that frames the whole entry leads
             # (the resolution determinism); then least content — the
             # scaffolding before the canons
+            e = k.sig
+            cs = c.sig
+            proven = (
+                e & cs == e and e in self.frames
+                and self._pre_settled(e & ~cs, re_)
+                and self._pre_settled(residue(can(c.adj), e), re_)
+            )
             if self._in_path(re_, c):
-                continue  # a candidate cannot reappear in the path it was decomposed along
+                # a candidate cannot reappear in the path it was decomposed
+                # along — but a proven one carried its evidence already
+                if not proven:
+                    turned_away = True
+                continue
             if self.claim is not None:
                 break
             fp = (id(re_), k.fingerprint(), c.fingerprint())
             if fp in self.seen:
                 continue  # each reentry is its own path — twins explore their own
-            f = meet(side(k), side(c))
-            if f == side(k) and f in self.frames and self._pre_settled(residue(side(k), side(c)), re_) and self._pre_settled(residue(side(c), side(k)), re_):
+            if proven:
                 continue  # a proven fit with no work left — re-proving adds nothing
             self.seen.add(fp)
             batches.append(self._pair(re_, c))
-        if not batches and not re_.rows and not re_.resolved:
-            # every candidate was barred or already proven — nothing to
-            # explore and nothing to learn: the reentry stands as known
-            self._known(re_)
-            return
         if self.claim is not None:
+            return
+        if not batches and not re_.rows and not re_.resolved:
+            # every candidate was skipped. All proven — the region stands,
+            # nothing to explore, nothing to learn: known. Any turned away
+            # by a path bar — exhaustion is not evidence: the reentry halts
+            # rather than resolve on a policy bar alone.
+            if turned_away:
+                self._halt("exhausted: candidate barred without proof", k)
+                return
+            self._known(re_)
             return
         for batch in reversed(batches):
             # the least candidate's subtree leads — the reductive chain runs to
@@ -539,16 +546,25 @@ class Cogitator:
                 best = f
         return best
 
-    def _pre_settled(self, region: KNode, re_: "_Reentry") -> bool:
+    def _pre_settled(self, region: KNode, re_: _Reentry) -> bool:
         """Would the region settle without children — empty, canonically
         witnessed, or framed by a proper ancestor row."""
         return (not region) or bool(self.d.witness(region)) or self._onpath(region, self._chain(re_))
 
     def _pair(self, re_: _Reentry, c: Kline) -> list[_Reentry]:
         k = re_.kline
-        s_e, s_c = side(k), side(c)
-        f = meet(s_e, s_c)
-        row = Row(re_.depth, k, c, F=f, U=residue(s_e, s_c), O=residue(s_c, s_e), re=re_)
+        e = k.sig
+        cs = c.sig  # the claim
+        ca = can(c.adj)  # the decomposition, composed
+        # the entry meets the claim; the candidate's construction offers
+        # beyond it — the offering is the o-side. The claim's own
+        # extension is not the entry's business: the claim fits, the
+        # construction offers
+        row = Row(
+            re_.depth, k, c,
+            F=meet(e, cs), U=residue(e, cs),
+            O=residue(ca, e), re=re_,
+        )
         row.birth = self._tick()
         if re_.depth == 1 and c == self.goal:
             self.goal_row = row
@@ -557,31 +573,38 @@ class Cogitator:
         self.open_rows.append(row)
         pushed: list[_Reentry] = []
         if not self._side_ok(row, row.O, "o"):
-            ch = self._child(re_.depth + 1, row.O, "o", (n for n in c.adj if contained(n, row.O)), row)
+            ch = self._child(
+                re_.depth + 1, row.O, "o",
+                (n for n in c.adj if contained(n, row.O)), row,
+            )
             if ch is not None:
                 pushed.append(ch)
         if not self._side_ok(row, row.U, "u"):
             ch = self._child(re_.depth + 1, row.U, "u", (n for n in k.adj if contained(n, row.U)), row)
             if ch is not None:
                 pushed.append(ch)
-        row.children = tuple(reversed(pushed))  # U first
+        row.children = tuple(reversed(pushed))  # U first, then the offering
         if self._satisfied(row):
             row.instant = True
             self._resolve(row)  # before the frame mints — the row closes, then its cascade
-        if f == s_e:  # the candidate covers the entry — the fit frames
-            row.frame = f if not row.frame else row.frame.merge(f)
-            self._frame(f, row)
+        if row.F == e:  # E == F — the claim covers the entry
+            row.frame = e if not row.frame else row.frame.merge(e)
+            self._frame(e, row)
         return pushed
 
-    def _in_path(self, re_: "_Reentry", c: Kline) -> bool:
+    def _in_path(self, re_: _Reentry, c: Kline) -> bool:
         """Is the candidate in the reentry's path — the entry path and the
         content flow from the opening pairing down? A candidate must not
-        exist in the entry path: MHALL -> HALL -> MHALL re-derives what the
-        decomposition already established. Beyond that, an o-side child's
-        region came from its parent row's candidate, so that candidate
-        enters its path; a u-side child inherits only the parent's path.
-        A reentry may re-meet its own origin — the candidate it was
-        isolated from — but no other candidate in its strict path."""
+        be an ancestor entry kline: MHALL -> HALL -> MHALL re-derives what
+        the decomposition already established. The comparison is the
+        kline — signature and adjacency together — never the signature
+        alone: a held kline sharing only a signature with an ancestor
+        entry makes a different claim and may pair. Beyond that, an
+        o-side child's region came from its parent row's candidate, so
+        that candidate enters its path; a u-side child inherits only the
+        parent's path. A reentry may re-meet its own origin — the
+        candidate it was isolated from — but no other candidate in its
+        strict path."""
         sig = int(c.sig)
         chain = re_
         while chain is not None:  # the entry path — no candidate may re-derive an ancestor entry

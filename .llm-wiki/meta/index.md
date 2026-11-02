@@ -466,10 +466,23 @@
 - [[sources/obs-2026-10-30-wdmh-proves-candidate-retry-is-necessary-in-path-note-reads-]] — Observation: wdmh proves candidate retry is necessary; in-path note reads as entry-path rule *(created: 2026-10-30)*
 - [[sources/obs-2026-10-31-dialogue-harnesses-consolidated-trs-only-module]] — Observation: Dialogue harnesses consolidated — TRS-only module *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-exchange-guard-challenge-verified-store-rule-kept-feed-visib]] — Observation: Exchange guard challenge verified: store-rule kept, feed-visibility decoupled *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-fix-b-landed-exhaustion-halts-unless-proven-fix-a-rejected-b]] — Observation: Fix B landed (exhaustion halts unless proven); fix A rejected — broke mhall *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-harness-runs-multiple-ask-goal-scenarios]] — Observation: Harness runs multiple ask==goal scenarios *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-known-resolutions-trace-as-rows-the-object-twin-surfaces-bet]] — Observation: Known resolutions trace as rows — the Object twin surfaces between pair and close *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-ruling-s3-exchange-stores-nothing-the-frame-is-the-record]] — Observation: Ruling: S3 exchange stores nothing — the frame is the record *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-stale-trs1-stash-still-in-list-dev-probes-gitignored]] — Observation: Stale trs1 stash still in list; dev/probes gitignored *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-trs-model-py-stripped-to-cogitator-only-support]] — Observation: trs/model.py stripped to Cogitator-only support *(created: 2026-10-31)*
 - [[sources/obs-2026-10-31-trs-name-retired-rationalisation-rules-doc-written-t1-t3-ban]] — Observation: TRS name retired — rationalisation rules doc written, T1–T3 banked *(created: 2026-10-31)*
+- [[sources/obs-2026-10-31-verifier-found-exhaustion-grounds-without-evidence-defect-in]] — Observation: Verifier found exhaustion-grounds-without-evidence defect in _in_path *(created: 2026-10-31)*
+- [[sources/obs-2026-11-01-containment-bar-dominates-sig-bar-fix-a-rejection-was-a-b-v1]] — Observation: Containment bar dominates sig-bar — fix-A rejection was a B-v1 confound *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-existence-checker-built-refusal-prediction-banked-completene]] — Observation: Existence checker built — refusal prediction banked, completeness gap measured at ~20% *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-fit-is-e-candidate-signature-mhall-identical-wdmh-1-honestly]] — Observation: Fit is E × candidate signature — mhall identical, wdmh-1 honestly refuses *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-fit-settled-e-offering-sig-adjacency-both-scripts-ground]] — Observation: Fit settled: E × offering (sig ∪ adjacency) — both scripts ground *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-]] — Observation: Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti]] — Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed *(created: 2026-11-01)*
+- [[sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci]] — Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work *(created: 2026-11-01)*
+- [[sources/obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1]] — Observation: Offering-only o-side landed: claim extension was never owed — 181→120 rows *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]] — Observation: Union-fit history removed from doc; offering-only pairing committed *(created: 2026-11-02)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -484,4 +497,4 @@
 - [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
 
 ---
-*Last updated: 2026-10-31T15:26:03.361Z* | *Total pages: 469*
+*Last updated: 2026-11-02T10:14:34.024Z* | *Total pages: 482*
