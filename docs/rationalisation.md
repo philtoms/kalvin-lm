@@ -58,6 +58,15 @@ S2 overlap, S3 disjoint — and grades; it never steers the search. The
 
 ## 2. The run
 
+The model's default runner is the **Cogitator**
+(`src/rationalisation/cogitator.py`) — the simple reentry loop:
+an entry's signature meets held claims, its underfit and offering
+residuals reenter as fresh entries, pairings ground when both sides
+resolve, stalls wait for an exchange witness. §2.1–§2.3 below describe
+the **ReferenceCogitator** (`src/rationalisation/model.py`), retained
+unchanged as the baseline for comparison; its guarantees (§3) are
+measured against it.
+
 ### 2.1 The harness configuration
 
 A script compiles to entries. The harness (`dev/dialogue/harness.py`)
@@ -72,7 +81,7 @@ knowledge.
 
 ### 2.2 The machine's state
 
-One `Cogitator` per rationalisation: an `agenda` (a LIFO stack of
+One `ReferenceCogitator` per rationalisation: an `agenda` (a LIFO stack of
 **reentries**), `rows` (every pairing, in creation order), `open_rows`,
 `frames` (covered content, each with its source row), `stalls`
 (reentries halted at S4, by signature), `seen` (pairing fingerprints,

@@ -48,6 +48,7 @@ from rationalisation import (
     Rationalisation,
     Row,
     Cogitator,
+    ReferenceCogitator,
     band,
     can,
     proposals,
@@ -88,7 +89,7 @@ class Runner:
         self.word_bits: dict[str, int] = {}
         self.pending: list[Pending] = []
         self.stores: list[tuple[int, Kline]] = []  # (step, store)
-        self.cogitator = Cogitator(self.domain)
+        self.cogitator = Cogitator(self.domain)  # the default runner; swap in ReferenceCogitator for the baseline
 
     def run(self, source: str, resolver=None) -> list[TrsStep]:
         """An ask==goal run: every `==` ask with a resolvable goal is one
@@ -144,7 +145,8 @@ class Runner:
         """Present one entry: rationalise, record, discharge, file proposals."""
         kline = _to_kline(value)
         result = self.cogitator.rationalise(kline, goal=goal)
-        result.path = trace(self.cogitator)  # the harness's reading of the run
+        if isinstance(self.cogitator, ReferenceCogitator):
+            result.path = trace(self.cogitator)  # the reference's optimal-path reading
         steps.append(TrsStep(i, value, kline, result))
         self._discharge(i, kline)  # only proposals from earlier steps answer
         for prop in proposals(result):

@@ -17,7 +17,7 @@ import pytest
 
 from hypothesis import given, settings
 
-from rationalisation import Cogitator, Domain, Kline, can
+from rationalisation import ReferenceCogitator, Domain, Kline, can
 from rationalisation.verify import Certificate, Records, verify
 
 
@@ -166,7 +166,7 @@ def test_random_groundings_carry_certificates(d):
     sigs = sorted({k.sig for k in d})
     entry = Kline(sigs[len(sigs) // 2], frozenset([n for n in {k.sig for k in d}][:2]))
     d0 = set(d)
-    cog = Cogitator(d)
+    cog = ReferenceCogitator(d)
     r = cog.rationalise(entry, goal=goal)
     if r.claim is None:
         return
@@ -189,7 +189,7 @@ def test_exhaustion_does_not_ground():
         + [Kline(9, frozenset([1]))]
     )
     d0 = set(d)
-    cog = Cogitator(d)
+    cog = ReferenceCogitator(d)
     entry, goal = Kline(9, frozenset([32, 1])), Kline(1, frozenset([1]))
     r = cog.rationalise(entry, goal=goal)
     assert r.claim is None
@@ -237,5 +237,5 @@ def test_outcome_is_hash_seed_independent():
 def test_corpus_respects_bounds():
     for name, runner, steps in _runs():
         for records in runner.records:
-            assert len(records.rows) <= Cogitator.MAX_ROWS + len(list(runner.domain)), name
-            assert all(row.depth <= Cogitator.MAX_DEPTH + 1 for row in records.rows), name
+            assert len(records.rows) <= ReferenceCogitator.MAX_ROWS + len(list(runner.domain)), name
+            assert all(row.depth <= ReferenceCogitator.MAX_DEPTH + 1 for row in records.rows), name

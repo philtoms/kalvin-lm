@@ -1,0 +1,938 @@
+{
+  "id": "TRJ-2026-11-02-001",
+  "captured": "2026-11-02",
+  "packet_version": "1.0",
+  "prompt": "Implement the user's minimal reentry pseudocode as a probe against the reference Kalvin rationalisation model and see how far it gets",
+  "model": "glm-5.3",
+  "steps": [
+    {
+      "role": "user",
+      "text": "We finally have a reliable reference implementation of the first stage of kalvin rationalisation in @docs/raionalisation.md and @src/rationalisation. This work is impressive and detailed but it has introduced a lot of new terminology that drives conceptual drift.\n\nWe now know that an entry reaches its goal by resolving its candidate underfit and overfit components. To do this at any resolution, it employs a reentry mechanism, the rules of which are quite simple. The following pseudo code won't do everything the reference does but lets implement it as a probe and see how far we get.\n\nrationalise(entry):\n  entries.push(entry.sig, candidates(entry))\n  while entries:\n    E, cands = entries.top()\n    if not cands:\n      frame(E) # stalled\n      continue\n    \n    for C in cands:\n      F, U, O = decompose(E, C)\n      if F==E frame(F) # underfit\n      if framed(U) or U.empty then U_resolved=True else entries.push(U, candidates(U))\n      if framed(O) or O.empty then O_resolved=True else entries.push(O, candidates(O))\n      if framed(F) and U_resolved and O_resolved:\n        ground(E, C)\n        entries.pop()\n        break"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_c4f75aca58144d908e0e54e6",
+          "name": "bash",
+          "arguments": {
+            "command": "ls /Users/phil/dev/ai/kalvin && ls /Users/phil/dev/ai/kalvin/src/rationalisation && ls /Users/phil/dev/ai/kalvin/docs"
+          }
+        },
+        {
+          "id": "call_546bd30dd1ef4bbf88dc9bce",
+          "name": "read",
+          "arguments": {
+            "path": "/Users/phil/dev/ai/kalvin/CONTEXT.md"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_c4f75aca58144d908e0e54e6",
+      "tool_name": "bash",
+      "text": "AGENTS.md\nCONTEXT.md\ncurricula\ndata\ndev\ndocs\npyproject.toml\nREADME.md\nscripts\nskills-lock.json\nsrc\ntest\ntests\ntraining.harness.yaml\nuv.lock\n__init__.py\n__pycache__\nexistence.py\nmodel.py\nverify.py\nattic\nkalvin-vision.md\nrationalisation.md",
+      "is_error": false
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_546bd30dd1ef4bbf88dc9bce",
+      "tool_name": "read",
+      "text": "# Domain Glossary\n\nKalvin is a rationalising system whose entire world is built from klines. This glossary defines the precise meaning of terms used across the code. [docs/rationalisation.md](docs/rationalisation.md) is the rules document for the model and its guarantees; the retired engine algebra ([docs/attic/kalvin-algebra.md](docs/attic/kalvin-algebra.md)) remains as history. This glossary remains normative for KScript compilation, role names, and the training protocol.\n\n## Structure\n\nThe objective shape of a kline and the claim that shape makes on its own — no model, no observer.\n\n**KLine",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_289cadb8a3cc468ca1690faf",
+          "name": "read",
+          "arguments": {
+            "path": "/Users/phil/dev/ai/kalvin/docs/rationalisation.md"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_289cadb8a3cc468ca1690faf",
+      "tool_name": "read",
+      "text": "# Kalvin — the rationalisation model\n\nThe rules of the model in `src/rationalisation/model.py`, where the code is\ntruth and this document is the rules the code implements. It replaces\n`docs/attic/trs-significance.md`, which named the mechanism a term\nrewriting system. It is not one: nothing here locates a redex and\nreplaces it, no rule fires by syntactic match, and termination comes\nfrom bounds. What the mechanism is: **a deterministic, bounded,\ndepth-first search in which unconstructed klines — signatures seeking\nconstruction — meet held klines' claims and receive their offered\ndecompositions",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_09212159d14c4e11ba120159",
+          "name": "read",
+          "arguments": {
+            "path": "/Users/phil/dev/ai/kalvin/src/rationalisation/model.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_09212159d14c4e11ba120159",
+      "tool_name": "read",
+      "text": "\"\"\"The rationalisation model — node algebra, the kline domain, the\ngrading measures, and the Cogitator reentry runner (docs/rationalisation.md).\"\"\"\n\nfrom __future__ import annotations\n\nfrom dataclasses import dataclass, field\nfrom enum import Enum\nfrom fractions import Fraction\n\nfrom kalvin.kline import KNode, KNone\n\n\n# --- §1 Definition 1 — Node algebra (word-bit realisation; ⊥ = 0) ---\n\n\ndef _provenance(x: KNode, y: KNode, op: str) -> str:\n    \"\"\"The label of a value derived from two operands.\"\"\"\n    a, b = getattr(x, \"label\", \"\"), getattr(y, \"label\", \"\")\n    return f\"{a}{op}{b}\" if a and b ",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_8eaf94b3b8bc4384aef8d2de",
+          "name": "read",
+          "arguments": {
+            "path": "/Users/phil/dev/ai/kalvin/.llm-wiki/wiki/sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com.md"
+          }
+        },
+        {
+          "id": "call_9200a215598849b389828369",
+          "name": "read",
+          "arguments": {
+            "path": "/Users/phil/dev/ai/kalvin/.llm-wiki/wiki/sources/obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe.md"
+          }
+        },
+        {
+          "id": "call_a0b1412496414d35a15974ea",
+          "name": "bash",
+          "arguments": {
+            "command": "ls -R /Users/phil/dev/ai/kalvin/dev | head -50; ls /Users/phil/dev/ai/kalvin/src"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_8eaf94b3b8bc4384aef8d2de",
+      "tool_name": "read",
+      "text": "---\ntype: source\ntitle: \"Observation: Union-fit history removed from doc; offering-only pairing committed\"\ntags:\n  - ruling\n  - offering\n  - doc\n  - committed\n  - pairing-final\nstatus: observation\ncreated: 2026-11-02\nupdated: 2026-11-02\nslug: obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com\nrelevance: high\nobserved_at: 2026-11-02T10:14:33.938Z\nsource_context: Removing the union-shape section and committing the offering-only pairing\n---\n\n# ⭐ Observation: Union-fit history removed from doc; offering-only pairing committed\n\nSession closed the pairing arc for good. The o",
+      "is_error": false
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_9200a215598849b389828369",
+      "tool_name": "read",
+      "text": "---\ntype: source\ntitle: \"Observation: Solver reading of Kalvin's operations: temporality and existence proofs\"\ntags:\n  - formalisation\n  - algebra\n  - solver\n  - gst\nstatus: observation\ncreated: 2026-09-02\nupdated: 2026-09-02\nslug: obs-2026-09-02-solver-reading-of-kalvin-s-operations-temporality-and-existe\nrelevance: high\nobserved_at: 2026-09-02T13:38:53.469Z\nsource_context: \"Formalising Kalvin's algebra: temporality and the solver reading of relational operations\"\n---\n\n# ⭐ Observation: Solver reading of Kalvin's operations: temporality and existence proofs\n\nUser refined the symbolic-AI formal",
+      "is_error": false
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_a0b1412496414d35a15974ea",
+      "tool_name": "bash",
+      "text": "__init__.py\n__pycache__\ndialogue\nks\nnlp\nprobes\n\n/Users/phil/dev/ai/kalvin/dev/__pycache__:\n__init__.cpython-310.pyc\n\n/Users/phil/dev/ai/kalvin/dev/dialogue:\n__init__.py\n__pycache__\nharness.py\ntrace.py\n\n/Users/phil/dev/ai/kalvin/dev/dialogue/__pycache__:\n__init__.cpython-310.pyc\nharness.cpython-310.pyc\ntrace.cpython-310.pyc\n\n/Users/phil/dev/ai/kalvin/dev/ks:\nbuild_state.py\ncompile.py\n\n/Users/phil/dev/ai/kalvin/dev/nlp:\ndemo.py\ndownload_corpus.py\nexpand_grammar.py\nnlp_analyzer.py\nNLP_GLOSSARY.md\nREADME.md\nrun_corpus.py\ntag_vocab.py\ntrain_tokenizer.py\n\n/Users/phil/dev/ai/kalvin/dev/probes:\ndump_m",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "The wiki confirms the pairing rules settled recently (o-side = offering only, `O = can(N) ∖ E`). Now let me look at the harness, the kline node type, and how scenarios get built, so the probe can run the same material as the reference.",
+      "tool_calls": [
+        {
+          "id": "call_e30a5a80b1bb4535898a224b",
+          "name": "read",
+          "arguments": {
+            "path": "/Users/phil/dev/ai/kalvin/dev/dialogue/harness.py"
+          }
+        },
+        {
+          "id": "call_90fb0c1ad08549ef9d38c219",
+          "name": "bash",
+          "arguments": {
+            "command": "ls /Users/phil/dev/ai/kalvin/src/kalvin /Users/phil/dev/ai/kalvin/curricula /Users/phil/dev/ai/kalvin/tests /Users/phil/dev/ai/kalvin/test 2>/dev/null"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_e30a5a80b1bb4535898a224b",
+      "tool_name": "read",
+      "text": "\"\"\"The dialogue harness.\n\nA minimal, synchronous, non-judging loop. Compiles a KScript source and\nruns it as a sequence of ask==goal scenarios: every `==` ask whose named\ngoal resolves to a kline entry is one scenario — the ask authored first,\nthe goal answering — and every other kline primes the domain before\nrationalisation. Scenarios run in ask order over one live domain; an\nearlier scenario's stores and proposals persist into the later ones.\nPriming is a\nharness fact, never a model admission: R1 remains the sole way the run\nitself learns. Nothing is checked at presentation; unheld referenc",
+      "is_error": false
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_90fb0c1ad08549ef9d38c219",
+      "tool_name": "bash",
+      "text": "/Users/phil/dev/ai/kalvin/test\n\n/Users/phil/dev/ai/kalvin/curricula:\nfirst-steps.md\n\n/Users/phil/dev/ai/kalvin/src/kalvin:\n__init__.py\n__pycache__\nabstract.py\nbpe_tokenizer.py\ncogitator.py\nderivation.py\nengine.py\nevents.py\nhop.py\nkline.py\nkpath.py\nkvalue.py\nmemory.py\nmod_tokenizer.py\nnlp_tokenizer.py\npaths.py\nrationaliser.py\nsignificance.py\nsignifier.py\ntokenizer.py\nwork_runner.py\n\n/Users/phil/dev/ai/kalvin/tests:\n__init__.py\n__pycache__\n_fixtures\nconftest.py\ntest_ask_marker.py\ntest_derivation_bounds.py\ntest_derivation.py\ntest_gamma.py\ntest_hop.py\ntest_knode_merge.py\ntest_known_words_seed.py\nt",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_554b113ed6ee41d5b7ffaf11",
+          "name": "bash",
+          "arguments": {
+            "command": "ls /Users/phil/dev/ai/kalvin/tests/_fixtures && head -80 /Users/phil/dev/ai/kalvin/tests/test_rationalisation_harness.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_554b113ed6ee41d5b7ffaf11",
+      "tool_name": "bash",
+      "text": "__init__.py\n\"\"\"The dialogue path — the scripted-run hookup (dev/dialogue/harness.py).\"\"\"\n\nfrom __future__ import annotations\n\nfrom fractions import Fraction\n\nfrom dev.dialogue.harness import Pending, Runner, _to_kline\nfrom rationalisation import Domain, Kline, can, effort\n\n\nSCRIPT = \"\"\"\n(Mary had a little lamb)\nMHALL == SVO =>\n   Subject < M\n   Verb < H\n   Object < ALL =>\n     A = Det\n     L = Mod\n     L = O\n\"\"\"\n\n\ndef test_scripts_run_and_store():\n    # Every run is an ask==goal run: two steps, everything else primes.\n    runner = Runner()\n    steps = runner.run(SCRIPT)\n    assert len(steps) =",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_fe0ceda124de441a830f06c2",
+          "name": "bash",
+          "arguments": {
+            "command": "rg -l \"wdmh|WDMH\" /Users/phil/dev/ai/kalvin/tests /Users/phil/dev/ai/kalvin/dev /Users/phil/dev/ai/kalvin/curricula 2>/dev/null; echo ---; rg -rn \"WDMH|MHALL\" /Users/phil/dev/ai/kalvin/tests/test_rationalisation_harness.py | head; echo ---; ls /Users/phil/dev/ai/kalvin/dev/probes/"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_fe0ceda124de441a830f06c2",
+      "tool_name": "bash",
+      "text": "/Users/phil/dev/ai/kalvin/tests/test_hop.py\n/Users/phil/dev/ai/kalvin/tests/test_derivation.py\n/Users/phil/dev/ai/kalvin/tests/test_known_words_seed.py\n/Users/phil/dev/ai/kalvin/dev/probes/probe_coverage_rule.py\n/Users/phil/dev/ai/kalvin/tests/test_ask_marker.py\n/Users/phil/dev/ai/kalvin/tests/test_ks_case_rule.py\n/Users/phil/dev/ai/kalvin/dev/probes/probe_wdmh_goals.py\n/Users/phil/dev/ai/kalvin/dev/probes/probe_ask_fate.py\n/Users/phil/dev/ai/kalvin/dev/probes/dump_wdmh_entries.py\n/Users/phil/dev/ai/kalvin/dev/probes/probe_coverage_b.py\n/Users/phil/dev/ai/kalvin/dev/probes/probe_wdmh_ask_sig.p",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_9723ad01a7824891998bc8eb",
+          "name": "bash",
+          "arguments": {
+            "command": "rg -l \"what.*did|What did\" /Users/phil/dev/ai/kalvin/dev/probes/*.py | head -5; echo ---; sed -n 1,60p /Users/phil/dev/ai/kalvin/dev/probes/probe_two_scenarios.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_9723ad01a7824891998bc8eb",
+      "tool_name": "bash",
+      "text": "/Users/phil/dev/ai/kalvin/dev/probes/probe_ask_sig_blast.py\n/Users/phil/dev/ai/kalvin/dev/probes/probe_wdmh_candidates.py\n/Users/phil/dev/ai/kalvin/dev/probes/probe_two_scenarios.py\n---\n\"\"\"Two `==` asks in one file: both scenarios must run, in ask order.\"\"\"\n\nfrom dev.dialogue.harness import Runner\n\nSRC = \"\"\"\n(Mary had a little lamb) == SVO =>\n   Subject < M\n   Verb < H\n   Object < Query < ALL =>\n     A = Det\n     L = Mod\n     L = O\n\n(what Object)\nW = O\n\n(what did Mary have)\nWDMH == MHALL =>\n  h(ad) => did have\n  ALL = O(bject)\n\"\"\"\n\nrunner = Runner()\nsteps = runner.run(SRC)\nfor s in steps:\n    ",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "I have the full picture. Before writing the probe, let me check a couple of recent probes for conventions and the canonical WDMH script shape.",
+      "tool_calls": [
+        {
+          "id": "call_a31cb15d143541109f2e5e61",
+          "name": "bash",
+          "arguments": {
+            "command": "sed -n 1,40p /Users/phil/dev/ai/kalvin/dev/probes/dump_wdmh_entries.py; echo ═══; sed -n 1,50p /Users/phil/dev/ai/kalvin/dev/probes/probe_wdmh_goals.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_a31cb15d143541109f2e5e61",
+      "tool_name": "bash",
+      "text": "\"\"\"Dump wdmh.ks compiled entries: index, op, goal, label, annotation, sig/nodes.\"\"\"\n\nfrom kalvin.bpe_tokenizer import BPETokenizer\nfrom kalvin.kline import is_ask\nfrom kalvin.signifier import NLPSignifier\nfrom ks.compiler import compile_source, path_resolver\n\ntok = BPETokenizer()\nsig_ = NLPSignifier()\nword_bits: dict[str, int] = {}\nentries = compile_source(\n    open(\"data/scripts/wdmh.ks\").read(),\n    tokenizer=tok, signifier=sig_, dev=True, word_bits=word_bits,\n    resolver=path_resolver(\"data/scripts\"),\n)\nfor i, e in enumerate(entries):\n    d = e.kline.dbg\n    print(f\"{i:3}  op={d.op if d el",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_1e8f03e0782b48e7a8992ad0",
+          "name": "bash",
+          "arguments": {
+            "command": "ls /Users/phil/dev/ai/kalvin/data/scripts/ 2>/dev/null; echo ---; cat /Users/phil/dev/ai/kalvin/data/scripts/wdmh.ks 2>/dev/null; echo ---; ls /Users/phil/dev/ai/kalvin/data"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1e8f03e0782b48e7a8992ad0",
+      "tool_name": "bash",
+      "text": "mhall.ks\nwdmh.ks\n---\nimport mhall\n\n(what Object)\nW = O\n\n(what did Mary have)\nWDMH == MHALL =>\n  h(ad) => did have\n  ALL = O(bject)\n---\ndialogue\nks.md\nnotes.md\nnotes.txt\nscripts\ntokenizer\ntrs.md\ntrs2.md\ntrs3.md\nuser-agent.md",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_805539f55c5346fab610e5e3",
+          "name": "bash",
+          "arguments": {
+            "command": "cat /Users/phil/dev/ai/kalvin/data/scripts/mhall.ks"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_805539f55c5346fab610e5e3",
+      "tool_name": "bash",
+      "text": "(Mary had a little lamb) == SVO =>\n   Subject < M\n   Verb < H\n   Object < Query < ALL =>\n     A = Det\n     L = Mod\n     L = O",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "I have everything I need. Let me first run the reference harness on the canonical scripts to see the baseline behavior I'm comparing the probe against.",
+      "tool_calls": [
+        {
+          "id": "call_8bcacfd9b78f49d1980cc627",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python -m dev.dialogue.harness data/scripts/mhall.ks 2>&1 | head -40"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_8bcacfd9b78f49d1980cc627",
+      "tool_name": "bash",
+      "text": "[Mary had a little lamb]\n── Step 1  S1  SVO:[Subject, Verb, Object] ──\n      stores    SVO:[Subject, Verb, Object]\n── Step 2  S1  MHALL:[Mary, had, a, little, lamb] ──\n      | depth | E(ntry) | C(andidate) | F(it)   | U(nderfit) | O(verfit) | frame       | step                  |\n      |-------|---------|-------------|---------|------------|-----------|-------------|-----------------------|\n      | 1     | MHALL   | SVO         |         | MHALL      | SVO       |             | reenter MHALL         |\n      | 2     | MHALL   | MS:Subject  | Mary    | HALL       | Subject   |             | reen",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_ea6b28f691784699a1892a67",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python -m dev.dialogue.harness data/scripts/wdmh.ks 2>&1 | tail -30; echo ═══; PYTHONPATH=src:. python -m dev.dialogue.harness data/scripts/wdmh.ks 2>&1 | grep -c \"Step\""
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_ea6b28f691784699a1892a67",
+      "tool_name": "bash",
+      "text": "| 1     | MHALL   | SVO         |         | MHALL      | SVO       | MHALL, SVO  | grounded              |\n      stores    MHALL:[SVO]\n      halt      exhausted: candidate barred without proof — Verb:[Verb]  E=0\n      halt      exhausted: candidate barred without proof — Subject:[Subject]  E=0\n      halt      exhausted: candidate barred without proof ×73 (+71 more)\n      halt      stalled at S4: no candidates — DH:[did, have]  E=0\n\n[what did Mary have]\n── Step 3  S1  MHALL:[Mary, had, a, little, lamb] ──\n      stores    MHALL:[Mary, had, a, little, lamb]\n── Step 4  S1  WDMH:[Mary, what, did, h",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "The reference grounds mhall via back-propagation and wdmh via the DH stall-exchange. Now I'll write the probe implementing the pseudocode. The interesting question is whether the simple loop reaches the same groundings without the reference's cascade/exchange machinery.",
+      "tool_calls": [
+        {
+          "id": "call_c2df61379d214cb69842897f",
+          "name": "write",
+          "arguments": {
+            "content": "\"\"\"The simple reentry loop, as pseudocode — a probe against the reference\nCogitator (src/rationalisation/model.py, docs/rationalisation.md §2.3).\n\n    rationalise(entry):\n      entries.push(entry.sig, candidates(entry))\n      while entries:\n        E, cands = entries.top()\n        if not cands:\n          frame(E) # stalled\n          continue\n\n        for C in cands:\n          F, U, O = decompose(E, C)\n          if F==E frame(F) # underfit\n          if framed(U) or U.empty then U_resolved=True else entries.push(U, candidates(U))\n          if framed(O) or O.empty then O_resolved=True else entries.push(O, candidates(O))\n          if framed(F) and U_resolved and O_resolved:\n            ground(E, C)\n            entries.pop()\n            break\n\ndecompose is the reference PAIR (claim fits, construction offers):\nF = E & sigma, U = E & ~sigma, O = can(N) & ~E.  candidates is the\nreference CANDIDATES minus its loop-control machinery (path bar, proven\nskip, seen set): overlap, non-empty adjacency, not an identity, not\nlike-for-like, claim not framed.  framed(x) is covered by containment\n(bot always framed).\n\nCompletions the pseudocode leaves open (C-numbers cited at their site):\n\n  C1  A stalled entry pops — its frame resolved it (else the loop spins\n      on a frame whose cands are fixed at push time).\n  C2  A for-run that grounds nothing and pushes nothing new pops the\n      entry — exhausted.  A run that pushed children leaves the entry\n      on the stack; it re-runs its for loop when they have drained, and\n      framed(U)/framed(O) then read the frames its children minted.\n      (The re-check is stack-local: a frame minted below the entry\n      after it popped cannot save it — the reference's cascade can.)\n  C3  entries.pop() after ground removes the grounding entry itself;\n      children pushed by earlier candidates stay (independent batches).\n  C4  ground(E, C) frames E — the parent's framed(U) reads resolutions\n      as frames, so a grounding must mint one (the stall branch does).\n  C5  Each signature enters the stack at most once; a blocked re-push\n      leaves that side unresolved (termination; regions live in the\n      finite algebra the domain generates).\n  C6  The opening entry pairs the goal alone (the reference's depth-1\n      rule); grounding it stores the claim Kline(ask, {goal}) and stops\n      the run (the reference's CLAIM rule).  Inner groundings record\n      and pop only.\n  C7  MAX_DEPTH = 10 — a push past the bound leaves the side unresolved.\n\nNo exchange: a stall frames itself on arrival (the reference demands\ntwo stalls as mutual witnesses).  No o-side witness settle: the probe\nre-derives what a held canon already composes.  Both are recoverable\nstructure, not added rules — see the run notes.\n\nRun:  PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py [script.ks ...]\n\"\"\"\n\nfrom __future__ import annotations\n\nimport sys\nfrom dataclasses import dataclass, field\n\nsys.path.insert(0, \"src\")\nsys.path.insert(0, \".\")\n\nfrom dev.dialogue.harness import Runner, TrsStep, _sig_to_label, _tlabel, _to_kline, WORD_MASK\nfrom ks.compiler import path_resolver\nfrom rationalisation import Domain, Kline, can\n\nMAX_DEPTH = 10\nCAP = 100_000\n\n\n@dataclass\nclass ProbeRun:\n    \"\"\"One probe rationalisation — the loop's report.\"\"\"\n\n    entry: Kline\n    goal: Kline | None = None\n    claim: Kline | None = None\n    store: Kline | None = None  # S1 on receipt — a boundary rule, not the loop\n    halted: str | None = None\n    frames: list[int] = field(default_factory=list)\n    stalls: list[int] = field(default_factory=list)\n    groundings: list[tuple[int, int]] = field(default_factory=list)  # (E, sigma_C)\n    pairings: int = 0\n    iterations: int = 0\n    log: list[tuple] = field(default_factory=list)  # (kind, depth, E, C, note)\n\n\ndef candidates(d: Domain, e: int, frames: list[int]) -> list[Kline]:\n    \"\"\"The reference CANDIDATES minus loop control, in insertion order.\"\"\"\n    covered = lambda x: any(x & f == x for f in frames)\n    return [\n        c\n        for c in d\n        if int(c.sig) & e  # overlap — no-neighbours never pairs\n        and c.adj  # a bare signature offers no construction\n        and c.adj != frozenset([c.sig])  # an identity is not a partner\n        and c.fingerprint() != e  # like for like\n        and not covered(int(c.sig))  # a covered signature has nothing to teach\n    ]\n\n\ndef simple_rationalise(d: Domain, entry: Kline, goal: Kline | None = None) -> ProbeRun:\n    run = ProbeRun(entry=entry, goal=goal)\n\n    if goal is None:  # the boundary rules, borrowed from the reference preamble\n        if not entry.adj:\n            run.halted = \"R4: no adjacency\"\n            return run\n        if entry.sig == can(entry.adj):\n            run.store = entry\n            d.add(entry)\n            return run\n\n    frames: list[int] = []\n    stack: list[list] = []  # [sig, cands, depth] — cands fixed at push (C5 context)\n    pushed: set[int] = set()\n\n    def framed(x: int) -> bool:\n        return not x or any(x & f == x for f in frames)\n\n    def mint(x: int) -> None:\n        if x and x not in frames:\n            frames.append(x)\n\n    def push(sig: int, depth: int) -> None:  # C5: each signature enters once\n        pushed.add(sig)\n        cands = [goal] if depth == 1 and goal is not None else candidates(d, sig, frames)  # C6\n        stack.append([sig, cands, depth])\n        run.log.append((\"push\", depth, sig, None, \"\"))\n\n    push(int(entry.sig), 1)\n\n    while stack:\n        run.iterations += 1\n        if run.iterations > CAP:\n            run.halted = \"iteration cap\"\n            break\n        fr = stack[-1]\n        e, cands, depth = fr\n\n        if not cands:\n            mint(e)  # frame(E) — stalled; no exchange: the stall self-witnesses\n            run.stalls.append(e)\n            run.log.append((\"stall\", depth, e, None, \"\"))\n            stack.pop()  # C1\n            continue\n\n        new_push = False\n        grounded = False\n        for C in cands:\n            run.pairings += 1\n            cs, ca = int(C.sig), int(can(C.adj))\n            F, U, O = e & cs, e & ~cs, ca & ~e  # decompose — the reference PAIR\n            if F == e:\n                mint(F)\n            U_res = framed(U)\n            if not U_res and U not in pushed and depth < MAX_DEPTH:  # C5, C7\n                push(U, depth + 1)\n                new_push = True\n            O_res = framed(O)\n            if not O_res and O not in pushed and depth < MAX_DEPTH:\n                push(O, depth + 1)\n                new_push = True\n            run.log.append((\"pair\", depth, e, C, f\"F={F:x} U={U:x} O={O:x} {'u✓' if U_res else ''}{'o✓' if O_res else ''}\"))\n            if framed(F) and U_res and O_res:\n                mint(e)  # C4 — the grounding frames its region\n                run.groundings.append((e, cs))\n                run.log.append((\"ground\", depth, e, C, \"\"))\n                stack.remove(fr)  # C3 — the entry itself; its pushed children stay\n                grounded = True\n                break\n\n        if grounded:\n            if depth == 1:  # C6 — the opening pairing resolved: the claim grounds\n                run.claim = Kline(entry.sig, frozenset([goal.sig]))\n                d.add(run.claim)\n                break\n            continue\n        if not new_push:  # C2 — nothing left to spawn, nothing settled it\n            run.log.append((\"exhaust\", depth, e, None, \"\"))\n            stack.pop()\n\n    return run\n\n\n# ── The driver: same scenarios, reference vs probe ────────────────────────\n\n\n@dataclass\nclass ProbeStep:\n    index: int\n    label: str\n    op: str\n    run: ProbeRun\n\n\nclass ProbeRunner(Runner):\n    \"\"\"The harness's scenario shape with the simple loop in place of the\n    Cogitator: compile, pair, prime, goal step then ask step, one live domain.\"\"\"\n\n    def probe(self, source: str, resolver=None) -> list[ProbeStep]:\n        entries = self._compile(source, resolver)\n        pairs = self._ask_goal_pairs(entries)\n        paired = {id(e) for pair in pairs for e in pair}\n        for other in entries:\n            if id(other) not in paired:\n                self.domain.add(_to_kline(other))\n        out: list[ProbeStep] = []\n        for ask, goal in pairs:\n            g = _to_kline(goal)\n            out.append(ProbeStep(len(out), g.sig and self._lbl(goal), \"goal\",\n                                 simple_rationalise(self.domain, g)))\n            out.append(ProbeStep(len(out), self._lbl(ask), \"ask\",\n                                 simple_rationalise(self.domain, _to_kline(ask), goal=g)))\n        return out\n\n    def _compile(self, source, resolver):\n        from ks.compiler import compile_source\n        return compile_source(\n            source, tokenizer=self.tokenizer, signifier=self.signifier,\n            dev=True, word_bits=self.word_bits, resolver=resolver,\n        )\n\n    def _lbl(self, value) -> str:\n        d = value.kline.dbg\n        return (d.label if d else \"\") or \"-\"\n\n\ndef _fmt(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:\n    return _tlabel(v, labels, alloc) if v else \"⊥\"\n\n\ndef _claim_str(k: Kline | None, labels, alloc) -> str:\n    if k is None:\n        return \"—\"\n    return f\"{_fmt(int(k.sig), labels, alloc)}:[{_fmt(int(n), labels, alloc) for n in k.adj}]\"\n\n\ndef compare(name: str, source: str, path=None) -> None:\n    resolver = path_resolver(path.parent) if path else None\n    ref = Runner()\n    ref_steps = ref.run(source, resolver=resolver)\n    probe = ProbeRunner()\n    probe_steps = probe.probe(source, resolver=resolver)\n\n    labels = _sig_to_label(source, ref.tokenizer, ref.signifier, ref.word_bits, resolver=resolver)\n    content = {}\n    for sig, label in labels.items():\n        m = int(sig) & WORD_MASK\n        if m and m not in content:\n            content[m] = label\n    labels = {**content, **labels}\n    alloc = {(bit << 32): word for word, bit in ref.word_bits.items()}\n\n    print(f\"\\n══ {name} ══\")\n    agree = True\n    for rs, ps in zip(ref_steps, probe_steps):\n        r, p = rs.result, ps.run\n        r_claim = _claim_str(r.claim, labels, alloc)\n        p_claim = _claim_str(p.claim, labels, alloc)\n        same = (r.claim is None) == (p.claim is None)\n        agree &= same\n        print(f\"  step {rs.index + 1} [{ps.op:<5} {ps.label}]\")\n        print(f\"    ref    claim={r_claim:<22} rows={len(r.rows):<4} \"\n              f\"ends={len(r.ends):<4} stores={len(r.stores)}\")\n        if p.store is not None:\n            print(f\"    probe  store={_claim_str(p.store, labels, alloc)} (S1 on receipt)\")\n        elif p.halted:\n            print(f\"    probe  halted={p.halted}\")\n        else:\n            print(f\"    probe  claim={p_claim:<22} pairs={p.pairings:<4} \"\n                  f\"frames={len(p.frames):<3} stalls={len(p.stalls):<3} \"\n                  f\"grounds={len(p.groundings):<3} iters={p.iterations}  \"\n                  f\"{'✓ agrees' if same else '✗ DIVERGES'}\")\n    verdict = \"all scenarios agree\" if agree else \"DIVERGENCE\"\n    print(f\"  → {verdict}\")\n\n\ndef trace_ask_steps(name: str, source: str, path=None) -> None:\n    \"\"\"The probe's loop trace for the ask steps — how it got there.\"\"\"\n    resolver = path_resolver(path.parent) if path else None\n    probe = ProbeRunner()\n    steps = probe.probe(source, resolver=resolver)\n    labels = _sig_to_label(source, probe.tokenizer, probe.signifier, probe.word_bits, resolver=resolver)\n    content = {}\n    for sig, label in labels.items():\n        m = int(sig) & WORD_MASK\n        if m and m not in content:\n            content[m] = label\n    labels = {**content, **labels}\n    alloc = {(bit << 32): word for word, bit in probe.word_bits.items()}\n\n    print(f\"\\n── {name}: probe trace (ask steps) ──\")\n    for s in steps:\n        if s.op != \"ask\":\n            continue\n        r = s.run\n        print(f\"  ask {s.label} → {'grounded ' + _claim_str(r.claim, labels, alloc) if r.claim else 'ungrounded'}\")\n        for kind, depth, e, C, note in r.log:\n            ce = _fmt(e, labels, alloc)\n            cc = _fmt(int(C.sig), labels, alloc) + (\n                f\":{' '.join(_fmt(int(n), labels, alloc) for n in sorted(C.adj))}\" if C and C.adj else \"\") if C else \"\"\n            print(f\"    {kind:<7} d{depth} {ce:<14} {cc:<24} {note}\")\n\n\nDEFAULTS = [\"data/scripts/mhall.ks\", \"data/scripts/wdmh.ks\"]\n\nif __name__ == \"__main__\":\n    from pathlib import Path\n\n    args = sys.argv[1:]\n    for a in args or DEFAULTS:\n        p = Path(a)\n        compare(p.stem, p.read_text(encoding=\"utf-8\"), path=p)\n        trace_ask_steps(p.stem, p.read_text(encoding=\"utf-8\"), path=p)\n",
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_c2df61379d214cb69842897f",
+      "tool_name": "write",
+      "text": "Successfully wrote 12488 bytes to /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_549c923571604c7a933203f7",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | head -80"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_549c923571604c7a933203f7",
+      "tool_name": "bash",
+      "text": "══ mhall ══\n  step 1 [goal  SVO]\n    ref    claim=—                      rows=0    ends=0    stores=1\n    probe  store=SVO:[<generator object _claim_str.<locals>.<genexpr> at 0x105abccf0>] (S1 on receipt)\n  step 2 [ask   MHALL]\n    ref    claim=MHALL:[<generator object _claim_str.<locals>.<genexpr> at 0x105abcd60>] rows=148  ends=64   stores=1\n    probe  claim=—                      pairs=15   frames=0   stalls=0   grounds=7   iters=11  ✗ DIVERGES\n  → DIVERGENCE\n\n── mhall: probe trace (ask steps) ──\n  ask MHALL → ungrounded\n    push    d1 MHALL                                   \n    push    d2",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "Two findings already: my `_claim_str` has an f-string bug, and — more interestingly — the global pushed-once guard (C5) blocks the MHALL ask from reentering its own underfit (when F=0, U==E). The reference's reentries are per-row fresh (\"twins explore their own\"), so the guard must be per-parent, not global. Let me fix both.",
+      "tool_calls": [
+        {
+          "id": "call_9f9bf65edc12426dbb4bc8ed",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "  C5  A frame pushes each child signature at most once across its\n      for-runs (a blocked re-push leaves that side unresolved —\n      termination); regions are otherwise explored fresh per parent,\n      as the reference's reentries are (\"twins explore their own\").",
+                "oldText": "  C5  Each signature enters the stack at most once; a blocked re-push\n      leaves that side unresolved (termination; regions live in the\n      finite algebra the domain generates)."
+              },
+              {
+                "newText": "    frames: list[int] = []\n    stack: list[list] = []  # [sig, cands, depth, pushed] — cands fixed at push\n\n    def framed(x: int) -> bool:\n        return not x or any(x & f == x for f in frames)\n\n    def mint(x: int) -> None:\n        if x and x not in frames:\n            frames.append(x)\n\n    def push(sig: int, depth: int, memo: set[int]) -> None:\n        memo.add(sig)  # C5 — once per parent, across its for-runs\n        cands = [goal] if depth == 1 and goal is not None else candidates(d, sig, frames)  # C6\n        stack.append([sig, cands, depth, set()])\n        run.log.append((\"push\", depth, sig, None, \"\"))\n\n    push(int(entry.sig), 1, set())",
+                "oldText": "    frames: list[int] = []\n    stack: list[list] = []  # [sig, cands, depth] — cands fixed at push (C5 context)\n    pushed: set[int] = set()\n\n    def framed(x: int) -> bool:\n        return not x or any(x & f == x for f in frames)\n\n    def mint(x: int) -> None:\n        if x and x not in frames:\n            frames.append(x)\n\n    def push(sig: int, depth: int) -> None:  # C5: each signature enters once\n        pushed.add(sig)\n        cands = [goal] if depth == 1 and goal is not None else candidates(d, sig, frames)  # C6\n        stack.append([sig, cands, depth])\n        run.log.append((\"push\", depth, sig, None, \"\"))\n\n    push(int(entry.sig), 1)"
+              },
+              {
+                "newText": "        fr = stack[-1]\n        e, cands, depth, memo = fr",
+                "oldText": "        fr = stack[-1]\n        e, cands, depth = fr"
+              },
+              {
+                "newText": "            U_res = framed(U)\n            if not U_res and U not in memo and depth < MAX_DEPTH:  # C5, C7\n                push(U, depth + 1, memo)\n                new_push = True\n            O_res = framed(O)\n            if not O_res and O not in memo and depth < MAX_DEPTH:\n                push(O, depth + 1, memo)\n                new_push = True",
+                "oldText": "            U_res = framed(U)\n            if not U_res and U not in pushed and depth < MAX_DEPTH:  # C5, C7\n                push(U, depth + 1)\n                new_push = True\n            O_res = framed(O)\n            if not O_res and O not in pushed and depth < MAX_DEPTH:\n                push(O, depth + 1)\n                new_push = True"
+              },
+              {
+                "newText": "def _claim_str(k: Kline | None, labels, alloc) -> str:\n    if k is None:\n        return \"—\"\n    nodes = \" \".join(_fmt(int(n), labels, alloc) for n in sorted(k.adj))\n    return f\"{_fmt(int(k.sig), labels, alloc)}:[{nodes}]\"",
+                "oldText": "def _claim_str(k: Kline | None, labels, alloc) -> str:\n    if k is None:\n        return \"—\"\n    return f\"{_fmt(int(k.sig), labels, alloc)}:[{_fmt(int(n), labels, alloc) for n in k.adj}]\""
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_9f9bf65edc12426dbb4bc8ed",
+      "tool_name": "edit",
+      "text": "Successfully replaced 5 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_ab7bac4645514a5a8c5cbb36",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | sed -n 1,60p"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_ab7bac4645514a5a8c5cbb36",
+      "tool_name": "bash",
+      "text": "══ mhall ══\n  step 1 [goal  SVO]\n    ref    claim=—                      rows=0    ends=0    stores=1\n    probe  store=SVO:[Subject Verb Object] (S1 on receipt)\n  step 2 [ask   MHALL]\n    ref    claim=MHALL:[SVO]            rows=148  ends=64   stores=1\n    probe  claim=MHALL:[SVO]            pairs=84   frames=0   stalls=5   grounds=40  iters=53  ✓ agrees\n  → all scenarios agree\n\n── mhall: probe trace (ask steps) ──\n  ask MHALL → grounded MHALL:[SVO]\n    push    d1 MHALL                                   \n    push    d2 MHALL                                   \n    push    d2 SVO                ",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "The mhall scenario now agrees — the probe grounds `MHALL:[SVO]` with 84 pairings vs the reference's 148 rows. Two reporting bugs: `run.frames` is never populated, and pair log lines should precede their pushes. Let me fix and see the wdmh half.",
+      "tool_calls": [
+        {
+          "id": "call_ab1e0fef12ff45cfa2315b35",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "            U_res = framed(U)\n            run.log.append((\"pair\", depth, e, C, f\"F={F:x} U={U:x} O={O:x} {'u✓' if U_res else ''}{'o✓' if O_res else ''}\"))\n            if not U_res and U not in memo and depth < MAX_DEPTH:  # C5, C7\n                push(U, depth + 1, memo)\n                new_push = True\n            O_res = framed(O)\n            if not O_res and O not in memo and depth < MAX_DEPTH:\n                push(O, depth + 1, memo)\n                new_push = True",
+                "oldText": "            U_res = framed(U)\n            if not U_res and U not in memo and depth < MAX_DEPTH:  # C5, C7\n                push(U, depth + 1, memo)\n                new_push = True\n            O_res = framed(O)\n            if not O_res and O not in memo and depth < MAX_DEPTH:\n                push(O, depth + 1, memo)\n                new_push = True\n            run.log.append((\"pair\", depth, e, C, f\"F={F:x} U={U:x} O={O:x} {'u✓' if U_res else ''}{'o✓' if O_res else ''}\"))"
+              },
+              {
+                "newText": "        if not new_push:  # C2 — nothing left to spawn, nothing settled it\n            run.log.append((\"exhaust\", depth, e, None, \"\"))\n            stack.pop()\n\n    run.frames = frames\n    return run",
+                "oldText": "        if not new_push:  # C2 — nothing left to spawn, nothing settled it\n            run.log.append((\"exhaust\", depth, e, None, \"\"))\n            stack.pop()\n\n    return run"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_ab1e0fef12ff45cfa2315b35",
+      "tool_name": "edit",
+      "text": "Successfully replaced 2 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_3fff90ad127d469f8b623e43",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | sed -n 1,12p; PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | sed -n '/══ wdmh/,/all scenarios\\|DIVERGENCE/p' | head -14"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_3fff90ad127d469f8b623e43",
+      "tool_name": "bash",
+      "text": "Traceback (most recent call last):\n  File \"/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py\", line 321, in <module>\n    compare(p.stem, p.read_text(encoding=\"utf-8\"), path=p)\n  File \"/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py\", line 251, in compare\n    probe_steps = probe.probe(source, resolver=resolver)\n  File \"/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py\", line 220, in probe\n    simple_rationalise(self.domain, _to_kline(ask), goal=g)))\n  File \"/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py\", line 162, in simple_rationalise\n    run.l",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_04ca36b2582146e9a0e424dc",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "            U_res = framed(U)\n            O_res = framed(O)\n            run.log.append((\"pair\", depth, e, C, f\"F={F:x} U={U:x} O={O:x} {'u✓' if U_res else ''}{'o✓' if O_res else ''}\"))\n            if not U_res and U not in memo and depth < MAX_DEPTH:  # C5, C7\n                push(U, depth + 1, memo)\n                new_push = True\n            if not O_res and O not in memo and depth < MAX_DEPTH:\n                push(O, depth + 1, memo)\n                new_push = True",
+                "oldText": "            U_res = framed(U)\n            run.log.append((\"pair\", depth, e, C, f\"F={F:x} U={U:x} O={O:x} {'u✓' if U_res else ''}{'o✓' if O_res else ''}\"))\n            if not U_res and U not in memo and depth < MAX_DEPTH:  # C5, C7\n                push(U, depth + 1, memo)\n                new_push = True\n            O_res = framed(O)\n            if not O_res and O not in memo and depth < MAX_DEPTH:\n                push(O, depth + 1, memo)\n                new_push = True"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_04ca36b2582146e9a0e424dc",
+      "tool_name": "edit",
+      "text": "Successfully replaced 1 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_a3254e1460c64554887ad3b2",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | grep -E \"══|step|ref |probe |→|ask .* →\""
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_a3254e1460c64554887ad3b2",
+      "tool_name": "bash",
+      "text": "══ mhall ══\n  step 1 [goal  SVO]\n    ref    claim=—                      rows=0    ends=0    stores=1\n    probe  store=SVO:[Subject Verb Object] (S1 on receipt)\n  step 2 [ask   MHALL]\n    ref    claim=MHALL:[SVO]            rows=148  ends=64   stores=1\n    probe  claim=MHALL:[SVO]            pairs=84   frames=37  stalls=5   grounds=40  iters=53  ✓ agrees\n  → all scenarios agree\n── mhall: probe trace (ask steps) ──\n  ask MHALL → grounded MHALL:[SVO]\n══ wdmh ══\n  step 1 [goal  SVO]\n    ref    claim=—                      rows=0    ends=0    stores=1\n    probe  store=SVO:[Subject Verb Object] (S1",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "mhall agrees, but the WDMH ask diverges. Let me see the probe's trace for it.",
+      "tool_calls": [
+        {
+          "id": "call_0a523365402f4fe19b4684fd",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | sed -n '/ask WDMH/,$p'"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_0a523365402f4fe19b4684fd",
+      "tool_name": "bash",
+      "text": "ask WDMH → ungrounded\n    push    d1 WDMH                                    \n    pair    d1 WDMH           MHALL:Mary had a little lamb F=100000000 U=380000000000 O=1e00000000 \n    push    d2 WDH                                     \n    push    d2 HALL                                    \n    pair    d2 HALL           HV:Verb                  F=200000000 U=1c00000000 O=4000000000 \n    push    d3 ALL                                     \n    push    d3 Verb                                    \n    pair    d2 HALL           ALLQ:Query               F=1c00000000 U=200000000 O=10000000000 \n    push ",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "Found it — the divergence is precise. At the `WDH × what:Object` pairing: `u✓ o✓` (the DH stall self-framed, Object framed) but no ground, because the pseudocode's ground condition demands `framed(F)` and the fit `what` is never framed. The reference has no such gate — its `_satisfied` comment says \"the fit is the agreement between entry and candidate, not something to prove\". Let me isolate exactly that rule by adding a fit-gate variant to the probe.",
+      "tool_calls": [
+        {
+          "id": "call_fe4260ac162d40faa58b1afa",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "def simple_rationalise(\n    d: Domain, entry: Kline, goal: Kline | None = None, fit_gate: str = \"framed\"\n) -> ProbeRun:\n    \"\"\"fit_gate=\"framed\" is the pseudocode as written (grounding gates on\n    framed(F)); \"free\" drops the gate — the reference's position that the\n    fit is agreement, not proof (the F==E mint still fires).\"\"\"\n    run = ProbeRun(entry=entry, goal=goal)",
+                "oldText": "def simple_rationalise(d: Domain, entry: Kline, goal: Kline | None = None) -> ProbeRun:\n    run = ProbeRun(entry=entry, goal=goal)"
+              },
+              {
+                "newText": "            if framed(F) and U_res and O_res or fit_gate == \"free\" and U_res and O_res:",
+                "oldText": "            if framed(F) and U_res and O_res:"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_fe4260ac162d40faa58b1afa",
+      "tool_name": "edit",
+      "text": "Successfully replaced 2 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_10bee0b774e0451d934d715c",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "            U_res = framed(U)\n            O_res = framed(O)\n            note = f\"F={F:x} U={U:x} O={O:x} \" + (\n                (\"\" if framed(F) else \"F✗ \") + (\"u✓\" if U_res else \"\") + (\"o✓\" if O_res else \"\"))\n            run.log.append((\"pair\", depth, e, C, note))",
+                "oldText": "            U_res = framed(U)\n            O_res = framed(O)\n            run.log.append((\"pair\", depth, e, C, f\"F={F:x} U={U:x} O={O:x} {'u✓' if U_res else ''}{'o✓' if O_res else ''}\"))"
+              },
+              {
+                "newText": "    def probe(self, source: str, resolver=None, fit_gate: str = \"framed\") -> list[ProbeStep]:\n        entries = self._compile(source, resolver)\n        pairs = self._ask_goal_pairs(entries)\n        paired = {id(e) for pair in pairs for e in pair}\n        for other in entries:\n            if id(other) not in paired:\n                self.domain.add(_to_kline(other))\n        out: list[ProbeStep] = []\n        for ask, goal in pairs:\n            g = _to_kline(goal)\n            out.append(ProbeStep(len(out), g.sig and self._lbl(goal), \"goal\",\n                                 simple_rationalise(self.domain, g, fit_gate=fit_gate)))\n            out.append(ProbeStep(len(out), self._lbl(ask), \"ask\",\n                                 simple_rationalise(self.domain, _to_kline(ask), goal=g, fit_gate=fit_gate)))\n        return out",
+                "oldText": "    def probe(self, source: str, resolver=None) -> list[ProbeStep]:\n        entries = self._compile(source, resolver)\n        pairs = self._ask_goal_pairs(entries)\n        paired = {id(e) for pair in pairs for e in pair}\n        for other in entries:\n            if id(other) not in paired:\n                self.domain.add(_to_kline(other))\n        out: list[ProbeStep] = []\n        for ask, goal in pairs:\n            g = _to_kline(goal)\n            out.append(ProbeStep(len(out), g.sig and self._lbl(goal), \"goal\",\n                                 simple_rationalise(self.domain, g)))\n            out.append(ProbeStep(len(out), self._lbl(ask), \"ask\",\n                                 simple_rationalise(self.domain, _to_kline(ask), goal=g)))\n        return out"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_10bee0b774e0451d934d715c",
+      "tool_name": "edit",
+      "text": "Successfully replaced 2 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "Now the driver, to run both gates side by side:",
+      "tool_calls": [
+        {
+          "id": "call_4f8c8245f26e4aa2aba6fd32",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "def compare(name: str, source: str, path=None) -> None:\n    resolver = path_resolver(path.parent) if path else None\n    ref = Runner()\n    ref_steps = ref.run(source, resolver=resolver)\n    runs = {gate: ProbeRunner().probe(source, resolver=resolver, fit_gate=gate)\n            for gate in (\"framed\", \"free\")}\n\n    labels = _sig_to_label(source, ref.tokenizer, ref.signifier, ref.word_bits, resolver=resolver)\n    content = {}\n    for sig, label in labels.items():\n        m = int(sig) & WORD_MASK\n        if m and m not in content:\n            content[m] = label\n    labels = {**content, **labels}\n    alloc = {(bit << 32): word for word, bit in ref.word_bits.items()}\n\n    print(f\"\\n══ {name} ══\")\n    for rs in ref_steps:\n        r = rs.result\n        print(f\"  step {rs.index + 1}\")\n        line = f\"    ref          claim={_claim_str(r.claim, labels, alloc):<18} rows={len(r.rows):<4} ends={len(r.ends):<4}\"\n        for gate, steps in runs.items():\n            p = steps[rs.index].run\n            if p.store is not None:\n                line += f\"   [{gate}] store(S1)\"\n            elif p.halted:\n                line += f\"   [{gate}] {p.halted}\"\n            else:\n                line += (f\"   [{gate}] claim={_claim_str(p.claim, labels, alloc):<18}\"\n                         f\" pairs={p.pairings} stalls={len(p.stalls)} grounds={len(p.groundings)}\")\n        print(line)\n        asks = [steps[rs.index].run for steps in runs.values()]\n        if all(a.claim is not None for a in asks) or r.claim is not None:\n            v = \"✓ both gates agree with ref\" if all(\n                (a.claim is None) == (r.claim is None) for a in asks\n            ) else \"✗ DIVERGES: \" + \", \".join(\n                f\"{g}={'claim' if a.claim else 'no claim'}\" for (g, _), a in zip(runs.items(), asks)\n            ) + f\" (ref={'claim' if r.claim else 'no claim'})\"\n            print(f\"      {v}\")",
+                "oldText": "def compare(name: str, source: str, path=None) -> None:\n    resolver = path_resolver(path.parent) if path else None\n    ref = Runner()\n    ref_steps = ref.run(source, resolver=resolver)\n    probe = ProbeRunner()\n    probe_steps = probe.probe(source, resolver=resolver)\n\n    labels = _sig_to_label(source, ref.tokenizer, ref.signifier, ref.word_bits, resolver=resolver)\n    content = {}\n    for sig, label in labels.items():\n        m = int(sig) & WORD_MASK\n        if m and m not in content:\n            content[m] = label\n    labels = {**content, **labels}\n    alloc = {(bit << 32): word for word, bit in ref.word_bits.items()}\n\n    print(f\"\\n══ {name} ══\")\n    agree = True\n    for rs, ps in zip(ref_steps, probe_steps):\n        r, p = rs.result, ps.run\n        r_claim = _claim_str(r.claim, labels, alloc)\n        p_claim = _claim_str(p.claim, labels, alloc)\n        same = (r.claim is None) == (p.claim is None)\n        agree &= same\n        print(f\"  step {rs.index + 1} [{ps.op:<5} {ps.label}]\")\n        print(f\"    ref    claim={r_claim:<22} rows={len(r.rows):<4} \"\n              f\"ends={len(r.ends):<4} stores={len(r.stores)}\")\n        if p.store is not None:\n            print(f\"    probe  store={_claim_str(p.store, labels, alloc)} (S1 on receipt)\")\n        elif p.halted:\n            print(f\"    probe  halted={p.halted}\")\n        else:\n            print(f\"    probe  claim={p_claim:<22} pairs={p.pairings:<4} \"\n                  f\"frames={len(p.frames):<3} stalls={len(p.stalls):<3} \"\n                  f\"grounds={len(p.groundings):<3} iters={p.iterations}  \"\n                  f\"{'✓ agrees' if same else '✗ DIVERGES'}\")\n    verdict = \"all scenarios agree\" if agree else \"DIVERGENCE\"\n    print(f\"  → {verdict}\")"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_4f8c8245f26e4aa2aba6fd32",
+      "tool_name": "edit",
+      "text": "Successfully replaced 1 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_afd7d2c7c9c641d8a4e8e5dd",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | grep -E \"══|step|ref |✓|✗|ask .* →\""
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_afd7d2c7c9c641d8a4e8e5dd",
+      "tool_name": "bash",
+      "text": "══ mhall ══\n  step 1\n    ref          claim=—                  rows=0    ends=0      [framed] store(S1)   [free] store(S1)\n  step 2\n    ref          claim=MHALL:[SVO]        rows=148  ends=64     [framed] claim=MHALL:[SVO]        pairs=84 stalls=5 grounds=40   [free] claim=MHALL:[SVO]        pairs=76 stalls=5 grounds=39\n      ✓ both gates agree with ref\n── mhall: probe trace (ask steps) ──\n  ask MHALL → grounded MHALL:[SVO]\n    pair    d2 SVO            MS:Subject               F=2000000000 U=c000000000 O=0 F✗ o✓\n    pair    d2 SVO            HV:Verb                  F=4000000000 U=a000000000 ",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "Crisp result. The as-written pseudocode grounds mhall but fails wdmh at exactly one gate; the trace shows the blocking row (`WDH × what:Object`: `u✓o✓ F✗`). Let me make the driver also trace the `free` gate when a divergence occurs, so the grounding path is visible for comparison.",
+      "tool_calls": [
+        {
+          "id": "call_0ccb1d00f7b44203af228927",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "def compare(name: str, source: str, path=None) -> bool:\n    \"\"\"Print the comparison; return True when every gate agrees with the ref.\"\"\"",
+                "oldText": "def compare(name: str, source: str, path=None) -> None:"
+              },
+              {
+                "newText": "        asks = [steps[rs.index].run for steps in runs.values()]\n        ok = all((a.claim is None) == (r.claim is None) for a in asks)\n        if ok:\n            print(\"      ✓ both gates agree with ref\")\n            return True\n        print(\"✗ DIVERGES: \" + \", \".join(\n            f\"{g}={'claim' if a.claim else 'no claim'}\" for (g, _), a in zip(runs.items(), asks)\n        ) + f\" (ref={'claim' if r.claim else 'no claim'})\")\n        return False",
+                "oldText": "        asks = [steps[rs.index].run for steps in runs.values()]\n        if all(a.claim is not None for a in asks) or r.claim is not None:\n            v = \"✓ both gates agree with ref\" if all(\n                (a.claim is None) == (r.claim is None) for a in asks\n            ) else \"✗ DIVERGES: \" + \", \".join(\n                f\"{g}={'claim' if a.claim else 'no claim'}\" for (g, _), a in zip(runs.items(), asks)\n            ) + f\" (ref={'claim' if r.claim else 'no claim'})\"\n            print(f\"      {v}\")"
+              },
+              {
+                "newText": "def trace_ask_steps(name: str, source: str, path=None, gate: str = \"framed\") -> None:\n    \"\"\"The probe's loop trace for the ask steps — how it got there.\"\"\"\n    resolver = path_resolver(path.parent) if path else None\n    probe = ProbeRunner()\n    steps = probe.probe(source, resolver=resolver, fit_gate=gate)",
+                "oldText": "def trace_ask_steps(name: str, source: str, path=None) -> None:\n    \"\"\"The probe's loop trace for the ask steps — how it got there.\"\"\"\n    resolver = path_resolver(path.parent) if path else None\n    probe = ProbeRunner()\n    steps = probe.probe(source, resolver=resolver)"
+              },
+              {
+                "newText": "    print(f\"\\n── {name}: probe trace, fit_gate={gate} (ask steps) ──\")",
+                "oldText": "    print(f\"\\n── {name}: probe trace (ask steps) ──\")"
+              },
+              {
+                "newText": "    for a in args or DEFAULTS:\n        p = Path(a)\n        src = p.read_text(encoding=\"utf-8\")\n        ok = compare(p.stem, src, path=p)\n        trace_ask_steps(p.stem, src, path=p)\n        if not ok:\n            trace_ask_steps(p.stem, src, path=p, gate=\"free\")",
+                "oldText": "    for a in args or DEFAULTS:\n        p = Path(a)\n        compare(p.stem, p.read_text(encoding=\"utf-8\"), path=p)\n        trace_ask_steps(p.stem, p.read_text(encoding=\"utf-8\"), path=p)"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_0ccb1d00f7b44203af228927",
+      "tool_name": "edit",
+      "text": "Successfully replaced 5 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_6d3aefce0b914ed1a26aa26b",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | grep -E \"══|step|ref |✓ both|✗|→|ask .* →\"; echo ═══; PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | sed -n '/fit_gate=free/,$p' | head -12"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_6d3aefce0b914ed1a26aa26b",
+      "tool_name": "bash",
+      "text": "══ mhall ══\n  step 1\n    ref          claim=—                  rows=0    ends=0      [framed] store(S1)   [free] store(S1)\n      ✓ both gates agree with ref\n── mhall: probe trace, fit_gate=framed (ask steps) ──\n  ask MHALL → grounded MHALL:[SVO]\n    pair    d2 SVO            MS:Subject               F=2000000000 U=c000000000 O=0 F✗ o✓\n    pair    d2 SVO            HV:Verb                  F=4000000000 U=a000000000 O=0 F✗ o✓\n    pair    d2 SVO            QO:Object                F=8000000000 U=6000000000 O=0 F✗ o✓\n    pair    d3 SV             MS:Subject               F=2000000000 U=4000000000 ",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "The early `return True` inside the step loop truncates the comparison after step 1. Fixing:",
+      "tool_calls": [
+        {
+          "id": "call_1549e0443b3f47e8bbdb9ca5",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "    print(f\"\\n══ {name} ══\")\n    ok_all = True\n    for rs in ref_steps:",
+                "oldText": "    print(f\"\\n══ {name} ══\")\n    for rs in ref_steps:"
+              },
+              {
+                "newText": "        asks = [steps[rs.index].run for steps in runs.values()]\n        if all((a.claim is None) == (r.claim is None) for a in asks):\n            print(\"      ✓ both gates agree with ref\")\n        else:\n            ok_all = False\n            print(\"      ✗ DIVERGES: \" + \", \".join(\n                f\"{g}={'claim' if a.claim else 'no claim'}\" for (g, _), a in zip(runs.items(), asks)\n            ) + f\" (ref={'claim' if r.claim else 'no claim'})\")\n    return ok_all",
+                "oldText": "        asks = [steps[rs.index].run for steps in runs.values()]\n        ok = all((a.claim is None) == (r.claim is None) for a in asks)\n        if ok:\n            print(\"✓ both gates agree with ref\")\n            return True\n        print(\"✗ DIVERGES: \" + \", \".join(\n            f\"{g}={'claim' if a.claim else 'no claim'}\" for (g, _), a in zip(runs.items(), asks)\n        ) + f\" (ref={'claim' if r.claim else 'no claim'})\")\n        return False"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1549e0443b3f47e8bbdb9ca5",
+      "tool_name": "edit",
+      "text": "Could not find edits[1] in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py. The oldText must match exactly including all whitespace and newlines.",
+      "is_error": true
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_98931a31d998403e9f58f706",
+          "name": "read",
+          "arguments": {
+            "limit": 45,
+            "offset": 238,
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_98931a31d998403e9f58f706",
+      "tool_name": "read",
+      "text": "d = value.kline.dbg\n        return (d.label if d else \"\") or \"-\"\n\n\ndef _fmt(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:\n    return _tlabel(v, labels, alloc) if v else \"⊥\"\n\n\ndef _claim_str(k: Kline | None, labels, alloc) -> str:\n    if k is None:\n        return \"—\"\n    nodes = \" \".join(_fmt(int(n), labels, alloc) for n in sorted(k.adj))\n    return f\"{_fmt(int(k.sig), labels, alloc)}:[{nodes}]\"\n\n\ndef compare(name: str, source: str, path=None) -> bool:\n    \"\"\"Print the comparison; return True when every gate agrees with the ref.\"\"\"\n    resolver = path_resolver(path.parent) if p",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_eb8e648960a843e0b39ac5b7",
+          "name": "read",
+          "arguments": {
+            "limit": 30,
+            "offset": 283,
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_eb8e648960a843e0b39ac5b7",
+      "tool_name": "read",
+      "text": "f\" pairs={p.pairings} stalls={len(p.stalls)} grounds={len(p.groundings)}\")\n        print(line)\n        asks = [steps[rs.index].run for steps in runs.values()]\n        ok = all((a.claim is None) == (r.claim is None) for a in asks)\n        if ok:\n            print(\"      ✓ both gates agree with ref\")\n            return True\n        print(\"✗ DIVERGES: \" + \", \".join(\n            f\"{g}={'claim' if a.claim else 'no claim'}\" for (g, _), a in zip(runs.items(), asks)\n        ) + f\" (ref={'claim' if r.claim else 'no claim'})\")\n        return False\n\n\ndef trace_ask_steps(name: str, source: str, path=None,",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_1cf35ac8515a4dd8949348d1",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "    print(f\"\\n══ {name} ══\")\n    ok_all = True\n    for rs in ref_steps:",
+                "oldText": "    print(f\"\\n══ {name} ══\")\n    for rs in ref_steps:"
+              },
+              {
+                "newText": "        asks = [steps[rs.index].run for steps in runs.values()]\n        if all((a.claim is None) == (r.claim is None) for a in asks):\n            print(\"      ✓ both gates agree with ref\")\n        else:\n            ok_all = False\n            print(\"      ✗ DIVERGES: \" + \", \".join(\n                f\"{g}={'claim' if a.claim else 'no claim'}\" for (g, _), a in zip(runs.items(), asks)\n            ) + f\" (ref={'claim' if r.claim else 'no claim'})\")\n    return ok_all",
+                "oldText": "        asks = [steps[rs.index].run for steps in runs.values()]\n        ok = all((a.claim is None) == (r.claim is None) for a in asks)\n        if ok:\n            print(\"      ✓ both gates agree with ref\")\n            return True\n        print(\"✗ DIVERGES: \" + \", \".join(\n            f\"{g}={'claim' if a.claim else 'no claim'}\" for (g, _), a in zip(runs.items(), asks)\n        ) + f\" (ref={'claim' if r.claim else 'no claim'})\")\n        return False"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1cf35ac8515a4dd8949348d1",
+      "tool_name": "edit",
+      "text": "Successfully replaced 2 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_8cce631225804ae5831b94f1",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | grep -E \"══|step |ref |✓ both|✗|ask .* →\"; echo ══════; PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | sed -n '/fit_gate=free/,$p' | grep -E \"ask|ground|stall|WDH|WDMH\" | head -20"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_8cce631225804ae5831b94f1",
+      "tool_name": "bash",
+      "text": "══ mhall ══\n  step 1\n    ref          claim=—                  rows=0    ends=0      [framed] store(S1)   [free] store(S1)\n      ✓ both gates agree with ref\n  step 2\n    ref          claim=MHALL:[SVO]        rows=148  ends=64     [framed] claim=MHALL:[SVO]        pairs=84 stalls=5 grounds=40   [free] claim=MHALL:[SVO]        pairs=76 stalls=5 grounds=39\n      ✓ both gates agree with ref\n  ask MHALL → grounded MHALL:[SVO]\n    pair    d2 SVO            MS:Subject               F=2000000000 U=c000000000 O=0 F✗ o✓\n    pair    d2 SVO            HV:Verb                  F=4000000000 U=a000000000 O=0",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "Both gates now run end-to-end and the story is complete. Let me add one more canonical script (the two-scenarios variant from `probe_two_scenarios.py`) for coverage, then run the full probe output cleanly.",
+      "tool_calls": [
+        {
+          "id": "call_48bd337f12844454a719d9b1",
+          "name": "bash",
+          "arguments": {
+            "command": "cat > /tmp/two.ks <<'EOF'\n(Mary had a little lamb) == SVO =>\n   Subject < M\n   Verb < H\n   Object < Query < ALL =>\n     A = Det\n     L = Mod\n     L = O\n\n(what Object)\nW = O\n\n(what did Mary have)\nWDMH == MHALL =>\n  h(ad) => did have\n  ALL = O(bject)\nEOF\nPYTHONPATH=src:. python dev/probes/probe_simple_reentry.py /tmp/two.ks 2>&1 | grep -E \"══|step |ref |✓ both|✗|ask .* →\""
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_48bd337f12844454a719d9b1",
+      "tool_name": "bash",
+      "text": "══ two ══\n  step 1\n    ref          claim=—                  rows=0    ends=0      [framed] store(S1)   [free] store(S1)\n      ✓ both gates agree with ref\n  step 2\n    ref          claim=MHALL:[SVO]        rows=168  ends=74     [framed] claim=MHALL:[SVO]        pairs=62 stalls=5 grounds=30   [free] claim=MHALL:[SVO]        pairs=57 stalls=5 grounds=29\n      ✓ both gates agree with ref\n  step 3\n    ref          claim=—                  rows=0    ends=0      [framed] store(S1)   [free] store(S1)\n      ✓ both gates agree with ref\n  step 4\n    ref          claim=WDMH:[MHALL]       rows=120  ends=5",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "All three scripts confirm the same result. One last robustness fix — pop-by-identity after grounding (list equality could remove a different-but-equal frame):",
+      "tool_calls": [
+        {
+          "id": "call_375d9285903c48cabe2d6fe1",
+          "name": "edit",
+          "arguments": {
+            "edits": [
+              {
+                "newText": "                stack[:] = [x for x in stack if x is not fr]  # C3 — the entry itself; children stay",
+                "oldText": "                stack.remove(fr)  # C3 — the entry itself; its pushed children stay"
+              }
+            ],
+            "path": "/Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_375d9285903c48cabe2d6fe1",
+      "tool_name": "edit",
+      "text": "Successfully replaced 1 block(s) in /Users/phil/dev/ai/kalvin/dev/probes/probe_simple_reentry.py.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_61f35a5774a8427792d7bca2",
+          "name": "bash",
+          "arguments": {
+            "command": "PYTHONPATH=src:. python dev/probes/probe_simple_reentry.py 2>&1 | grep -E \"══|✓ both|✗ DIVERGES\" ; echo ═══ suite ═══; PYTHONPATH=src:. python -m pytest tests -q 2>&1 | tail -3"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_61f35a5774a8427792d7bca2",
+      "tool_name": "bash",
+      "text": "══ mhall ══\n      ✓ both gates agree with ref\n      ✓ both gates agree with ref\n══ wdmh ══\n      ✓ both gates agree with ref\n      ✓ both gates agree with ref\n      ✓ both gates agree with ref\n      ✗ DIVERGES: framed=no claim, free=claim (ref=claim)\n═══ suite ═══\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n162 passed, 15 skipped, 16 xfailed, 10 warnings in 3.61s",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "text": "Suite untouched (162 passed / 15 skipped / 16 xfailed — matches the recorded baseline). The probe is done. Let me record the findings in the wiki.",
+      "tool_calls": [
+        {
+          "id": "call_f6b654d2046b4bcab5524a9e",
+          "name": "wiki_retro",
+          "arguments": {
+            "body": "Implemented the user's six-term reentry pseudocode as a probe ([[dev/probes/probe_simple_reentry.py]]) against the reference Cogitator (src/rationalisation/model.py) over mhall.ks, wdmh.ks, and the two-scenarios script. Result: the simple loop reproduces every canonical grounding — **except one rule**. The pseudocode's ground condition `framed(F) and U_resolved and O_resolved` gates on the FIT being framed; the reference's `_satisfied` deliberately does not (\"the fit is the agreement between entry and candidate, not something to prove\"). In wdmh, the WDH × what:Object row has both sides resolved (DH stalled→framed, Object framed) but the fit `what` — the query word — is held by nothing in the domain, so it can never frame; with the gate, WDMH never grounds; without it (probe `fit_gate=\"free\"`), WDMH:[MHALL] grounds exactly like the reference. A query word is precisely content the domain does not hold — demanding its frame is demanding the ask already be answered. Otherwise the simple rules suffice: stall-self-framing substitutes for the two-stall exchange (same outcome, weaker justification — one witness instead of two mutual); the stack re-check (parent re-runs its for-loop after children drain) substitutes for the frame cascade; pairing a held canon structurally recovers the o-side witness settle. Related: [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]]",
+            "category": "architecture",
+            "slug": "reentry-probe-fit-gate-divergence",
+            "title": "Reentry probe: pseudocode grounds all but the fit gate"
+          }
+        },
+        {
+          "id": "call_f71b2de63da7446082a3cb8d",
+          "name": "wiki_observe",
+          "arguments": {
+            "content": "dev/probes/probe_simple_reentry.py implements the user's minimal reentry pseudocode (entries stack of (sig, candidates), decompose F/U/O, frame on F==E and on stall, push unresolved sides, ground when fit+both sides resolved) with completions C1–C7 documented in the module docstring: stall pops (C1); a for-run that pushes nothing new pops — the stack re-check is the poor man's frame cascade (C2); pop-after-ground removes the grounding frame by identity (C3); ground mints a frame (C4); per-parent push memo for termination (C5); opening entry pairs the goal alone and grounds the claim Kline(ask,{goal}) (C6); MAX_DEPTH=10 (C7). Driver runs fit_gate=\"framed\" (as written) vs \"free\" (drop framed(F)) against the reference Runner on mhall.ks, wdmh.ks, and any script path passed as argv. Measured: mhall agrees under both gates (84/76 pairings vs reference 148 rows); wdmh steps 1–3 agree; step 4 (WDMH ask) diverges only under the framed gate. One global pushed-once guard was tried first and was WRONG: when F=0 the ask's underfit IS its own signature — the reference's \"twins explore their own\" means regions must be explorable per-parent. Probe stalls=5/grounds=40 in mhall; no exchange machinery anywhere. Test suite untouched: 162 passed, 15 skipped, 16 xfailed.",
+            "relevance": "high",
+            "source_context": "Probing the simple reentry rules against the reference rationalisation",
+            "tags": "rationalisation probe reentry pseudocode",
+            "title": "Simple reentry probe built; completions C1–C7; one divergence isolated"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_f6b654d2046b4bcab5524a9e",
+      "tool_name": "wiki_retro",
+      "text": "🧠 **Insight saved**: Reentry probe: pseudocode grounds all but the fit gate\n\n- Page: `/Users/phil/dev/ai/kalvin/.llm-wiki/wiki/sources/reentry-probe-fit-gate-divergence.md`\n\nThis insight will be auto-surfaced by wiki_recall in future sessions.",
+      "is_error": false
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_f71b2de63da7446082a3cb8d",
+      "tool_name": "wiki_observe",
+      "text": "⭐ **Observation saved**: Simple reentry probe built; completions C1–C7; one divergence isolated\n- Page: `/Users/phil/dev/ai/kalvin/.llm-wiki/wiki/sources/obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-.md`\n- Relevance: high\n- Tags: rationalisation probe reentry pseudocode\nThis observation is now searchable via wiki_recall. It will compound with future observations across sessions.",
+      "is_error": false
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_ff1a61e11aa04e96ba721869",
+          "name": "wiki_capture_trajectory",
+          "arguments": {
+            "outcome": "success",
+            "task": "Implement the user's minimal reentry pseudocode as a probe against the reference Kalvin rationalisation model and see how far it gets",
+            "title": "Pseudocode reentry probe vs reference Cogitator"
+          }
+        }
+      ]
+    }
+  ]
+}

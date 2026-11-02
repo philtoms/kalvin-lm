@@ -1,14 +1,14 @@
-"""The trace — a run's optimal path, read from the Cogitator after it
+"""The trace — a run's optimal path, read from the ReferenceCogitator after it
 ends. The model searches; this module narrates: the opening pairing
 and, for each side it rests on, the one chain that carried it — the
 child's resolving row, the exchange pair, or the source of the one
 frame that covers the region. One row per reentry — paths stay
 orthogonal. In generation order."""
 
-from rationalisation.model import Cogitator, KNode, Row, mu
+from rationalisation.model import ReferenceCogitator, KNode, Row, mu
 
 
-def _cover_frame(cog: Cogitator, x: KNode, chain: set[int]):
+def _cover_frame(cog: ReferenceCogitator, x: KNode, chain: set[int]):
     """The smallest frame covering the region that a proper ancestor row
     produced — or a joint/exchange frame. The reentry's own rows and its
     siblings' never cover."""
@@ -21,7 +21,7 @@ def _cover_frame(cog: Cogitator, x: KNode, chain: set[int]):
     return best
 
 
-def trace(cog: Cogitator) -> list[Row]:
+def trace(cog: ReferenceCogitator) -> list[Row]:
     """The optimal path."""
     if cog.claim is None or cog.goal_row is None:
         return []

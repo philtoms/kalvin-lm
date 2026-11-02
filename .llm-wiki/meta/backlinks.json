@@ -752,6 +752,7 @@
     "entities/kalvin",
     "entities/marys-world"
   ],
+  "sources/break-starves-exchange-stalls-must-wait": [],
   "sources/cogitator-trace-table-alignment": [
     "syntheses/rationalisation-rules"
   ],
@@ -1204,11 +1205,19 @@
   "sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti": [],
   "sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci": [],
   "sources/obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo": [],
+  "sources/obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de": [],
   "sources/obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model": [],
   "sources/obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc": [],
   "sources/obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1": [],
+  "sources/obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret": [],
+  "sources/obs-2026-11-02-probe-stalls-now-wait-for-s3-match-no-break-for-run-all-scri": [],
+  "sources/obs-2026-11-02-ruling-fit-witnessed-by-the-pairing-gate-removed-as-default-": [],
+  "sources/obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-": [],
   "sources/obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn": [],
-  "sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com": [],
+  "sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com": [
+    "sources/reentry-probe-fit-gate-divergence"
+  ],
+  "sources/reentry-probe-fit-gate-divergence": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],
   "sources/stm-cascade-removals-orphan-check": [],
   "sources/structural-significance-coverage-semantics": [],

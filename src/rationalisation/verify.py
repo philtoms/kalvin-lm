@@ -45,7 +45,7 @@ class Records:
 
 def _chain(row: Row | None) -> set[int]:
     """The proper-ancestor rows of a row's reentry — the frame owners whose
-    frames may settle its regions (mirrors Cogitator._chain)."""
+    frames may settle its regions (mirrors ReferenceCogitator._chain)."""
     out: set[int] = set()
     if row is None or row.re is None:
         return out

@@ -2,6 +2,14 @@
 
 ## 2026-11-02
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret","title":"Probe promoted: Cogitator is the default runner; reference retained as baseline"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de","title":"Cogitator renamed ReferenceCogitator; name freed for probe-derived successor"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-probe-stalls-now-wait-for-s3-match-no-break-for-run-all-scri","title":"Probe stalls now wait for S3 match; no-break for-run; all scripts agree"}
+- **retro**: {"category":"architecture","slug":"break-starves-exchange-stalls-must-wait","title":"Reentry probe: break starves the exchange; stalls must wait"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-ruling-fit-witnessed-by-the-pairing-gate-removed-as-default-","title":"Ruling: fit witnessed by the pairing; gate removed as default behaviour"}
+- **capture\_trajectory**: {"step_count":81,"tool_call_count":43,"trajectory_id":"TRJ-2026-11-02-001"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-","title":"Simple reentry probe built; completions C1–C7; one divergence isolated"}
+- **retro**: {"category":"architecture","slug":"reentry-probe-fit-gate-divergence","title":"Reentry probe: pseudocode grounds all but the fit gate"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc","title":"Narration separation committed (413eb9c) — model 659 lines, search only"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model","title":"_cover_frame moved to trace.py; audit confirms remaining model surface is semantic"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn","title":"_trace extracted to dev/dialogue/trace.py — model searches, harness narrates"}

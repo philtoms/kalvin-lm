@@ -1199,3 +1199,27 @@
 ## [2026-11-02T12:20:01.431Z] observe
 - slug: "obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc", title: "Narration separation committed (413eb9c) — model 659 lines, search only", relevance: "medium"
 
+## [2026-11-02T15:48:25.967Z] retro
+- slug: "reentry-probe-fit-gate-divergence", title: "Reentry probe: pseudocode grounds all but the fit gate", category: "architecture"
+
+## [2026-11-02T15:48:25.970Z] observe
+- slug: "obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-", title: "Simple reentry probe built; completions C1–C7; one divergence isolated", relevance: "high"
+
+## [2026-11-02T15:48:29.028Z] capture_trajectory
+- trajectory_id: "TRJ-2026-11-02-001", step_count: 81, tool_call_count: 43
+
+## [2026-11-02T17:19:13.804Z] observe
+- slug: "obs-2026-11-02-ruling-fit-witnessed-by-the-pairing-gate-removed-as-default-", title: "Ruling: fit witnessed by the pairing; gate removed as default behaviour", relevance: "high"
+
+## [2026-11-02T17:28:23.620Z] retro
+- slug: "break-starves-exchange-stalls-must-wait", title: "Reentry probe: break starves the exchange; stalls must wait", category: "architecture"
+
+## [2026-11-02T17:28:23.623Z] observe
+- slug: "obs-2026-11-02-probe-stalls-now-wait-for-s3-match-no-break-for-run-all-scri", title: "Probe stalls now wait for S3 match; no-break for-run; all scripts agree", relevance: "high"
+
+## [2026-11-02T17:38:30.220Z] observe
+- slug: "obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de", title: "Cogitator renamed ReferenceCogitator; name freed for probe-derived successor", relevance: "high"
+
+## [2026-11-02T17:53:51.636Z] observe
+- slug: "obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret", title: "Probe promoted: Cogitator is the default runner; reference retained as baseline", relevance: "critical"
+

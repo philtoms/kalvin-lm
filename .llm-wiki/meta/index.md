@@ -84,6 +84,7 @@
 
 ## Sources
 
+- [[sources/break-starves-exchange-stalls-must-wait]] — Reentry probe: break starves the exchange; stalls must wait *(created: 2026-11-02)*
 - [[sources/cogitator-trace-table-alignment]] — Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo *(created: 2026-10-30)*
 - [[sources/compound-label-mts-initials-notation]] — Compound KNode labels: MTS initials, joined identifier stays registry key *(created: 2026-10-30)*
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
@@ -482,11 +483,17 @@
 - [[sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti]] — Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed *(created: 2026-11-01)*
 - [[sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci]] — Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work *(created: 2026-11-01)*
 - [[sources/obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo]] — Observation: Clock removed, notes in: events list separates model from reporting *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de]] — Observation: Cogitator renamed ReferenceCogitator; name freed for probe-derived successor *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model]] — Observation: _cover_frame moved to trace.py; audit confirms remaining model surface is semantic *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc]] — Observation: Narration separation committed (413eb9c) — model 659 lines, search only *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1]] — Observation: Offering-only o-side landed: claim extension was never owed — 181→120 rows *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret]] — Observation: Probe promoted: Cogitator is the default runner; reference retained as baseline *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-probe-stalls-now-wait-for-s3-match-no-break-for-run-all-scri]] — Observation: Probe stalls now wait for S3 match; no-break for-run; all scripts agree *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-ruling-fit-witnessed-by-the-pairing-gate-removed-as-default-]] — Observation: Ruling: fit witnessed by the pairing; gate removed as default behaviour *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-]] — Observation: Simple reentry probe built; completions C1–C7; one divergence isolated *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn]] — Observation: _trace extracted to dev/dialogue/trace.py — model searches, harness narrates *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]] — Observation: Union-fit history removed from doc; offering-only pairing committed *(created: 2026-11-02)*
+- [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -500,5 +507,9 @@
 
 - [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
 
+## Trajectorys
+
+- [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
+
 ---
-*Last updated: 2026-11-02T12:20:01.534Z* | *Total pages: 486*
+*Last updated: 2026-11-02T17:53:51.730Z* | *Total pages: 494*

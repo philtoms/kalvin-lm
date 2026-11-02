@@ -1,5 +1,5 @@
 """The rationalisation model — node algebra, the kline domain, the
-grading measures, and the Cogitator reentry runner (docs/rationalisation.md)."""
+grading measures, and the ReferenceCogitator reentry runner (docs/rationalisation.md)."""
 
 from __future__ import annotations
 
@@ -258,8 +258,12 @@ class Rationalisation:
     goal_row: Row | None = None  # the opening pairing — the grounded claim's row
     events: list[tuple] = field(default_factory=list)  # the run's notes in order — reporting only
 
-class Cogitator:
-    """The reentry runner. Enter with the ask (and its goal as the first
+class ReferenceCogitator:
+    """The reference implementation of the reentry runner — retained as the
+    baseline for comparison; its successor derives from the simple reentry
+    loop (dev/probes/probe_simple_reentry.py).
+
+    Enter with the ask (and its goal as the first
     candidate), pair the entry with each overlapping memory kline, reenter
     the U and O residuals with the witness nodes they contain, frame the
     fit when the candidate covers the entry, and resolve the row when
@@ -655,5 +659,5 @@ def proposals(r: Rationalisation) -> list[Proposal]:
 
 
 def rationalise(d: Domain, entry: Kline, goal: Kline | None = None) -> Rationalisation:
-    """The one-shot runner — one Cogitator, one entry."""
-    return Cogitator(d).rationalise(entry, goal=goal)
+    """The one-shot runner — one ReferenceCogitator, one entry."""
+    return ReferenceCogitator(d).rationalise(entry, goal=goal)

@@ -14,7 +14,7 @@ import pytest
 
 from hypothesis import given, settings
 
-from rationalisation import Cogitator, Domain, Kline, can
+from rationalisation import ReferenceCogitator, Domain, Kline, can
 from rationalisation.existence import exists_certificate
 
 from tests.test_rationalisation_properties import closed_domains
@@ -72,7 +72,7 @@ def test_grounding_implies_certificate_exists(d):
         return
     d1, goal, entry = sc
     d0 = set(d1)
-    cog = Cogitator(d1)
+    cog = ReferenceCogitator(d1)
     r = cog.rationalise(entry, goal=goal)
     if r.claim is None:
         return
@@ -91,7 +91,7 @@ def test_the_exhaustion_regression_is_refused():
     )
     entry, goal = Kline(9, frozenset([32, 1])), Kline(1, frozenset([1]))
     assert exists_certificate(d, entry, goal) is False
-    assert Cogitator(d).rationalise(entry, goal=goal).claim is None
+    assert ReferenceCogitator(d).rationalise(entry, goal=goal).claim is None
 
 
 def test_disjoint_content_is_refused():
@@ -100,7 +100,7 @@ def test_disjoint_content_is_refused():
     d = Domain([Kline(1, frozenset([1])), Kline(2, frozenset([2]))])
     entry, goal = Kline(1 | 16, frozenset([16, 1])), Kline(1, frozenset([1]))
     assert exists_certificate(d, entry, goal) is False
-    assert Cogitator(d).rationalise(entry, goal=goal).claim is None
+    assert ReferenceCogitator(d).rationalise(entry, goal=goal).claim is None
 
 
 def test_covered_ask_is_available():
@@ -127,7 +127,7 @@ def test_available_certificate_is_found_by_the_run(d):
     if sc is None:
         return
     d1, goal, entry = sc
-    cog = Cogitator(d1)
+    cog = ReferenceCogitator(d1)
     r = cog.rationalise(entry, goal=goal)
     if exists_certificate(set(d1), entry, goal) is True:
         assert r.claim is not None, "certificate available but the run missed it"
