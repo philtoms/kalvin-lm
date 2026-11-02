@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-11-02
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com","title":"Union-fit history removed from doc; offering-only pairing committed"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1","title":"Offering-only o-side landed: claim extension was never owed — 181→120 rows"}
+
 ## 2026-11-01
 
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti","title":"Rules doc rewritten: claim/construction make-up, union as optimisation — committed"}

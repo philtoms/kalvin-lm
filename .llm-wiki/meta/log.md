@@ -1181,3 +1181,9 @@
 ## [2026-11-01T22:29:58.983Z] observe
 - slug: "obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti", title: "Rules doc rewritten: claim/construction make-up, union as optimisation — committed", relevance: "critical"
 
+## [2026-11-02T10:11:17.884Z] observe
+- slug: "obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1", title: "Offering-only o-side landed: claim extension was never owed — 181→120 rows", relevance: "critical"
+
+## [2026-11-02T10:14:33.939Z] observe
+- slug: "obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com", title: "Union-fit history removed from doc; offering-only pairing committed", relevance: "high"
+

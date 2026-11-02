@@ -106,7 +106,7 @@ fingerprint unseen        each reentry pairs each candidate once
 ```
 
 plus the **proven skip**: a candidate whose claim covers the whole
-entry, whose fit is already framed, and whose beyonds would settle
+entry, whose fit is already framed, and whose offering would settle
 without children, adds nothing — skip. A reentry whose every candidate
 is skipped resolves as **known** only when every skip was proven; any
 unproven turn-away halts the reentry — exhaustion is not evidence.
@@ -121,17 +121,17 @@ F = E & σ          the fit — shared content
 U = E & ~σ         the underfit — the entry beyond the claim
 ```
 
-and the candidate's two **beyonds** — its claim's extension and its
-construction's offering — leave the pairing as separate reentries:
+and the candidate's construction **offers** beyond the fit — the
+o-side, the offering, one reentry carrying the adjacency nodes
+contained in it:
 
 ```
-σ & ~E             the claim's extension — what it asserts beyond the entry
-can(N) & ~E        the offering — what its construction composes beyond
+can(N) & ~E       the offering — what its construction composes beyond
 ```
 
-One reentry per content (the two beyonds may name the same region);
-each o-child carries the adjacency nodes contained in it. The opening
-pairing is special: at depth 1 the goal is the one and only candidate,
+The claim's own extension (`σ & ~E`) is not the entry's business: the
+claim fits, the construction offers, and nothing else is owed. The
+opening pairing is special: at depth 1 the goal is the one and only candidate,
 and its row is the `goal_row`. `E == F` — the claim covers the entry —
 mints a **frame** of `E`, owned by the row.
 
@@ -175,19 +175,6 @@ ascending effort.
   composite value — no `σ | can(N)` of any kline — is ever fitted,
   minted, or reentered.
 - Stores during an ask run: exactly the claim, and only on grounding.
-
-### 2.5 The union shape is an optimisation, not structure
-
-An earlier fit ran the two beyonds as one region — the candidate's
-fingerprint `σ | can(N)` against `E`, a single o-child of their union.
-It closes the same corpus scripts with fewer reentries and faster
-runs, and where a composite child's whole content is covered together
-it is a genuine economy. But it constructs composite content — values
-no kline asserts (the `Mary|had|SVO` shape: a stored claim's signature
-and construction fused) — and closing that child then requires
-composite evidence. The claim-fit with split beyonds is the structure;
-the union remains available as an optimisation of it, at the price of
-constructed values reentering the search.
 
 ## 3. Termination and determinism
 

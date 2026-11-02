@@ -402,6 +402,8 @@
 - [Observation: Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair](obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-.md)
 - [Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed](obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti.md)
 - [Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work](obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci.md)
+- [Observation: Offering-only o-side landed: claim extension was never owed — 181→120 rows](obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1.md)
+- [Observation: Union-fit history removed from doc; offering-only pairing committed](obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com.md)
 - [Operator semantics swaps: move shapes or move names — the countersign test decides](shape-swap-vs-name-swap-operator-semantics.md)
 - [STM cascade removals must be orphan-checked](stm-cascade-removals-orphan-check.md)
 - [Structural significance is coverage-based — S2 has ≥1 covered node, S3 none](structural-significance-coverage-semantics.md)

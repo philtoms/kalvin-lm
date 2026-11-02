@@ -495,11 +495,10 @@ class Cogitator:
             # scaffolding before the canons
             e = k.sig
             cs = c.sig
-            beyond = residue(cs, e) | residue(can(c.adj), e)
             proven = (
                 e & cs == e and e in self.frames
                 and self._pre_settled(e & ~cs, re_)
-                and self._pre_settled(beyond, re_)
+                and self._pre_settled(residue(can(c.adj), e), re_)
             )
             if self._in_path(re_, c):
                 # a candidate cannot reappear in the path it was decomposed
@@ -557,13 +556,14 @@ class Cogitator:
         e = k.sig
         cs = c.sig  # the claim
         ca = can(c.adj)  # the decomposition, composed
-        # the entry meets the claim; the candidate's two beyonds — the
-        # claim's extension and the decomposition's offering — are the
-        # o-side, split into their own reentries
+        # the entry meets the claim; the candidate's construction offers
+        # beyond it — the offering is the o-side. The claim's own
+        # extension is not the entry's business: the claim fits, the
+        # construction offers
         row = Row(
             re_.depth, k, c,
             F=meet(e, cs), U=residue(e, cs),
-            O=residue(cs, e) | residue(ca, e), re=re_,
+            O=residue(ca, e), re=re_,
         )
         row.birth = self._tick()
         if re_.depth == 1 and c == self.goal:
@@ -573,22 +573,17 @@ class Cogitator:
         self.open_rows.append(row)
         pushed: list[_Reentry] = []
         if not self._side_ok(row, row.O, "o"):
-            made = []
-            for region in (residue(cs, e), residue(ca, e)):
-                if not region or region in made:
-                    continue  # one reentry per content — both beyonds may name it
-                made.append(region)
-                ch = self._child(
-                    re_.depth + 1, region, "o",
-                    (n for n in c.adj if contained(n, region)), row,
-                )
-                if ch is not None:
-                    pushed.append(ch)
+            ch = self._child(
+                re_.depth + 1, row.O, "o",
+                (n for n in c.adj if contained(n, row.O)), row,
+            )
+            if ch is not None:
+                pushed.append(ch)
         if not self._side_ok(row, row.U, "u"):
             ch = self._child(re_.depth + 1, row.U, "u", (n for n in k.adj if contained(n, row.U)), row)
             if ch is not None:
                 pushed.append(ch)
-        row.children = tuple(reversed(pushed))  # U first, then the offerings, then the extensions
+        row.children = tuple(reversed(pushed))  # U first, then the offering
         if self._satisfied(row):
             row.instant = True
             self._resolve(row)  # before the frame mints — the row closes, then its cascade

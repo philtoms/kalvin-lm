@@ -481,6 +481,8 @@
 - [[sources/obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-]] — Observation: Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair *(created: 2026-11-01)*
 - [[sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti]] — Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed *(created: 2026-11-01)*
 - [[sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci]] — Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work *(created: 2026-11-01)*
+- [[sources/obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1]] — Observation: Offering-only o-side landed: claim extension was never owed — 181→120 rows *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]] — Observation: Union-fit history removed from doc; offering-only pairing committed *(created: 2026-11-02)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -495,4 +497,4 @@
 - [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
 
 ---
-*Last updated: 2026-11-01T22:29:59.074Z* | *Total pages: 480*
+*Last updated: 2026-11-02T10:14:34.024Z* | *Total pages: 482*
