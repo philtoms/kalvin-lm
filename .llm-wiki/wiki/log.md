@@ -1,7 +1,14 @@
 # Wiki Update Log
 
+## 2026-11-03
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue","title":"Module split + Event refactor committed 2cfc198 on dialogue"}
+- **retro**: {"category":"architecture","slug":"pseudocode-audit-three-false-lines-recheck-invisible","title":"Pseudocode audit: three false lines, the re-run invisible; corrected in docstring"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re","title":"rationalisation split: algebra/domain/report modules; Event replaces Row"}
+
 ## 2026-11-02
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-02-cogitator-promotion-committed-fd2a47c-on-dialogue","title":"Cogitator promotion committed fd2a47c on dialogue"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret","title":"Probe promoted: Cogitator is the default runner; reference retained as baseline"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de","title":"Cogitator renamed ReferenceCogitator; name freed for probe-derived successor"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-02-probe-stalls-now-wait-for-s3-match-no-break-for-run-all-scri","title":"Probe stalls now wait for S3 match; no-break for-run; all scripts agree"}

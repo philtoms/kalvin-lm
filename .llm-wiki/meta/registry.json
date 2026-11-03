@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-02T17:53:51.730Z",
+  "last_updated": "2026-11-03T10:12:05.088Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7533,6 +7533,22 @@
       "created": "2026-11-02",
       "updated": "2026-11-02"
     },
+    "sources/obs-2026-11-02-cogitator-promotion-committed-fd2a47c-on-dialogue": {
+      "type": "source",
+      "title": "Observation: Cogitator promotion committed fd2a47c on dialogue",
+      "tags": [
+        "commit",
+        "rationalisation",
+        "cogitator"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-02-cogitator-promotion-committed-fd2a47c-on-dialogue",
+      "relevance": "medium",
+      "observed_at": "2026-11-02T23:04:33.735Z",
+      "source_context": "Committing the Cogitator promotion",
+      "created": "2026-11-02",
+      "updated": "2026-11-02"
+    },
     "sources/obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de": {
       "type": "source",
       "title": "Observation: Cogitator renamed ReferenceCogitator; name freed for probe-derived successor",
@@ -7711,6 +7727,48 @@
       "source_context": "Removing the union-shape section and committing the offering-only pairing",
       "created": "2026-11-02",
       "updated": "2026-11-02"
+    },
+    "sources/obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue": {
+      "type": "source",
+      "title": "Observation: Module split + Event refactor committed 2cfc198 on dialogue",
+      "tags": [
+        "commit",
+        "rationalisation",
+        "refactor"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue",
+      "relevance": "medium",
+      "observed_at": "2026-11-03T10:12:04.976Z",
+      "source_context": "Committing the module split and Event refactor",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re": {
+      "type": "source",
+      "title": "Observation: rationalisation split: algebra/domain/report modules; Event replaces Row",
+      "tags": [
+        "rationalisation",
+        "refactor",
+        "modules",
+        "event"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re",
+      "relevance": "high",
+      "observed_at": "2026-11-03T09:55:25.740Z",
+      "source_context": "Separating the reference model from the cogitator",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/pseudocode-audit-three-false-lines-recheck-invisible": {
+      "type": "source",
+      "title": "Pseudocode audit: three false lines, the re-run invisible; corrected in docstring",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "pseudocode-audit-three-false-lines-recheck-invisible",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
     },
     "sources/reentry-probe-fit-gate-divergence": {
       "type": "source",

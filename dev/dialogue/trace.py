@@ -5,7 +5,7 @@ child's resolving row, the exchange pair, or the source of the one
 frame that covers the region. One row per reentry — paths stay
 orthogonal. In generation order."""
 
-from rationalisation.model import ReferenceCogitator, KNode, Row, mu
+from rationalisation.model import ReferenceCogitator, KNode, _Pairing, mu
 
 
 def _cover_frame(cog: ReferenceCogitator, x: KNode, chain: set[int]):
@@ -21,19 +21,19 @@ def _cover_frame(cog: ReferenceCogitator, x: KNode, chain: set[int]):
     return best
 
 
-def trace(cog: ReferenceCogitator) -> list[Row]:
+def trace(cog: ReferenceCogitator) -> list[_Pairing]:
     """The optimal path."""
     if cog.claim is None or cog.goal_row is None:
         return []
-    rindex: dict[int, int] = {id(r): i for i, r in enumerate(cog.rows)}  # identity — Row eq recurses
-    keep: dict[int, Row] = {}
+    rindex: dict[int, int] = {id(r): i for i, r in enumerate(cog.rows)}  # identity — _Pairing eq recurses
+    keep: dict[int, _Pairing] = {}
     tabled: dict[int, int] = {}  # reentry id -> the row id holding its slot
     via_frame: set[int] = set()  # rows kept as frame sources — they pull no pushers
     # rows reached through exchange causality table alongside the slot —
     # the S3 path and the shortcut that resolved first are two orthogonal
     # paths of one reentry; no row serves two reentries.
     feeds: set[int] = set()
-    stack: list[Row] = [cog.goal_row]
+    stack: list[_Pairing] = [cog.goal_row]
     while stack:
         row = stack.pop()
         if id(row) in keep:
@@ -113,7 +113,7 @@ def trace(cog: ReferenceCogitator) -> list[Row]:
     # carried by a tabled child — each with the row that established it
     tset = set(keep)
     for row in keep.values():
-        sup: list[tuple[int, Row]] = []
+        sup: list[tuple[int, _Pairing]] = []
         chain = cog._chain(row.re)
         own_id = None  # frames own their rows now — the chain excludes siblings
 
@@ -125,7 +125,7 @@ def trace(cog: ReferenceCogitator) -> list[Row]:
                     f = rf
             if f is None:
                 return
-            srcs: list[Row] = []
+            srcs: list[_Pairing] = []
             for s in cog.frame_src.get(int(f), []):
                 if not any(id(s) == id(t) for t in srcs):
                     srcs.append(s)

@@ -483,6 +483,7 @@
 - [[sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti]] — Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed *(created: 2026-11-01)*
 - [[sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci]] — Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work *(created: 2026-11-01)*
 - [[sources/obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo]] — Observation: Clock removed, notes in: events list separates model from reporting *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-cogitator-promotion-committed-fd2a47c-on-dialogue]] — Observation: Cogitator promotion committed fd2a47c on dialogue *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de]] — Observation: Cogitator renamed ReferenceCogitator; name freed for probe-derived successor *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model]] — Observation: _cover_frame moved to trace.py; audit confirms remaining model surface is semantic *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc]] — Observation: Narration separation committed (413eb9c) — model 659 lines, search only *(created: 2026-11-02)*
@@ -493,6 +494,9 @@
 - [[sources/obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-]] — Observation: Simple reentry probe built; completions C1–C7; one divergence isolated *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn]] — Observation: _trace extracted to dev/dialogue/trace.py — model searches, harness narrates *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]] — Observation: Union-fit history removed from doc; offering-only pairing committed *(created: 2026-11-02)*
+- [[sources/obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue]] — Observation: Module split + Event refactor committed 2cfc198 on dialogue *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re]] — Observation: rationalisation split: algebra/domain/report modules; Event replaces Row *(created: 2026-11-03)*
+- [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
@@ -512,4 +516,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-02T17:53:51.730Z* | *Total pages: 494*
+*Last updated: 2026-11-03T10:12:05.088Z* | *Total pages: 498*

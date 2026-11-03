@@ -1,19 +1,13 @@
-"""The rationalisation model (docs/rationalisation.md). Cogitator is the
-default runner (rationalisation/cogitator.py); ReferenceCogitator is the
-retained baseline (rationalisation/model.py)."""
+"""The rationalisation model (docs/rationalisation.md): the shared algebra
+(algebra.py), the domain (domain.py), the report vocabulary (report.py),
+and two runners — the Cogitator (cogitator.py, the default) and the
+ReferenceCogitator (model.py, the retained baseline)."""
 
-from rationalisation.cogitator import Cogitator, rationalise
-from rationalisation.model import (
+from rationalisation.algebra import (
     BETA,
     Band,
     Decomposition,
-    Domain,
-    End,
     Kline,
-    Proposal,
-    Rationalisation,
-    Row,
-    ReferenceCogitator,
     band,
     can,
     contained,
@@ -22,10 +16,13 @@ from rationalisation.model import (
     entropy,
     meet,
     mu,
-    proposals,
     residue,
     significance,
 )
+from rationalisation.cogitator import Cogitator, rationalise
+from rationalisation.domain import Domain
+from rationalisation.model import ReferenceCogitator
+from rationalisation.report import End, Event, Proposal, Rationalisation, proposals
 
 __all__ = [
     "BETA",
@@ -34,10 +31,10 @@ __all__ = [
     "Decomposition",
     "Domain",
     "End",
+    "Event",
     "Kline",
     "Proposal",
     "Rationalisation",
-    "Row",
     "ReferenceCogitator",
     "band",
     "can",

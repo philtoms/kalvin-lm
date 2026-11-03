@@ -36,18 +36,21 @@ SCRIPTS = sorted(Path("data/scripts").glob("*.ks"))
 
 
 class RecordingRunner(Runner):
-    """Captures the cogitator's records after each step — rationalise()
-    rebinds its arrays per run, so each run's records survive by reference."""
+    """Captures the reference's records after each step — rationalise()
+    rebinds its arrays per run, so each run's records survive by
+    reference. The certificate instruments the reference, not the
+    default Cogitator."""
 
     def __init__(self, tokenizer=None) -> None:
         super().__init__(tokenizer)
+        self.cogitator = ReferenceCogitator(self.domain)
         self.records: list[Records] = []
 
     def _step(self, steps, i, value, goal=None):
         super()._step(steps, i, value, goal=goal)
         cog = self.cogitator
         self.records.append(
-            Records(cog.frames, cog.frame_re, cog.stalls, cog.rows)
+            Records(cog.frames, cog.frame_re, cog.stalls, cog.rows, cog.goal_row)
         )
 
 
@@ -214,7 +217,7 @@ for p in sorted(Path("data/scripts").glob("*.ks")):
         digest.update(repr(st.result.claim).encode())
         digest.update(repr(sorted(map(repr, st.result.stores))).encode())
         digest.update(repr(sorted(e.reason for e in st.result.ends)).encode())
-        digest.update(str(len(runner.cogitator.rows)).encode())
+        digest.update(str(len(st.result.events)).encode())
 print(digest.hexdigest())
 """
 

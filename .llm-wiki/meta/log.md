@@ -1223,3 +1223,15 @@
 ## [2026-11-02T17:53:51.636Z] observe
 - slug: "obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret", title: "Probe promoted: Cogitator is the default runner; reference retained as baseline", relevance: "critical"
 
+## [2026-11-02T23:04:33.737Z] observe
+- slug: "obs-2026-11-02-cogitator-promotion-committed-fd2a47c-on-dialogue", title: "Cogitator promotion committed fd2a47c on dialogue", relevance: "medium"
+
+## [2026-11-03T09:55:25.743Z] observe
+- slug: "obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re", title: "rationalisation split: algebra/domain/report modules; Event replaces Row", relevance: "high"
+
+## [2026-11-03T10:08:01.063Z] retro
+- slug: "pseudocode-audit-three-false-lines-recheck-invisible", title: "Pseudocode audit: three false lines, the re-run invisible; corrected in docstring", category: "architecture"
+
+## [2026-11-03T10:12:04.978Z] observe
+- slug: "obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue", title: "Module split + Event refactor committed 2cfc198 on dialogue", relevance: "medium"
+
