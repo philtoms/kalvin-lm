@@ -2,6 +2,12 @@
 
 ## 2026-11-03
 
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha","title":"E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu","title":"Ancestor-path filter: entry bar free; candidate bar grounds but shifts the load"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc","title":"User recode verified: drains whole stack copy, grounds both scripts at 28 pairings"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-draft-1-path-fork-cogitator-mechanism-verified-pairing-cap-b","title":"Draft 1: path-fork Cogitator — mechanism verified, pairing cap blown"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground","title":"Cogitator recurses at reentry point — O-first preserves grounding, trace collapses 4x"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-path-orthogonal-frames-via-recursive-rationalise-design-dire","title":"Path-orthogonal frames via recursive rationalise — design direction and forks"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr","title":"Trace elision removed — every reentry logged; grounding-path pruning deferred"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full","title":"New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection","title":"Parent-origin bar added to Cogitator candidate selection"}

@@ -494,11 +494,17 @@
 - [[sources/obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-]] — Observation: Simple reentry probe built; completions C1–C7; one divergence isolated *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn]] — Observation: _trace extracted to dev/dialogue/trace.py — model searches, harness narrates *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]] — Observation: Union-fit history removed from doc; offering-only pairing committed *(created: 2026-11-02)*
+- [[sources/obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu]] — Observation: Ancestor-path filter: entry bar free; candidate bar grounds but shifts the load *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground]] — Observation: Cogitator recurses at reentry point — O-first preserves grounding, trace collapses 4x *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-draft-1-path-fork-cogitator-mechanism-verified-pairing-cap-b]] — Observation: Draft 1: path-fork Cogitator — mechanism verified, pairing cap blown *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha]] — Observation: E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue]] — Observation: Module split + Event refactor committed 2cfc198 on dialogue *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full]] — Observation: New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection]] — Observation: Parent-origin bar added to Cogitator candidate selection *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-path-orthogonal-frames-via-recursive-rationalise-design-dire]] — Observation: Path-orthogonal frames via recursive rationalise — design direction and forks *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re]] — Observation: rationalisation split: algebra/domain/report modules; Event replaces Row *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr]] — Observation: Trace elision removed — every reentry logged; grounding-path pruning deferred *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc]] — Observation: User recode verified: drains whole stack copy, grounds both scripts at 28 pairings *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio]] — Observation: wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision *(created: 2026-11-03)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
@@ -520,4 +526,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-03T13:33:32.717Z* | *Total pages: 502*
+*Last updated: 2026-11-03T17:04:05.257Z* | *Total pages: 508*

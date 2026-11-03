@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-03T13:33:32.717Z",
+  "last_updated": "2026-11-03T17:04:05.257Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7728,6 +7728,80 @@
       "created": "2026-11-02",
       "updated": "2026-11-02"
     },
+    "sources/obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu": {
+      "type": "source",
+      "title": "Observation: Ancestor-path filter: entry bar free; candidate bar grounds but shifts the load",
+      "tags": [
+        "trs",
+        "cogitator",
+        "candidates",
+        "ancestor-path",
+        "filter",
+        "exploration"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu",
+      "relevance": "high",
+      "observed_at": "2026-11-03T16:31:31.849Z",
+      "source_context": "Exploring the ancestor-in-candidate-path filter on the user-recoded engine",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground": {
+      "type": "source",
+      "title": "Observation: Cogitator recurses at reentry point — O-first preserves grounding, trace collapses 4x",
+      "tags": [
+        "trs",
+        "cogitator",
+        "recursion",
+        "refactor",
+        "mechanism"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground",
+      "relevance": "high",
+      "observed_at": "2026-11-03T14:24:52.128Z",
+      "source_context": "Cogitator recursion step 1: stack-to-recursion refactor, mechanism only",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-draft-1-path-fork-cogitator-mechanism-verified-pairing-cap-b": {
+      "type": "source",
+      "title": "Observation: Draft 1: path-fork Cogitator — mechanism verified, pairing cap blown",
+      "tags": [
+        "trs",
+        "cogitator",
+        "recursion",
+        "fork",
+        "draft",
+        "orthogonality"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-draft-1-path-fork-cogitator-mechanism-verified-pairing-cap-b",
+      "relevance": "high",
+      "observed_at": "2026-11-03T14:49:15.332Z",
+      "source_context": "Cogitator draft 1: recursion into new state, heap + integer paths, path frames",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha": {
+      "type": "source",
+      "title": "Observation: E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical",
+      "tags": [
+        "trs",
+        "cogitator",
+        "recursion",
+        "grounding",
+        "dead-end"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha",
+      "relevance": "high",
+      "observed_at": "2026-11-03T17:04:05.164Z",
+      "source_context": "Verifying E=row.sig + per-candidate frames; proving why goals cannot ground",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
     "sources/obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue": {
       "type": "source",
       "title": "Observation: Module split + Event refactor committed 2cfc198 on dialogue",
@@ -7781,6 +7855,25 @@
       "created": "2026-11-03",
       "updated": "2026-11-03"
     },
+    "sources/obs-2026-11-03-path-orthogonal-frames-via-recursive-rationalise-design-dire": {
+      "type": "source",
+      "title": "Observation: Path-orthogonal frames via recursive rationalise — design direction and forks",
+      "tags": [
+        "trs",
+        "cogitator",
+        "design",
+        "orthogonality",
+        "frames",
+        "recursion"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-path-orthogonal-frames-via-recursive-rationalise-design-dire",
+      "relevance": "high",
+      "observed_at": "2026-11-03T14:08:05.343Z",
+      "source_context": "Design: path-orthogonal frames vs stack-based reentry in the Cogitator",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
     "sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re": {
       "type": "source",
       "title": "Observation: rationalisation split: algebra/domain/report modules; Event replaces Row",
@@ -7813,6 +7906,24 @@
       "relevance": "high",
       "observed_at": "2026-11-03T13:33:32.627Z",
       "source_context": "Removing trace elision per user ruling: every reentry logged, prune later",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc": {
+      "type": "source",
+      "title": "Observation: User recode verified: drains whole stack copy, grounds both scripts at 28 pairings",
+      "tags": [
+        "trs",
+        "cogitator",
+        "recursion",
+        "user-recoded",
+        "verification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc",
+      "relevance": "high",
+      "observed_at": "2026-11-03T16:10:02.519Z",
+      "source_context": "Verifying the user's recode of the Cogitator recursion",
       "created": "2026-11-03",
       "updated": "2026-11-03"
     },

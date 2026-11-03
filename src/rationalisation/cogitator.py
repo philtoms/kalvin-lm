@@ -1,5 +1,5 @@
-"""The Cogitator — the simple reentry loop, the model's default runner.
-    
+"""The Cogitator — the reentry recursion, the model's default runner.
+
     Rationalise to significance:
         S1 - entry held exactly
         S2 - entry aligned with goal
@@ -9,42 +9,63 @@
     The current implementation rationalises to S2 only.
 
     rationalise(entry):
-      entries.push(entry.sig, candidates(entry))
-      while entries:
-        E, cands = entries.top()
-        if not cands: # S4 stalled
-          if E is S3 aligned:
-            frame(E)
-          entries.pop()
-          continue
+      explore(entry.sig, stack=(), frame=()):
+        push entry onto stack               # this call's own copy
+        while stack:                        # the reentry loop
+          E = top
+          if no candidates: stall or exchange; pop; continue
+          for C in candidates(E):
+            F, U, O = decompose(E, C)
+            if not settled(U): explore(U, stack, frame)  # recursion into
+            if not settled(O): explore(O, stack, frame)  # new state, then
+            continue to next candidate                  # forwards
+            if settled(U) and settled(O):
+              if depth == 1: ground(entry, goal)
 
-        for C in cands:
-          F, U, O = decompose(E, C)
-          if F == E: frame(F)
-          if framed(U) or U.empty: U_resolved = True else entries.push(U, candidates(U))
-          if framed(O) or O.empty: O_resolved = True else entries.push(O, candidates(O))
-          if U_resolved and O_resolved: # S2 aligned
-            ground(E, C)
-            entries.pop()
+    Every reentry is a row in a shared heap; a stack is a list of row
+    indices, copied on recursion — cheap, and the caller's stack is never
+    looked at again. Frames are copies too: the mint travels with the
+    candidate's own descent only. Nothing flows up or across; a path only
+    moves forward into new state.
 
 """
 
 from __future__ import annotations
 
-import itertools
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from kalvin.kline import KNode, KNone
+from kalvin.kline import KNode
 from rationalisation.algebra import Kline, can, contained, meet, residue
 from rationalisation.domain import Domain
 from rationalisation.report import End, Event, Rationalisation, effort
 
 
+@dataclass
+class _Row:
+    """One reentry, allocated in the shared heap. parent — the heap index
+    of the reentry whose pairing pushed this one (-1 for the opening)."""
+
+    sig: KNode
+    depth: int
+    parent: int
+    psig: KNode | None
+    pcsig: KNode | None
+
+
+@dataclass
+class _Parked:
+    """A path stalled at S4, parked with the state it stalled in."""
+
+    parent: int
+    stack: list
+    frame: list[KNode]
+
+
 class Cogitator:
-    """The reentry runner: an entry's signature meets held claims, its
-    underfit and overfit reenter, and pairings ground when both
-    sides resolve. The fit needs no frame of its own — it is contained in
-    the candidate's held claim, so the pairing itself is the witness."""
+    """The reentry runner: an entry's signature meets held claims, and each
+    unsettled side recurses into new state — its own stack copy, its own
+    frames. A pairing grounds when both sides settle; the fit needs no
+    frame of its own — it is contained in the candidate's held claim."""
 
     MAX_DEPTH = 10
     MAX_PAIRINGS = 4096
@@ -65,13 +86,13 @@ class Cogitator:
         self.stores, self.ends = [], []
         self.events: list[Event] = []
         self.claim: Kline | None = None
-        self.frame: list[KNode] = []
+        self.joint: list[KNode] = []  # exchange frames — the one horizontal channel
+        self.rows: list[_Row] = []  # the shared heap
         self.pairings = 0
-        self.stalled: dict[KNode, list[int]] = {}
-        stack: list[_Entry] = []
-        seq = itertools.count(1)
+        self.bound = False
+        self.stalled: dict[KNode, list[_Parked]] = {}
 
-        if goal is None: 
+        if goal is None:
             if not entry.adj:
                 self._halt("R4: entry kline with no adjacency", entry)
                 return Rationalisation(self.stores, self.ends, self.events)
@@ -79,86 +100,105 @@ class Cogitator:
                 self._ground(entry)  # S1 grounds on receipt
                 return Rationalisation(self.stores, self.ends, self.events)
 
-        def framed(x: KNode) -> bool:
-            return not x or any(contained(x, f) for f in self.frame)
+        def add_frame(x: KNode, frame: list[KNode]) -> bool:
+            if x and x not in frame:
+                frame.append(x)
+                return True
+            return False
 
-        def frame(x: KNode) -> None:
-            if x and x not in self.frame:
-                self.frame.append(x)
+        def framed(x: KNode, frame: list[KNode]) -> bool:
+            return (not x
+                    or any(contained(x, f) for f in frame)
+                    or any(contained(x, j) for j in self.joint))
 
-        def push(sig: KNode, depth: int, memo: set, parent: int,
-                 psig: KNode | None = None, pcsig: KNode | None = None) -> None:
-            memo.add(sig)  # once per parent, across its for-runs
-            cands = [goal] if depth == 1 and goal is not None else self._candidates(sig, psig, pcsig)
-            stack.append(_Entry(sig, cands, depth, set(), next(seq), parent))
-
-        push(entry.sig, 1, set(), 0)
-
-        while stack:
-            if self.pairings > self.MAX_PAIRINGS:
-                self._halt("bound: pairing cap reached", entry)
-                break
-            en = stack[-1]
-            E, cands, depth, memo = en.sig, en.cands, en.depth, en.memo
-
-            if not cands:  # S4 stalled
-                peers = self.stalled.setdefault(E, [])
-                if any(q != en.parent for q in peers):
-                    frame(E)  # S3 aligned
-                    self.events.append(Event("exchange", depth, E, frame=E))
-                else:
-                    peers.append(en.parent)
-                    self.events.append(Event("stall", depth, E, U=E))
-                stack.pop()
-                continue
-
-            new_push = False
+        def explore(E: KNode, stack: list, _frame: list[KNode], memo: set, depth: int,
+                    psig: KNode | None, pcsig: KNode | None) -> None:
+            """One reentry into new state. The stack, frame and memo are all copied and built
+            forward from here."""
+            parent = stack[-1] if stack else -1  # read once, for identity
+            base = len(stack)
+            me = len(self.rows)
+            self.rows.append(_Row(E, depth, parent, psig, pcsig))
+            stack = stack + [me]  # the lightweight copy — this path's stack
             grounded = False
-            for C in cands:
-                self.pairings += 1
-                cs = C.sig
-                F, U, O = meet(E, cs), residue(E, cs), residue(can(C.adj), E)
-                if F == E:
-                    frame(F)
-                    self.events.append(Event("pair", depth, E, C, F, U, O, frame=F))
-                else:
-                    self.events.append(Event("pair", depth, E, C, F, U, O))
-                U_res = framed(U)
-                O_res = framed(O)
-                if not U_res and U not in memo and depth < self.MAX_DEPTH:  # C5, C7
-                    push(U, depth + 1, memo, en.seq, E, cs)
-                    new_push = True
-                if not O_res and O not in memo and depth < self.MAX_DEPTH:
-                    push(O, depth + 1, memo, en.seq, E, cs)
-                    new_push = True
-                if U_res and O_res:  # S2 aligned
-                    frame(E)
-                    self.events.append(Event("close", depth, E, C, F, U, O, frame=E))
-                    stack[:] = [x for x in stack if x is not en]  # children stay
-                    grounded = True
-                    if depth == 1 and goal is not None:  # the claim grounds
-                        self.claim = Kline(entry.sig, frozenset([goal.sig]))
-                        self._ground(self.claim)
-                        # break  # the claim alone stops the run — an inner ground never does
-            if self.claim is not None:
-                break 
-            if grounded:
-                continue
-            if not new_push:  # nothing left to spawn, nothing settled it
-                if not framed(E):
+            while stack:
+                if self.bound or self.claim is not None:
+                    return
+                top = stack[-1]
+                row = self.rows[top]
+                E = row.sig
+                cands = ([goal] if depth == 1 and goal is not None and base == 0
+                         else self._candidates(E, _frame, row.psig, row.pcsig))
+                if not cands:  # S4 stalled
+                    peers = self.stalled.setdefault(E, [])
+                    if any(p.parent != row.parent for p in peers):
+                        if not any(contained(E, j) for j in self.joint):
+                            self.joint.append(E)
+                        self.events.append(Event("exchange", row.depth, E, frame=E))
+                        grounded = True
+                    else:
+                        peers.append(_Parked(row.parent, stack, _frame))
+                        self.events.append(Event("stall", row.depth, E, U=E))
+                    stack.pop()
+                    continue
+                for C in cands:
+                    frame = _frame.copy()
+                    if self.pairings > self.MAX_PAIRINGS:
+                        if not self.bound:
+                            self._halt("bound: pairing cap reached", entry)
+                            self.bound = True
+                        return
+                    self.pairings += 1
+                    cs = C.sig
+                    F, U, O = meet(E, cs), residue(E, cs), residue(can(C.adj), E)
+                    if F == E:
+                        add_frame(F, frame)
+                    else:
+                        self.events.append(Event("pair", row.depth, E, C, F, U, O))
+
+                    u_ok = framed(U, frame)
+                    o_ok = framed(O, frame)
+                    if u_ok and o_ok:  # S2 aligned
+                        self.events.append(Event("close", row.depth, E, C, F, U, O, frame=E))
+                        grounded = True
+                        if row.depth == 1 and goal is not None:  # the claim grounds
+                            self.claim = Kline(entry.sig, frozenset([goal.sig]))
+                            self._ground(self.claim)
+                            return  # the claim alone stops the run
+                    if not u_ok and U not in memo and row.depth < self.MAX_DEPTH:
+                        memo.add(U)  # once per parent, across its candidates
+                        explore(U, stack, frame, memo.copy(), row.depth + 1, E, cs)
+                        continue
+
+                    if not o_ok and O not in memo and row.depth < self.MAX_DEPTH:
+                        memo.add(O)
+                        explore(O, stack, frame, memo.copy(), row.depth + 1, E, cs)
+                        continue
+
+                if not grounded and not framed(E, frame):
                     self._halt("exhausted: no candidate resolved both sides",
                                Kline(E, frozenset()))
                 stack.pop()
+            
+
+        explore(entry.sig, [], [], set(), 1, None, None)
+
+        def jointly(x: KNode) -> bool:
+            return not x or any(contained(x, j) for j in self.joint)
 
         for v in self.stalled:  # stalls that never found a witness
-            if not framed(v):
+            if not jointly(v):
                 self._halt("stalled at S4: no candidates", Kline(v, frozenset()))
 
         return Rationalisation(self.stores, self.ends, self.events, claim=self.claim)
 
-    def _candidates(self, e: KNode, psig: KNode | None = None,
+    def _candidates(self, e: KNode, frame: list[KNode], psig: KNode | None = None,
                     pcsig: KNode | None = None) -> list[Kline]:
-        """The reference CANDIDATES minus loop control, in insertion order."""
+        """The reference CANDIDATES minus loop control, in insertion order.
+        A reentry never re-pairs its origin: its parent entry's and parent
+        candidate's signatures are barred — the residual would re-derive
+        the decomposition the parent pairing already performed. A signature
+        covered on this path has nothing to teach."""
         return [
             c
             for c in self.d
@@ -168,21 +208,9 @@ class Cogitator:
             and c.fingerprint() != e  # like for like
             and c.sig != psig  # the parent entry
             and c.sig != pcsig  # the parent candidate
-            and not any(contained(c.sig, f) for f in self.frame)  # covered: nothing to teach
+            and not any(contained(c.sig, f) for f in frame)  # covered on the path
+            and not any(contained(c.sig, j) for j in self.joint)  # jointly covered
         ]
-
-
-@dataclass
-class _Entry:
-    """One stack entry. parent — the seq of the pushing entry (0 for the
-    opening); stalls match only across different parents."""
-
-    sig: KNode
-    cands: list
-    depth: int
-    memo: set = field(default_factory=set)
-    seq: int = 0
-    parent: int = 0
 
 
 def rationalise(d: Domain, entry: Kline, goal: Kline | None = None) -> Rationalisation:
