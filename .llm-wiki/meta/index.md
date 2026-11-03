@@ -495,7 +495,11 @@
 - [[sources/obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn]] — Observation: _trace extracted to dev/dialogue/trace.py — model searches, harness narrates *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]] — Observation: Union-fit history removed from doc; offering-only pairing committed *(created: 2026-11-02)*
 - [[sources/obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue]] — Observation: Module split + Event refactor committed 2cfc198 on dialogue *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full]] — Observation: New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection]] — Observation: Parent-origin bar added to Cogitator candidate selection *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re]] — Observation: rationalisation split: algebra/domain/report modules; Event replaces Row *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr]] — Observation: Trace elision removed — every reentry logged; grounding-path pruning deferred *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio]] — Observation: wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision *(created: 2026-11-03)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
@@ -516,4 +520,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-03T10:12:05.088Z* | *Total pages: 498*
+*Last updated: 2026-11-03T13:33:32.717Z* | *Total pages: 502*

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-03T10:12:05.088Z",
+  "last_updated": "2026-11-03T13:33:32.717Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7744,6 +7744,43 @@
       "created": "2026-11-03",
       "updated": "2026-11-03"
     },
+    "sources/obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full": {
+      "type": "source",
+      "title": "Observation: New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided",
+      "tags": [
+        "trs",
+        "trace-table",
+        "wdmh",
+        "stall",
+        "elision",
+        "parent-origin-bar"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full",
+      "relevance": "medium",
+      "observed_at": "2026-11-03T13:18:55.138Z",
+      "source_context": "Explaining why row 2 of the new step-4 table is the DH stall, not HLAL",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection": {
+      "type": "source",
+      "title": "Observation: Parent-origin bar added to Cogitator candidate selection",
+      "tags": [
+        "trs",
+        "cogitator",
+        "candidates",
+        "reentry",
+        "rule"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection",
+      "relevance": "high",
+      "observed_at": "2026-11-03T13:14:48.526Z",
+      "source_context": "Strengthening Cogitator candidate selection: no parent entry / parent candidate",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
     "sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re": {
       "type": "source",
       "title": "Observation: rationalisation split: algebra/domain/report modules; Event replaces Row",
@@ -7758,6 +7795,42 @@
       "relevance": "high",
       "observed_at": "2026-11-03T09:55:25.740Z",
       "source_context": "Separating the reference model from the cogitator",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr": {
+      "type": "source",
+      "title": "Observation: Trace elision removed — every reentry logged; grounding-path pruning deferred",
+      "tags": [
+        "trs",
+        "trace-table",
+        "harness",
+        "elision",
+        "ruling"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr",
+      "relevance": "high",
+      "observed_at": "2026-11-03T13:33:32.627Z",
+      "source_context": "Removing trace elision per user ruling: every reentry logged, prune later",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio": {
+      "type": "source",
+      "title": "Observation: wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision",
+      "tags": [
+        "trs",
+        "trace-table",
+        "wdmh",
+        "cogitator",
+        "events"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio",
+      "relevance": "medium",
+      "observed_at": "2026-11-03T12:54:22.845Z",
+      "source_context": "Explaining wdmh step-4 trace: HLAL entered 5 times, resolved twice",
       "created": "2026-11-03",
       "updated": "2026-11-03"
     },

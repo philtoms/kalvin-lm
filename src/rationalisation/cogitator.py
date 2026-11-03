@@ -86,9 +86,10 @@ class Cogitator:
             if x and x not in self.frame:
                 self.frame.append(x)
 
-        def push(sig: KNode, depth: int, memo: set, parent: int) -> None:
+        def push(sig: KNode, depth: int, memo: set, parent: int,
+                 psig: KNode | None = None, pcsig: KNode | None = None) -> None:
             memo.add(sig)  # once per parent, across its for-runs
-            cands = [goal] if depth == 1 and goal is not None else self._candidates(sig)
+            cands = [goal] if depth == 1 and goal is not None else self._candidates(sig, psig, pcsig)
             stack.append(_Entry(sig, cands, depth, set(), next(seq), parent))
 
         push(entry.sig, 1, set(), 0)
@@ -125,10 +126,10 @@ class Cogitator:
                 U_res = framed(U)
                 O_res = framed(O)
                 if not U_res and U not in memo and depth < self.MAX_DEPTH:  # C5, C7
-                    push(U, depth + 1, memo, en.seq)
+                    push(U, depth + 1, memo, en.seq, E, cs)
                     new_push = True
                 if not O_res and O not in memo and depth < self.MAX_DEPTH:
-                    push(O, depth + 1, memo, en.seq)
+                    push(O, depth + 1, memo, en.seq, E, cs)
                     new_push = True
                 if U_res and O_res:  # S2 aligned
                     frame(E)
@@ -155,7 +156,8 @@ class Cogitator:
 
         return Rationalisation(self.stores, self.ends, self.events, claim=self.claim)
 
-    def _candidates(self, e: KNode) -> list[Kline]:
+    def _candidates(self, e: KNode, psig: KNode | None = None,
+                    pcsig: KNode | None = None) -> list[Kline]:
         """The reference CANDIDATES minus loop control, in insertion order."""
         return [
             c
@@ -164,6 +166,8 @@ class Cogitator:
             and c.adj  # a bare signature offers no construction
             and c.adj != frozenset([c.sig])  # an identity is not a partner
             and c.fingerprint() != e  # like for like
+            and c.sig != psig  # the parent entry
+            and c.sig != pcsig  # the parent candidate
             and not any(contained(c.sig, f) for f in self.frame)  # covered: nothing to teach
         ]
 

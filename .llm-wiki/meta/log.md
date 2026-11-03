@@ -1235,3 +1235,15 @@
 ## [2026-11-03T10:12:04.978Z] observe
 - slug: "obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue", title: "Module split + Event refactor committed 2cfc198 on dialogue", relevance: "medium"
 
+## [2026-11-03T12:54:22.848Z] observe
+- slug: "obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio", title: "wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision", relevance: "medium"
+
+## [2026-11-03T13:14:48.528Z] observe
+- slug: "obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection", title: "Parent-origin bar added to Cogitator candidate selection", relevance: "high"
+
+## [2026-11-03T13:18:55.140Z] observe
+- slug: "obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full", title: "New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided", relevance: "medium"
+
+## [2026-11-03T13:33:32.629Z] observe
+- slug: "obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr", title: "Trace elision removed — every reentry logged; grounding-path pruning deferred", relevance: "high"
+

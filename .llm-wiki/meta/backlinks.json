@@ -1219,7 +1219,11 @@
     "sources/reentry-probe-fit-gate-divergence"
   ],
   "sources/obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue": [],
+  "sources/obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full": [],
+  "sources/obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection": [],
   "sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re": [],
+  "sources/obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr": [],
+  "sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio": [],
   "sources/pseudocode-audit-three-false-lines-recheck-invisible": [],
   "sources/reentry-probe-fit-gate-divergence": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],

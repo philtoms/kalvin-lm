@@ -310,12 +310,9 @@ def _event_line(ev: Event, labels: dict[int, str], alloc: dict[int, str]) -> lis
 
 def _render_events(events: list[Event], labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
     """The event table: depth, entry, candidate, fit, underfit, overfit,
-    frame, event — one line per reentry event, in order. Plain
-    exploration pairings (no mint, not the opening) are elided: the
-    minting pairings, stalls, exchanges and resolutions carry the story."""
+    frame, event — one line per event, in order."""
     hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "event"]
-    shown = [ev for ev in events if ev.kind != "pair" or ev.frame or ev.depth == 1]
-    body = [_event_line(ev, labels, alloc) for ev in shown]
+    body = [_event_line(ev, labels, alloc) for ev in events]
     widths = [
         max(len(hdr[i]), *(len(r[i]) for r in body)) if body else len(hdr[i])
         for i in range(len(hdr))

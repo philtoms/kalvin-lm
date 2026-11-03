@@ -2,6 +2,10 @@
 
 ## 2026-11-03
 
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr","title":"Trace elision removed — every reentry logged; grounding-path pruning deferred"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full","title":"New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection","title":"Parent-origin bar added to Cogitator candidate selection"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio","title":"wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue","title":"Module split + Event refactor committed 2cfc198 on dialogue"}
 - **retro**: {"category":"architecture","slug":"pseudocode-audit-three-false-lines-recheck-invisible","title":"Pseudocode audit: three false lines, the re-run invisible; corrected in docstring"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re","title":"rationalisation split: algebra/domain/report modules; Event replaces Row"}
