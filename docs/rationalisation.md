@@ -59,10 +59,16 @@ S2 overlap, S3 disjoint — and grades; it never steers the search. The
 ## 2. The run
 
 The model's default runner is the **Cogitator**
-(`src/rationalisation/cogitator.py`) — the simple reentry loop:
-an entry's signature meets held claims, its underfit and offering
-residuals reenter as fresh entries, pairings ground when both sides
-resolve, stalls wait for an exchange witness. §2.1–§2.3 below describe
+(`src/rationalisation/cogitator.py`) — the reentry loop: an entry's
+signature meets held claims, its underfit and offering residuals
+reenter as fresh entries, pairings ground when both sides resolve,
+stalls wait for an exchange witness — and the drain: a call's loop
+pops through the whole stack, pairing every ancestor against the
+call's own candidate, close cascades climbing to the opening. The
+drain pairs ancestors without the candidate filter — a zero-fit
+pairing's underfit is the whole entry, the reentry meeting itself
+one level down, whose stall is the cross-parent witness an exchange
+needs. The Cogitator's docstring is its truth. §2.1–§2.3 below describe
 the **ReferenceCogitator** (`src/rationalisation/model.py`), retained
 unchanged as the baseline for comparison; its guarantees (§3) are
 measured against it.
