@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-03T17:04:05.257Z",
+  "last_updated": "2026-11-03T23:59:04.110Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -7747,6 +7747,24 @@
       "created": "2026-11-03",
       "updated": "2026-11-03"
     },
+    "sources/obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the": {
+      "type": "source",
+      "title": "Observation: Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record",
+      "tags": [
+        "trs",
+        "cogitator",
+        "s3-exchange",
+        "joint-frame",
+        "claim-rule"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the",
+      "relevance": "high",
+      "observed_at": "2026-11-03T23:59:04.022Z",
+      "source_context": "Verifying claim-rule fix; explaining where the exchange frames DH",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
     "sources/obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground": {
       "type": "source",
       "title": "Observation: Cogitator recurses at reentry point — O-first preserves grounding, trace collapses 4x",
@@ -7888,6 +7906,25 @@
       "relevance": "high",
       "observed_at": "2026-11-03T09:55:25.740Z",
       "source_context": "Separating the reference model from the cogitator",
+      "created": "2026-11-03",
+      "updated": "2026-11-03"
+    },
+    "sources/obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me": {
+      "type": "source",
+      "title": "Observation: S2 across candidates works — earned-sig registry + row-scoped memo ground both scripts",
+      "tags": [
+        "trs",
+        "cogitator",
+        "s2-alignment",
+        "grounded-registry",
+        "row-memo",
+        "trial"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me",
+      "relevance": "high",
+      "observed_at": "2026-11-03T23:21:30.432Z",
+      "source_context": "Trial: S2 alignment across candidates via earned-sig registry + row-scoped memo",
       "created": "2026-11-03",
       "updated": "2026-11-03"
     },

@@ -2,6 +2,8 @@
 
 ## 2026-11-03
 
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the","title":"Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me","title":"S2 across candidates works — earned-sig registry + row-scoped memo ground both scripts"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha","title":"E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu","title":"Ancestor-path filter: entry bar free; candidate bar grounds but shifts the load"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc","title":"User recode verified: drains whole stack copy, grounds both scripts at 28 pairings"}

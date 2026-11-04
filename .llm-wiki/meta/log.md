@@ -1265,3 +1265,9 @@
 ## [2026-11-03T17:04:05.166Z] observe
 - slug: "obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha", title: "E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical", relevance: "high"
 
+## [2026-11-03T23:21:30.434Z] observe
+- slug: "obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me", title: "S2 across candidates works — earned-sig registry + row-scoped memo ground both scripts", relevance: "high"
+
+## [2026-11-03T23:59:04.023Z] observe
+- slug: "obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the", title: "Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record", relevance: "high"
+
