@@ -495,6 +495,7 @@
 - [[sources/obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn]] — Observation: _trace extracted to dev/dialogue/trace.py — model searches, harness narrates *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]] — Observation: Union-fit history removed from doc; offering-only pairing committed *(created: 2026-11-02)*
 - [[sources/obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu]] — Observation: Ancestor-path filter: entry bar free; candidate bar grounds but shifts the load *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the]] — Observation: Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground]] — Observation: Cogitator recurses at reentry point — O-first preserves grounding, trace collapses 4x *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-draft-1-path-fork-cogitator-mechanism-verified-pairing-cap-b]] — Observation: Draft 1: path-fork Cogitator — mechanism verified, pairing cap blown *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha]] — Observation: E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical *(created: 2026-11-03)*
@@ -503,6 +504,7 @@
 - [[sources/obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection]] — Observation: Parent-origin bar added to Cogitator candidate selection *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-path-orthogonal-frames-via-recursive-rationalise-design-dire]] — Observation: Path-orthogonal frames via recursive rationalise — design direction and forks *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re]] — Observation: rationalisation split: algebra/domain/report modules; Event replaces Row *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me]] — Observation: S2 across candidates works — earned-sig registry + row-scoped memo ground both scripts *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr]] — Observation: Trace elision removed — every reentry logged; grounding-path pruning deferred *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc]] — Observation: User recode verified: drains whole stack copy, grounds both scripts at 28 pairings *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio]] — Observation: wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision *(created: 2026-11-03)*
@@ -526,4 +528,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-03T17:04:05.257Z* | *Total pages: 508*
+*Last updated: 2026-11-03T23:59:04.110Z* | *Total pages: 510*
