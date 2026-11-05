@@ -37,6 +37,13 @@
     candidate after the first re-explores the opening entry, where the
     claim grounds and stalls re-file at parent 0.
 
+    A stall waits for a witness, and the witness must align: two
+    stalls on one signature exchange only when their reentry chains,
+    walked upstream, part through the two sides of a shared pairing —
+    the underfit and the offering of one decomposition meeting again
+    on the same content. The S3 alignment; a second stall from the
+    same side witnesses nothing.
+
     One loop over an explicit call stack — no recursion. The pairing
     cap alone bounds descent and drain alike; the interpreter's stack
     is never spent. Events are the grounding call's trace — the
@@ -84,6 +91,9 @@ class _Call:
     cands: list | None = None
     stack: list | None = None
     events: list | None = None
+    caller: "_Call | None" = None  # the call whose loop pushed this one
+    side: str = ""  # "u" | "o" — the side of the fork that pushed it
+    pfp: int = 0  # the fork pairing's candidate fingerprint
 
 
 class Cogitator:
@@ -113,7 +123,7 @@ class Cogitator:
         self.claim: Kline | None = None
         self.pairings = 0
         self.bound = False
-        self.stalled: dict[KNode, int] = {}
+        self.stalled: dict[KNode, _Call] = {}
         self.frame: list[KNode] = []
         self.events: list[Event] = []
 
@@ -134,6 +144,28 @@ class Cogitator:
         def framed(x: KNode) -> bool:
             return not x or any(contained(x, f) for f in self.frame)
 
+        def legit(a: _Call, b: _Call) -> bool:
+            """The S3 alignment: the two stalled chains, walked upstream,
+            part through the two sides of a shared pairing — the underfit
+            and the offering of one decomposition meeting again. The chains
+            are the calls (the capture never touches the forks)."""
+            ca, cb = [], []
+            x = a
+            while x is not None:
+                ca.append(x)
+                x = x.caller
+            x = b
+            while x is not None:
+                cb.append(x)
+                x = x.caller
+            i, j = len(ca) - 1, len(cb) - 1
+            while i > 0 and j > 0 and ca[i - 1] is cb[j - 1]:
+                i -= 1
+                j -= 1
+            return (i > 0 and j > 0
+                    and ca[i - 1].pfp == cb[j - 1].pfp
+                    and ca[i - 1].side != cb[j - 1].side)
+
         calls = [_Call(entry.sig, 1, 0, None, None, [], [])]
         while calls:
             if self.bound or self.claim is not None:
@@ -143,13 +175,13 @@ class Cogitator:
                 call.cands = ([goal] if call.depth == 1 and goal is not None
                               else self._candidates(call.E, call.psig, call.pcsig))
                 if not call.cands:  # S4 stalled
-                    E, parent = call.E, call.parent
-                    if E in self.stalled and self.stalled[E] != parent:
+                    E = call.E
+                    if E in self.stalled and legit(self.stalled[E], call):
                         mint(E)  # S3 align
                         call.base_events.append(Event("exchange", call.depth, E, frame=E))
                         self.stalled.pop(E)
                     else:
-                        self.stalled[E] = parent
+                        self.stalled[E] = call
                         call.base_events.append(Event("stall", call.depth, E))
                     calls.pop()
                     continue
@@ -176,6 +208,7 @@ class Cogitator:
             call.E, call.depth, call.parent = E, depth, top.parent  # the capture
             C = call.cands[-1]
             cs = C.sig
+            fp = C.fingerprint()
             F, U, O = meet(E, cs), residue(E, cs), residue(can(C.adj), E)
             u_ok, o_ok = framed(U), framed(O)
             if u_ok and o_ok:  # S2 aligned
@@ -192,12 +225,14 @@ class Cogitator:
             if not u_ok and U not in memo and depth < self.MAX_DEPTH:
                 memo.add(U)  # once per parent — the row, not the fork
                 calls.append(_Call(U, len(call.stack) + 1, len(call.stack), E, cs,
-                                   call.stack.copy(), call.events))  # the descent
+                                   call.stack.copy(), call.events,
+                                   caller=call, side="u", pfp=fp))  # the descent
                 continue
             if not o_ok and O not in memo and depth < self.MAX_DEPTH:
                 memo.add(O)
                 calls.append(_Call(O, len(call.stack) + 1, len(call.stack), E, cs,
-                                   call.stack.copy(), call.events))
+                                   call.stack.copy(), call.events,
+                                   caller=call, side="o", pfp=fp))
                 continue
             call.stack.pop()  # the drain — the entry below meets this candidate
 

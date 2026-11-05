@@ -174,10 +174,12 @@ signature — stored; the run's only earned store; the loop stops.
 
 **STALL / EXCHANGE** (`_exchange`). A reentry with no candidates at
 all stalls at S4, filed under its signature. Two stalls on one
-signature from different parents witness each other: both resolve, a
-joint frame of that signature records it, nothing is stored. Stalled
-overfit meeting stalled underfit on the same content is the S3
-exchange — the closing move of the canonical scripts.
+signature witness each other when their reentry chains, walked
+upstream, part through the two sides of a shared pairing — the
+underfit and the offering of one decomposition meeting again on the
+same content: the S3 alignment, the closing move of the canonical
+scripts. Both resolve, a joint frame of that signature records it,
+nothing is stored.
 
 **HALT / PROPOSAL**. Terminal arrivals: no adjacency (R4), the depth
 bound, exhaustion without proof, and unresolved stalls. Each halt
