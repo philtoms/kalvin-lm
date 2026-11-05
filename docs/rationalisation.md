@@ -128,7 +128,12 @@ without children, adds nothing — skip. A reentry whose every candidate
 is skipped resolves as **known** only when every skip was proven; any
 unproven turn-away halts the reentry — exhaustion is not evidence.
 Candidates are taken in D's insertion order; the stack explores the
-first candidate's subtree to completion, the u-side leading.
+first candidate's subtree to completion, the u-side leading. These
+bars select a reentry's own candidate list; the Cogitator's drain (§2)
+applies a call's candidate to the ancestors on its stack without them
+— a zero-fit pairing there forks the whole entry as its underfit, the
+self-reentry, by which the other side of a decomposition re-meets the
+entry's unresolved content.
 
 **PAIR** (`_pair`). The entry's signature meets the candidate's
 **claim**:

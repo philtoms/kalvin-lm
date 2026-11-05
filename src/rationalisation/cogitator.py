@@ -23,15 +23,22 @@
         entry = the last drained top           # the capture — the opening
 
     Three moves do the work. THE DESCENT: a pairing's unsettled side
-    becomes a new call — its own candidates, its own stack copy; the
-    caller resumes against its own candidate when the call returns.
+    becomes a new call — its own candidates, its own stack copy. The
+    call lands on top of its caller, and the loop services only the
+    top of the calls stack: the caller sits frozen beneath it — its
+    entry still pushed, its candidate unadvanced — until the call
+    pops, and the caller's next step re-pairs its own entry against
+    its own candidate.
     THE DRAIN: a call's reentry loop does not stop at its own entry —
     it pops through the whole stack, pairing every ancestor against
     the call's candidate, close cascades climbing as each mint frames
-    the entry above. The drain bypasses the ancestors' candidate
+    the entry above. The drain pairs ancestors without their candidate
     filters: a zero-fit pairing is legal here, and its underfit is the
-    whole entry — the reentry meets itself one level down, and that
-    reentry's stall is the cross-parent witness an exchange needs.
+    whole entry — the self-reentry, the entry meeting itself one level
+    down under the new candidate's context. Its stall comes from the
+    far side of the original pairing — the other side of the
+    decomposition re-meeting the entry's unresolved content — and
+    witnesses the exchange.
     THE CAPTURE: a call's entry is its loop variables, which the drain
     leaves at the stack's bottom — the opening, depth 1 — so every
     candidate after the first re-explores the opening entry, where the
