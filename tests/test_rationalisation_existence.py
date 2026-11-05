@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skip(
 )
 
 
-SCRIPTS = sorted(Path("data/scripts").glob("*.ks"))
+SCRIPTS = sorted(Path("dev/dialogue/scripts").glob("*.ks"))
 
 
 def _scenarios():

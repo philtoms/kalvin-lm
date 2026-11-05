@@ -1,5 +1,5 @@
 {
-  "source": "data/scripts/mhall.ks",
+  "source": "dev/dialogue/scripts/mhall.ks",
   "turns": [
     {
       "op": "COUNTERSIGNS",

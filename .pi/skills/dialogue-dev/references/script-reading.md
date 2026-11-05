@@ -197,7 +197,7 @@ what you found.
 
 ## Authoring a new script
 
-Scripts live in `data/scripts/`. Author a `.ks` to test an rationaliser
+Scripts live in `dev/dialogue/scripts/`. Author a `.ks` to test an rationaliser
 theory or shake up a settled rationaliser — never to work around an rationaliser bug
 (see the skill's "rationaliser first" discipline).
 

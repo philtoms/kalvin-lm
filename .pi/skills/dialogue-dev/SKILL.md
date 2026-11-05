@@ -23,9 +23,9 @@ Every run ends with a trace and two lists. Read all before reading code.
 ## Run
 
 ```bash
-PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness data/scripts/mhall.ks             # the canonical kscript
-PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness data/scripts/wdmh.ks -p           # persist (save) memory
-PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness data/scripts/wdmh.ks -p data/dialogue/xxxx.json # persist (load + save) memory
+PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness dev/dialogue/scripts/mhall.ks             # the canonical kscript
+PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness dev/dialogue/scripts/wdmh.ks -p           # persist (save) memory
+PYTHONPATH=src:. .venv/bin/python -m dev.dialogue.harness dev/dialogue/scripts/wdmh.ks -p data/dialogue/xxxx.json # persist (load + save) memory
 ```
 
 The harness compiles each lesson's kscript, feeds each compiled entry to the engine
@@ -79,7 +79,7 @@ engine bugs. Typical retreats:
   reciprocal) is the fastest way to confirm or refute a hypothesis about
   engine behaviour.
 
-When you do author a `.ks`, it lives in `data/scripts/`. Annotation
+When you do author a `.ks`, it lives in `dev/dialogue/scripts/`. Annotation
 prose (parenthetical lines) is the trainer rationale — the harness
 carries it onto each kline's `KDbg.annotation` and prints it as a section
 header. Always compile the `.ks` to ensure there are no errors.
@@ -102,12 +102,12 @@ is, how to read it semantically, and how to construct new ones.
 
 ## Where things live
 
-| Artefact  | Path                      | Role                                              |
-| --------- | ------------------------- | ------------------------------------------------- |
-| Engine    | `src/kalvin/engine.py`    | The fork under tune                               |
-| Harness   | `dev/dialogue/harness.py` | The non-judging compile→feed→present loop + CLI   |
-| Compiler  | `src/ks/`                 | KScript → KValue; carries annotation/scope/labels |
-| Curricula | `data/scripts/*.ks`       | `mhall.ks` is canonical                           |
+| Artefact  | Path                        | Role                                              |
+| --------- | --------------------------- | ------------------------------------------------- |
+| Engine    | `src/kalvin/engine.py`      | The fork under tune                               |
+| Harness   | `dev/dialogue/harness.py`   | The non-judging compile→feed→present loop + CLI   |
+| Compiler  | `src/ks/`                   | KScript → KValue; carries annotation/scope/labels |
+| Curricula | `dev/dialogue/scripts/*.ks` | `mhall.ks` is canonical                           |
 
 ## Stop / ask
 

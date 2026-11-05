@@ -32,7 +32,7 @@ pytestmark = pytest.mark.skip(
 )
 
 
-SCRIPTS = sorted(Path("data/scripts").glob("*.ks"))
+SCRIPTS = sorted(Path("dev/dialogue/scripts").glob("*.ks"))
 
 
 class RecordingRunner(Runner):
@@ -210,7 +210,7 @@ from pathlib import Path
 from dev.dialogue.harness import Runner
 from ks.compiler import path_resolver
 digest = hashlib.sha256()
-for p in sorted(Path("data/scripts").glob("*.ks")):
+for p in sorted(Path("dev/dialogue/scripts").glob("*.ks")):
     runner = Runner()
     steps = runner.run(p.read_text(), resolver=path_resolver(p.parent))
     for st in steps:

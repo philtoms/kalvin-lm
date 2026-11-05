@@ -4761,7 +4761,7 @@
       "title": "Observation: mhall.ks training intent decoded: Query stress test, goal/evidence split",
       "tags": [
         "kscript",
-        "mhall",
+        "mhall",dev/dialogue/scripts
         "curriculum",
         "training-intent"
       ],
@@ -4778,7 +4778,7 @@
       "title": "Observation: mhall proposing died at eb07933, not the refactor — BPE-collision leak closed",
       "tags": [
         "mhall",
-        "bisect",
+        "bisect",dev/dialogue/scripts
         "regression",
         "def22",
         "coverage"
@@ -4834,7 +4834,7 @@
       "title": "Observation: mhall stall root: ask dies at S4-refusal; attending ask still derives nothing",
       "tags": [
         "mhall",
-        "ask",
+        "ask",dev/dialogue/scripts
         "refusal",
         "def22",
         "stall",
