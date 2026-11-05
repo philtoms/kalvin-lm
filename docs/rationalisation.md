@@ -1,7 +1,7 @@
 # Kalvin — the rationalisation model
 
-The rules of the model in `src/rationalisation/model.py`, where the code is
-truth and this document is the rules the code implements. It replaces
+The rules of the model in `src/rationalisation/cogitator.py`, where the
+code is truth and this document is the rules the code implements. It replaces
 `docs/attic/trs-significance.md`, which named the mechanism a term
 rewriting system. It is not one: nothing here locates a redex and
 replaces it, no rule fires by syntactic match, and termination comes
@@ -58,20 +58,17 @@ S2 overlap, S3 disjoint — and grades; it never steers the search. The
 
 ## 2. The run
 
-The model's default runner is the **Cogitator**
-(`src/rationalisation/cogitator.py`) — the reentry loop: an entry's
-signature meets held claims, its underfit and offering residuals
-reenter as fresh entries, pairings ground when both sides resolve,
-stalls wait for an exchange witness — and the drain: a call's loop
-pops through the whole stack, pairing every ancestor against the
-call's own candidate, close cascades climbing to the opening. The
-drain pairs ancestors without the candidate filter — a zero-fit
-pairing's underfit is the whole entry, the reentry meeting itself
-one level down, whose stall is the cross-parent witness an exchange
-needs. The Cogitator's docstring is its truth. §2.1–§2.3 below describe
-the **ReferenceCogitator** (`src/rationalisation/model.py`), retained
-unchanged as the baseline for comparison; its guarantees (§3) are
-measured against it.
+The model is the **Cogitator** (`src/rationalisation/cogitator.py`) —
+the reentry loop: an entry's signature meets held claims, its underfit
+and offering residuals reenter as fresh entries, pairings ground when
+both sides resolve, stalls wait for an exchange witness. Three moves
+do the work — the descent, the drain, the capture — named in §2.3 and
+in the engine's docstring, which is its truth.
+
+The `ReferenceCogitator` (`src/rationalisation/model.py`) is retired
+history — the pre-drain baseline, now out of date and ignored; it
+remains in the tree only because old probes and tests still compare
+against it. It is not part of the model.
 
 ### 2.1 The harness configuration
 
@@ -87,114 +84,114 @@ knowledge.
 
 ### 2.2 The machine's state
 
-One `ReferenceCogitator` per rationalisation: an `agenda` (a LIFO stack of
-**reentries**), `rows` (every pairing, in creation order), `open_rows`,
-`frames` (covered content, each with its source row), `stalls`
-(reentries halted at S4, by signature), `seen` (pairing fingerprints,
-for loop control), the run's `events` (pair/wait/close notes —
-reporting only, never read by the search), and the `claim` — set at
-most once.
+One `Cogitator` per rationalisation, running one loop over an explicit
+**calls stack**. A **call** is one reentry's exploration: the reentry's
+signature and depth, its **candidates** (the reentry's own, taken last
+first), its **stack** (a copy of the ancestor entries, the current
+candidate's fresh entry atop it), its **events** (the candidate's
+trace, copied forward), and its **fork** (the pushing call, the side
+it was pushed on, the pairing's candidate fingerprint — set at push,
+never mutated).
 
-A **reentry** is an unconstructed kline: a region-signature remembering
-the row and side it came from. A **row** is one pairing — `F`, `U`,
-`O`, its pushed children, and its fate; an event, never a value.
+Shared across calls: the **frame** list (covered content, only
+growing), the **stalls** (a signature → the stalling call), the
+**claim** — set at most once — and the pairing counter. The events are
+the grounding call's trace — the candidate path the claim came down; a
+run that grounds nothing reports none.
 
-Bounds: `MAX_DEPTH = 10`, `MAX_ROWS = 4096`.
+A **reentry** is a signature — an unconstructed region seeking
+construction. A **pairing** is one meeting of a reentry's signature
+with a candidate's claim — an occurrence, never a value.
+
+Bounds: `MAX_DEPTH = 10`, `MAX_PAIRINGS = 4096`. The pairing cap alone
+bounds descent and drain alike; the interpreter's stack is never
+spent.
 
 ### 2.3 The rules
 
-**POP** (`_run`). Pop the agenda. Stop when the agenda is empty, the
-claim has grounded, or the row cap is reached. A reentry already
-resolved, or covered by an ancestor's or joint frame, settles without
-exploration (**KNOWN**) and propagates to its parent. Otherwise reenter.
+**THE LOOP.** One loop services the top of the calls stack, and only
+the top. A call lands on top of its caller; the caller sits frozen
+beneath it — its entry still pushed, its candidate unadvanced — until
+the call pops, and the caller's next step re-pairs its own entry
+against its own candidate. The loop stops when the claim grounds, the
+pairing cap is reached, or the stack empties.
 
-**CANDIDATES** (`_reenter`). A reentry's signature `E` primes domain
-klines by overlap:
+**CANDIDATES** (`_candidates`). A reentry's own candidate list, primed
+from the domain:
 
 ```
 c.sig & E != 0            overlap — no-neighbours never pairs
 c.adj is not empty        a bare signature offers no construction
 c.adj != {c.sig}          an identity is not a partner
 c.fingerprint() != E      like for like — the whole offering is the entry
+c.sig != psig             the parent entry — the origin never re-pairs
+c.sig != pcsig            the parent candidate
 c.sig not framed          a covered signature has nothing to teach
-c not in the entry path   no candidate may share a signature with an
-                          ancestor entry (re-deriving the decomposition)
-fingerprint unseen        each reentry pairs each candidate once
 ```
 
-plus the **proven skip**: a candidate whose claim covers the whole
-entry, whose fit is already framed, and whose offering would settle
-without children, adds nothing — skip. A reentry whose every candidate
-is skipped resolves as **known** only when every skip was proven; any
-unproven turn-away halts the reentry — exhaustion is not evidence.
-Candidates are taken in D's insertion order; the stack explores the
-first candidate's subtree to completion, the u-side leading. These
-bars select a reentry's own candidate list; the Cogitator's drain (§2)
-applies a call's candidate to the ancestors on its stack without them
-— a zero-fit pairing there forks the whole entry as its underfit, the
-self-reentry, by which the other side of a decomposition re-meets the
-entry's unresolved content.
+At depth 1 the goal is the one and only candidate. These bars select a
+reentry's own list; the drain applies a call's candidate to the
+ancestors on its stack without them — a zero-fit pairing there forks
+the whole entry as its underfit, the self-reentry, by which the other
+side of a decomposition re-meets the entry's unresolved content.
 
-**PAIR** (`_pair`). The entry's signature meets the candidate's
-**claim**:
+**PAIR.** The entry's signature meets the candidate's **claim**:
 
 ```
 F = E & σ          the fit — shared content
 U = E & ~σ         the underfit — the entry beyond the claim
-```
-
-and the candidate's construction **offers** beyond the fit — the
-o-side, the offering, one reentry carrying the adjacency nodes
-contained in it:
-
-```
-can(N) & ~E       the offering — what its construction composes beyond
+O = can(N) & ~E    the offering — the construction beyond the entry
 ```
 
 The claim's own extension (`σ & ~E`) is not the entry's business: the
-claim fits, the construction offers, and nothing else is owed. The
-opening pairing is special: at depth 1 the goal is the one and only candidate,
-and its row is the `goal_row`. `E == F` — the claim covers the entry —
-mints a **frame** of `E`, owned by the row.
+claim fits, the construction offers, and nothing else is owed. Both
+sides framed — S2 aligned — the pairing **closes**: a frame of `E`
+mints and the close is noted. Otherwise the unsettled sides descend.
 
-**SETTLE** (`_side_ok`). A side region is settled when it is empty;
-when *all* its children have resolved; when it is the o-side and the
-domain holds its canon (a witnessed signature needs no re-derivation —
-u-sides never settle this way: the claim side is earned); or when an
-ancestor's or joint frame covers it — never the row's own subtree's.
+**THE DESCENT.** A pairing's unsettled, unmemoed side becomes a new
+call — its own candidates, its own stack copy — landing on top of the
+caller. The caller's memo marks the side forked: once per candidate,
+fresh for the next.
 
-**FRAME** (`_frame`). A minted frame is covered content the run holds
-evidence for. Mints cascade: every open row is rechecked, and each
-newly satisfied row resolves. Exchanges mint **joint frames** owned by
-no subtree. Every frame's value is a signature; no composite is ever
-minted.
+**THE DRAIN.** A call's reentry loop does not stop at its own entry —
+it pops through the whole stack, pairing every ancestor against the
+call's candidate, close cascades climbing as each mint frames the
+entry above. The drain pairs ancestors without their candidate
+filters: a zero-fit pairing is legal here, and its underfit is the
+whole entry — the self-reentry, the entry meeting itself one level
+down under the new candidate's context. Its stall comes from the far
+side of the original pairing and witnesses the exchange.
 
-**RESOLVE / BACK-PROPAGATE** (`_resolve`, `_after`). Both sides settled
-→ the row resolves → its reentry resolves → the parent row's side is
-satisfied, upward to the opening pairing.
+**THE CAPTURE.** A call's entry is its loop variables, which the drain
+leaves at the stack's bottom — the opening, depth 1 — so every
+candidate after the first re-explores the opening entry, where the
+claim grounds and stalls re-file at parent 0.
 
-**CLAIM**. When the opening pairing resolves, the claim grounds:
-`Kline(E_ask, {σ_goal})` — the ask's signature over the goal's
-signature — stored; the run's only earned store; the loop stops.
+**CLAIM.** When a pairing of the opening at depth 1 closes against the
+goal, the claim grounds: `Kline(E_ask, {σ_goal})` — the ask's
+signature over the goal's signature — stored; the run's only earned
+store; the run stops outright.
 
-**STALL / EXCHANGE** (`_exchange`). A reentry with no candidates at
-all stalls at S4, filed under its signature. Two stalls on one
-signature witness each other when their reentry chains, walked
-upstream, part through the two sides of a shared pairing — the
-underfit and the offering of one decomposition meeting again on the
-same content: the S3 alignment, the closing move of the canonical
-scripts. Both resolve, a joint frame of that signature records it,
-nothing is stored.
+**STALL / EXCHANGE.** A reentry with no candidates at all stalls at
+S4, filed under its signature. Two stalls on one signature witness
+each other when their reentry chains, walked upstream, part through
+the two sides of a shared pairing — the underfit and the offering of
+one decomposition meeting again on the same content: the S3
+alignment, the closing move of the canonical scripts. The exchange
+mints a frame of that signature; nothing is stored.
 
-**HALT / PROPOSAL**. Terminal arrivals: no adjacency (R4), the depth
-bound, exhaustion without proof, and unresolved stalls. Each halt
+**HALT / PROPOSAL.** Terminal arrivals: no adjacency (R4), the pairing
+cap, exhaustion (a call whose candidates drain — the halt reports the
+last drained entry, the opening), and unresolved stalls. Each halt
 becomes a proposal — `connect`, `continue`, `acquire` — ordered by
 ascending effort.
 
 ### 2.4 Invariants
 
-- D only grows; frames only grow; the events list only appends.
-- Each reentry resolves at most once; the claim grounds at most once.
+- D only grows; the frame list only grows; the claim grounds at most
+  once.
+- A fork is set at push and never mutated — entry identities may be
+  captured, forks cannot; the witness chains are sound.
 - Every frame is a signature; every reentry is a signature. No
   composite value — no `σ | can(N)` of any kline — is ever fitted,
   minted, or reentered.
@@ -202,15 +199,16 @@ ascending effort.
 
 ## 3. Termination and determinism
 
-**T1.** Every rationalisation halts: each pop does bounded work,
-children are bounded by `MAX_DEPTH`, rows by the cap, frame cascades
-and exchange loops strictly consume open work, and the claim stops the
-loop outright.
+**T1.** Every rationalisation halts: each loop step is one pairing,
+one push, or one pop; pushes are bounded by the memo and `MAX_DEPTH`,
+candidates only shrink, the pairing cap bounds descent and drain
+alike, and the claim stops the loop outright.
 
 **T2.** The outcome is a function of `(D₀, entry, goal)`: every choice
-point is ordered (the agenda is a stack, candidates follow insertion
-order, stall groups are lists, ties keep generation order), the sets
-serve membership only, and node values hash as plain integers.
+point is ordered (the calls stack is LIFO, candidates follow insertion
+order taken last first, the drain walks the stack top-down, stalls and
+witness chains are deterministic), the sets serve membership only, and
+node values hash as plain integers.
 
 ## 4. Parked instruments
 

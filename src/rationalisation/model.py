@@ -1,9 +1,9 @@
-"""The ReferenceCogitator — the reference implementation of the
-rationalisation model (docs/rationalisation.md §2), retained unchanged
-as the baseline for comparison with the Cogitator
-(rationalisation/cogitator.py). The shared algebra, domain, and report
-live in their own modules; what remains here is the reference search
-itself: a deterministic, bounded, depth-first run in which
+"""The ReferenceCogitator — RETIRED HISTORY. The pre-drain baseline of
+the rationalisation model, now out of date and ignored: the Cogitator
+(rationalisation/cogitator.py) is the model (docs/rationalisation.md
+§2). Retained only because old probes and tests still compare against
+it; do not build on it. The shared algebra, domain, and report live in
+their own modules; what remains here is the retired search itself: a deterministic, bounded, depth-first run in which
 unconstructed klines meet held klines' claims and receive their offered
 decompositions, until the claim grounds or the run halts. The scripts
 are the only guarantee that an ask can be framed as a goal; the model

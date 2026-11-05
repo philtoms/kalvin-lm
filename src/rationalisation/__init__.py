@@ -1,7 +1,8 @@
 """The rationalisation model (docs/rationalisation.md): the shared algebra
 (algebra.py), the domain (domain.py), the report vocabulary (report.py),
-and two runners — the Cogitator (cogitator.py, the default) and the
-ReferenceCogitator (model.py, the retained baseline)."""
+and two runners — the Cogitator (cogitator.py, the model) and the
+ReferenceCogitator (model.py, retired history, kept for old probes
+and tests)."""
 
 from rationalisation.algebra import (
     BETA,

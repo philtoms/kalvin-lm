@@ -87,7 +87,7 @@ class Runner:
         self.word_bits: dict[str, int] = {}
         self.pending: list[Pending] = []
         self.stores: list[tuple[int, Kline]] = []  # (step, store)
-        self.cogitator = Cogitator(self.domain)  # the default runner; swap in ReferenceCogitator for the baseline
+        self.cogitator = Cogitator(self.domain)  # the model's runner
 
     def run(self, source: str, resolver=None) -> list[Step]:
         """An ask==goal run: every `==` ask with a resolvable goal is one
