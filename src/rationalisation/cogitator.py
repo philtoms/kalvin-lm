@@ -34,7 +34,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from kalvin.kline import KNode
+from kalvin.kline import KNode, KNone
 from rationalisation.algebra import Kline, can, contained, meet, residue
 from rationalisation.domain import Domain
 from rationalisation.report import End, Event, Rationalisation, effort
@@ -49,6 +49,26 @@ class _Entry:
     depth: int
     parent: int
     memo: set = field(default_factory=set)  # sigs this row has forked — once per parent
+
+@dataclass
+class _Call:
+    """One reentry's exploration. base_stack/base_events — what it was
+    called with (events live: the caller's current list takes its
+    stalls); cands — its own candidates, last first; stack/events — the
+    current candidate's copies; E/depth/parent — the loop variables the
+    drain reassigns (after the first candidate: the last drained top,
+    not the call's own reentry)."""
+
+    E: KNode = KNone
+    depth: int = 0
+    events: list = field(default_factory=list)
+    caller: "_Call | None" = None  # the call whose loop pushed this one
+    cands: list | None = None
+    side: str = ""  # "u" | "o" — the side of the fork that pushed it
+    seen: str = ""
+    pfp: int = 0  # the fork pairing's candidate fingerprint
+
+CNone = _Call()
 
 class Cogitator:
     """The reentry runner: an entry's signature meets held claims, and each
@@ -71,12 +91,18 @@ class Cogitator:
         if k not in self.stores:
             self.stores.append(k)
 
+    def ancestor(self, e: KNode, c: _Call) -> bool:
+        while c.caller:
+            c = c.caller
+            if c.E == e: return True
+        return False
+    
     def rationalise(self, entry: Kline, goal: Kline | None = None) -> Rationalisation:
         self.stores, self.ends = [], []
         self.claim: Kline | None = None
         self.pairings = 0
         self.bound = False
-        self.stalled: dict[KNode, int] = {}
+        self.stalled: dict[KNode, str] = {}
         self.frame: list[KNode] = []
         self.events: list[Event] = []
 
@@ -97,83 +123,95 @@ class Cogitator:
         def framed(x: KNode) -> bool:
             return not x or any(contained(x, f) for f in self.frame)
 
-        def explore(E: KNode, stack: list[_Entry], events: list[Event], psig: KNode | None, pcsig: KNode | None) -> None:
-            """One reentry into new state. The stack is copied and built forward from here."""
-            parent = len(stack)  # read once, for identity
-            depth = parent + 1
+        def next(c: _Call) -> _Call:
+            if not c.caller: return CNone
+            c.caller.events=c.events
+            return c.caller
+
+        def push(E: KNode, events: list[Event], caller: _Call, side: str) -> _Call:
+            depth = caller.depth + 1
             cands = ([goal] if depth == 1 and goal is not None
-                        else self._candidates(E, psig, pcsig))
-            if not cands:  # S4 stalled
-                if E in self.stalled and self.stalled[E] != parent:
-                    frame(E) # S3 align
-                    events.append(Event("exchange", depth, E, frame=E))
-                    self.stalled.pop(E)
+                        else self._candidates(E, call))
+            caller.seen += side
+            return  _Call(E, depth, events, caller, cands, side)
+
+        def pop(call: _Call) -> _Call:
+
+            caller = next(call)
+            if call.side not in caller.seen:
+                caller.seen += call.side
+                return caller
+
+            if caller.cands:
+                caller.cands.pop()
+                return caller
+            else: return pop(caller)
+
+        call = push(entry.sig, [],  CNone, "")
+
+        self.events = call.events
+        while call.E != KNone:
+            if self.pairings > self.MAX_PAIRINGS:
+                self._halt("bound: pairing cap reached", entry)
+                break
+            self.pairings += 1
+
+            E = call.E
+            if not call.cands:  # S4 stalled
+                if E in self.stalled and self.stalled[E] != call.side:
+                        frame(E) # S3 align
+                        call.events.append(Event("exchange", call.depth, E, frame=E))
+                        self.stalled.pop(E)
                 else:
-                    self.stalled[E] = parent
-                    events.append(Event("stall", depth, E))
-                return
-            
-            while cands:
-                _events = events.copy()
-                _stack = stack.copy()
-                _stack.append(_Entry(E, depth, parent))
-                while _stack:
-                    if self.bound or self.claim is not None:
-                        return
-                    if self.pairings > self.MAX_PAIRINGS:
-                        if not self.bound:
-                            self._halt("bound: pairing cap reached", entry)
-                            self.bound = True
-                        return
-                    self.pairings += 1
-                    top = _stack[-1]
-                    E = top.sig
-                    depth = top.depth
-                    memo = top.memo
-                    parent = top.parent
-                    C = cands[-1]
-                    cs = C.sig
-                    F, U, O = meet(E, cs), residue(E, cs), residue(can(C.adj), E)
-                    u_ok = framed(U)
-                    o_ok = framed(O)
-                    if u_ok and o_ok:  # S2 aligned
-                        frame(E)
-                        _events.append(Event("close", depth, E, C, F, U, O, frame=E))
-                        if depth == 1 and goal is not None and goal.sig == C.sig:  # the claim grounds
-                            self.claim = Kline(entry.sig, frozenset([goal.sig]))
-                            self._ground(self.claim)
-                            self.events = _events
-                            return  # the claim alone stops the run
-                    else:
-                        _events.append(Event("pair", depth, E, C, F, U, O))
+                    self.stalled[E] = call.side
+                    call.events.append(Event("stall", call.depth, E))
 
-                    if not u_ok and U not in memo and depth < self.MAX_DEPTH:
-                        memo.add(U)  # once per parent — the row, not the fork
-                        explore(U, _stack, _events, E, cs)
-                        continue
+                call = pop(call)
+                
+            else:
+                depth = call.depth
+                C = call.cands[-1]
+                cs = C.sig
+                F, U, O = meet(E, cs), residue(E, cs), residue(can(C.adj), E)
+                if F == E:
+                    frame(F)
 
-                    if not o_ok and O not in memo and depth < self.MAX_DEPTH:
-                        memo.add(O)
-                        explore(O, _stack, _events, E, cs)
-                        continue
+                u_ok = framed(U)
+                o_ok = framed(O)
+                if u_ok and o_ok:  # S2 aligned
+                    frame(E)
+                    self.events.append(Event("close", depth, E, C, F, U, O, frame=E))
+                    if depth == 1 and goal is not None and goal.sig == C.sig:  # the claim grounds
+                        self.claim = Kline(entry.sig, frozenset([goal.sig]))
+                        self._ground(self.claim)
+                        break  # the claim alone stops the run
+                else:
+                    self.events.append(Event("pair", depth, E, C, F, U, O))
 
-                    _stack.pop()
+                if not u_ok and "U" not in call.seen and depth < self.MAX_DEPTH:
+                    call = push(U, self.events, call, "U")
+                    continue
 
-                cands.pop()
-                if not cands:
-                    self._halt("exhausted: no candidate resolved both sides",
-                            Kline(E, frozenset()))
-            
+                if not o_ok and "O" not in call.seen and depth < self.MAX_DEPTH:
+                    call = push(O, self.events, call, "O")
+                    continue
 
-        explore(entry.sig, [], [], None, None)
+                call.cands.pop()
+                call.seen = ""
+
+            self.events = call.events.copy()
+
+            if not call.cands:
+                call = next(call)
+                if call == CNone:
+                    self._halt("exhausted: no candidate resolved both sides", Kline(E, frozenset()))
 
         for e in self.stalled:  # stalls that never found a witness
             self._halt("stalled at S4: no candidates", Kline(e, frozenset()))
 
         return Rationalisation(self.stores, self.ends, self.events, claim=self.claim)
 
-    def _candidates(self, e: KNode, psig: KNode | None = None,
-                    pcsig: KNode | None = None) -> list[Kline]:
+    def _candidates(self, e: KNode, call: _Call) -> list[Kline]:
         """The reference CANDIDATES minus loop control, in insertion order.
         A reentry never re-pairs its origin: its parent entry's and parent
         candidate's signatures are barred — the residual would re-derive
@@ -183,15 +221,14 @@ class Cogitator:
             c
             for c in self.d
             if c.sig & e  # overlap — no-neighbours never pairs
+            and c.sig != e
             and c.adj  # a bare signature offers no construction
             and c.adj != frozenset([c.sig])  # an identity is not a partner
             and c.fingerprint() != e  # like for like
-            and c.sig != psig  # the parent entry
-            and c.sig != pcsig  # the parent candidate
-            and not any(contained(c.sig, f) for f in self.frame)  # covered on the path
+            and not self.ancestor(c.sig, call)
         ]
-        return cands
-        # return list(reversed(cands))
+        # return cands
+        return list(reversed(cands))
 
 def rationalise(d: Domain, entry: Kline, goal: Kline | None = None) -> Rationalisation:
     """The one-shot runner — one Cogitator, one entry."""
