@@ -80,6 +80,8 @@ class Cogitator:
     def __init__(self, d: Domain) -> None:
         self.d = d
         self.stores: list[Kline] = []
+        self.frame: list[KNode] = []  # completed witnesses — runs share them
+        self.stalled: dict[KNode, str] = {}  # parked witnesses — runs share them
 
     def _halt(self, reason: str, k: Kline) -> None:
         self.ends.append(End(reason, k, effort(k)))
@@ -100,8 +102,6 @@ class Cogitator:
         self.claim: Kline | None = None
         self.pairings = 0
         self.bound = False
-        self.stalled: dict[KNode, str] = {}
-        self.frame: list[KNode] = []
         self.events: list[Event] = []
 
         if goal is None:
@@ -125,13 +125,23 @@ class Cogitator:
             if not c.caller: return CNone
             return c.caller
 
-        def push(E: KNode, caller: _Call, side: str) -> _Call:
+        def park(E: KNode, depth: int, side: str) -> None:
+            # a side with no candidates parks — a parked witness from the
+            # other side completes it: the exchange, a frame on the spot
+            if E in self.stalled and self.stalled[E] != side:
+                frame(E)  # S3 align
+                self.events.append(Event("exchange", depth, E, frame=E))
+                self.stalled.pop(E)
+            else:
+                self.stalled[E] = side
+                self.events.append(Event("stall", depth, E))
+
+        def push(E: KNode, caller: _Call, side: str, cands: list) -> _Call:
             depth = caller.depth + 1
-            cands = ([goal] if depth == 1 and goal is not None
-                        else self._candidates(E, caller))
             return  _Call(E, depth, caller, cands, side)
 
-        call = push(entry.sig, CNone, "")
+        call = push(entry.sig, CNone, "",
+                    [goal] if goal is not None else self._candidates(entry.sig, CNone))
         while call.E != KNone:
             if self.pairings > self.MAX_PAIRINGS:
                 self._halt("bound: pairing cap reached", entry)
@@ -139,15 +149,8 @@ class Cogitator:
             self.pairings += 1
 
             E = call.E
-            if not call.cands:  # S4 stalled
-                if E in self.stalled and self.stalled[E] != call.side:
-                        frame(E) # S3 align
-                        self.events.append(Event("exchange", call.depth, E, frame=E))
-                        self.stalled.pop(E)
-                else:
-                    self.stalled[E] = call.side
-                    self.events.append(Event("stall", call.depth, E))
-
+            if not call.cands:  # S4 stalled — the opening itself, bare
+                park(E, call.depth, call.side)
                 call = next(call)  # backtrack: the caller keeps its candidate
                 continue
                 
@@ -161,6 +164,33 @@ class Cogitator:
 
                 u_ok = framed(U)
                 o_ok = framed(O)
+                if not (u_ok and o_ok) and not call.at:  # the pairing notes itself once —
+                    self.events.append(Event("pair", depth, E, C, F, U, O))  # re-evaluation is not a new pairing
+
+                def fresh(side: str) -> bool:
+                    # a side descends once per candidate — and again only
+                    # when new frames arrived since its last descent
+                    return side not in call.at or len(self.frame) > call.at[side]
+
+                # an unsettled side either reenters (it has candidates) or
+                # parks inline (it has none) — no reentry for a stall
+                nxt = None
+                for X, side, ok in ((U, "U", u_ok), (O, "O", o_ok)):
+                    if ok or not X or not fresh(side) or depth >= self.MAX_DEPTH:
+                        continue
+                    call.at[side] = len(self.frame)
+                    cands = self._candidates(X, call)
+                    if cands:
+                        nxt = push(X, call, side, cands)
+                        break
+                    park(X, depth + 1, side)
+
+                if nxt is not None:
+                    call = nxt
+                    continue
+
+                u_ok = framed(U)  # a completed park may have settled a side
+                o_ok = framed(O)
                 if u_ok and o_ok:  # S2 aligned
                     frame(E)
                     self.events.append(Event("close", depth, E, C, F, U, O, frame=E))
@@ -168,24 +198,6 @@ class Cogitator:
                         self.claim = Kline(entry.sig, frozenset([goal.sig]))
                         self._ground(self.claim)
                         break  # the claim alone stops the run
-                elif not call.at:  # the pairing notes itself once — re-evaluation after
-                    self.events.append(Event("pair", depth, E, C, F, U, O))  # a descent is not a new pairing
-
-                def fresh(side: str) -> bool:
-                    # a side descends once per candidate — and again only
-                    # when new frames arrived since its last descent
-                    return side not in call.at or len(self.frame) > call.at[side]
-
-                if not u_ok and fresh("U") and depth < self.MAX_DEPTH:
-                    call.at["U"] = len(self.frame)
-                    call = push(U, call, "U")
-                    continue
-
-                if not o_ok and fresh("O") and depth < self.MAX_DEPTH:
-                    call.at["O"] = len(self.frame)
-                    call = push(O, call, "O")
-                    continue
-
                 call.cands.pop()
                 call.at.clear()
 
