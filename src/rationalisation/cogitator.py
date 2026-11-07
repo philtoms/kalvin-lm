@@ -19,6 +19,8 @@
             if not settled(U): explore(U, stack)  # recursion into
             if not settled(O): explore(O, stack)  # new state, then
             continue to next candidate                  # forwards
+            # a side explores once per candidate; a stalled side
+            # re-explores only when new frames arrived since
             if settled(U) and settled(O):
               if depth == 1: ground(entry, goal)
 
@@ -65,7 +67,7 @@ class _Call:
     caller: "_Call | None" = None  # the call whose loop pushed this one
     cands: list | None = None
     side: str = ""  # "u" | "o" — the side of the fork that pushed it
-    seen: str = ""
+    at: dict = field(default_factory=dict)  # side -> frame count at its last descent
     pfp: int = 0  # the fork pairing's candidate fingerprint
 
 CNone = _Call()
@@ -131,21 +133,8 @@ class Cogitator:
         def push(E: KNode, events: list[Event], caller: _Call, side: str) -> _Call:
             depth = caller.depth + 1
             cands = ([goal] if depth == 1 and goal is not None
-                        else self._candidates(E, call))
-            caller.seen += side
+                        else self._candidates(E, caller))
             return  _Call(E, depth, events, caller, cands, side)
-
-        def pop(call: _Call) -> _Call:
-
-            caller = next(call)
-            if call.side not in caller.seen:
-                caller.seen += call.side
-                return caller
-
-            if caller.cands:
-                caller.cands.pop()
-                return caller
-            else: return pop(caller)
 
         call = push(entry.sig, [],  CNone, "")
 
@@ -166,7 +155,8 @@ class Cogitator:
                     self.stalled[E] = call.side
                     call.events.append(Event("stall", call.depth, E))
 
-                call = pop(call)
+                call = next(call)  # backtrack: the caller keeps its candidate
+                continue
                 
             else:
                 depth = call.depth
@@ -188,16 +178,23 @@ class Cogitator:
                 else:
                     self.events.append(Event("pair", depth, E, C, F, U, O))
 
-                if not u_ok and "U" not in call.seen and depth < self.MAX_DEPTH:
+                def fresh(side: str) -> bool:
+                    # a side descends once per candidate — and again only
+                    # when new frames arrived since its last descent
+                    return side not in call.at or len(self.frame) > call.at[side]
+
+                if not u_ok and fresh("U") and depth < self.MAX_DEPTH:
+                    call.at["U"] = len(self.frame)
                     call = push(U, self.events, call, "U")
                     continue
 
-                if not o_ok and "O" not in call.seen and depth < self.MAX_DEPTH:
+                if not o_ok and fresh("O") and depth < self.MAX_DEPTH:
+                    call.at["O"] = len(self.frame)
                     call = push(O, self.events, call, "O")
                     continue
 
                 call.cands.pop()
-                call.seen = ""
+                call.at.clear()
 
             self.events = call.events.copy()
 

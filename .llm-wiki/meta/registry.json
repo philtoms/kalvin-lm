@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-03T23:59:04.110Z",
+  "last_updated": "2026-11-07T09:22:02.041Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -4752,7 +4752,7 @@
       "slug": "obs-2026-09-22-mhall-det-mod-sub-block-is-surplus-to-goal-spring-board-for-",
       "relevance": "high",
       "observed_at": "2026-09-22T13:05:32.002Z",
-      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "source_context": "Analysing dev/dialogue/scripts/mhall.ks structure-to-intent with Phil",
       "created": "2026-09-22",
       "updated": "2026-09-22"
     },
@@ -4761,7 +4761,7 @@
       "title": "Observation: mhall.ks training intent decoded: Query stress test, goal/evidence split",
       "tags": [
         "kscript",
-        "mhall",dev/dialogue/scripts
+        "mhall",
         "curriculum",
         "training-intent"
       ],
@@ -4769,7 +4769,7 @@
       "slug": "obs-2026-09-22-mhall-ks-training-intent-decoded-query-stress-test-goal-evid",
       "relevance": "high",
       "observed_at": "2026-09-22T12:58:47.143Z",
-      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "source_context": "Analysing dev/dialogue/scripts/mhall.ks structure-to-intent with Phil",
       "created": "2026-09-22",
       "updated": "2026-09-22"
     },
@@ -4778,7 +4778,7 @@
       "title": "Observation: mhall proposing died at eb07933, not the refactor — BPE-collision leak closed",
       "tags": [
         "mhall",
-        "bisect",dev/dialogue/scripts
+        "bisect",
         "regression",
         "def22",
         "coverage"
@@ -4825,7 +4825,7 @@
       "slug": "obs-2026-09-22-mhall-scaffolds-read-as-underfits-m-h-all-over-s-v-o-solutio",
       "relevance": "high",
       "observed_at": "2026-09-22T12:58:55.737Z",
-      "source_context": "Analysing data/scripts/mhall.ks structure-to-intent with Phil",
+      "source_context": "Analysing dev/dialogue/scripts/mhall.ks structure-to-intent with Phil",
       "created": "2026-09-22",
       "updated": "2026-09-22"
     },
@@ -4834,7 +4834,7 @@
       "title": "Observation: mhall stall root: ask dies at S4-refusal; attending ask still derives nothing",
       "tags": [
         "mhall",
-        "ask",dev/dialogue/scripts
+        "ask",
         "refusal",
         "def22",
         "stall",
@@ -7982,6 +7982,24 @@
       "created": "2026-11-03",
       "updated": "2026-11-03"
     },
+    "sources/obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-": {
+      "type": "source",
+      "title": "Observation: S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth",
+      "tags": [
+        "cogitator",
+        "s4",
+        "backtrack",
+        "candidates",
+        "frames"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-",
+      "relevance": "high",
+      "observed_at": "2026-11-07T09:21:52.590Z",
+      "source_context": "Fixing wdmh step-4 exhaustion: S4 backtrack loses the descended component",
+      "created": "2026-11-07",
+      "updated": "2026-11-07"
+    },
     "sources/pseudocode-audit-three-false-lines-recheck-invisible": {
       "type": "source",
       "title": "Pseudocode audit: three false lines, the re-run invisible; corrected in docstring",
@@ -7999,6 +8017,15 @@
       "slug": "reentry-probe-fit-gate-divergence",
       "created": "2026-11-02",
       "updated": "2026-11-02"
+    },
+    "sources/s4-backtrack-exhaustion-diagnosis": {
+      "type": "source",
+      "title": "S4 \"exhaustion\" was a backtrack bookkeeping defect",
+      "category": "debugging",
+      "status": "insight",
+      "slug": "s4-backtrack-exhaustion-diagnosis",
+      "created": "2026-11-07",
+      "updated": "2026-11-07"
     },
     "sources/shape-swap-vs-name-swap-operator-semantics": {
       "type": "source",

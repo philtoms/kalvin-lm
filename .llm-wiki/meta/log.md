@@ -1271,3 +1271,9 @@
 ## [2026-11-03T23:59:04.023Z] observe
 - slug: "obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the", title: "Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record", relevance: "high"
 
+## [2026-11-07T09:21:52.591Z] observe
+- slug: "obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-", title: "S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth", relevance: "high"
+
+## [2026-11-07T09:22:01.967Z] retro
+- slug: "s4-backtrack-exhaustion-diagnosis", title: "S4 \"exhaustion\" was a backtrack bookkeeping defect", category: "debugging"
+
