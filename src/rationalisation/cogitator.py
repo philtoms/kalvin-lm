@@ -54,16 +54,12 @@ class _Entry:
 
 @dataclass
 class _Call:
-    """One reentry's exploration. base_stack/base_events — what it was
-    called with (events live: the caller's current list takes its
-    stalls); cands — its own candidates, last first; stack/events — the
-    current candidate's copies; E/depth/parent — the loop variables the
-    drain reassigns (after the first candidate: the last drained top,
-    not the call's own reentry)."""
+    """One reentry's exploration. cands — its own candidates, last first;
+    E/depth/parent — the loop variables the drain reassigns (after the
+    first candidate: the last drained top, not the call's own reentry)."""
 
     E: KNode = KNone
     depth: int = 0
-    events: list = field(default_factory=list)
     caller: "_Call | None" = None  # the call whose loop pushed this one
     cands: list | None = None
     side: str = ""  # "u" | "o" — the side of the fork that pushed it
@@ -127,18 +123,15 @@ class Cogitator:
 
         def next(c: _Call) -> _Call:
             if not c.caller: return CNone
-            c.caller.events=c.events
             return c.caller
 
-        def push(E: KNode, events: list[Event], caller: _Call, side: str) -> _Call:
+        def push(E: KNode, caller: _Call, side: str) -> _Call:
             depth = caller.depth + 1
             cands = ([goal] if depth == 1 and goal is not None
                         else self._candidates(E, caller))
-            return  _Call(E, depth, events, caller, cands, side)
+            return  _Call(E, depth, caller, cands, side)
 
-        call = push(entry.sig, [],  CNone, "")
-
-        self.events = call.events
+        call = push(entry.sig, CNone, "")
         while call.E != KNone:
             if self.pairings > self.MAX_PAIRINGS:
                 self._halt("bound: pairing cap reached", entry)
@@ -149,11 +142,11 @@ class Cogitator:
             if not call.cands:  # S4 stalled
                 if E in self.stalled and self.stalled[E] != call.side:
                         frame(E) # S3 align
-                        call.events.append(Event("exchange", call.depth, E, frame=E))
+                        self.events.append(Event("exchange", call.depth, E, frame=E))
                         self.stalled.pop(E)
                 else:
                     self.stalled[E] = call.side
-                    call.events.append(Event("stall", call.depth, E))
+                    self.events.append(Event("stall", call.depth, E))
 
                 call = next(call)  # backtrack: the caller keeps its candidate
                 continue
@@ -175,8 +168,8 @@ class Cogitator:
                         self.claim = Kline(entry.sig, frozenset([goal.sig]))
                         self._ground(self.claim)
                         break  # the claim alone stops the run
-                else:
-                    self.events.append(Event("pair", depth, E, C, F, U, O))
+                elif not call.at:  # the pairing notes itself once — re-evaluation after
+                    self.events.append(Event("pair", depth, E, C, F, U, O))  # a descent is not a new pairing
 
                 def fresh(side: str) -> bool:
                     # a side descends once per candidate — and again only
@@ -185,18 +178,16 @@ class Cogitator:
 
                 if not u_ok and fresh("U") and depth < self.MAX_DEPTH:
                     call.at["U"] = len(self.frame)
-                    call = push(U, self.events, call, "U")
+                    call = push(U, call, "U")
                     continue
 
                 if not o_ok and fresh("O") and depth < self.MAX_DEPTH:
                     call.at["O"] = len(self.frame)
-                    call = push(O, self.events, call, "O")
+                    call = push(O, call, "O")
                     continue
 
                 call.cands.pop()
                 call.at.clear()
-
-            self.events = call.events.copy()
 
             if not call.cands:
                 call = next(call)
