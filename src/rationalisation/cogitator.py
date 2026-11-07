@@ -100,6 +100,7 @@ class Cogitator:
     def rationalise(self, entry: Kline, goal: Kline | None = None) -> Rationalisation:
         self.stores, self.ends = [], []
         self.claim: Kline | None = None
+        self.goals: list[Kline] = []
         self.pairings = 0
         self.bound = False
         self.events: list[Event] = []
@@ -141,7 +142,8 @@ class Cogitator:
             return  _Call(E, depth, caller, cands, side)
 
         call = push(entry.sig, CNone, "",
-                    [goal] if goal is not None else self._candidates(entry.sig, CNone))
+                    ([goal] + [c for c in self._candidates(entry.sig, CNone) if c != goal]
+                     if goal is not None else self._candidates(entry.sig, CNone)))
         while call.E != KNone:
             if self.pairings > self.MAX_PAIRINGS:
                 self._halt("bound: pairing cap reached", entry)
@@ -194,17 +196,23 @@ class Cogitator:
                 if u_ok and o_ok:  # S2 aligned
                     frame(E)
                     self.events.append(Event("close", depth, E, C, F, U, O, frame=E))
-                    if depth == 1 and goal is not None and goal.sig == C.sig:  # the claim grounds
-                        self.claim = Kline(entry.sig, frozenset([goal.sig]))
-                        self._ground(self.claim)
-                        break  # the claim alone stops the run
+                    if depth == 1 and goal is not None and goal.sig == C.sig:  # a goal grounds
+                        self.goals.append(C)  # this run's witness of the claim
+                        if self.claim is None:  # the claim grounds at most once
+                            self.claim = Kline(entry.sig, frozenset([goal.sig]))
+                            self._ground(self.claim)
+                        # the run keeps going — further goal paths may ground
                 call.cands.pop()
                 call.at.clear()
 
             if not call.cands:
                 call = next(call)
                 if call == CNone:
-                    self._halt("exhausted: no candidate resolved both sides", Kline(E, frozenset()))
+                    if goal is not None and self.goals:  # the ask rationalised —
+                        n = len(self.goals)  # its goal paths achieved, no halt
+                        self.ends.append(End(f"rationalised: {n} goal path{'s' if n != 1 else ''}", None))
+                    else:  # the construction kind — nothing grounded
+                        self._halt("exhausted: no candidate resolved both sides", Kline(E, frozenset()))
 
         for e in self.stalled:  # stalls that never found a witness
             self._halt("stalled at S4: no candidates", Kline(e, frozenset()))

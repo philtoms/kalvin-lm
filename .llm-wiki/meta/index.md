@@ -508,7 +508,12 @@
 - [[sources/obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr]] — Observation: Trace elision removed — every reentry logged; grounding-path pruning deferred *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc]] — Observation: User recode verified: drains whole stack copy, grounds both scripts at 28 pairings *(created: 2026-11-03)*
 - [[sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio]] — Observation: wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision *(created: 2026-11-03)*
+- [[sources/obs-2026-11-07-end-vocabulary-rationalised-ask-outcome-vs-exhausted-constru]] — Observation: End vocabulary: rationalised (ask, outcome) vs exhausted (construction, halt) *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-event-log-made-append-only-pair-notes-once-closes-no-longer-]] — Observation: Event log made append-only: pair notes once, closes no longer lost *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-multi-goal-wdmh-grounds-3-goal-paths-mhall-1-depth-1-groundi]] — Observation: Multi-goal: wdmh grounds 3 goal paths, mhall 1; depth-1 groundings exceed goal events *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-running-frame-refuted-inherited-frames-starve-the-s3-exchang]] — Observation: Running frame refuted: inherited frames starve the S3 exchange economy *(created: 2026-11-07)*
 - [[sources/obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-]] — Observation: S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-witness-ledger-unified-parked-stalls-persist-stalls-park-inl]] — Observation: Witness ledger unified: parked stalls persist; stalls park inline without reentry *(created: 2026-11-07)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
 - [[sources/s4-backtrack-exhaustion-diagnosis]] — S4 "exhaustion" was a backtrack bookkeeping defect *(created: 2026-11-07)*
@@ -530,4 +535,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-07T09:22:02.041Z* | *Total pages: 512*
+*Last updated: 2026-11-07T15:59:33.394Z* | *Total pages: 517*

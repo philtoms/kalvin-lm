@@ -2,6 +2,11 @@
 
 ## 2026-11-07
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-07-end-vocabulary-rationalised-ask-outcome-vs-exhausted-constru","title":"End vocabulary: rationalised (ask, outcome) vs exhausted (construction, halt)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-multi-goal-wdmh-grounds-3-goal-paths-mhall-1-depth-1-groundi","title":"Multi-goal: wdmh grounds 3 goal paths, mhall 1; depth-1 groundings exceed goal events"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-witness-ledger-unified-parked-stalls-persist-stalls-park-inl","title":"Witness ledger unified: parked stalls persist; stalls park inline without reentry"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-running-frame-refuted-inherited-frames-starve-the-s3-exchang","title":"Running frame refuted: inherited frames starve the S3 exchange economy"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-event-log-made-append-only-pair-notes-once-closes-no-longer-","title":"Event log made append-only: pair notes once, closes no longer lost"}
 - **retro**: {"category":"debugging","slug":"s4-backtrack-exhaustion-diagnosis","title":"S4 \"exhaustion\" was a backtrack bookkeeping defect"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-","title":"S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth"}
 

@@ -348,6 +348,10 @@ def _render_step(step: Step, labels: dict[int, str], alloc: dict[int, str], verb
     for e in step.result.ends:
         by_reason.setdefault(e.reason, []).append(e)
     for reason, ends in by_reason.items():
+        if all(e.kline is None for e in ends):  # an outcome, not a halt
+            for _ in ends:
+                lines.append(f"      end       {reason}")
+            continue
         exemplars = [e for e in ends if e.kline is not None][:2]
         for e in exemplars:
             lines.append(

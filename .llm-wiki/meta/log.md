@@ -1277,3 +1277,18 @@
 ## [2026-11-07T09:22:01.967Z] retro
 - slug: "s4-backtrack-exhaustion-diagnosis", title: "S4 \"exhaustion\" was a backtrack bookkeeping defect", category: "debugging"
 
+## [2026-11-07T13:10:38.913Z] observe
+- slug: "obs-2026-11-07-event-log-made-append-only-pair-notes-once-closes-no-longer-", title: "Event log made append-only: pair notes once, closes no longer lost", relevance: "high"
+
+## [2026-11-07T13:53:49.760Z] observe
+- slug: "obs-2026-11-07-running-frame-refuted-inherited-frames-starve-the-s3-exchang", title: "Running frame refuted: inherited frames starve the S3 exchange economy", relevance: "high"
+
+## [2026-11-07T14:13:54.199Z] observe
+- slug: "obs-2026-11-07-witness-ledger-unified-parked-stalls-persist-stalls-park-inl", title: "Witness ledger unified: parked stalls persist; stalls park inline without reentry", relevance: "high"
+
+## [2026-11-07T15:47:02.165Z] observe
+- slug: "obs-2026-11-07-multi-goal-wdmh-grounds-3-goal-paths-mhall-1-depth-1-groundi", title: "Multi-goal: wdmh grounds 3 goal paths, mhall 1; depth-1 groundings exceed goal events", relevance: "high"
+
+## [2026-11-07T15:59:33.285Z] observe
+- slug: "obs-2026-11-07-end-vocabulary-rationalised-ask-outcome-vs-exhausted-constru", title: "End vocabulary: rationalised (ask, outcome) vs exhausted (construction, halt)", relevance: "medium"
+
