@@ -17,7 +17,7 @@ import pytest
 
 from hypothesis import given, settings
 
-from rationalisation import Cogitator, Domain, Kline, can
+from rationalisation import ReferenceCogitator, Domain, Kline, can
 from rationalisation.verify import Certificate, Records, verify
 
 
@@ -32,22 +32,25 @@ pytestmark = pytest.mark.skip(
 )
 
 
-SCRIPTS = sorted(Path("data/scripts").glob("*.ks"))
+SCRIPTS = sorted(Path("dev/dialogue/scripts").glob("*.ks"))
 
 
 class RecordingRunner(Runner):
-    """Captures the cogitator's records after each step — rationalise()
-    rebinds its arrays per run, so each run's records survive by reference."""
+    """Captures the reference's records after each step — rationalise()
+    rebinds its arrays per run, so each run's records survive by
+    reference. The certificate instruments the reference, not the
+    default Cogitator."""
 
     def __init__(self, tokenizer=None) -> None:
         super().__init__(tokenizer)
+        self.cogitator = ReferenceCogitator(self.domain)
         self.records: list[Records] = []
 
     def _step(self, steps, i, value, goal=None):
         super()._step(steps, i, value, goal=goal)
         cog = self.cogitator
         self.records.append(
-            Records(cog.frames, cog.frame_re, cog.stalls, cog.rows)
+            Records(cog.frames, cog.frame_re, cog.stalls, cog.rows, cog.goal_row)
         )
 
 
@@ -166,7 +169,7 @@ def test_random_groundings_carry_certificates(d):
     sigs = sorted({k.sig for k in d})
     entry = Kline(sigs[len(sigs) // 2], frozenset([n for n in {k.sig for k in d}][:2]))
     d0 = set(d)
-    cog = Cogitator(d)
+    cog = ReferenceCogitator(d)
     r = cog.rationalise(entry, goal=goal)
     if r.claim is None:
         return
@@ -189,7 +192,7 @@ def test_exhaustion_does_not_ground():
         + [Kline(9, frozenset([1]))]
     )
     d0 = set(d)
-    cog = Cogitator(d)
+    cog = ReferenceCogitator(d)
     entry, goal = Kline(9, frozenset([32, 1])), Kline(1, frozenset([1]))
     r = cog.rationalise(entry, goal=goal)
     assert r.claim is None
@@ -207,14 +210,14 @@ from pathlib import Path
 from dev.dialogue.harness import Runner
 from ks.compiler import path_resolver
 digest = hashlib.sha256()
-for p in sorted(Path("data/scripts").glob("*.ks")):
+for p in sorted(Path("dev/dialogue/scripts").glob("*.ks")):
     runner = Runner()
     steps = runner.run(p.read_text(), resolver=path_resolver(p.parent))
     for st in steps:
         digest.update(repr(st.result.claim).encode())
         digest.update(repr(sorted(map(repr, st.result.stores))).encode())
         digest.update(repr(sorted(e.reason for e in st.result.ends)).encode())
-        digest.update(str(len(runner.cogitator.rows)).encode())
+        digest.update(str(len(st.result.events)).encode())
 print(digest.hexdigest())
 """
 
@@ -237,5 +240,5 @@ def test_outcome_is_hash_seed_independent():
 def test_corpus_respects_bounds():
     for name, runner, steps in _runs():
         for records in runner.records:
-            assert len(records.rows) <= Cogitator.MAX_ROWS + len(list(runner.domain)), name
-            assert all(row.depth <= Cogitator.MAX_DEPTH + 1 for row in records.rows), name
+            assert len(records.rows) <= ReferenceCogitator.MAX_ROWS + len(list(runner.domain)), name
+            assert all(row.depth <= ReferenceCogitator.MAX_DEPTH + 1 for row in records.rows), name

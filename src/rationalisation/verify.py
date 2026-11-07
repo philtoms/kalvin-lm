@@ -23,29 +23,27 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Iterable
 
-from rationalisation.model import (
-    Kline,
-    Rationalisation,
-    Row,
-    can,
-)
+from rationalisation.algebra import Kline, can
+from rationalisation.model import _Pairing
+from rationalisation.report import Rationalisation
 
 
 @dataclass
 class Records:
     """One rationalisation's bookkeeping — frames and owners, stall
-    groups, rows. The cogitator rebinds these per run; capture them at
-    the moment (they survive by reference)."""
+    groups, pairings, the grounding pairing. The cogitator rebinds these
+    per run; capture them at the moment (they survive by reference)."""
 
     frames: list
     frame_re: list
     stalls: dict
     rows: list
+    goal_row: "_Pairing | None" = None
 
 
-def _chain(row: Row | None) -> set[int]:
+def _chain(row: _Pairing | None) -> set[int]:
     """The proper-ancestor rows of a row's reentry — the frame owners whose
-    frames may settle its regions (mirrors Cogitator._chain)."""
+    frames may settle its regions (mirrors ReferenceCogitator._chain)."""
     out: set[int] = set()
     if row is None or row.re is None:
         return out
@@ -82,7 +80,7 @@ def verify(
     claim; ``None`` when the claim did not ground or the records do not
     justify it.
     """
-    if r.claim is None or r.goal_row is None:
+    if r.claim is None or records.goal_row is None:
         return None
     if r.claim != Kline(entry.sig, frozenset([goal.sig])):
         return None
@@ -153,7 +151,7 @@ def verify(
                 return True
         return False
 
-    def justified(region: int, side_: str, row: Row) -> bool:
+    def justified(region: int, side_: str, row: _Pairing) -> bool:
         if not region:
             cert.leaves["empty"] += 1
             return True
@@ -193,7 +191,7 @@ def verify(
             cur = nxt.parent if nxt is not None else None
         return out
 
-    root = r.goal_row
+    root = records.goal_row
     if not (justified(int(root.U), "u", root) and justified(int(root.O), "o", root)):
         return None
     return cert

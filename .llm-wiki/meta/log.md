@@ -1187,3 +1187,108 @@
 ## [2026-11-02T10:14:33.939Z] observe
 - slug: "obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com", title: "Union-fit history removed from doc; offering-only pairing committed", relevance: "high"
 
+## [2026-11-02T11:57:09.459Z] observe
+- slug: "obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo", title: "Clock removed, notes in: events list separates model from reporting", relevance: "high"
+
+## [2026-11-02T12:14:27.805Z] observe
+- slug: "obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn", title: "_trace extracted to dev/dialogue/trace.py — model searches, harness narrates", relevance: "high"
+
+## [2026-11-02T12:18:38.481Z] observe
+- slug: "obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model", title: "_cover_frame moved to trace.py; audit confirms remaining model surface is semantic", relevance: "high"
+
+## [2026-11-02T12:20:01.431Z] observe
+- slug: "obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc", title: "Narration separation committed (413eb9c) — model 659 lines, search only", relevance: "medium"
+
+## [2026-11-02T15:48:25.967Z] retro
+- slug: "reentry-probe-fit-gate-divergence", title: "Reentry probe: pseudocode grounds all but the fit gate", category: "architecture"
+
+## [2026-11-02T15:48:25.970Z] observe
+- slug: "obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-", title: "Simple reentry probe built; completions C1–C7; one divergence isolated", relevance: "high"
+
+## [2026-11-02T15:48:29.028Z] capture_trajectory
+- trajectory_id: "TRJ-2026-11-02-001", step_count: 81, tool_call_count: 43
+
+## [2026-11-02T17:19:13.804Z] observe
+- slug: "obs-2026-11-02-ruling-fit-witnessed-by-the-pairing-gate-removed-as-default-", title: "Ruling: fit witnessed by the pairing; gate removed as default behaviour", relevance: "high"
+
+## [2026-11-02T17:28:23.620Z] retro
+- slug: "break-starves-exchange-stalls-must-wait", title: "Reentry probe: break starves the exchange; stalls must wait", category: "architecture"
+
+## [2026-11-02T17:28:23.623Z] observe
+- slug: "obs-2026-11-02-probe-stalls-now-wait-for-s3-match-no-break-for-run-all-scri", title: "Probe stalls now wait for S3 match; no-break for-run; all scripts agree", relevance: "high"
+
+## [2026-11-02T17:38:30.220Z] observe
+- slug: "obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de", title: "Cogitator renamed ReferenceCogitator; name freed for probe-derived successor", relevance: "high"
+
+## [2026-11-02T17:53:51.636Z] observe
+- slug: "obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret", title: "Probe promoted: Cogitator is the default runner; reference retained as baseline", relevance: "critical"
+
+## [2026-11-02T23:04:33.737Z] observe
+- slug: "obs-2026-11-02-cogitator-promotion-committed-fd2a47c-on-dialogue", title: "Cogitator promotion committed fd2a47c on dialogue", relevance: "medium"
+
+## [2026-11-03T09:55:25.743Z] observe
+- slug: "obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re", title: "rationalisation split: algebra/domain/report modules; Event replaces Row", relevance: "high"
+
+## [2026-11-03T10:08:01.063Z] retro
+- slug: "pseudocode-audit-three-false-lines-recheck-invisible", title: "Pseudocode audit: three false lines, the re-run invisible; corrected in docstring", category: "architecture"
+
+## [2026-11-03T10:12:04.978Z] observe
+- slug: "obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue", title: "Module split + Event refactor committed 2cfc198 on dialogue", relevance: "medium"
+
+## [2026-11-03T12:54:22.848Z] observe
+- slug: "obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio", title: "wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision", relevance: "medium"
+
+## [2026-11-03T13:14:48.528Z] observe
+- slug: "obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection", title: "Parent-origin bar added to Cogitator candidate selection", relevance: "high"
+
+## [2026-11-03T13:18:55.140Z] observe
+- slug: "obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full", title: "New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided", relevance: "medium"
+
+## [2026-11-03T13:33:32.629Z] observe
+- slug: "obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr", title: "Trace elision removed — every reentry logged; grounding-path pruning deferred", relevance: "high"
+
+## [2026-11-03T14:08:05.345Z] observe
+- slug: "obs-2026-11-03-path-orthogonal-frames-via-recursive-rationalise-design-dire", title: "Path-orthogonal frames via recursive rationalise — design direction and forks", relevance: "high"
+
+## [2026-11-03T14:24:52.130Z] observe
+- slug: "obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground", title: "Cogitator recurses at reentry point — O-first preserves grounding, trace collapses 4x", relevance: "high"
+
+## [2026-11-03T14:49:15.334Z] observe
+- slug: "obs-2026-11-03-draft-1-path-fork-cogitator-mechanism-verified-pairing-cap-b", title: "Draft 1: path-fork Cogitator — mechanism verified, pairing cap blown", relevance: "high"
+
+## [2026-11-03T16:10:02.521Z] observe
+- slug: "obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc", title: "User recode verified: drains whole stack copy, grounds both scripts at 28 pairings", relevance: "high"
+
+## [2026-11-03T16:31:31.850Z] observe
+- slug: "obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu", title: "Ancestor-path filter: entry bar free; candidate bar grounds but shifts the load", relevance: "high"
+
+## [2026-11-03T17:04:05.166Z] observe
+- slug: "obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha", title: "E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical", relevance: "high"
+
+## [2026-11-03T23:21:30.434Z] observe
+- slug: "obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me", title: "S2 across candidates works — earned-sig registry + row-scoped memo ground both scripts", relevance: "high"
+
+## [2026-11-03T23:59:04.023Z] observe
+- slug: "obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the", title: "Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record", relevance: "high"
+
+## [2026-11-07T09:21:52.591Z] observe
+- slug: "obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-", title: "S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth", relevance: "high"
+
+## [2026-11-07T09:22:01.967Z] retro
+- slug: "s4-backtrack-exhaustion-diagnosis", title: "S4 \"exhaustion\" was a backtrack bookkeeping defect", category: "debugging"
+
+## [2026-11-07T13:10:38.913Z] observe
+- slug: "obs-2026-11-07-event-log-made-append-only-pair-notes-once-closes-no-longer-", title: "Event log made append-only: pair notes once, closes no longer lost", relevance: "high"
+
+## [2026-11-07T13:53:49.760Z] observe
+- slug: "obs-2026-11-07-running-frame-refuted-inherited-frames-starve-the-s3-exchang", title: "Running frame refuted: inherited frames starve the S3 exchange economy", relevance: "high"
+
+## [2026-11-07T14:13:54.199Z] observe
+- slug: "obs-2026-11-07-witness-ledger-unified-parked-stalls-persist-stalls-park-inl", title: "Witness ledger unified: parked stalls persist; stalls park inline without reentry", relevance: "high"
+
+## [2026-11-07T15:47:02.165Z] observe
+- slug: "obs-2026-11-07-multi-goal-wdmh-grounds-3-goal-paths-mhall-1-depth-1-groundi", title: "Multi-goal: wdmh grounds 3 goal paths, mhall 1; depth-1 groundings exceed goal events", relevance: "high"
+
+## [2026-11-07T15:59:33.285Z] observe
+- slug: "obs-2026-11-07-end-vocabulary-rationalised-ask-outcome-vs-exhausted-constru", title: "End vocabulary: rationalised (ask, outcome) vs exhausted (construction, halt)", relevance: "medium"
+

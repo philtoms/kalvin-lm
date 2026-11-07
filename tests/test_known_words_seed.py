@@ -48,7 +48,7 @@ def test_seeded_words_bind_the_answer_chars():
     word_bits: dict[str, int] = {}
     from pathlib import Path
     first = compile_source(
-        Path("data/scripts/mhall.ks").read_text(), tokenizer=tok,
+        Path("dev/dialogue/scripts/mhall.ks").read_text(), tokenizer=tok,
         signifier=sig, dev=True, word_bits=word_bits,
     )
     entries = compile_source(WDMH_SCRIPT, tokenizer=tok, signifier=sig,

@@ -42,10 +42,10 @@ from ks.compiler import compile_source, path_resolver
 from rationalisation import (
     Domain,
     End,
+    Event,
     Kline,
     Proposal,
     Rationalisation,
-    Row,
     Cogitator,
     band,
     can,
@@ -59,7 +59,7 @@ WORD_MASK = 0x7FFF_FFFF_0000_0000
 
 
 @dataclass
-class TrsStep:
+class Step:
     """One presented entry and what its rationalisation produced."""
 
     index: int
@@ -87,9 +87,9 @@ class Runner:
         self.word_bits: dict[str, int] = {}
         self.pending: list[Pending] = []
         self.stores: list[tuple[int, Kline]] = []  # (step, store)
-        self.cogitator = Cogitator(self.domain)
+        self.cogitator = Cogitator(self.domain)  # the default runner; swap in ReferenceCogitator for the baseline
 
-    def run(self, source: str, resolver=None) -> list[TrsStep]:
+    def run(self, source: str, resolver=None) -> list[Step]:
         """An ask==goal run: every `==` ask with a resolvable goal is one
         scenario, everything else primes the domain before rationalisation.
         Scenarios run in ask order over the one live domain — an earlier
@@ -109,7 +109,7 @@ class Runner:
         for other in entries:
             if id(other) not in paired:
                 self.domain.add(_to_kline(other))  # primed — never an R1 store
-        steps: list[TrsStep] = []
+        steps: list[Step] = []
         for ask, goal in pairs:
             self._step(steps, len(steps), goal)  # the goal rationalises first — S1 grounds on receipt
             self._step(steps, len(steps), ask, goal=_to_kline(goal))  # the ask asks — the goal is its first candidate
@@ -139,11 +139,11 @@ class Runner:
                 pairs.append((e, goal))
         return pairs
 
-    def _step(self, steps: list[TrsStep], i: int, value: KValue, goal: Kline | None = None) -> None:
+    def _step(self, steps: list[Step], i: int, value: KValue, goal: Kline | None = None) -> None:
         """Present one entry: rationalise, record, discharge, file proposals."""
         kline = _to_kline(value)
         result = self.cogitator.rationalise(kline, goal=goal)
-        steps.append(TrsStep(i, value, kline, result))
+        steps.append(Step(i, value, kline, result))
         self._discharge(i, kline)  # only proposals from earlier steps answer
         for prop in proposals(result):
             self.pending.append(Pending(prop, i))
@@ -281,108 +281,38 @@ def _tlabel(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
 
 
 def _tframe(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
-    """Frame/step parts in MTS form."""
+    """Frame/event content in MTS form."""
     return _tlabel(v, labels, alloc)
 
 
-def _on_path_children(row: Row, keep: set[int]) -> list:
-    """The children whose reentries carried the resolution — a resolving
-    row, an exchange stall, or any kept row of the child is the continuation."""
-    out = []
-    for ch in row.children:
-        if (
-            (ch.resolved_by is not None and id(ch.resolved_by) in keep)
-            or (ch.stalled is not None and id(ch.stalled) in keep)
-            or any(id(r) in keep for r in ch.rows)
-        ):
-            out.append(ch)
-    return out
+_EVENT_KIND = {"close": "resolved", "wait": "stalled", "known": "known",
+               "stall": "stalled", "exchange": "exchange", "pair": ""}
 
 
-def _tsupport(pair: tuple, labels: dict[int, str], alloc: dict[int, str]) -> str:
-    """A leaned-on frame with its reference — the candidate that
-    established it (an exchange, for stall-sourced frames)."""
-    v, src = pair
-    if src is None or src.candidate is None:
-        return _tframe(v, labels, alloc) + " ← exchange"
-    c = _tlabel(src.candidate.sig, labels, alloc)
-    if src.candidate.adj and can(src.candidate.adj) != src.candidate.sig:
-        c += ":" + " ".join(_tlabel(n, labels, alloc) for n in sorted(src.candidate.adj))
-    return _tframe(v, labels, alloc)# + " ← " + c
-
-
-def _row_step(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> str:
-    e = _tlabel(row.entry.sig, labels, alloc)
-    if kind == "wait":
-        return f"stalled {e}"
-    if kind == "close":
-        if row is goal_row:
-            return "grounded"
-        if row.bp:
-            peers = ", ".join(_tlabel(p.entry.sig, labels, alloc) for p in row.bp)
-            verb = "known, BP" if row.known else "BP"
-            return f"{verb} {peers}"
-        return f"{'already known' if row.known else 'resolved'} {e}"
-    # the pairing emission
-    if row.candidate is None:
-        return f"stalled {e}"
-    children = [ch for ch in row.children if ch.popped]
-    if children:
-        return "reenter " + ", ".join(_tlabel(ch.kline.sig, labels, alloc) for ch in children)
-    return ""
-
-
-def _frame_str(row: Row, kind: str, labels: dict[int, str], alloc: dict[int, str]) -> str:
-    parts = [_tframe(int(row.frame), labels, alloc)] if row.frame else []
-    if kind != "pair":  # resolutions lean — the supports join the own frame
-        parts.extend(_tsupport(p, labels, alloc) for p in row.supports)
-    return ", ".join(p for p in parts if p)
-
-
-def _table_row(kind: str, row: Row, labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None) -> list[str]:
-    e = _tlabel(row.entry.sig, labels, alloc)
-    if row.candidate is not None:
-        c = _tlabel(row.candidate.sig, labels, alloc)
-        if row.candidate.adj and can(row.candidate.adj) != row.candidate.sig:
-            c += ":" + " ".join(
-                _tlabel(n, labels, alloc) for n in sorted(row.candidate.adj)
-            )
-    else:
-        c = ""
+def _event_line(ev: Event, labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
+    c = ""
+    if ev.candidate is not None:
+        c = _tlabel(ev.candidate.sig, labels, alloc)
+        if ev.candidate.adj and can(ev.candidate.adj) != ev.candidate.sig:
+            c += ":" + " ".join(_tlabel(n, labels, alloc) for n in sorted(ev.candidate.adj))
+    kind = "grounded" if ev.kind == "close" and ev.depth == 1 else _EVENT_KIND.get(ev.kind, ev.kind)
     return [
-        str(row.depth), e, c,
-        _tlabel(row.F, labels, alloc),
-        _tlabel(row.U, labels, alloc),
-        _tlabel(row.O, labels, alloc),
-        _frame_str(row, kind, labels, alloc),
-        _row_step(kind, row, labels, alloc, goal_row),
+        str(ev.depth),
+        _tlabel(ev.entry, labels, alloc),
+        c,
+        _tlabel(ev.F, labels, alloc),
+        _tlabel(ev.U, labels, alloc),
+        _tlabel(ev.O, labels, alloc),
+        _tframe(int(ev.frame), labels, alloc) if ev.frame else "",
+        kind,
     ]
 
 
-def _tline(k: Kline, labels: dict[int, str], alloc: dict[int, str]) -> str:
-    """A kline in table form — sig in MTS form, nodes spelled out."""
-    sig = _tlabel(k.sig, labels, alloc)
-    nodes = ", ".join(_tlabel(n, labels, alloc) for n in sorted(k.adj))
-    return f"{sig}:[{nodes}]" if k.adj else f"{sig}:[]"
-
-
-def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str], goal_row: Row | None = None) -> list[str]:
-    """The trace table: depth, entry, candidate, fit, underfit, overfit,
-    frame, step — a row per event: the pairing, the wait, the resolution
-    (BP — back propagation). One row per reentry stays orthogonal; the
-    repeats are the trace's temporal shape."""
-    hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "step"]
-    events: list[tuple[int, int, str, Row]] = []
-    for row in rows:
-        once = row.instant or row.exchange or row.known  # born closed — one emission
-        if not once:
-            events.append((row.birth, 0, "pair", row))
-        if row.waited is not None:
-            events.append((row.waited, 1, "wait", row))
-        if row.closed is not None and (row.bp or not row.exchange):
-            events.append((row.closed, 2, "close", row))
-    events.sort(key=lambda ev: (ev[0], ev[1]))
-    body = [_table_row(kind, row, labels, alloc, goal_row) for _, _, kind, row in events]
+def _render_events(events: list[Event], labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
+    """The event table: depth, entry, candidate, fit, underfit, overfit,
+    frame, event — one line per event, in order."""
+    hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "event"]
+    body = [_event_line(ev, labels, alloc) for ev in events]
     widths = [
         max(len(hdr[i]), *(len(r[i]) for r in body)) if body else len(hdr[i])
         for i in range(len(hdr))
@@ -396,22 +326,32 @@ def _render_table(rows: list[Row], labels: dict[int, str], alloc: dict[int, str]
     return lines
 
 
-def _render_step(step: TrsStep, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
+def _tline(k: Kline, labels: dict[int, str], alloc: dict[int, str]) -> str:
+    """A kline in table form — sig in MTS form, nodes spelled out."""
+    sig = _tlabel(k.sig, labels, alloc)
+    nodes = ", ".join(_tlabel(n, labels, alloc) for n in sorted(k.adj))
+    return f"{sig}:[{nodes}]" if k.adj else f"{sig}:[]"
+
+
+def _render_step(step: Step, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
     lines = [
         f"── Step {step.index + 1}  {band(step.kline).value}  "
         f"{_render(step.kline, labels, alloc, verbose)} ──"
     ]
-    rows = step.result.path if step.result.claim is not None else step.result.rows
-    if rows:
+    if step.result.events:
         if step.result.claim is None:
-            lines.append("      (no path — the goal was not reached; all rows below)")
-        lines.extend("      " + l for l in _render_table(rows, labels, alloc, step.result.goal_row))
+            lines.append("      (no claim — every event below)")
+        lines.extend("      " + l for l in _render_events(step.result.events, labels, alloc))
     for store in step.result.stores:
         lines.append(f"      stores    {_tline(store, labels, alloc)}")
     by_reason: dict[str, list[End]] = {}
     for e in step.result.ends:
         by_reason.setdefault(e.reason, []).append(e)
     for reason, ends in by_reason.items():
+        if all(e.kline is None for e in ends):  # an outcome, not a halt
+            for _ in ends:
+                lines.append(f"      end       {reason}")
+            continue
         exemplars = [e for e in ends if e.kline is not None][:2]
         for e in exemplars:
             lines.append(
@@ -425,7 +365,7 @@ def _render_step(step: TrsStep, labels: dict[int, str], alloc: dict[int, str], v
 
 
 def present(
-    steps: list[TrsStep],
+    steps: list[Step],
     domain: Domain,
     pending: list[Pending],
     source: str,

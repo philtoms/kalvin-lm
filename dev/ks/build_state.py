@@ -22,7 +22,7 @@ def main() -> None:
     sigf = NLPSignifier()
     entries = compile_source(source, tokenizer=tok, signifier=sigf, dev=True,
                              resolver=path_resolver(
-                                 Path(arg).parent if is_file else "data/scripts"))
+                                 Path(arg).parent if is_file else "dev/dialogue/scripts"))
 
     stem = Path(arg).stem if is_file else entries[0].kline.signature.label
     out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("data/dialogue") / (stem + ".json")

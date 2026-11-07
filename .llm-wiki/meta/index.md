@@ -84,6 +84,7 @@
 
 ## Sources
 
+- [[sources/break-starves-exchange-stalls-must-wait]] — Reentry probe: break starves the exchange; stalls must wait *(created: 2026-11-02)*
 - [[sources/cogitator-trace-table-alignment]] — Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo *(created: 2026-10-30)*
 - [[sources/compound-label-mts-initials-notation]] — Compound KNode labels: MTS initials, joined identifier stays registry key *(created: 2026-10-30)*
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
@@ -481,8 +482,41 @@
 - [[sources/obs-2026-11-01-pairing-restructured-claim-fit-two-beyonds-fingerprint-gone-]] — Observation: Pairing restructured: claim-fit, two beyonds — fingerprint gone from _pair *(created: 2026-11-01)*
 - [[sources/obs-2026-11-01-rules-doc-rewritten-claim-construction-make-up-union-as-opti]] — Observation: Rules doc rewritten: claim/construction make-up, union as optimisation — committed *(created: 2026-11-01)*
 - [[sources/obs-2026-11-01-ruling-signatures-prime-fingerprints-control-loops-adjacenci]] — Observation: Ruling: signatures prime, fingerprints control loops, adjacencies do the work *(created: 2026-11-01)*
+- [[sources/obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo]] — Observation: Clock removed, notes in: events list separates model from reporting *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-cogitator-promotion-committed-fd2a47c-on-dialogue]] — Observation: Cogitator promotion committed fd2a47c on dialogue *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de]] — Observation: Cogitator renamed ReferenceCogitator; name freed for probe-derived successor *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model]] — Observation: _cover_frame moved to trace.py; audit confirms remaining model surface is semantic *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc]] — Observation: Narration separation committed (413eb9c) — model 659 lines, search only *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1]] — Observation: Offering-only o-side landed: claim extension was never owed — 181→120 rows *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret]] — Observation: Probe promoted: Cogitator is the default runner; reference retained as baseline *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-probe-stalls-now-wait-for-s3-match-no-break-for-run-all-scri]] — Observation: Probe stalls now wait for S3 match; no-break for-run; all scripts agree *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-ruling-fit-witnessed-by-the-pairing-gate-removed-as-default-]] — Observation: Ruling: fit witnessed by the pairing; gate removed as default behaviour *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-]] — Observation: Simple reentry probe built; completions C1–C7; one divergence isolated *(created: 2026-11-02)*
+- [[sources/obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn]] — Observation: _trace extracted to dev/dialogue/trace.py — model searches, harness narrates *(created: 2026-11-02)*
 - [[sources/obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com]] — Observation: Union-fit history removed from doc; offering-only pairing committed *(created: 2026-11-02)*
+- [[sources/obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu]] — Observation: Ancestor-path filter: entry bar free; candidate bar grounds but shifts the load *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the]] — Observation: Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground]] — Observation: Cogitator recurses at reentry point — O-first preserves grounding, trace collapses 4x *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-draft-1-path-fork-cogitator-mechanism-verified-pairing-cap-b]] — Observation: Draft 1: path-fork Cogitator — mechanism verified, pairing cap blown *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha]] — Observation: E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue]] — Observation: Module split + Event refactor committed 2cfc198 on dialogue *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full]] — Observation: New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection]] — Observation: Parent-origin bar added to Cogitator candidate selection *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-path-orthogonal-frames-via-recursive-rationalise-design-dire]] — Observation: Path-orthogonal frames via recursive rationalise — design direction and forks *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re]] — Observation: rationalisation split: algebra/domain/report modules; Event replaces Row *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me]] — Observation: S2 across candidates works — earned-sig registry + row-scoped memo ground both scripts *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr]] — Observation: Trace elision removed — every reentry logged; grounding-path pruning deferred *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc]] — Observation: User recode verified: drains whole stack copy, grounds both scripts at 28 pairings *(created: 2026-11-03)*
+- [[sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio]] — Observation: wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision *(created: 2026-11-03)*
+- [[sources/obs-2026-11-07-end-vocabulary-rationalised-ask-outcome-vs-exhausted-constru]] — Observation: End vocabulary: rationalised (ask, outcome) vs exhausted (construction, halt) *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-event-log-made-append-only-pair-notes-once-closes-no-longer-]] — Observation: Event log made append-only: pair notes once, closes no longer lost *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-multi-goal-wdmh-grounds-3-goal-paths-mhall-1-depth-1-groundi]] — Observation: Multi-goal: wdmh grounds 3 goal paths, mhall 1; depth-1 groundings exceed goal events *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-running-frame-refuted-inherited-frames-starve-the-s3-exchang]] — Observation: Running frame refuted: inherited frames starve the S3 exchange economy *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-]] — Observation: S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth *(created: 2026-11-07)*
+- [[sources/obs-2026-11-07-witness-ledger-unified-parked-stalls-persist-stalls-park-inl]] — Observation: Witness ledger unified: parked stalls persist; stalls park inline without reentry *(created: 2026-11-07)*
+- [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
+- [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
+- [[sources/s4-backtrack-exhaustion-diagnosis]] — S4 "exhaustion" was a backtrack bookkeeping defect *(created: 2026-11-07)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
 - [[sources/SRC-2026-08-11-001]] — CONTEXT.md *(created: unknown)*
 - [[sources/SRC-2026-08-11-002]] — behaviour-notes.md *(created: unknown)*
@@ -496,5 +530,9 @@
 
 - [[syntheses/rationalisation-rules]] — Rationalisation rules *(created: 2026-10-30)*
 
+## Trajectorys
+
+- [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
+
 ---
-*Last updated: 2026-11-02T10:14:34.024Z* | *Total pages: 482*
+*Last updated: 2026-11-07T15:59:33.394Z* | *Total pages: 517*

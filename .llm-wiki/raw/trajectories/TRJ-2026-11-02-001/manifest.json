@@ -1,0 +1,11 @@
+{
+  "id": "TRJ-2026-11-02-001",
+  "captured": "2026-11-02",
+  "packet_version": "1.0",
+  "title": "Pseudocode reentry probe vs reference Cogitator",
+  "format": "trajectory",
+  "model": "glm-5.3",
+  "outcome": "success",
+  "step_count": 81,
+  "tool_call_count": 43
+}

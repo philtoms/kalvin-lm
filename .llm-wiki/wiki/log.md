@@ -1,7 +1,48 @@
 # Wiki Update Log
 
+## 2026-11-07
+
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-07-end-vocabulary-rationalised-ask-outcome-vs-exhausted-constru","title":"End vocabulary: rationalised (ask, outcome) vs exhausted (construction, halt)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-multi-goal-wdmh-grounds-3-goal-paths-mhall-1-depth-1-groundi","title":"Multi-goal: wdmh grounds 3 goal paths, mhall 1; depth-1 groundings exceed goal events"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-witness-ledger-unified-parked-stalls-persist-stalls-park-inl","title":"Witness ledger unified: parked stalls persist; stalls park inline without reentry"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-running-frame-refuted-inherited-frames-starve-the-s3-exchang","title":"Running frame refuted: inherited frames starve the S3 exchange economy"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-event-log-made-append-only-pair-notes-once-closes-no-longer-","title":"Event log made append-only: pair notes once, closes no longer lost"}
+- **retro**: {"category":"debugging","slug":"s4-backtrack-exhaustion-diagnosis","title":"S4 \"exhaustion\" was a backtrack bookkeeping defect"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-","title":"S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth"}
+
+## 2026-11-03
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the","title":"Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me","title":"S2 across candidates works — earned-sig registry + row-scoped memo ground both scripts"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-e-row-sig-fixed-claims-structurally-cannot-ground-return-cha","title":"E=row.sig fixed — claims structurally cannot ground; return channel is the missing vertical"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-ancestor-path-filter-entry-bar-free-candidate-bar-grounds-bu","title":"Ancestor-path filter: entry bar free; candidate bar grounds but shifts the load"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc","title":"User recode verified: drains whole stack copy, grounds both scripts at 28 pairings"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-draft-1-path-fork-cogitator-mechanism-verified-pairing-cap-b","title":"Draft 1: path-fork Cogitator — mechanism verified, pairing cap blown"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-cogitator-recurses-at-reentry-point-o-first-preserves-ground","title":"Cogitator recurses at reentry point — O-first preserves grounding, trace collapses 4x"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-path-orthogonal-frames-via-recursive-rationalise-design-dire","title":"Path-orthogonal frames via recursive rationalise — design direction and forks"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr","title":"Trace elision removed — every reentry logged; grounding-path pruning deferred"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-03-new-step-4-row-2-dh-stall-first-visible-event-hlal-pass-full","title":"New step-4 row 2 (DH stall) = first visible event; HLAL pass fully elided"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-parent-origin-bar-added-to-cogitator-candidate-selection","title":"Parent-origin bar added to Cogitator candidate selection"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio","title":"wdmh step-4 trace: 5 HLAL rows = one reentry, 11 pairings, elision"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-03-module-split-event-refactor-committed-2cfc198-on-dialogue","title":"Module split + Event refactor committed 2cfc198 on dialogue"}
+- **retro**: {"category":"architecture","slug":"pseudocode-audit-three-false-lines-recheck-invisible","title":"Pseudocode audit: three false lines, the re-run invisible; corrected in docstring"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-03-rationalisation-split-algebra-domain-report-modules-event-re","title":"rationalisation split: algebra/domain/report modules; Event replaces Row"}
+
 ## 2026-11-02
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-02-cogitator-promotion-committed-fd2a47c-on-dialogue","title":"Cogitator promotion committed fd2a47c on dialogue"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-02-probe-promoted-cogitator-is-the-default-runner-reference-ret","title":"Probe promoted: Cogitator is the default runner; reference retained as baseline"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-cogitator-renamed-referencecogitator-name-freed-for-probe-de","title":"Cogitator renamed ReferenceCogitator; name freed for probe-derived successor"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-probe-stalls-now-wait-for-s3-match-no-break-for-run-all-scri","title":"Probe stalls now wait for S3 match; no-break for-run; all scripts agree"}
+- **retro**: {"category":"architecture","slug":"break-starves-exchange-stalls-must-wait","title":"Reentry probe: break starves the exchange; stalls must wait"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-ruling-fit-witnessed-by-the-pairing-gate-removed-as-default-","title":"Ruling: fit witnessed by the pairing; gate removed as default behaviour"}
+- **capture\_trajectory**: {"step_count":81,"tool_call_count":43,"trajectory_id":"TRJ-2026-11-02-001"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-simple-reentry-probe-built-completions-c1-c7-one-divergence-","title":"Simple reentry probe built; completions C1–C7; one divergence isolated"}
+- **retro**: {"category":"architecture","slug":"reentry-probe-fit-gate-divergence","title":"Reentry probe: pseudocode grounds all but the fit gate"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-02-narration-separation-committed-413eb9c-model-659-lines-searc","title":"Narration separation committed (413eb9c) — model 659 lines, search only"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-cover-frame-moved-to-trace-py-audit-confirms-remaining-model","title":"_cover_frame moved to trace.py; audit confirms remaining model surface is semantic"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-trace-extracted-to-dev-dialogue-trace-py-model-searches-harn","title":"_trace extracted to dev/dialogue/trace.py — model searches, harness narrates"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-02-clock-removed-notes-in-events-list-separates-model-from-repo","title":"Clock removed, notes in: events list separates model from reporting"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-02-union-fit-history-removed-from-doc-offering-only-pairing-com","title":"Union-fit history removed from doc; offering-only pairing committed"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-02-offering-only-o-side-landed-claim-extension-was-never-owed-1","title":"Offering-only o-side landed: claim extension was never owed — 181→120 rows"}
 

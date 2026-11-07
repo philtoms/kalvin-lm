@@ -58,6 +58,15 @@ S2 overlap, S3 disjoint — and grades; it never steers the search. The
 
 ## 2. The run
 
+The model's default runner is the **Cogitator**
+(`src/rationalisation/cogitator.py`) — the simple reentry loop:
+an entry's signature meets held claims, its underfit and offering
+residuals reenter as fresh entries, pairings ground when both sides
+resolve, stalls wait for an exchange witness. §2.1–§2.3 below describe
+the **ReferenceCogitator** (`src/rationalisation/model.py`), retained
+unchanged as the baseline for comparison; its guarantees (§3) are
+measured against it.
+
 ### 2.1 The harness configuration
 
 A script compiles to entries. The harness (`dev/dialogue/harness.py`)
@@ -72,11 +81,13 @@ knowledge.
 
 ### 2.2 The machine's state
 
-One `Cogitator` per rationalisation: an `agenda` (a LIFO stack of
+One `ReferenceCogitator` per rationalisation: an `agenda` (a LIFO stack of
 **reentries**), `rows` (every pairing, in creation order), `open_rows`,
 `frames` (covered content, each with its source row), `stalls`
 (reentries halted at S4, by signature), `seen` (pairing fingerprints,
-for loop control), a `clock`, and the `claim` — set at most once.
+for loop control), the run's `events` (pair/wait/close notes —
+reporting only, never read by the search), and the `claim` — set at
+most once.
 
 A **reentry** is an unconstructed kline: a region-signature remembering
 the row and side it came from. A **row** is one pairing — `F`, `U`,
@@ -169,7 +180,7 @@ ascending effort.
 
 ### 2.4 Invariants
 
-- D only grows; frames only grow; the clock only advances.
+- D only grows; frames only grow; the events list only appends.
 - Each reentry resolves at most once; the claim grounds at most once.
 - Every frame is a signature; every reentry is a signature. No
   composite value — no `σ | can(N)` of any kline — is ever fitted,
