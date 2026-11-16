@@ -30,7 +30,7 @@ def _tokens(label: str) -> "list[str] | None":
     return parts
 
 
-def residue(x: KNode, y: KNode) -> KNode:
+def underfit(x: KNode, y: KNode) -> KNode:
     """v ∖ w — residue, x beyond y."""
     label = _provenance(x, y, "∖")
     tx, ty = _tokens(getattr(x, "label", "")), _tokens(getattr(y, "label", ""))
@@ -39,8 +39,18 @@ def residue(x: KNode, y: KNode) -> KNode:
         label = "|".join(keep) if keep else "⊥"
     return KNode(x & ~y, label)
 
+def overfit(x: frozenset[KNode], y: KNode ) -> KNode:
+    """v ∖ w — residue, x beyond y."""
+    _x = can(x)
+    label = _provenance(_x, y, "∖")
+    tx, ty = _tokens(getattr(_x, "label", "")), _tokens(getattr(y, "label", ""))
+    if tx and ty:
+        keep = [p for p in tx if p not in ty]
+        label = "|".join(keep) if keep else "⊥"
+    return KNode(_x & ~y, label)
 
-def meet(x: KNode, y: KNode) -> KNode:
+
+def fit(x: KNode, y: KNode) -> KNode:
     """v ∧ w — meet; shared tokens label it."""
     label = _provenance(x, y, "∧")
     tx, ty = _tokens(getattr(x, "label", "")), _tokens(getattr(y, "label", ""))
@@ -77,6 +87,9 @@ class Kline:
 
     def fingerprint(self) -> int:
         return self.sig | can(self.adj)
+
+    def identity(self) -> bool:
+        return self.sig == can(self.adj)
 
 
 def can(n: frozenset[KNode]) -> KNode:
@@ -120,8 +133,8 @@ class Decomposition:
 
 def decompose(k: Kline) -> Decomposition:
     a_hat = can(k.adj)
-    f = meet(k.sig, a_hat)
-    return Decomposition(F=f, U=residue(k.sig, a_hat), O=residue(a_hat, k.sig))
+    f = fit(k.sig, a_hat)
+    return Decomposition(F=f, U=underfit(k.sig, a_hat), O=underfit(a_hat, k.sig))
 
 
 def significance(k: Kline) -> Fraction:

@@ -14,9 +14,9 @@ from rationalisation.algebra import (
     decompose,
     effort,
     entropy,
-    meet,
+    fit,
     mu,
-    residue,
+    underfit,
     significance,
 )
 from rationalisation.cogitator import Cogitator, rationalise
@@ -42,10 +42,10 @@ __all__ = [
     "decompose",
     "effort",
     "entropy",
-    "meet",
+    "fit",
     "mu",
     "proposals",
     "rationalise",
-    "residue",
+    "underfit",
     "significance",
 ]

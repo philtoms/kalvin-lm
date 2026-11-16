@@ -1,6 +1,6 @@
 """The run's report — the events of a rationalisation, its halts read as
 proposals, and the Rationalisation record both engines return. Events are
-reentry events: each is one thing that happened to an entry — a pairing,
+reentry events: each is one thing that happened to an entry,
 a frame minted, a stall, an exchange, a grounding. The run's trace;
 reporting only, never read by a search."""
 
@@ -17,8 +17,7 @@ from rationalisation.algebra import Kline, effort
 class Event:
     """One reentry event — the run's trace."""
 
-    kind: str  # pair | frame | stall | exchange | close | wait | known
-    depth: int
+    kind: str  # entry | frame | stall | exchange | close | wait | known
     entry: KNode  # the reentry's signature — the event's subject
     candidate: Kline | None = None
     F: KNode = KNone

@@ -1,34 +1,10 @@
-"""The Cogitator — the reentry recursion, the model's default runner.
+"""The Cogitator — the model's default runner.
 
     Rationalise to significance:
         S1 - entry held exactly
         S2 - entry aligned with goal
         S3 - entry and goal aligned on common sub-goal
         S4 - entry not held
-
-    The current implementation rationalises to S2 only.
-
-    rationalise(entry):
-      explore(entry.sig, stack=()):
-        push entry onto stack               # this call's own copy
-        while stack:                        # the reentry loop
-          E = top
-          if no candidates: stall or exchange; pop; continue
-          for C in candidates(E):
-            F, U, O = decompose(E, C)
-            if not settled(U): explore(U, stack)  # recursion into
-            if not settled(O): explore(O, stack)  # new state, then
-            continue to next candidate                  # forwards
-            # a side explores once per candidate; a stalled side
-            # re-explores only when new frames arrived since
-            if settled(U) and settled(O):
-              if depth == 1: ground(entry, goal)
-
-    Every reentry is a row in a shared heap; a stack is a list of row
-    indices, copied on recursion — cheap, and the caller's stack is never
-    looked at again. Frames are copies too: the mint travels with the
-    candidate's own descent only. Nothing flows up or across; a path only
-    moves forward into new state.
 
 """
 
@@ -37,79 +13,51 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from kalvin.kline import KNode, KNone
-from rationalisation.algebra import Kline, can, contained, meet, residue
+from rationalisation.algebra import Kline, contained, fit, underfit, overfit
 from rationalisation.domain import Domain
 from rationalisation.report import End, Event, Rationalisation, effort
 
 
 @dataclass
 class _Entry:
-    """One reentry, allocated in the shared heap. parent — the heap index
-    of the reentry whose pairing pushed this one (-1 for the opening)."""
+    """One entry's exploration.""" 
 
-    sig: KNode
-    depth: int
-    parent: int
-    memo: set = field(default_factory=set)  # sigs this row has forked — once per parent
+    A: KNode = KNone # the ask
+    cands: list | None = None # the candidate goals
+    parent: "_Entry | None" = None  # the entry's provenance
+    comp: str = ""  # "F" | "U" | "O" — the component of the parent's reentry
+    at: dict = field(default_factory=dict)  # component -> frame count at its last descent
 
-@dataclass
-class _Call:
-    """One reentry's exploration. cands — its own candidates, last first;
-    E/depth/parent — the loop variables the drain reassigns (after the
-    first candidate: the last drained top, not the call's own reentry)."""
-
-    E: KNode = KNone
-    depth: int = 0
-    caller: "_Call | None" = None  # the call whose loop pushed this one
-    cands: list | None = None
-    side: str = ""  # "u" | "o" — the side of the fork that pushed it
-    at: dict = field(default_factory=dict)  # side -> frame count at its last descent
-    pfp: int = 0  # the fork pairing's candidate fingerprint
-
-CNone = _Call()
+CNone = _Entry()
 
 class Cogitator:
     """The reentry runner: an entry's signature meets held claims, and each
-    unsettled side recurses into new state — its own stack copy, its own
-    frames. A pairing grounds when both sides settle; the fit needs no
-    frame of its own — it is contained in the candidate's held claim."""
+    unframed component recurses into new state — its own stack copy, its own
+    frames. An entry grounds when it is S2 aligned - all three components 
+    F(it), U(nderfit) and O(verfit) are framed.
+    """
 
-    MAX_DEPTH = 10
-    MAX_PAIRINGS = 4096
+    MAX_ENTRIES = 4096
 
     def __init__(self, d: Domain) -> None:
         self.d = d
         self.stores: list[Kline] = []
 
-    def _halt(self, reason: str, k: Kline) -> None:
-        self.ends.append(End(reason, k, effort(k)))
-
-    def _ground(self, k: Kline) -> None:
-        self.d.add(k)
-        if k not in self.stores:
-            self.stores.append(k)
-
-    def ancestor(self, e: KNode, c: _Call) -> bool:
-        while c.caller:
-            c = c.caller
-            if c.E == e: return True
-        return False
-    
-    def rationalise(self, entry: Kline, goal: Kline | None = None) -> Rationalisation:
+    def rationalise(self, ask: Kline, goal: Kline | None = None) -> Rationalisation:
         self.stores, self.ends = [], []
         self.claim: Kline | None = None
-        self.pairings = 0
+        self.entries = 0
         self.bound = False
-        self.stalled: dict[KNode, str] = {}
+        self.stalled: dict[KNode, _Entry] = {}
         self.frame: list[KNode] = []
         self.events: list[Event] = []
 
         if goal is None:
-            if not entry.adj:
-                self._halt("R4: entry kline with no adjacency", entry)
+            if not ask.adj:
+                self._halt("R4: entry kline with no adjacency", ask)
                 return Rationalisation(self.stores, self.ends, [])
-            if entry.sig == can(entry.adj):
-                self._ground(entry)  # S1 grounds on receipt
+            if ask.identity():
+                self._ground(ask)  # S1 grounds on receipt
                 return Rationalisation(self.stores, self.ends, [])
 
         def frame(x: KNode) -> bool:
@@ -121,103 +69,123 @@ class Cogitator:
         def framed(x: KNode) -> bool:
             return not x or any(contained(x, f) for f in self.frame)
 
-        def next(c: _Call) -> _Call:
-            if not c.caller: return CNone
-            return c.caller
+        def pop(entry: _Entry) -> _Entry:
+            if not entry.parent: return CNone
+            return entry.parent
 
-        def push(E: KNode, caller: _Call, side: str) -> _Call:
-            depth = caller.depth + 1
-            cands = ([goal] if depth == 1 and goal is not None
-                        else self._candidates(E, caller))
-            return  _Call(E, depth, caller, cands, side)
+        def push(A: KNode, parent: _Entry, comp: str) -> _Entry:
+            cands = self._candidates(A, parent)
+            return  _Entry(A, cands, parent, comp)
 
-        call = push(entry.sig, CNone, "")
-        while call.E != KNone:
-            if self.pairings > self.MAX_PAIRINGS:
-                self._halt("bound: pairing cap reached", entry)
+        entry = push(ask.sig, CNone, "")
+        entry.cands = [goal]
+        while entry.A != KNone:
+            if self.entries > self.MAX_ENTRIES:
+                self._halt("bound: entry cap reached", ask)
                 break
-            self.pairings += 1
+            self.entries += 1
 
-            E = call.E
-            if not call.cands:  # S4 stalled
-                if E in self.stalled and self.stalled[E] != call.side:
-                        frame(E) # S3 align
-                        self.events.append(Event("exchange", call.depth, E, frame=E))
-                        self.stalled.pop(E)
+            A = entry.A
+            if not entry.cands:  # S4 stalled
+                if A in self.stalled and self.stalled[A].comp != entry.comp and self.common_ancestor(entry, self.stalled[A]):
+                        frame(A) # S3 align
+                        self.events.append(Event("exchange", A, frame=A))
+                        self.stalled.pop(A)
                 else:
-                    self.stalled[E] = call.side
-                    self.events.append(Event("stall", call.depth, E))
+                    self.stalled[A] = entry
+                    self.events.append(Event("stall", A))
 
-                call = next(call)  # backtrack: the caller keeps its candidate
+                entry = pop(entry)  # backtrack: the parent keeps its candidate
                 continue
                 
             else:
-                depth = call.depth
-                C = call.cands[-1]
+                C = entry.cands[-1]
                 cs = C.sig
-                F, U, O = meet(E, cs), residue(E, cs), residue(can(C.adj), E)
-                if F == E:
+                F, U, O = fit(A, cs), underfit(A, cs), overfit(C.adj, A)
+                if F == A:
                     frame(F)
 
+                f_ok = framed(F)
                 u_ok = framed(U)
                 o_ok = framed(O)
-                if u_ok and o_ok:  # S2 aligned
-                    frame(E)
-                    self.events.append(Event("close", depth, E, C, F, U, O, frame=E))
-                    if depth == 1 and goal is not None and goal.sig == C.sig:  # the claim grounds
-                        self.claim = Kline(entry.sig, frozenset([goal.sig]))
+                if f_ok and u_ok and o_ok:  # S2 aligned
+                    frame(A)
+                    if goal.sig == C.sig:  # the claim grounds
+                        self.events.append(Event("grounded", A, C, F, U, O, frame=A))
+                        self.claim = Kline(ask.sig, frozenset([goal.sig]))
                         self._ground(self.claim)
-                        break  # the claim alone stops the run
-                elif not call.at:  # the pairing notes itself once — re-evaluation after
-                    self.events.append(Event("pair", depth, E, C, F, U, O))  # a descent is not a new pairing
+                    else:
+                        self.events.append(Event("close", A, C, F, U, O, frame=A))
+                elif not entry.at:  # the entry notes itself once — re-evaluation after
+                    self.events.append(Event("entry", A, C, F, U, O)) 
 
-                def fresh(side: str) -> bool:
-                    # a side descends once per candidate — and again only
-                    # when new frames arrived since its last descent
-                    return side not in call.at or len(self.frame) > call.at[side]
+                def fresh(comp: str) -> bool:
+                    # a component reenters once per candidate — and again only
+                    # when new frames arrived since its last entry
+                    return comp not in entry.at or len(self.frame) > entry.at[comp]
 
-                if not u_ok and fresh("U") and depth < self.MAX_DEPTH:
-                    call.at["U"] = len(self.frame)
-                    call = push(U, call, "U")
+                if not u_ok and fresh("U"):
+                    entry.at["U"] = len(self.frame)
+                    entry = push(U, entry, "U")
                     continue
 
-                if not o_ok and fresh("O") and depth < self.MAX_DEPTH:
-                    call.at["O"] = len(self.frame)
-                    call = push(O, call, "O")
+                if not o_ok and fresh("O"):
+                    entry.at["O"] = len(self.frame)
+                    entry = push(O, entry, "O")
                     continue
 
-                call.cands.pop()
-                call.at.clear()
+                if not f_ok and fresh("F"):
+                    entry.at["F"] = len(self.frame)
+                    entry = push(F, entry, "F")
+                    continue
 
-            if not call.cands:
-                call = next(call)
-                if call == CNone:
-                    self._halt("exhausted: no candidate resolved both sides", Kline(E, frozenset()))
+                entry.cands.pop()
+                entry.at.clear()
 
-        for e in self.stalled:  # stalls that never found a witness
-            self._halt("stalled at S4: no candidates", Kline(e, frozenset()))
+            if not entry.cands:
+                entry = pop(entry)
+
+        for a in self.stalled:  # stalls that never aligned
+            self._halt("stalled at S4: no candidates", Kline(a, frozenset()))
 
         return Rationalisation(self.stores, self.ends, self.events, claim=self.claim)
 
-    def _candidates(self, e: KNode, call: _Call) -> list[Kline]:
-        """The reference CANDIDATES minus loop control, in insertion order.
-        A reentry never re-pairs its origin: its parent entry's and parent
+    def _candidates(self, sig: KNode, entry: _Entry) -> list[Kline]:
+        """An ask never reenters its origin: its parent ask's and parent
         candidate's signatures are barred — the residual would re-derive
-        the decomposition the parent pairing already performed. A signature
-        covered on this path has nothing to teach."""
+        the decomposition the parent entry already performed."""
         cands = [
             c
             for c in self.d
-            if c.sig & e  # overlap — no-neighbours never pairs
-            and c.sig != e
+            if c.sig & sig  # overlap — no-neighbours never reenters
             and c.adj  # a bare signature offers no construction
-            and c.adj != frozenset([c.sig])  # an identity is not a partner
-            and c.fingerprint() != e  # like for like
-            and not self.ancestor(c.sig, call)
+            and c.adj != frozenset([c.sig])  # an identity is not a candidate
+            and not self.ancestor(c.sig, entry)
         ]
-        # return cands
-        return list(reversed(cands))
+        return cands
+        # return list(reversed(cands))
 
-def rationalise(d: Domain, entry: Kline, goal: Kline | None = None) -> Rationalisation:
+    def _halt(self, reason: str, k: Kline) -> None:
+        self.ends.append(End(reason, k, effort(k)))
+
+    def _ground(self, k: Kline) -> None:
+        self.d.add(k)
+        if k not in self.stores:
+            self.stores.append(k)
+
+    def ancestor(self, sig: KNode, entry: _Entry) -> bool:
+        while entry.parent:
+            entry = entry.parent
+            if entry.A == sig: return True
+        return False
+    
+    def common_ancestor(self, l: _Entry, r: _Entry) -> bool:
+        while l.parent:
+            l = l.parent
+            if self.ancestor(l.A, r.parent):
+                return True
+        return False
+    
+def rationalise(d: Domain, ask: Kline, goal: Kline | None = None) -> Rationalisation:
     """The one-shot runner — one Cogitator, one entry."""
-    return Cogitator(d).rationalise(entry, goal=goal)
+    return Cogitator(d).rationalise(ask, goal=goal)

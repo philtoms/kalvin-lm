@@ -60,9 +60,11 @@ S2 overlap, S3 disjoint — and grades; it never steers the search. The
 
 The model's default runner is the **Cogitator**
 (`src/rationalisation/cogitator.py`) — the simple reentry loop:
-an entry's signature meets held claims, its underfit and offering
-residuals reenter as fresh entries, pairings ground when both sides
-resolve, stalls wait for an exchange witness. §2.1–§2.3 below describe
+an entry's signature meets held claims, its fit, underfit and offering
+residuals reenter as fresh entries — the decomposition only covers the
+fit with the candidate's grounded signature, and a covering is not a
+frame — pairings ground when all three sides resolve, stalls wait for
+an exchange witness. §2.1–§2.3 below describe
 the **ReferenceCogitator** (`src/rationalisation/model.py`), retained
 unchanged as the baseline for comparison; its guarantees (§3) are
 measured against it.

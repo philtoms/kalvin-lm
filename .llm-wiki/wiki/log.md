@@ -1,5 +1,10 @@
 # Wiki Update Log
 
+## 2026-11-16
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig","title":"Fit-side change committed (40a347d); what stall traced to c.sig != e bar"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses","title":"Fit F now earns a frame like U and O — wdmh honestly refuses"}
+
 ## 2026-11-07
 
 - **retro**: {"category":"debugging","slug":"s4-backtrack-exhaustion-diagnosis","title":"S4 \"exhaustion\" was a backtrack bookkeeping defect"}

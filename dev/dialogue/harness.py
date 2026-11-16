@@ -295,9 +295,8 @@ def _event_line(ev: Event, labels: dict[int, str], alloc: dict[int, str]) -> lis
         c = _tlabel(ev.candidate.sig, labels, alloc)
         if ev.candidate.adj and can(ev.candidate.adj) != ev.candidate.sig:
             c += ":" + " ".join(_tlabel(n, labels, alloc) for n in sorted(ev.candidate.adj))
-    kind = "grounded" if ev.kind == "close" and ev.depth == 1 else _EVENT_KIND.get(ev.kind, ev.kind)
+    kind = _EVENT_KIND.get(ev.kind, ev.kind)
     return [
-        str(ev.depth),
         _tlabel(ev.entry, labels, alloc),
         c,
         _tlabel(ev.F, labels, alloc),
@@ -309,9 +308,9 @@ def _event_line(ev: Event, labels: dict[int, str], alloc: dict[int, str]) -> lis
 
 
 def _render_events(events: list[Event], labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
-    """The event table: depth, entry, candidate, fit, underfit, overfit,
+    """The event table: ask, candidate, fit, underfit, overfit,
     frame, event — one line per event, in order."""
-    hdr = ["depth", "E(ntry)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "event"]
+    hdr = ["A(sk)", "C(andidate)", "F(it)", "U(nderfit)", "O(verfit)", "frame", "event"]
     body = [_event_line(ev, labels, alloc) for ev in events]
     widths = [
         max(len(hdr[i]), *(len(r[i]) for r in body)) if body else len(hdr[i])

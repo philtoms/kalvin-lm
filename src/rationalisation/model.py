@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from kalvin.kline import KNode, KNone
-from rationalisation.algebra import Kline, can, contained, effort, meet, residue
+from rationalisation.algebra import Kline, can, contained, effort, fit, underfit
 from rationalisation.domain import Domain
 from rationalisation.report import End, Event, Rationalisation
 
@@ -299,8 +299,8 @@ class ReferenceCogitator:
             cs = c.sig
             proven = (
                 e & cs == e and e in self.frames
-                and self._pre_settled(residue(e, cs), re_)
-                and self._pre_settled(residue(can(c.adj), e), re_)
+                and self._pre_settled(underfit(e, cs), re_)
+                and self._pre_settled(underfit(can(c.adj), e), re_)
             )
             if self._in_path(re_, c):
                 # a candidate cannot reappear in the path it was decomposed
@@ -352,8 +352,8 @@ class ReferenceCogitator:
         # construction offers
         row = _Pairing(
             re_.depth, k, c,
-            F=meet(e, cs), U=residue(e, cs),
-            O=residue(ca, e), re=re_,
+            F=fit(e, cs), U=underfit(e, cs),
+            O=underfit(ca, e), re=re_,
         )
         self._emit("pair", row)
         if re_.depth == 1 and c == self.goal:

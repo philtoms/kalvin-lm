@@ -1277,3 +1277,9 @@
 ## [2026-11-07T09:22:01.967Z] retro
 - slug: "s4-backtrack-exhaustion-diagnosis", title: "S4 \"exhaustion\" was a backtrack bookkeeping defect", category: "debugging"
 
+## [2026-11-16T18:07:38.253Z] observe
+- slug: "obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses", title: "Fit F now earns a frame like U and O — wdmh honestly refuses", relevance: "high"
+
+## [2026-11-16T18:57:38.098Z] observe
+- slug: "obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig", title: "Fit-side change committed (40a347d); what stall traced to c.sig != e bar", relevance: "high"
+

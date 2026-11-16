@@ -423,3 +423,5 @@
 {"slug":"obs-2026-11-03-claim-grounds-via-ask-goal-now-dh-framed-by-joint-append-the","title":"Claim grounds via ask×goal now; DH framed by joint.append — the exchange is the record","relevance":"high","timestamp":"2026-11-03T23:59:04.023Z","kind":"observe"}
 {"slug":"obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-","title":"S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth","relevance":"high","timestamp":"2026-11-07T09:21:52.591Z","kind":"observe"}
 {"slug":"s4-backtrack-exhaustion-diagnosis","title":"S4 \"exhaustion\" was a backtrack bookkeeping defect","category":"debugging","timestamp":"2026-11-07T09:22:01.967Z","kind":"retro"}
+{"slug":"obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses","title":"Fit F now earns a frame like U and O — wdmh honestly refuses","relevance":"high","timestamp":"2026-11-16T18:07:38.253Z","kind":"observe"}
+{"slug":"obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig","title":"Fit-side change committed (40a347d); what stall traced to c.sig != e bar","relevance":"high","timestamp":"2026-11-16T18:57:38.098Z","kind":"observe"}
