@@ -27,7 +27,8 @@ class _Entry:
     cands: list | None = None # the candidate goals
     parent: "_Entry | None" = None  # the entry's provenance
     comp: str = ""  # "F" | "U" | "O" — the component of the parent's reentry
-    at: dict = field(default_factory=dict)  # component -> frame count at its last descent
+    at: dict = field(default_factory=dict)  # component -> frame count at its last entry
+    chain: frozenset = frozenset()  # the ask signatures of the strict parent chain
 
 ENone = _Entry()
 
@@ -69,9 +70,11 @@ class Cogitator:
             if not entry.parent: return ENone
             return entry.parent
 
-        def push(A: KNode, parent: _Entry, comp: str) -> _Entry:
-            cands = self._candidates(A, parent)
-            return  _Entry(A, cands, parent, comp)
+        def push(A: KNode, entry: _Entry, comp: str) -> _Entry:
+            entry.at[comp] = len(self.frame)
+            cands = self._candidates(A, entry)
+            chain = (entry.chain | {entry.A}) if entry.parent else frozenset()
+            return  _Entry(A, cands, entry, comp, chain=chain)
 
         def fresh(comp: str) -> bool:
             # a component reenters once per candidate — and again only
@@ -120,17 +123,14 @@ class Cogitator:
                     self.events.append(Event("entry", A, C, F, U, O)) 
 
                 if not u_ok and fresh("U"):
-                    entry.at["U"] = len(self.frame)
                     entry = push(U, entry, "U")
                     continue
 
                 if not o_ok and fresh("O"):
-                    entry.at["O"] = len(self.frame)
                     entry = push(O, entry, "O")
                     continue
 
                 if not f_ok and fresh("F"):
-                    entry.at["F"] = len(self.frame)
                     entry = push(F, entry, "F")
                     continue
 
@@ -156,23 +156,16 @@ class Cogitator:
             if c.signature & sig  # overlap — no-neighbours never reenters
             and c.nodes  # a bare signature offers no construction
             and not is_identity(c)  # an identity is not a candidate
-            and not self.ancestor(c.signature, entry)
+            and c.signature not in entry.chain
         ]
         return cands
         # return list(reversed(cands))
 
     def ancestor(self, sig: KNode, entry: _Entry) -> bool:
-        while entry.parent:
-            entry = entry.parent
-            if entry.A == sig: return True
-        return False
+        return sig in entry.chain
     
     def common_ancestor(self, l: _Entry, r: _Entry) -> bool:
-        while l.parent:
-            l = l.parent
-            if self.ancestor(l.A, r.parent):
-                return True
-        return False
+        return bool(l.chain & r.parent.chain) if r.parent else False
     
 def rationalise(d: Domain, ask: KLine, goal: KLine) -> Rationalisation:
     """The one-shot runner — one Cogitator, one entry."""

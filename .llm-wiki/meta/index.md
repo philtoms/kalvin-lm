@@ -515,6 +515,7 @@
 - [[sources/obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting]] — Observation: Algebra label-token arithmetic removed; harness re-formatting retired *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts]] — Observation: Claim broadcast relaxed: every S2 alignment broadcasts *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding]] — Observation: Claim sink: claims leave the Cogitator at grounding *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz]] — Observation: Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop]] — Observation: Cogitator claim semantics: grounding never stops the loop *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only]] — Observation: Cogitator storeless: claims broadcast at S2, domain read-only *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o]] — Observation: decompose removed; effort inlines U and O *(created: 2026-11-17)*
@@ -548,4 +549,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-17T16:45:35.921Z* | *Total pages: 530*
+*Last updated: 2026-11-17T16:51:06.913Z* | *Total pages: 531*

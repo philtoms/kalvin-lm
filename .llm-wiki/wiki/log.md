@@ -2,6 +2,7 @@
 
 ## 2026-11-17
 
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz","title":"Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-11-17-mts-initials-expands-single-components-to-whole-words","title":"mts_initials expands single components to whole words"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-","title":"Derived labels read bits, not strings; _tlabel names values by their own labels"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec","title":"Word registry drives derived labels — fit/underfit/overfit decompose bits"}

@@ -436,6 +436,7 @@
 - [Observation: Algebra label-token arithmetic removed; harness re-formatting retired](obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting.md)
 - [Observation: Claim broadcast relaxed: every S2 alignment broadcasts](obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts.md)
 - [Observation: Claim sink: claims leave the Cogitator at grounding](obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding.md)
+- [Observation: Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s](obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz.md)
 - [Observation: Cogitator claim semantics: grounding never stops the loop](obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop.md)
 - [Observation: Cogitator storeless: claims broadcast at S2, domain read-only](obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only.md)
 - [Observation: decompose removed; effort inlines U and O](obs-2026-11-17-decompose-removed-effort-inlines-u-and-o.md)

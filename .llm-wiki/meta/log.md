@@ -1328,3 +1328,6 @@
 ## [2026-11-17T16:45:35.730Z] observe
 - slug: "obs-2026-11-17-mts-initials-expands-single-components-to-whole-words", title: "mts_initials expands single components to whole words", relevance: "medium"
 
+## [2026-11-17T16:51:06.795Z] observe
+- slug: "obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz", title: "Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s", relevance: "high"
+

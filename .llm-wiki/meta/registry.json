@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-17T16:45:35.921Z",
+  "last_updated": "2026-11-17T16:51:06.913Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8107,6 +8107,22 @@
       "relevance": "critical",
       "observed_at": "2026-11-17T13:59:04.041Z",
       "source_context": "Claim sink interface between Cogitator and harness",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz": {
+      "type": "source",
+      "title": "Observation: Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s",
+      "tags": [
+        "performance",
+        "cogitator",
+        "tests"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz",
+      "relevance": "high",
+      "observed_at": "2026-11-17T16:51:06.794Z",
+      "source_context": "Diagnosing slow property tests",
       "created": "2026-11-17",
       "updated": "2026-11-17"
     },
