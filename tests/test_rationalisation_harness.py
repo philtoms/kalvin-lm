@@ -1,10 +1,13 @@
 """The dialogue path — the scripted-run hookup (dev/dialogue/harness.py)."""
 
 from __future__ import annotations
+from pathlib import Path
 
 from fractions import Fraction
 
-from dev.dialogue.harness import Runner, _to_kline
+from dev.dialogue.harness import Runner, _to_kline, _tlabel
+from kalvin.kline import KNode
+from ks.compiler import path_resolver
 from rationalisation import Domain, KLine, can, effort
 
 
@@ -51,3 +54,24 @@ def test_compiled_entry_maps_to_a_kline():
     assert entry.kline.nodes  # the compiled nodes carried over
     assert can(entry.kline.nodes) != 0
     assert effort(entry.kline) >= 0
+
+
+def test_tlabel_prefers_the_value_s_own_label():
+    # A value that carries a label is named by it; the script registry
+    # fills gaps (plain ints, unlabelled values).
+    assert _tlabel(KNode(1 << 32, "M"), {1 << 32: "Mary"}, {}) == "M"
+    assert _tlabel(1 << 32, {1 << 32: "Mary"}, {}) == "Mary"
+
+
+def test_claimed_event_labels_decompose_mts():
+    # wdmh.ks: A = WDMH against C = MHALL — fit Mary (had and have share
+    # the initial but not the bit, so the fit is Mary alone; a single
+    # component stands whole), underfit WDH, overfit HALL.
+    script = Path("dev/dialogue/scripts/wdmh.ks").read_text()
+    steps = Runner().run(script, resolver=path_resolver(Path("dev/dialogue/scripts")))
+    claimed = [ev for s in steps for ev in s.result.events if ev.kind == "claimed"]
+    assert claimed, "no claimed event"
+    ev = claimed[-1]
+    assert ev.F.label == "Mary"
+    assert ev.U.label == "WDH"
+    assert ev.O.label == "HALL"

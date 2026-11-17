@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-17T16:17:02.146Z",
+  "last_updated": "2026-11-17T16:45:35.921Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8158,6 +8158,24 @@
       "created": "2026-11-17",
       "updated": "2026-11-17"
     },
+    "sources/obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-": {
+      "type": "source",
+      "title": "Observation: Derived labels read bits, not strings; _tlabel names values by their own labels",
+      "tags": [
+        "algebra",
+        "labels",
+        "mts",
+        "harness",
+        "bit-accuracy"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-",
+      "relevance": "high",
+      "observed_at": "2026-11-17T16:41:57.473Z",
+      "source_context": "Making _provenance usable — meaningful derived labels",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
     "sources/obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel": {
       "type": "source",
       "title": "Observation: Ends gone: stall sink mirrors the claim channel",
@@ -8209,6 +8227,22 @@
       "created": "2026-11-17",
       "updated": "2026-11-17"
     },
+    "sources/obs-2026-11-17-mts-initials-expands-single-components-to-whole-words": {
+      "type": "source",
+      "title": "Observation: mts_initials expands single components to whole words",
+      "tags": [
+        "mts",
+        "labels",
+        "readability"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-mts-initials-expands-single-components-to-whole-words",
+      "relevance": "medium",
+      "observed_at": "2026-11-17T16:45:35.729Z",
+      "source_context": "Expanding single-character derived tokens back to words",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
     "sources/obs-2026-11-17-mts-label-change-committed-1cc55fd0": {
       "type": "source",
       "title": "Observation: MTS label change committed (1cc55fd0)",
@@ -8254,6 +8288,24 @@
       "relevance": "critical",
       "observed_at": "2026-11-17T13:14:34.483Z",
       "source_context": "Retiring the ReferenceCogitator baseline",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec": {
+      "type": "source",
+      "title": "Observation: Word registry drives derived labels — fit/underfit/overfit decompose bits",
+      "tags": [
+        "algebra",
+        "labels",
+        "mts",
+        "word-registry",
+        "rationalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec",
+      "relevance": "high",
+      "observed_at": "2026-11-17T16:41:48.194Z",
+      "source_context": "Making _provenance usable — meaningful derived labels",
       "created": "2026-11-17",
       "updated": "2026-11-17"
     },

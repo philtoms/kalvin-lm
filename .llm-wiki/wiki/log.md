@@ -2,6 +2,9 @@
 
 ## 2026-11-17
 
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-17-mts-initials-expands-single-components-to-whole-words","title":"mts_initials expands single components to whole words"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-","title":"Derived labels read bits, not strings; _tlabel names values by their own labels"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec","title":"Word registry drives derived labels — fit/underfit/overfit decompose bits"}
 - **observe**: {"relevance":"low","slug":"obs-2026-11-17-mts-label-change-committed-1cc55fd0","title":"MTS label change committed (1cc55fd0)"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting","title":"Algebra label-token arithmetic removed; harness re-formatting retired"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired","title":"KNode.merge mints MTS labels; bar notation retired"}

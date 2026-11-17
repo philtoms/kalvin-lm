@@ -9,7 +9,7 @@ from collections.abc import Iterable
 from enum import Enum
 from fractions import Fraction
 
-from kalvin.kline import KLine, KNode
+from kalvin.kline import KLine, KNode, mts_initials
 
 
 # --- §1 — Node algebra (word-bit realisation; ⊥ = 0) ---
@@ -21,22 +21,31 @@ def _provenance(x: KNode, y: KNode, op: str) -> str:
     return f"{a}{op}{b}" if a and b else ""
 
 
+def _derived(v: int, x: KNode, y: KNode, op: str) -> str:
+    """The label of a derived value: its MTS word decomposition when the
+    word registry covers it (WDMH ∖ MHALL → WDH), else the two-operand
+    provenance."""
+    if not v:
+        return "⊥"
+    return mts_initials(v) or _provenance(x, y, op)
+
+
 def underfit(x: KNode, y: KNode) -> KNode:
     """v ∖ w — residue, x beyond y."""
     v = x & ~y
-    return KNode(v, _provenance(x, y, "∖") if v else "⊥")
+    return KNode(v, _derived(v, x, y, "∖"))
 
 def overfit(x: Iterable[KNode], y: KNode ) -> KNode:
     """v ∖ w — residue, x beyond y."""
     _x = can(x)
     v = _x & ~y
-    return KNode(v, _provenance(_x, y, "∖") if v else "⊥")
+    return KNode(v, _derived(v, _x, y, "∖"))
 
 
 def fit(x: KNode, y: KNode) -> KNode:
     """v ∧ w — meet."""
     v = x & y
-    return KNode(v, _provenance(x, y, "∧") if v else "⊥")
+    return KNode(v, _derived(v, x, y, "∧"))
 
 
 def contained(x: KNode, y: KNode) -> bool:

@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin.kline import KNode, is_ask, mts
+from kalvin.kline import KNode, is_ask, mts, using_word_labels
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source, path_resolver
@@ -100,12 +100,16 @@ class Runner:
         if not pairs:
             raise ValueError("ask==goal: no `==` ask with a findable goal kline")
         paired = {id(e) for pair in pairs for e in pair}
-        for other in entries:
-            if id(other) not in paired:
-                self.domain.add(_to_kline(other))  # primed — never an R1 store
-        steps: list[Step] = []
-        for ask, goal in pairs:
-            self._step(steps, len(steps), ask, goal=_to_kline(goal))
+        # The word registry — derived values (fits, residuals) label from
+        # their component words while the run is live.
+        words = {(bit << 32): word for word, bit in self.word_bits.items()}
+        with using_word_labels(words):
+            for other in entries:
+                if id(other) not in paired:
+                    self.domain.add(_to_kline(other))  # primed — never an R1 store
+            steps: list[Step] = []
+            for ask, goal in pairs:
+                self._step(steps, len(steps), ask, goal=_to_kline(goal))
         return steps
 
     @staticmethod
@@ -241,19 +245,19 @@ def _humps(name: str) -> list[str]:
 
 
 def _tlabel(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
-    """A table label: a held label or word decomposition in MTS form —
-    MarySubject -> MS, had a little lamb -> HALL. Values minted by the
-    algebra carry MTS labels already; provenance expressions (∖, ∧) fall
-    through to the word decomposition."""
+    """A table label: a value that carries a label is named by it (MTS
+    from the mint, initials from the word registry); the script registry
+    fills the gaps, and provenance expressions (∖, ∧) fall through to the
+    word decomposition."""
     if not v:
         return ""
-    name = labels.get(int(v)) or getattr(v, "label", "")
+    name = getattr(v, "label", "") or labels.get(int(v))
     if name and "∖" not in name and "∧" not in name:
         return mts(_humps(name))
     return mts(_words(v, labels, alloc))
 
 
-def _tframe(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
+def _tframe(v: KNode, labels: dict[int, str], alloc: dict[int, str]) -> str:
     """Frame/event content in MTS form."""
     return _tlabel(v, labels, alloc)
 
@@ -271,7 +275,7 @@ def _event_line(ev: Event, labels: dict[int, str], alloc: dict[int, str]) -> lis
         _tlabel(ev.F, labels, alloc),
         _tlabel(ev.U, labels, alloc),
         _tlabel(ev.O, labels, alloc),
-        _tframe(int(ev.frame), labels, alloc) if ev.frame else "",
+        _tframe(ev.frame, labels, alloc) if ev.frame else "",
         kind,
     ]
 

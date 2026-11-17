@@ -1319,3 +1319,12 @@
 ## [2026-11-17T16:17:02.043Z] observe
 - slug: "obs-2026-11-17-mts-label-change-committed-1cc55fd0", title: "MTS label change committed (1cc55fd0)", relevance: "low"
 
+## [2026-11-17T16:41:48.196Z] observe
+- slug: "obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec", title: "Word registry drives derived labels — fit/underfit/overfit decompose bits", relevance: "high"
+
+## [2026-11-17T16:41:57.474Z] observe
+- slug: "obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-", title: "Derived labels read bits, not strings; _tlabel names values by their own labels", relevance: "high"
+
+## [2026-11-17T16:45:35.730Z] observe
+- slug: "obs-2026-11-17-mts-initials-expands-single-components-to-whole-words", title: "mts_initials expands single components to whole words", relevance: "medium"
+
