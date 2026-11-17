@@ -1301,3 +1301,6 @@
 ## [2026-11-17T13:59:04.043Z] observe
 - slug: "obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding", title: "Claim sink: claims leave the Cogitator at grounding", relevance: "critical"
 
+## [2026-11-17T14:35:11.147Z] observe
+- slug: "obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only", title: "Cogitator storeless: claims broadcast at S2, domain read-only", relevance: "critical"
+

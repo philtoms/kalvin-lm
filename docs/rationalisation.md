@@ -9,7 +9,7 @@ replaces it, no rule fires by syntactic match, and termination comes
 from bounds. What the mechanism is: **a deterministic, bounded,
 depth-first search in which unconstructed klines — signatures seeking
 construction — meet held klines' claims and receive their offered
-decompositions, until the claim grounds or the run halts.**
+decompositions, until the run halts.**
 
 The scripts are the only guarantee that an ask can be framed as a
 goal. If a script does not ground, that is the honest state of the
@@ -69,14 +69,14 @@ an exchange witness. §2.2–§2.4 describe its machine and rules.
 
 A script compiles to entries. The harness (`dev/dialogue/harness.py`)
 builds **ask==goal scenarios**: every `==` ask with a resolvable goal
-is one scenario, and every other entry is **primed** into D verbatim
-first (a harness fact — priming is never a store the model earned).
-Each scenario presents its goal alone — a canon grounds on receipt
-(S1, stored); otherwise it rationalises goal-less — then presents the
-ask with the goal attached. Scenarios run in ask order over the one
-live domain: an earlier scenario's stores are later scenarios' prior
-knowledge. The harness is the **claim sink**: a claim is in its hands
-the moment it grounds — mid-run, not at the run's return.
+is one scenario — the ask presented once, the goal handed to it
+directly, never presented and never stored. Every other entry is
+**primed** into D verbatim (a harness fact). The harness owns the
+domain; nothing learns into it during a run. Scenarios run in ask
+order over the one live domain. The harness is the **claim sink**: a
+claim is in its hands the moment it grounds — mid-run, not at the
+run's return. For now the harness reports claims; it persists
+nothing.
 
 ### 2.2 The machine's state
 
@@ -85,10 +85,10 @@ entry: an ask signature `A`, its remaining candidates, its parent,
 the component it was pushed as, and its `at` map — the frame count at
 each component's last descent), `stalled` (entries halted at S4, by
 signature — the latest per signature), `frame` (covered content, in
-mint order), and the run's `stores`, `ends` and `events` (reporting
-only, never read by the search). The claim is not run state: it
-leaves at grounding through the **claim sink** (`on_claim`), once per
-run.
+mint order), and the run's `ends` and `events` (reporting only, never
+read by the search). The Cogitator owns no store: the domain is
+read-only. The claim is not run state: it leaves at S2 through the
+**claim sink** (`on_claim`), once per run.
 
 A **reentry** is a bare region-signature: no witness nodes travel
 with it — the child's candidates are whatever the domain holds.
@@ -97,14 +97,13 @@ Bounds: `MAX_ENTRIES = 4096` — one counter over the whole loop.
 
 ### 2.3 The rules
 
-**WALK** (`rationalise`). A goal-less entry halts at R4 when it has no
-adjacency, and grounds on receipt when it is a canon (S1, stored).
-An ask run opens with the goal as the one and only candidate, then
-walks the entry chain until it unwinds or the entry cap is reached.
-Grounding does not stop the loop: the run continues until the chain
-unwinds or the cap; the claim — `KLine(σ_ask, [σ_goal])` — is stored
-and announced to the claim sink at first grounding. Later alignments
-re-trace (`grounded` events) and re-announce nothing.
+**WALK** (`rationalise`). An ask run opens with the goal as the one
+and only candidate, then walks the entry chain until it unwinds or
+the entry cap is reached (a run is never goal-less). Grounding does
+not stop the loop: the run continues until the chain unwinds or the
+cap; the claim — `KLine(σ_ask, [σ_goal])` — is broadcast to the claim
+sink at first grounding. Later alignments re-trace (`grounded`
+events) and re-announce nothing.
 
 **CANDIDATES** (`_candidates`). An entry's signature `A` primes domain
 klines by overlap:
@@ -141,9 +140,10 @@ the next candidate may re-descend every component.
 **ALIGN**. All three components framed — S2 aligned — frames `A`. If
 the candidate's signature is the goal's, the **claim** grounds:
 `KLine(σ_ask, [σ_goal])` — the ask's signature over the goal's
-signature — stored and announced to the claim sink; the run's only
-earned store. Any entry may ground it — the claim is the ask's,
-whatever entry aligned.
+signature — **broadcast at S2** through the claim sink, the older
+proposal's equal: nothing is stored, the domain is not the
+Cogitator's to write. Any entry may ground it — the claim is the
+ask's, whatever entry aligned.
 
 **STALL / EXCHANGE**. An entry with no candidates left stalls at S4,
 filed under its signature, and backtracks — the parent keeps its
@@ -151,19 +151,20 @@ remaining candidates. Two stalls on one signature from different
 components sharing a common ancestor witness each other: the
 signature frames, the stall resolves, nothing is stored.
 
-**HALT / PROPOSAL**. Terminal arrivals: no adjacency (R4), the entry
-cap, and unresolved stalls. Each halt becomes a proposal — `connect`,
-`continue`, `acquire` — ordered by ascending effort.
+**HALT / PROPOSAL**. Terminal arrivals: the entry cap and unresolved
+stalls. Each halt becomes a proposal — `connect`, `continue`,
+`acquire` — ordered by ascending effort.
 
 ### 2.4 Invariants
 
-- D only grows; frames only grow; the events list only appends.
-- A claim is announced to the sink once per run, at first grounding;
+- The run never writes D — the domain is the harness's; frames only
+  grow; the events list only appends.
+- A claim is broadcast to the sink once per run, at first grounding;
   later alignments re-trace and re-announce nothing.
 - Every frame is a signature; every reentered region (U, O, F) is a
   signature — meets and residues of signatures. No composite — no
   `σ | can(N)` of any kline — is ever fitted, minted, or reentered.
-- Stores during an ask run: exactly the claim, and only on grounding.
+- The run stores nothing.
 
 ## 3. Termination and determinism
 

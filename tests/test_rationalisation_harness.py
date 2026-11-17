@@ -20,18 +20,17 @@ MHALL == SVO =>
 """
 
 
-def test_scripts_run_and_store():
-    # Every run is an ask==goal run: two steps, everything else primes.
+def test_scripts_run_and_ask():
+    # Every run is a sequence of asks: one step per ask==goal scenario.
     runner = Runner()
     steps = runner.run(SCRIPT)
-    assert len(steps) == 2
+    assert len(steps) == 1
 
 
-def test_the_two_entries_are_goal_then_ask():
+def test_the_one_entry_is_the_ask():
     runner = Runner()
     steps = runner.run(SCRIPT)
-    assert len(steps[0].kline.nodes) == 3  # the goal canon: Subject, Verb, Object
-    assert len(steps[1].kline.nodes) == 5  # the MHALL ask: the full sentence
+    assert len(steps[0].kline.nodes) == 5  # the MHALL ask: the full sentence
     # the primed klines are in the domain (they never rationalise as steps)
     assert any(can(k.nodes) == k.signature for k in runner.domain if len(k.nodes) == 1)
 

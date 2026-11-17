@@ -47,9 +47,8 @@ class Proposal:
 
 @dataclass
 class Rationalisation:
-    """One run's report: its events in order, its halts, its stores."""
+    """One run's report: its events in order, its halts."""
 
-    stores: list[KLine]
     ends: list[End]
     events: list[Event] = field(default_factory=list)
 

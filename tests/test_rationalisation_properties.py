@@ -61,12 +61,14 @@ def closed_domains(draw) -> Domain:
 
 
 @st.composite
-def scenarios(draw) -> tuple[Domain, KLine]:
-    """An I-1-closed domain and an admissible entry (Definition 8 presentation)."""
+def scenarios(draw) -> tuple[Domain, KLine, KLine]:
+    """An I-1-closed domain, an admissible entry, and a goal — a canon the
+domain holds (the ask is never goal-less)."""
     d = draw(closed_domains())
     held = sorted({k.signature for k in d})
     entry = KLine(draw(st.sampled_from(held)), draw(adjacencies(held, max_size=3)))
-    return d, entry
+    goal = draw(st.sampled_from([k for k in d if d.is_canonical(k)]))
+    return d, entry, goal
 
 
 # --- §4 Definition 11: the band ---
@@ -133,12 +135,13 @@ def test_effort_properties(k):
 @settings(deadline=None, max_examples=150)
 @given(scenarios())
 def test_no_fabrication(sc):
-    d, entry = sc
+    d, entry, goal = sc
     before = set(d)
     atoms_before = {b for k in before for v in (k.signature, *k.nodes) for b in bits(v)}
     atoms_before |= bits(entry.signature) | {b for n in entry.nodes for b in bits(n)}
-    r = rationalise(d, entry)
-    assert set(r.stores) <= set(d)  # every store is a domain member
+    atoms_before |= bits(goal.signature) | {b for n in goal.nodes for b in bits(n)}
+    rationalise(d, entry, goal=goal)
+    assert set(d) == before  # the run never writes the domain — it is the harness's
     atoms_after = {b for k in d for v in (k.signature, *k.nodes) for b in bits(v)}
     assert atoms_after <= atoms_before  # no new atoms: the system composes what it holds
 
@@ -146,8 +149,8 @@ def test_no_fabrication(sc):
 @settings(deadline=None, max_examples=150)
 @given(scenarios())
 def test_rationalisation_is_honest(sc):
-    d, entry = sc
-    r = rationalise(d, entry)
+    d, entry, goal = sc
+    r = rationalise(d, entry, goal=goal)
     assert all(
         e.reason.startswith(("R4", "S4", "stalled", "no candidates", "bound", "exhausted")) for e in r.ends
     )

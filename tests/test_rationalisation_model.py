@@ -8,6 +8,7 @@ from fractions import Fraction
 from rationalisation import (
     BETA,
     Band,
+    Cogitator,
     Domain,
     KLine,
     band,
@@ -168,7 +169,7 @@ def test_disjoint_candidate_asks_s4():
 
 def test_proposals_cover_every_end():
     d = base_domain(k(AB), k(ABC, AB))
-    r = rationalise(d, k(C, C))
+    r = rationalise(d, k(C, C), goal=k(AB, A, B))
     assert len(proposals(r)) == len(r.ends)  # one proposal per halt
     assert all(p.kind in ("acquire", "connect", "continue") for p in proposals(r))
 
@@ -214,15 +215,7 @@ def test_empty_lookup_terminates_entry():
     assert r.stores == []
 
 
-# --- §5 rationalise: the standardised reentry ---
-
-
-def test_entry_with_no_adjacency_is_r4():
-    d = base_domain()  # presentation admits any kline — checks nothing (Definition 8)
-    r = rationalise(d, k(AB))
-    assert r.stores == []
-    assert [e.reason for e in r.ends] == ["R4: entry kline with no adjacency"]
-    assert [p.kind for p in proposals(r)] == ["acquire"]
+# --- §5 rationalise: the ask run ---
 
 
 @pytest.mark.xfail(reason="mid-migration debt: old module-level rationalise semantics (e93c192); superseded by the Cogitator reentry - port pending", strict=False)
@@ -255,15 +248,15 @@ def test_s3_grounds_nothing_asks_instead_of_claiming():
 
 
 def test_the_claim_grounds_when_both_sides_resolve():
-    # SVO:[S], SVO:[V], SVO:[O] analog: the popped candidate leaves an
-    # underfit region; its reentry chain grounds the atoms bottom-up, the
-    # parent merges the grounded region, and the claim stores as the full
-    # canon — children complete before the parent's revisit
+    # the ask's underfit region reenters and grounds bottom-up over the
+    # held canons; the claim broadcasts at S2 and the domain is untouched
     d = Domain([k(AB, A, B), k(BC, B, C)])
-    r = rationalise(d, k(ABC, A, B, C))
-    assert r.stores[-1] == k(ABC, A, B, C)
+    before = set(d)
+    claims: list[KLine] = []
+    r = Cogitator(d, on_claim=claims.append).rationalise(k(ABC, A, B, C), goal=k(AB, A, B))
+    assert claims == [KLine(ABC, [AB])]  # the claim left at S2 — σ_ask over σ_goal
     assert r.ends == []
-    assert d.is_canonical(k(ABC, A, B, C))
+    assert set(d) == before  # nothing stored — the domain is the harness's
 
 
 @pytest.mark.xfail(reason="mid-migration debt: old module-level rationalise semantics (e93c192); superseded by the Cogitator reentry - port pending", strict=False)
@@ -276,14 +269,6 @@ def test_identities_witness_nothing():
     assert [e.reason for e in r.ends] == ["no candidates — the entry terminates"]
     ps = proposals(r)
     assert ps[0].kind == "connect" and ps[0].kline == k(ABC, A, B, C)
-
-
-def test_aggregation_unions_witnesses_from_many_klines():
-    # ⟨A,{A}⟩ and ⟨ABD,{A,B}⟩ both fully covered — the aggregate carries
-    # the union {A,B} under the canon AB: the whole is S1 in one step
-    d = base_domain(k(ABD, A, B))
-    r = rationalise(d, k(AB, A, B))
-    assert r.stores == [k(AB, A, B)]
 
 
 @pytest.mark.xfail(reason="mid-migration debt: old module-level rationalise semantics (e93c192); superseded by the Cogitator reentry - port pending", strict=False)
@@ -299,17 +284,6 @@ def test_partial_fit_never_stores_alone_the_frame_stalls():
         ("connect", k(C, C)),
         ("connect", KLine(ABC, [A, B])),
     ]
-
-
-def test_the_unpopped_candidate_never_runs():
-    # the ⟨ABC,{CD}⟩ witness would overfit — but only the list's first is
-    # popped: the covered ⟨ABD,{A,B}⟩ candidate grounds the claim and the
-    # rest of the list is never work
-    d = base_domain(k(CD, CD), k(ABC, CD), k(ABD, A, B))
-    r = rationalise(d, k(AB, A, B))
-    assert r.stores == [k(AB, A, B)]
-    assert r.ends == []
-    assert d.is_canonical(k(AB, A, B))
 
 
 @pytest.mark.xfail(reason="mid-migration debt: old module-level rationalise semantics (e93c192); superseded by the Cogitator reentry - port pending", strict=False)

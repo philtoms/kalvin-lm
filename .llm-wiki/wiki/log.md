@@ -2,6 +2,7 @@
 
 ## 2026-11-17
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only","title":"Cogitator storeless: claims broadcast at S2, domain read-only"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding","title":"Claim sink: claims leave the Cogitator at grounding"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-11-17-decompose-removed-effort-inlines-u-and-o","title":"decompose removed; effort inlines U and O"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop","title":"Cogitator claim semantics: grounding never stops the loop"}

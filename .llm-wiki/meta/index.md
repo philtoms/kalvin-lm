@@ -514,6 +514,7 @@
 - [[sources/obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig]] — Observation: Fit-side change committed (40a347d); what stall traced to c.sig != e bar *(created: 2026-11-16)*
 - [[sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding]] — Observation: Claim sink: claims leave the Cogitator at grounding *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop]] — Observation: Cogitator claim semantics: grounding never stops the loop *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only]] — Observation: Cogitator storeless: claims broadcast at S2, domain read-only *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o]] — Observation: decompose removed; effort inlines U and O *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head]] — Observation: KLine migration value-parity verified against HEAD *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline]] — Observation: rationalisation stack migrated to kalvin KLine *(created: 2026-11-17)*
@@ -539,4 +540,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-17T13:59:04.129Z* | *Total pages: 521*
+*Last updated: 2026-11-17T14:35:11.289Z* | *Total pages: 522*

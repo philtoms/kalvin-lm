@@ -1,4 +1,4 @@
-"""The Cogitator — the model's default runner.
+"""The Cogitator — the model's runner.
 
     Rationalise to significance:
         S1 - entry held exactly
@@ -14,7 +14,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from kalvin.kline import KLine, KNode, KNone, is_identity
-from rationalisation.algebra import can, contained, fit, underfit, overfit
+from rationalisation.algebra import contained, fit, underfit, overfit
 from rationalisation.domain import Domain
 from rationalisation.report import End, Event, Rationalisation, effort
 
@@ -37,8 +37,10 @@ class Cogitator:
     frames. An entry grounds when it is S2 aligned - all three components 
     F(it), U(nderfit) and O(verfit) are framed.
 
-    A claim leaves at grounding, through ``on_claim`` — the claim sink —
-    not with the run's report. The report is history; claims are news.
+    The Cogitator owns no state: the domain is read-only (the harness's),
+    nothing is ever stored, and the claim is broadcast at S2 through
+    ``on_claim`` — the claim sink — like the older proposal. The report is
+    history; claims are news.
     """
 
     MAX_ENTRIES = 4096
@@ -46,24 +48,15 @@ class Cogitator:
     def __init__(self, d: Domain, on_claim: Callable[[KLine], None] | None = None) -> None:
         self.d = d
         self.on_claim = on_claim
-        self.stores: list[KLine] = []
 
-    def rationalise(self, ask: KLine, goal: KLine | None = None) -> Rationalisation:
-        self.stores, self.ends = [], []
-        self.claimed = False  # announced once per run — at grounding
+    def rationalise(self, ask: KLine, goal: KLine) -> Rationalisation:
+        self.ends: list[End] = []
+        self.claimed = False  # broadcast once per run — at S2
         self.entries = 0
         self.bound = False
         self.stalled: dict[KNode, _Entry] = {}
         self.frame: list[KNode] = []
         self.events: list[Event] = []
-
-        if goal is None:
-            if not ask.nodes:
-                self._halt("R4: entry kline with no adjacency", ask)
-                return Rationalisation(self.stores, self.ends, [])
-            if ask.signature == can(ask.nodes):
-                self._ground(ask)  # S1 grounds on receipt
-                return Rationalisation(self.stores, self.ends, [])
 
         def frame(x: KNode) -> bool:
             if x and x not in self.frame:
@@ -118,7 +111,6 @@ class Cogitator:
                     if goal.signature == C.signature:  # the claim grounds
                         self.events.append(Event("grounded", A, C, F, U, O, frame=A))
                         claim = KLine(ask.signature, [goal.signature])
-                        self._ground(claim)
                         if not self.claimed:
                             self.claimed = True
                             if self.on_claim is not None:
@@ -157,7 +149,7 @@ class Cogitator:
         for a in self.stalled:  # stalls that never aligned
             self._halt("stalled at S4: no candidates", KLine(a, []))
 
-        return Rationalisation(self.stores, self.ends, self.events)
+        return Rationalisation(self.ends, self.events)
 
     def _candidates(self, sig: KNode, entry: _Entry) -> list[KLine]:
         """An ask never reenters its origin: its parent ask's and parent
@@ -177,11 +169,6 @@ class Cogitator:
     def _halt(self, reason: str, k: KLine) -> None:
         self.ends.append(End(reason, k, effort(k)))
 
-    def _ground(self, k: KLine) -> None:
-        self.d.add(k)
-        if k not in self.stores:
-            self.stores.append(k)
-
     def ancestor(self, sig: KNode, entry: _Entry) -> bool:
         while entry.parent:
             entry = entry.parent
@@ -195,6 +182,6 @@ class Cogitator:
                 return True
         return False
     
-def rationalise(d: Domain, ask: KLine, goal: KLine | None = None) -> Rationalisation:
+def rationalise(d: Domain, ask: KLine, goal: KLine) -> Rationalisation:
     """The one-shot runner — one Cogitator, one entry."""
-    return Cogitator(d).rationalise(ask, goal=goal)
+    return Cogitator(d).rationalise(ask, goal)

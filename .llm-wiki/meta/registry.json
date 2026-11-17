@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-17T13:59:04.129Z",
+  "last_updated": "2026-11-17T14:35:11.289Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8088,6 +8088,23 @@
       "relevance": "high",
       "observed_at": "2026-11-17T13:14:43.732Z",
       "source_context": "Documenting the Cogitator's rules post-retirement",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only": {
+      "type": "source",
+      "title": "Observation: Cogitator storeless: claims broadcast at S2, domain read-only",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "streaming",
+        "state"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T14:35:11.146Z",
+      "source_context": "Storeless Cogitator: broadcast at S2, harness owns state",
       "created": "2026-11-17",
       "updated": "2026-11-17"
     },

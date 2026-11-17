@@ -2,14 +2,13 @@
 
 A minimal, synchronous, non-judging loop. Compiles a KScript source and
 runs it as a sequence of ask==goal scenarios: every `==` ask whose named
-goal resolves to a kline entry is one scenario — the ask authored first,
-the goal answering — and every other kline primes the domain before
-rationalisation. Scenarios run in ask order over one live domain; an
-earlier scenario's stores and proposals persist into the later ones.
-Priming is a
-harness fact, never a model admission: R1 remains the sole way the run
-itself learns. Nothing is checked at presentation; unheld references
-find no neighbours.
+goal resolves to a kline entry is one scenario — the ask presented once,
+the goal handed to it directly, never presented and never stored. Every
+other kline primes the domain; scenarios run in ask order over the one
+live domain. Priming is a harness fact — the harness owns the domain,
+and nothing learns into it during a run: the Cogitator reads it, stores
+nothing, and broadcasts its claims to the harness (the claim sink) at
+S2. Claims are reported; they persist nowhere, for now.
 
 Proposals persist across steps: a later presented entry discharges a
 pending proposal when its content overlaps the target (Definition 15).
@@ -86,7 +85,6 @@ class Runner:
         self.domain = Domain()
         self.word_bits: dict[str, int] = {}
         self.pending: list[Pending] = []
-        self.stores: list[tuple[int, KLine]] = []  # (step, store)
         self.claims: list[tuple[int, KLine]] = []  # (step, claim) — appended at grounding, mid-run
         self._step_index = -1  # the presenting step — claims arrive before it completes
         self.cogitator = Cogitator(self.domain, on_claim=self._claim)
@@ -97,9 +95,9 @@ class Runner:
 
     def run(self, source: str, resolver=None) -> list[Step]:
         """An ask==goal run: every `==` ask with a resolvable goal is one
-        scenario, everything else primes the domain before rationalisation.
-        Scenarios run in ask order over the one live domain — an earlier
-        scenario's stores and proposals persist into the later ones."""
+        scenario — the ask presented once, the goal handed to it directly
+        (never presented, never stored). Everything else primes the domain;
+        scenarios run in ask order over the one live domain."""
         entries = compile_source(
             source,
             tokenizer=self.tokenizer,
@@ -117,8 +115,7 @@ class Runner:
                 self.domain.add(_to_kline(other))  # primed — never an R1 store
         steps: list[Step] = []
         for ask, goal in pairs:
-            # self._step(steps, len(steps), goal)  # the goal rationalises first — S1 grounds on receipt
-            self._step(steps, len(steps), ask, goal=_to_kline(goal))  # the ask asks — the goal is its first candidate
+            self._step(steps, len(steps), ask, goal=_to_kline(goal))
         return steps
 
     @staticmethod
@@ -154,8 +151,6 @@ class Runner:
         self._discharge(i, kline)  # only proposals from earlier steps answer
         for prop in proposals(result):
             self.pending.append(Pending(prop, i))
-        for store in result.stores:
-            self.stores.append((i, store))
 
     def _discharge(self, step_index: int, entry: KLine) -> None:
         """A presented entry overlapping a pending target discharges it —
@@ -349,8 +344,6 @@ def _render_step(step: Step, claimed: bool, labels: dict[int, str], alloc: dict[
         if not claimed:
             lines.append("      (no claim — every event below)")
         lines.extend("      " + l for l in _render_events(step.result.events, labels, alloc))
-    for store in step.result.stores:
-        lines.append(f"      stores    {_tline(store, labels, alloc)}")
     by_reason: dict[str, list[End]] = {}
     for e in step.result.ends:
         by_reason.setdefault(e.reason, []).append(e)

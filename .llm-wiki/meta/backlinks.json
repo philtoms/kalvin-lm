@@ -1238,6 +1238,7 @@
   "sources/obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig": [],
   "sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding": [],
   "sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop": [],
+  "sources/obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only": [],
   "sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o": [],
   "sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head": [],
   "sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline": [],
