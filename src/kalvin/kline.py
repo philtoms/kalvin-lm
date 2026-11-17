@@ -31,6 +31,21 @@ def is_ask(signature: int) -> bool:
     return (int(signature) & ASK_SIG) != 0
 
 
+def mts(parts: list[str]) -> str:
+    """The MTS uppercase-character notation: a single part stands whole;
+    a compound of two or more takes each part whole when it is already an
+    abbreviation, else its uppercased initial (Mary, Subject → MS; had,
+    Verb → HV; SVO, Mary → SVOM). Empty parts drop out; equal parts
+    compose to themselves."""
+    seen: list[str] = []
+    for p in parts:
+        if p and p not in seen:
+            seen.append(p)
+    if len(seen) <= 1:
+        return seen[0] if seen else ""
+    return "".join(p if p.isupper() else p[:1].upper() for p in seen)
+
+
 def canon_key(signature: int) -> int:
     """Identity key with the ASK marker cleared — the canon an ask rides on."""
     return int(signature) & ~ASK_SIG
@@ -64,22 +79,17 @@ class KNode(int):
         return KNode(self, label)
 
     def merge(self, other: KNode) -> "KNode":
-        """A new node OR-combined with *other*, labels composed with ``|``.
+        """A new node OR-combined with *other*, labels composed in MTS
+        form (:func:`mts`).
 
         The node-level counterpart of the Signifier's OR-reduction
         (``signature_of``): accumulates values into a running signature
         where no Signifier is at hand. Unlike ``|``, the result stays a
-        KNode. Label composition is idempotent: the ``|``-parts of both
-        sides union with order preserved, so ``A.merge(A)`` stays ``A``.
-        An empty label on either side yields the other side's label;
-        both empty stays empty.
+        KNode. Label composition is idempotent: equal labels compose to
+        themselves, so ``A.merge(A)`` stays ``A``. An empty label on
+        either side yields the other side's label; both empty stays empty.
         """
-        parts: list[str] = []
-        for label in (self.label, getattr(other, "label", "")):
-            for part in label.split("|"):
-                if part and part not in parts:
-                    parts.append(part)
-        return KNode(self | other, "|".join(parts))
+        return KNode(self | other, mts([self.label, getattr(other, "label", "")]))
 
     def __repr__(self) -> str:
         return f"KNode({int(self)}, {self.label!r})" if self.label else f"KNode({int(self)})"

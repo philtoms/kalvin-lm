@@ -2,6 +2,9 @@
 
 ## 2026-11-17
 
+- **observe**: {"relevance":"low","slug":"obs-2026-11-17-mts-label-change-committed-1cc55fd0","title":"MTS label change committed (1cc55fd0)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting","title":"Algebra label-token arithmetic removed; harness re-formatting retired"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired","title":"KNode.merge mints MTS labels; bar notation retired"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel","title":"Ends gone: stall sink mirrors the claim channel"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts","title":"Claim broadcast relaxed: every S2 alignment broadcasts"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only","title":"Cogitator storeless: claims broadcast at S2, domain read-only"}

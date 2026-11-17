@@ -1310,3 +1310,12 @@
 ## [2026-11-17T14:55:41.636Z] observe
 - slug: "obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel", title: "Ends gone: stall sink mirrors the claim channel", relevance: "critical"
 
+## [2026-11-17T16:14:15.853Z] observe
+- slug: "obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired", title: "KNode.merge mints MTS labels; bar notation retired", relevance: "high"
+
+## [2026-11-17T16:14:21.172Z] observe
+- slug: "obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting", title: "Algebra label-token arithmetic removed; harness re-formatting retired", relevance: "high"
+
+## [2026-11-17T16:17:02.043Z] observe
+- slug: "obs-2026-11-17-mts-label-change-committed-1cc55fd0", title: "MTS label change committed (1cc55fd0)", relevance: "low"
+

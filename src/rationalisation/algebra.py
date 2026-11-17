@@ -21,45 +21,22 @@ def _provenance(x: KNode, y: KNode, op: str) -> str:
     return f"{a}{op}{b}" if a and b else ""
 
 
-def _tokens(label: str) -> "list[str] | None":
-    """The word tokens of a pure composition label ('A|B'), else None."""
-    if not label:
-        return None
-    parts = label.split("|")
-    if any(not p or ("∖" in p) or ("∧" in p) for p in parts):
-        return None
-    return parts
-
-
 def underfit(x: KNode, y: KNode) -> KNode:
     """v ∖ w — residue, x beyond y."""
-    label = _provenance(x, y, "∖")
-    tx, ty = _tokens(getattr(x, "label", "")), _tokens(getattr(y, "label", ""))
-    if tx and ty:
-        keep = [p for p in tx if p not in ty]
-        label = "|".join(keep) if keep else "⊥"
-    return KNode(x & ~y, label)
+    v = x & ~y
+    return KNode(v, _provenance(x, y, "∖") if v else "⊥")
 
 def overfit(x: Iterable[KNode], y: KNode ) -> KNode:
     """v ∖ w — residue, x beyond y."""
     _x = can(x)
-    label = _provenance(_x, y, "∖")
-    tx, ty = _tokens(getattr(_x, "label", "")), _tokens(getattr(y, "label", ""))
-    if tx and ty:
-        keep = [p for p in tx if p not in ty]
-        label = "|".join(keep) if keep else "⊥"
-    return KNode(_x & ~y, label)
+    v = _x & ~y
+    return KNode(v, _provenance(_x, y, "∖") if v else "⊥")
 
 
 def fit(x: KNode, y: KNode) -> KNode:
-    """v ∧ w — meet; shared tokens label it."""
-    label = _provenance(x, y, "∧")
-    tx, ty = _tokens(getattr(x, "label", "")), _tokens(getattr(y, "label", ""))
-    if tx and ty:
-        shared = [p for p in tx if p in ty]
-        if shared:
-            label = "|".join(shared)
-    return KNode(x & y, label)
+    """v ∧ w — meet."""
+    v = x & y
+    return KNode(v, _provenance(x, y, "∧") if v else "⊥")
 
 
 def contained(x: KNode, y: KNode) -> bool:

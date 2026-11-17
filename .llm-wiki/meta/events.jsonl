@@ -434,3 +434,6 @@
 {"slug":"obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only","title":"Cogitator storeless: claims broadcast at S2, domain read-only","relevance":"critical","timestamp":"2026-11-17T14:35:11.147Z","kind":"observe"}
 {"slug":"obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts","title":"Claim broadcast relaxed: every S2 alignment broadcasts","relevance":"high","timestamp":"2026-11-17T14:37:48.025Z","kind":"observe"}
 {"slug":"obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel","title":"Ends gone: stall sink mirrors the claim channel","relevance":"critical","timestamp":"2026-11-17T14:55:41.636Z","kind":"observe"}
+{"slug":"obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired","title":"KNode.merge mints MTS labels; bar notation retired","relevance":"high","timestamp":"2026-11-17T16:14:15.853Z","kind":"observe"}
+{"slug":"obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting","title":"Algebra label-token arithmetic removed; harness re-formatting retired","relevance":"high","timestamp":"2026-11-17T16:14:21.172Z","kind":"observe"}
+{"slug":"obs-2026-11-17-mts-label-change-committed-1cc55fd0","title":"MTS label change committed (1cc55fd0)","relevance":"low","timestamp":"2026-11-17T16:17:02.043Z","kind":"observe"}

@@ -512,6 +512,7 @@
 - [[sources/obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-]] — Observation: S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth *(created: 2026-11-07)*
 - [[sources/obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses]] — Observation: Fit F now earns a frame like U and O — wdmh honestly refuses *(created: 2026-11-16)*
 - [[sources/obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig]] — Observation: Fit-side change committed (40a347d); what stall traced to c.sig != e bar *(created: 2026-11-16)*
+- [[sources/obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting]] — Observation: Algebra label-token arithmetic removed; harness re-formatting retired *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts]] — Observation: Claim broadcast relaxed: every S2 alignment broadcasts *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding]] — Observation: Claim sink: claims leave the Cogitator at grounding *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop]] — Observation: Cogitator claim semantics: grounding never stops the loop *(created: 2026-11-17)*
@@ -519,6 +520,8 @@
 - [[sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o]] — Observation: decompose removed; effort inlines U and O *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel]] — Observation: Ends gone: stall sink mirrors the claim channel *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head]] — Observation: KLine migration value-parity verified against HEAD *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired]] — Observation: KNode.merge mints MTS labels; bar notation retired *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-mts-label-change-committed-1cc55fd0]] — Observation: MTS label change committed (1cc55fd0) *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline]] — Observation: rationalisation stack migrated to kalvin KLine *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem]] — Observation: ReferenceCogitator retired; instruments and witness index removed *(created: 2026-11-17)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
@@ -542,4 +545,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-17T14:55:41.779Z* | *Total pages: 524*
+*Last updated: 2026-11-17T16:17:02.146Z* | *Total pages: 527*

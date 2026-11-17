@@ -22,8 +22,9 @@ is encoding cargo, masked off at the harness boundary. Three
 operations and a measure, all plain bit arithmetic:
 
 ```
-x & y        shared content            meet(x, y)
-x & ~y       x beyond y                residue(x, y)
+x & y        shared content            fit(x, y)
+x & ~y       x beyond y                underfit(x, y)
+y & ~x       y beyond x                overfit(x, y)
 x | y        combined content          merge / the can-fold
 popcount(x)  mass of x                 mu(x)
 ```
@@ -33,10 +34,10 @@ popcount(x)  mass of x                 mu(x)
 A **kline** is `σ:[N]` — a **signature** and an **adjacency**. The two
 parts are different kinds of kline material:
 
-- The **signature** is the kline's *claim*: the value it asserts itself
+- The **signature** is the kline's _claim_: the value it asserts itself
   to be. A signature alone is a kline that has not been formally
   constructed — it exists as a claim, awaiting construction.
-- The **adjacency** is the kline's *construction*: a sequence of
+- The **adjacency** is the kline's _construction_: a sequence of
   nodes, each node a signature — a reference to a kline that may or may
   not be held anywhere. The sequence is authored order and may cite a
   signature twice; `can(N)` is the adjacency's composition, the OR-fold

@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from kalvin.bpe_tokenizer import BPETokenizer
-from kalvin.kline import KNode, is_ask
+from kalvin.kline import KNode, is_ask, mts
 from kalvin.kvalue import KValue
 from kalvin.signifier import NLPSignifier
 from ks.compiler import compile_source, path_resolver
@@ -240,26 +240,17 @@ def _humps(name: str) -> list[str]:
     return re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])", name) or [name]
 
 
-def _initials(parts: list[str]) -> str:
-    """The Uppercase Character notation (MTS): a single signature stays
-    whole; a compound of two or more takes each part whole when it is
-    already an abbreviation, else its initial."""
-    if len(parts) <= 1:
-        return parts[0] if parts else ""
-    return "".join(p if p.isupper() else p[:1].upper() for p in parts)
-
-
 def _tlabel(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
     """A table label: a held label or word decomposition in MTS form —
-    MarySubject -> MS, did|have -> DH, had a little lamb -> HALL."""
+    MarySubject -> MS, had a little lamb -> HALL. Values minted by the
+    algebra carry MTS labels already; provenance expressions (∖, ∧) fall
+    through to the word decomposition."""
     if not v:
         return ""
     name = labels.get(int(v)) or getattr(v, "label", "")
-    if name and "|" in name:
-        return _initials([p for p in name.split("|") if p])
-    if name and "∖" not in name and "∧" not in name and name != "⊥":
-        return _initials(_humps(name))
-    return _initials(_words(v, labels, alloc))
+    if name and "∖" not in name and "∧" not in name:
+        return mts(_humps(name))
+    return mts(_words(v, labels, alloc))
 
 
 def _tframe(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
