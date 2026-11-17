@@ -43,7 +43,7 @@ from rationalisation import (
     Domain,
     End,
     Event,
-    Kline,
+    KLine,
     Proposal,
     Rationalisation,
     Cogitator,
@@ -64,7 +64,7 @@ class Step:
 
     index: int
     entry: KValue  # the compiled entry (annotation/label live here)
-    kline: Kline  # the model form
+    kline: KLine  # the model form
     result: Rationalisation
 
 
@@ -86,8 +86,8 @@ class Runner:
         self.domain = Domain()
         self.word_bits: dict[str, int] = {}
         self.pending: list[Pending] = []
-        self.stores: list[tuple[int, Kline]] = []  # (step, store)
-        self.cogitator = Cogitator(self.domain)  # the default runner; swap in ReferenceCogitator for the baseline
+        self.stores: list[tuple[int, KLine]] = []  # (step, store)
+        self.cogitator = Cogitator(self.domain)
 
     def run(self, source: str, resolver=None) -> list[Step]:
         """An ask==goal run: every `==` ask with a resolvable goal is one
@@ -139,7 +139,7 @@ class Runner:
                 pairs.append((e, goal))
         return pairs
 
-    def _step(self, steps: list[Step], i: int, value: KValue, goal: Kline | None = None) -> None:
+    def _step(self, steps: list[Step], i: int, value: KValue, goal: KLine | None = None) -> None:
         """Present one entry: rationalise, record, discharge, file proposals."""
         kline = _to_kline(value)
         result = self.cogitator.rationalise(kline, goal=goal)
@@ -150,24 +150,25 @@ class Runner:
         for store in result.stores:
             self.stores.append((i, store))
 
-    def _discharge(self, step_index: int, entry: Kline) -> None:
+    def _discharge(self, step_index: int, entry: KLine) -> None:
         """A presented entry overlapping a pending target discharges it —
         proposals from earlier steps only (the raiser never answers itself)."""
-        content = entry.sig | can(entry.adj)
+        content = entry.signature | can(entry.nodes)
         for p in self.pending:
-            if p.raised_at < step_index and p.discharged_at is None and content & p.prop.kline.sig:
+            if p.raised_at < step_index and p.discharged_at is None and content & p.prop.kline.signature:
                 p.discharged_at = step_index
 
 
-def _to_kline(value: KValue) -> Kline:
+def _to_kline(value: KValue) -> KLine:
     """The compiled entry as a content-space kline (appendix: cargo masked,
-    labels preserved — nodes stay KNode throughout)."""
+    labels preserved — nodes stay KNode throughout, authored order and
+    repetitions kept)."""
     sig = value.kline.signature
     masked_sig = KNode(int(sig) & WORD_MASK, getattr(sig, "label", ""))
-    adj = frozenset(
+    nodes = [
         KNode(int(n) & WORD_MASK, getattr(n, "label", "")) for n in value.kline.nodes
-    )
-    return Kline(masked_sig, adj)
+    ]
+    return KLine(masked_sig, nodes)
 
 
 # ── Labels ────────────────────────────────────────────────────────────────
@@ -232,9 +233,9 @@ def _label(v: int, labels: dict[int, str], alloc: dict[int, str], verbose: bool)
     return name
 
 
-def _render(k: Kline, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
-    nodes = ", ".join(_label(n, labels, alloc, verbose) for n in sorted(k.adj))
-    return f"{_label(k.sig, labels, alloc, verbose)}:[{nodes}]"
+def _render(k: KLine, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
+    nodes = ", ".join(_label(n, labels, alloc, verbose) for n in k.nodes)
+    return f"{_label(k.signature, labels, alloc, verbose)}:[{nodes}]"
 
 
 def _words(v: int, labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
@@ -292,9 +293,9 @@ _EVENT_KIND = {"close": "resolved", "wait": "stalled", "known": "known",
 def _event_line(ev: Event, labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
     c = ""
     if ev.candidate is not None:
-        c = _tlabel(ev.candidate.sig, labels, alloc)
-        if ev.candidate.adj and can(ev.candidate.adj) != ev.candidate.sig:
-            c += ":" + " ".join(_tlabel(n, labels, alloc) for n in sorted(ev.candidate.adj))
+        c = _tlabel(ev.candidate.signature, labels, alloc)
+        if ev.candidate.nodes and can(ev.candidate.nodes) != ev.candidate.signature:
+            c += ":" + " ".join(_tlabel(n, labels, alloc) for n in ev.candidate.nodes)
     kind = _EVENT_KIND.get(ev.kind, ev.kind)
     return [
         _tlabel(ev.entry, labels, alloc),
@@ -325,11 +326,11 @@ def _render_events(events: list[Event], labels: dict[int, str], alloc: dict[int,
     return lines
 
 
-def _tline(k: Kline, labels: dict[int, str], alloc: dict[int, str]) -> str:
+def _tline(k: KLine, labels: dict[int, str], alloc: dict[int, str]) -> str:
     """A kline in table form — sig in MTS form, nodes spelled out."""
-    sig = _tlabel(k.sig, labels, alloc)
-    nodes = ", ".join(_tlabel(n, labels, alloc) for n in sorted(k.adj))
-    return f"{sig}:[{nodes}]" if k.adj else f"{sig}:[]"
+    sig = _tlabel(k.signature, labels, alloc)
+    nodes = ", ".join(_tlabel(n, labels, alloc) for n in k.nodes)
+    return f"{sig}:[{nodes}]" if k.nodes else f"{sig}:[]"
 
 
 def _render_step(step: Step, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
@@ -394,8 +395,8 @@ def present(
     if not verbose:
         return
     print("\n── domain (held at end of run) ──")
-    for k in sorted(domain, key=lambda x: (x.sig.bit_length(), x.sig)):
-        mark = "canon " if can(k.adj) == k.sig else "claim "
+    for k in sorted(domain, key=lambda x: (x.signature.bit_length(), x.signature)):
+        mark = "canon " if can(k.nodes) == k.signature else "claim "
         print(f"      {mark}{_render(k, labels, alloc, verbose)}")
     print("\n── pending proposals (open at end of run) ──")
     open_props = [p for p in pending if p.discharged_at is None]

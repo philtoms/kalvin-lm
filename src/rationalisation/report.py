@@ -9,8 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from fractions import Fraction
 
-from kalvin.kline import KNode, KNone
-from rationalisation.algebra import Kline, effort
+from kalvin.kline import KLine, KNode, KNone
+from rationalisation.algebra import effort
+
 
 
 @dataclass(eq=False)  # an event is an occurrence, never a value
@@ -19,7 +20,7 @@ class Event:
 
     kind: str  # entry | frame | stall | exchange | close | wait | known
     entry: KNode  # the reentry's signature — the event's subject
-    candidate: Kline | None = None
+    candidate: KLine | None = None
     F: KNode = KNone
     U: KNode = KNone
     O: KNode = KNone
@@ -31,7 +32,7 @@ class End:
     """A terminal arrival — with the halt measure where a kline halted."""
 
     reason: str
-    kline: Kline | None
+    kline: KLine | None
     effort: Fraction | None = None
 
 
@@ -40,7 +41,7 @@ class Proposal:
     """A halted kline read as a request (§5 Definition 15)."""
 
     kind: str  # "acquire" | "connect" | "continue"
-    kline: Kline
+    kline: KLine
     effort: Fraction
 
 
@@ -48,10 +49,10 @@ class Proposal:
 class Rationalisation:
     """One run's report: its events in order, its halts, its stores, its claim."""
 
-    stores: list[Kline]
+    stores: list[KLine]
     ends: list[End]
     events: list[Event] = field(default_factory=list)
-    claim: Kline | None = None
+    claim: KLine | None = None
 
 
 def proposals(r: Rationalisation) -> list[Proposal]:

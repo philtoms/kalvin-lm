@@ -512,6 +512,10 @@
 - [[sources/obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-]] — Observation: S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth *(created: 2026-11-07)*
 - [[sources/obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses]] — Observation: Fit F now earns a frame like U and O — wdmh honestly refuses *(created: 2026-11-16)*
 - [[sources/obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig]] — Observation: Fit-side change committed (40a347d); what stall traced to c.sig != e bar *(created: 2026-11-16)*
+- [[sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop]] — Observation: Cogitator claim semantics: grounding never stops the loop *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head]] — Observation: KLine migration value-parity verified against HEAD *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline]] — Observation: rationalisation stack migrated to kalvin KLine *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem]] — Observation: ReferenceCogitator retired; instruments and witness index removed *(created: 2026-11-17)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
 - [[sources/s4-backtrack-exhaustion-diagnosis]] — S4 "exhaustion" was a backtrack bookkeeping defect *(created: 2026-11-07)*
@@ -533,4 +537,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-16T18:57:38.243Z* | *Total pages: 515*
+*Last updated: 2026-11-17T13:14:43.817Z* | *Total pages: 519*

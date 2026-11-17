@@ -1,42 +1,34 @@
 """The domain — the insertion-ordered set of held klines, the model's
-memory (docs/rationalisation.md §1 Definition 3). It only grows; the
-first-stored canon per signature is its witness index."""
+memory (docs/rationalisation.md §1 Definition 3). It only grows."""
 
 from __future__ import annotations
 
-from kalvin.kline import KNode
-from rationalisation.algebra import Kline, can
+from kalvin.kline import KLine
+from rationalisation.algebra import can
 
 
 class Domain:
-    """D ⊆_fin Kline with the first-stored witness index and lookups."""
+    """D ⊆_fin Kline — insertion-ordered, idempotent add, grows only."""
 
-    def __init__(self, klines: list[Kline] | tuple = ()) -> None:
-        self._klines: set[Kline] = set()
-        self._order: list[Kline] = []  # insertion order — first-stored is observable
-        self._canonical: dict[KNode, frozenset[KNode]] = {}
+    def __init__(self, klines: list[KLine] | tuple = ()) -> None:
+        self._klines: set[KLine] = set()
+        self._order: list[KLine] = []  # insertion order — first-stored is observable
         for k in klines:
             self.add(k)
 
-    def add(self, k: Kline) -> bool:
+    def add(self, k: KLine) -> bool:
         """R1 store — idempotent; returns True when new."""
         if k in self._klines:
             return False
         self._klines.add(k)
         self._order.append(k)
-        if self.is_canonical(k):
-            self._canonical.setdefault(k.sig, k.adj)  # first-stored wins
         return True
 
-    def is_canonical(self, k: Kline) -> bool:
-        return k.sig == can(k.adj)
+    def is_canonical(self, k: KLine) -> bool:
+        return k.signature == can(k.nodes)
 
-    def __contains__(self, k: Kline) -> bool:
+    def __contains__(self, k: KLine) -> bool:
         return k in self._klines
 
     def __iter__(self):
         return iter(self._order)
-
-    def witness(self, s: KNode) -> frozenset[KNode]:
-        """The adjacency of the first-stored canon holding s; ∅ when none."""
-        return self._canonical.get(s, frozenset())

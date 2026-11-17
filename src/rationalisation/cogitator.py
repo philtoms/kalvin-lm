@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from kalvin.kline import KNode, KNone
-from rationalisation.algebra import Kline, contained, fit, underfit, overfit
+from kalvin.kline import KLine, KNode, KNone, is_identity
+from rationalisation.algebra import can, contained, fit, underfit, overfit
 from rationalisation.domain import Domain
 from rationalisation.report import End, Event, Rationalisation, effort
 
@@ -22,7 +22,7 @@ from rationalisation.report import End, Event, Rationalisation, effort
 class _Entry:
     """One entry's exploration.""" 
 
-    A: KNode = KNone # the ask
+    A: KNode = KNone # the ask
     cands: list | None = None # the candidate goals
     parent: "_Entry | None" = None  # the entry's provenance
     comp: str = ""  # "F" | "U" | "O" — the component of the parent's reentry
@@ -41,11 +41,11 @@ class Cogitator:
 
     def __init__(self, d: Domain) -> None:
         self.d = d
-        self.stores: list[Kline] = []
+        self.stores: list[KLine] = []
 
-    def rationalise(self, ask: Kline, goal: Kline | None = None) -> Rationalisation:
+    def rationalise(self, ask: KLine, goal: KLine | None = None) -> Rationalisation:
         self.stores, self.ends = [], []
-        self.claim: Kline | None = None
+        self.claim: KLine | None = None
         self.entries = 0
         self.bound = False
         self.stalled: dict[KNode, _Entry] = {}
@@ -53,10 +53,10 @@ class Cogitator:
         self.events: list[Event] = []
 
         if goal is None:
-            if not ask.adj:
+            if not ask.nodes:
                 self._halt("R4: entry kline with no adjacency", ask)
                 return Rationalisation(self.stores, self.ends, [])
-            if ask.identity():
+            if ask.signature == can(ask.nodes):
                 self._ground(ask)  # S1 grounds on receipt
                 return Rationalisation(self.stores, self.ends, [])
 
@@ -77,7 +77,7 @@ class Cogitator:
             cands = self._candidates(A, parent)
             return  _Entry(A, cands, parent, comp)
 
-        entry = push(ask.sig, CNone, "")
+        entry = push(ask.signature, CNone, "")
         entry.cands = [goal]
         while entry.A != KNone:
             if self.entries > self.MAX_ENTRIES:
@@ -100,8 +100,8 @@ class Cogitator:
                 
             else:
                 C = entry.cands[-1]
-                cs = C.sig
-                F, U, O = fit(A, cs), underfit(A, cs), overfit(C.adj, A)
+                cs = C.signature
+                F, U, O = fit(A, cs), underfit(A, cs), overfit(C.nodes, A)
                 if F == A:
                     frame(F)
 
@@ -110,9 +110,9 @@ class Cogitator:
                 o_ok = framed(O)
                 if f_ok and u_ok and o_ok:  # S2 aligned
                     frame(A)
-                    if goal.sig == C.sig:  # the claim grounds
+                    if goal.signature == C.signature:  # the claim grounds
                         self.events.append(Event("grounded", A, C, F, U, O, frame=A))
-                        self.claim = Kline(ask.sig, frozenset([goal.sig]))
+                        self.claim = KLine(ask.signature, [goal.signature])
                         self._ground(self.claim)
                     else:
                         self.events.append(Event("close", A, C, F, U, O, frame=A))
@@ -146,29 +146,29 @@ class Cogitator:
                 entry = pop(entry)
 
         for a in self.stalled:  # stalls that never aligned
-            self._halt("stalled at S4: no candidates", Kline(a, frozenset()))
+            self._halt("stalled at S4: no candidates", KLine(a, []))
 
         return Rationalisation(self.stores, self.ends, self.events, claim=self.claim)
 
-    def _candidates(self, sig: KNode, entry: _Entry) -> list[Kline]:
+    def _candidates(self, sig: KNode, entry: _Entry) -> list[KLine]:
         """An ask never reenters its origin: its parent ask's and parent
         candidate's signatures are barred — the residual would re-derive
         the decomposition the parent entry already performed."""
         cands = [
             c
             for c in self.d
-            if c.sig & sig  # overlap — no-neighbours never reenters
-            and c.adj  # a bare signature offers no construction
-            and c.adj != frozenset([c.sig])  # an identity is not a candidate
-            and not self.ancestor(c.sig, entry)
+            if c.signature & sig  # overlap — no-neighbours never reenters
+            and c.nodes  # a bare signature offers no construction
+            and not is_identity(c)  # an identity is not a candidate
+            and not self.ancestor(c.signature, entry)
         ]
         return cands
         # return list(reversed(cands))
 
-    def _halt(self, reason: str, k: Kline) -> None:
+    def _halt(self, reason: str, k: KLine) -> None:
         self.ends.append(End(reason, k, effort(k)))
 
-    def _ground(self, k: Kline) -> None:
+    def _ground(self, k: KLine) -> None:
         self.d.add(k)
         if k not in self.stores:
             self.stores.append(k)
@@ -186,6 +186,6 @@ class Cogitator:
                 return True
         return False
     
-def rationalise(d: Domain, ask: Kline, goal: Kline | None = None) -> Rationalisation:
+def rationalise(d: Domain, ask: KLine, goal: KLine | None = None) -> Rationalisation:
     """The one-shot runner — one Cogitator, one entry."""
     return Cogitator(d).rationalise(ask, goal=goal)

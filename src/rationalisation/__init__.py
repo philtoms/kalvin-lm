@@ -1,13 +1,12 @@
 """The rationalisation model (docs/rationalisation.md): the shared algebra
 (algebra.py), the domain (domain.py), the report vocabulary (report.py),
-and two runners — the Cogitator (cogitator.py, the default) and the
-ReferenceCogitator (model.py, the retained baseline)."""
+and the runner — the Cogitator (cogitator.py)."""
 
+from kalvin.kline import KLine
 from rationalisation.algebra import (
     BETA,
     Band,
     Decomposition,
-    Kline,
     band,
     can,
     contained,
@@ -21,7 +20,6 @@ from rationalisation.algebra import (
 )
 from rationalisation.cogitator import Cogitator, rationalise
 from rationalisation.domain import Domain
-from rationalisation.model import ReferenceCogitator
 from rationalisation.report import End, Event, Proposal, Rationalisation, proposals
 
 __all__ = [
@@ -32,10 +30,9 @@ __all__ = [
     "Domain",
     "End",
     "Event",
-    "Kline",
+    "KLine",
     "Proposal",
     "Rationalisation",
-    "ReferenceCogitator",
     "band",
     "can",
     "contained",

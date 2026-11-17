@@ -1,5 +1,12 @@
 # Wiki Update Log
 
+## 2026-11-17
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop","title":"Cogitator claim semantics: grounding never stops the loop"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem","title":"ReferenceCogitator retired; instruments and witness index removed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-kline-migration-value-parity-verified-against-head","title":"KLine migration value-parity verified against HEAD"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline","title":"rationalisation stack migrated to kalvin KLine"}
+
 ## 2026-11-16
 
 - **observe**: {"relevance":"high","slug":"obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig","title":"Fit-side change committed (40a347d); what stall traced to c.sig != e bar"}

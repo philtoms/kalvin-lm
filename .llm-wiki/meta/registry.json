@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-16T18:57:38.243Z",
+  "last_updated": "2026-11-17T13:14:43.817Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8056,6 +8056,70 @@
       "source_context": "Committing the fit-side rule change and the fingerprint-bar exploration",
       "created": "2026-11-16",
       "updated": "2026-11-16"
+    },
+    "sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop": {
+      "type": "source",
+      "title": "Observation: Cogitator claim semantics: grounding never stops the loop",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop",
+      "relevance": "high",
+      "observed_at": "2026-11-17T13:14:43.732Z",
+      "source_context": "Documenting the Cogitator's rules post-retirement",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head": {
+      "type": "source",
+      "title": "Observation: KLine migration value-parity verified against HEAD",
+      "tags": [
+        "rationalisation",
+        "parity",
+        "verification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-kline-migration-value-parity-verified-against-head",
+      "relevance": "high",
+      "observed_at": "2026-11-17T09:00:15.503Z",
+      "source_context": "KLine type migration verification",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline": {
+      "type": "source",
+      "title": "Observation: rationalisation stack migrated to kalvin KLine",
+      "tags": [
+        "rationalisation",
+        "types",
+        "migration"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T09:00:05.161Z",
+      "source_context": "KLine type migration across the rationalisation stack",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem": {
+      "type": "source",
+      "title": "Observation: ReferenceCogitator retired; instruments and witness index removed",
+      "tags": [
+        "rationalisation",
+        "cleanup",
+        "retirement"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T13:14:34.483Z",
+      "source_context": "Retiring the ReferenceCogitator baseline",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
     },
     "sources/pseudocode-audit-three-false-lines-recheck-invisible": {
       "type": "source",

@@ -1283,3 +1283,15 @@
 ## [2026-11-16T18:57:38.098Z] observe
 - slug: "obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig", title: "Fit-side change committed (40a347d); what stall traced to c.sig != e bar", relevance: "high"
 
+## [2026-11-17T09:00:05.164Z] observe
+- slug: "obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline", title: "rationalisation stack migrated to kalvin KLine", relevance: "critical"
+
+## [2026-11-17T09:00:15.504Z] observe
+- slug: "obs-2026-11-17-kline-migration-value-parity-verified-against-head", title: "KLine migration value-parity verified against HEAD", relevance: "high"
+
+## [2026-11-17T13:14:34.486Z] observe
+- slug: "obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem", title: "ReferenceCogitator retired; instruments and witness index removed", relevance: "critical"
+
+## [2026-11-17T13:14:43.733Z] observe
+- slug: "obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop", title: "Cogitator claim semantics: grounding never stops the loop", relevance: "high"
+

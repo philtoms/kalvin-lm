@@ -1,14 +1,16 @@
 """The shared algebra — klines, the node operations, the band and the
-grading measures (docs/rationalisation.md §1, §4). Shared by the
-Cogitator and the ReferenceCogitator."""
+grading measures (docs/rationalisation.md §1, §4). The kline itself is
+kalvin's KLine: signature and nodes, the nodes a list — a construction
+can cite the same signature twice."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
 
-from kalvin.kline import KNode, KNone
+from kalvin.kline import KLine, KNode
 
 
 # --- §1 — Node algebra (word-bit realisation; ⊥ = 0) ---
@@ -39,7 +41,7 @@ def underfit(x: KNode, y: KNode) -> KNode:
         label = "|".join(keep) if keep else "⊥"
     return KNode(x & ~y, label)
 
-def overfit(x: frozenset[KNode], y: KNode ) -> KNode:
+def overfit(x: Iterable[KNode], y: KNode ) -> KNode:
     """v ∖ w — residue, x beyond y."""
     _x = can(x)
     label = _provenance(_x, y, "∖")
@@ -74,26 +76,10 @@ def mu(v: int) -> int:
 # --- §1 Definition 2 — Kline, and the composition fold ---
 
 
-@dataclass(frozen=True)
-class Kline:
-    """⟨σ, N⟩ — signature and adjacency set."""
-
-    sig: KNode
-    adj: frozenset[KNode]
-
-    def __post_init__(self) -> None:
-        if self.sig == 0:
-            raise ValueError("signature must be non-empty (Definition 2)")
-
-    def fingerprint(self) -> int:
-        return self.sig | can(self.adj)
-
-    def identity(self) -> bool:
-        return self.sig == can(self.adj)
-
-
-def can(n: frozenset[KNode]) -> KNode:
-    """can(N) = ⋁ N; can(∅) = ⊥ — labels compose through the fold."""
+def can(n: Iterable[KNode]) -> KNode:
+    """can(N) = ⋁ N; can(∅) = ⊥ — labels compose through the fold. The
+    fold is blind to order and repetition: a node cited twice contributes
+    once."""
     out = KNode(0)
     for node in n:
         out = out.merge(node)
@@ -110,14 +96,14 @@ class Band(Enum):
     S4 = "S4"
 
 
-def band(k: Kline) -> Band:
+def band(k: KLine) -> Band:
     """V(C) — ordered cases (§4 Definition 11)."""
-    if not k.adj:
+    if not k.nodes:
         return Band.S4
-    a_hat = can(k.adj)
-    if k.sig == a_hat:
+    a_hat = can(k.nodes)
+    if k.signature == a_hat:
         return Band.S1
-    if k.sig & a_hat:
+    if k.signature & a_hat:
         return Band.S2
     return Band.S3
 
@@ -131,19 +117,19 @@ class Decomposition:
     O: KNode
 
 
-def decompose(k: Kline) -> Decomposition:
-    a_hat = can(k.adj)
-    f = fit(k.sig, a_hat)
-    return Decomposition(F=f, U=underfit(k.sig, a_hat), O=underfit(a_hat, k.sig))
+def decompose(k: KLine) -> Decomposition:
+    a_hat = can(k.nodes)
+    f = fit(k.signature, a_hat)
+    return Decomposition(F=f, U=underfit(k.signature, a_hat), O=underfit(a_hat, k.signature))
 
 
-def significance(k: Kline) -> Fraction:
+def significance(k: KLine) -> Fraction:
     """g(C) = μ(F)/μ(σ ∨ â) — the entropy complement."""
-    a_hat = can(k.adj)
-    return Fraction(mu(k.sig & a_hat), mu(k.sig | a_hat))
+    a_hat = can(k.nodes)
+    return Fraction(mu(k.signature & a_hat), mu(k.signature | a_hat))
 
 
-def entropy(k: Kline) -> Fraction:
+def entropy(k: KLine) -> Fraction:
     """H(C) = 1 − g(C) — the unexplained fraction of the pairing."""
     return 1 - significance(k)
 
@@ -151,8 +137,8 @@ def entropy(k: Kline) -> Fraction:
 BETA = Fraction(1, 2)
 
 
-def effort(k: Kline, beta: Fraction = BETA) -> Fraction:
+def effort(k: KLine, beta: Fraction = BETA) -> Fraction:
     """E(C) = (μ(U) + β·μ(O))/μ(σ ∨ â) — entropy biased by repairability."""
     t = decompose(k)
-    total = mu(k.sig | can(k.adj))
+    total = mu(k.signature | can(k.nodes))
     return Fraction(mu(t.U) + beta * mu(t.O), total)

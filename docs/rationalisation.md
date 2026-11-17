@@ -1,7 +1,8 @@
 # Kalvin — the rationalisation model
 
-The rules of the model in `src/rationalisation/model.py`, where the code is
-truth and this document is the rules the code implements. It replaces
+The rules of the model in `src/rationalisation/` — the Cogitator
+(`cogitator.py`) over the shared algebra, domain and report — where
+the code is truth and this document is the rules the code implements. It replaces
 `docs/attic/trs-significance.md`, which named the mechanism a term
 rewriting system. It is not one: nothing here locates a redex and
 replaces it, no rule fires by syntactic match, and termination comes
@@ -35,21 +36,19 @@ parts are different kinds of kline material:
 - The **signature** is the kline's *claim*: the value it asserts itself
   to be. A signature alone is a kline that has not been formally
   constructed — it exists as a claim, awaiting construction.
-- The **adjacency** is the kline's *construction*: a set of nodes, each
-  node a signature — a reference to a kline that may or may not be
-  held anywhere. `can(N)` is the adjacency's composition, the OR-fold
-  of its nodes: the content the construction asserts.
+- The **adjacency** is the kline's *construction*: a sequence of
+  nodes, each node a signature — a reference to a kline that may or may
+  not be held anywhere. The sequence is authored order and may cite a
+  signature twice; `can(N)` is the adjacency's composition, the OR-fold
+  of its nodes: the content the construction asserts. The fold is
+  blind to order and repetition — what the sequence preserves is
+  identity, not content.
 
 A kline is a **canon** when `σ == can(N)` — the claim is exactly its
-construction. The **fingerprint** `σ | can(N)` is the kline's identity
-for loop control and nothing else: it is never content — never fitted
-against, never minted, never reentered.
+construction.
 
 The **domain** `D` is an insertion-ordered set of klines with one
-write: `add`, idempotent; D only grows. The **witness** of a signature
-is the adjacency of the first-stored canon holding it — the held
-meaning of a signature; a signature never stored as a canon has no
-witness.
+write: `add`, idempotent; D only grows.
 
 The **band** classifies structurally — S4 no adjacency, S1 canon,
 S2 overlap, S3 disjoint — and grades; it never steers the search. The
@@ -58,16 +57,13 @@ S2 overlap, S3 disjoint — and grades; it never steers the search. The
 
 ## 2. The run
 
-The model's default runner is the **Cogitator**
+The model's runner is the **Cogitator**
 (`src/rationalisation/cogitator.py`) — the simple reentry loop:
 an entry's signature meets held claims, its fit, underfit and offering
 residuals reenter as fresh entries — the decomposition only covers the
 fit with the candidate's grounded signature, and a covering is not a
 frame — pairings ground when all three sides resolve, stalls wait for
-an exchange witness. §2.1–§2.3 below describe
-the **ReferenceCogitator** (`src/rationalisation/model.py`), retained
-unchanged as the baseline for comparison; its guarantees (§3) are
-measured against it.
+an exchange witness. §2.2–§2.4 describe its machine and rules.
 
 ### 2.1 The harness configuration
 
@@ -83,132 +79,108 @@ knowledge.
 
 ### 2.2 The machine's state
 
-One `ReferenceCogitator` per rationalisation: an `agenda` (a LIFO stack of
-**reentries**), `rows` (every pairing, in creation order), `open_rows`,
-`frames` (covered content, each with its source row), `stalls`
-(reentries halted at S4, by signature), `seen` (pairing fingerprints,
-for loop control), the run's `events` (pair/wait/close notes —
-reporting only, never read by the search), and the `claim` — set at
-most once.
+One `Cogitator` per rationalisation: a chain of **entries** (each
+entry: an ask signature `A`, its remaining candidates, its parent,
+the component it was pushed as, and its `at` map — the frame count at
+each component's last descent), `stalled` (entries halted at S4, by
+signature — the latest per signature), `frame` (covered content, in
+mint order), the run's `stores`, `ends` and `events` (reporting only,
+never read by the search), and the `claim` — set identically at every
+grounding, stored once.
 
-A **reentry** is an unconstructed kline: a region-signature remembering
-the row and side it came from. A **row** is one pairing — `F`, `U`,
-`O`, its pushed children, and its fate; an event, never a value.
+A **reentry** is a bare region-signature: no witness nodes travel
+with it — the child's candidates are whatever the domain holds.
 
-Bounds: `MAX_DEPTH = 10`, `MAX_ROWS = 4096`.
+Bounds: `MAX_ENTRIES = 4096` — one counter over the whole loop.
 
 ### 2.3 The rules
 
-**POP** (`_run`). Pop the agenda. Stop when the agenda is empty, the
-claim has grounded, or the row cap is reached. A reentry already
-resolved, or covered by an ancestor's or joint frame, settles without
-exploration (**KNOWN**) and propagates to its parent. Otherwise reenter.
+**WALK** (`rationalise`). A goal-less entry halts at R4 when it has no
+adjacency, and grounds on receipt when it is a canon (S1, stored).
+An ask run opens with the goal as the one and only candidate, then
+walks the entry chain until it unwinds or the entry cap is reached.
+Grounding does not stop the loop: the run continues until the chain
+unwinds or the cap; the claim value is always
+`KLine(σ_ask, [σ_goal])` — set identically, stored once.
 
-**CANDIDATES** (`_reenter`). A reentry's signature `E` primes domain
+**CANDIDATES** (`_candidates`). An entry's signature `A` primes domain
 klines by overlap:
 
 ```
-c.sig & E != 0            overlap — no-neighbours never pairs
-c.adj is not empty        a bare signature offers no construction
-c.adj != {c.sig}          an identity is not a partner
-c.fingerprint() != E      like for like — the whole offering is the entry
-c.sig not framed          a covered signature has nothing to teach
-c not in the entry path   no candidate may share a signature with an
-                          ancestor entry (re-deriving the decomposition)
-fingerprint unseen        each reentry pairs each candidate once
+c.sig & A != 0         overlap — no-neighbours never reenters
+c.nodes is not empty   a bare signature offers no construction
+c.nodes != [c.sig]     an identity is not a candidate
+c.sig not an ancestor  no candidate may share a signature with an
+                       ancestor entry (re-deriving the decomposition)
 ```
 
-plus the **proven skip**: a candidate whose claim covers the whole
-entry, whose fit is already framed, and whose offering would settle
-without children, adds nothing — skip. A reentry whose every candidate
-is skipped resolves as **known** only when every skip was proven; any
-unproven turn-away halts the reentry — exhaustion is not evidence.
-Candidates are taken in D's insertion order; the stack explores the
-first candidate's subtree to completion, the u-side leading.
+Candidates list in D's insertion order and are consumed from the
+end — the most recently held leads.
 
-**PAIR** (`_pair`). The entry's signature meets the candidate's
-**claim**:
+**PAIR**. The entry's signature meets the candidate's **claim**:
 
 ```
-F = E & σ          the fit — shared content
-U = E & ~σ         the underfit — the entry beyond the claim
+F = A & σ          the fit — shared content
+U = A & ~σ         the underfit — the entry beyond the claim
+O = can(N) & ~A    the offering — the construction composed beyond
 ```
 
-and the candidate's construction **offers** beyond the fit — the
-o-side, the offering, one reentry carrying the adjacency nodes
-contained in it:
+The claim's own extension (`σ & ~A`) is not the entry's business: the
+claim fits, the construction offers, and nothing else is owed.
+`F == A` — the claim covers the entry — frames `F` at once.
 
-```
-can(N) & ~E       the offering — what its construction composes beyond
-```
+**REENTER**. A component reenters when unframed and **fresh**: once
+per candidate, and again only when frames arrived since its last
+descent (the `at` map). Priority is fixed — U, then O, then F. A
+candidate that pushes nothing is consumed and its `at` map cleared;
+the next candidate may re-descend every component.
 
-The claim's own extension (`σ & ~E`) is not the entry's business: the
-claim fits, the construction offers, and nothing else is owed. The
-opening pairing is special: at depth 1 the goal is the one and only candidate,
-and its row is the `goal_row`. `E == F` — the claim covers the entry —
-mints a **frame** of `E`, owned by the row.
+**ALIGN**. All three components framed — S2 aligned — frames `A`. If
+the candidate's signature is the goal's, the **claim** grounds:
+`KLine(σ_ask, [σ_goal])` — the ask's signature over the goal's
+signature — stored; the run's only earned store. Any entry may
+ground it — the claim is the ask's, whatever entry aligned.
 
-**SETTLE** (`_side_ok`). A side region is settled when it is empty;
-when *all* its children have resolved; when it is the o-side and the
-domain holds its canon (a witnessed signature needs no re-derivation —
-u-sides never settle this way: the claim side is earned); or when an
-ancestor's or joint frame covers it — never the row's own subtree's.
+**STALL / EXCHANGE**. An entry with no candidates left stalls at S4,
+filed under its signature, and backtracks — the parent keeps its
+remaining candidates. Two stalls on one signature from different
+components sharing a common ancestor witness each other: the
+signature frames, the stall resolves, nothing is stored.
 
-**FRAME** (`_frame`). A minted frame is covered content the run holds
-evidence for. Mints cascade: every open row is rechecked, and each
-newly satisfied row resolves. Exchanges mint **joint frames** owned by
-no subtree. Every frame's value is a signature; no composite is ever
-minted.
-
-**RESOLVE / BACK-PROPAGATE** (`_resolve`, `_after`). Both sides settled
-→ the row resolves → its reentry resolves → the parent row's side is
-satisfied, upward to the opening pairing.
-
-**CLAIM**. When the opening pairing resolves, the claim grounds:
-`Kline(E_ask, {σ_goal})` — the ask's signature over the goal's
-signature — stored; the run's only earned store; the loop stops.
-
-**STALL / EXCHANGE** (`_exchange`). A reentry with no candidates at
-all stalls at S4, filed under its signature. Two stalls on one
-signature from different parents witness each other: both resolve, a
-joint frame of that signature records it, nothing is stored. Stalled
-overfit meeting stalled underfit on the same content is the S3
-exchange — the closing move of the canonical scripts.
-
-**HALT / PROPOSAL**. Terminal arrivals: no adjacency (R4), the depth
-bound, exhaustion without proof, and unresolved stalls. Each halt
-becomes a proposal — `connect`, `continue`, `acquire` — ordered by
-ascending effort.
+**HALT / PROPOSAL**. Terminal arrivals: no adjacency (R4), the entry
+cap, and unresolved stalls. Each halt becomes a proposal — `connect`,
+`continue`, `acquire` — ordered by ascending effort.
 
 ### 2.4 Invariants
 
 - D only grows; frames only grow; the events list only appends.
-- Each reentry resolves at most once; the claim grounds at most once.
-- Every frame is a signature; every reentry is a signature. No
-  composite value — no `σ | can(N)` of any kline — is ever fitted,
-  minted, or reentered.
+- The claim is set at most once per aligning pairing, always to the
+  same value; the store happens once.
+- Every frame is a signature; every reentered region (U, O, F) is a
+  signature — meets and residues of signatures. No composite — no
+  `σ | can(N)` of any kline — is ever fitted, minted, or reentered.
 - Stores during an ask run: exactly the claim, and only on grounding.
 
 ## 3. Termination and determinism
 
-**T1.** Every rationalisation halts: each pop does bounded work,
-children are bounded by `MAX_DEPTH`, rows by the cap, frame cascades
-and exchange loops strictly consume open work, and the claim stops the
-loop outright.
+**T1.** Every rationalisation halts: each loop iteration either
+consumes a candidate, pushes one child entry, or backtracks one link;
+a component re-descends only on new frames (the `at` map), and the
+entries counter caps the whole loop outright.
 
-**T2.** The outcome is a function of `(D₀, entry, goal)`: every choice
-point is ordered (the agenda is a stack, candidates follow insertion
-order, stall groups are lists, ties keep generation order), the sets
-serve membership only, and node values hash as plain integers.
+**T2.** The outcome is a function of `(D₀, ask, goal)`: every choice
+point is ordered (candidates list in D's insertion order and are
+consumed from the end, the component priority is fixed U then O then
+F, stalls file by signature), and the sets serve membership only.
 
-## 4. Parked instruments
+## 4. Retired instruments
 
 The certificate verifier (`verify.py`) and the existence checker
-(`existence.py`) were built to make grounding checkable without
-re-running the search. They found and fixed one soundness defect (the
-exhaustion halt above) and measured a completeness gap (~20% of random
-scenarios carried a certificate the deterministic search missed,
-attributed to the path bar) before being parked as premature — they
-encode the earlier fit and do not describe the current pairing. The
-scripts are the only guarantee; the instruments wait until the
-semantics settles for good.
+(`existence.py`) were built to make the reference machine's grounding
+checkable without re-running its search. They found and fixed one
+soundness defect (exhaustion is not evidence) and measured a
+completeness gap (~20% of random scenarios carried a certificate the
+deterministic search missed, attributed to the path bar) before being
+parked as premature — they encoded the earlier fit, not the current
+pairing. Both were retired with the reference machine they
+instrumented. The scripts are the only guarantee.
