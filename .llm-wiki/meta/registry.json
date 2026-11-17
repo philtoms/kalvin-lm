@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-17T13:14:43.817Z",
+  "last_updated": "2026-11-17T13:33:32.914Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8070,6 +8070,21 @@
       "relevance": "high",
       "observed_at": "2026-11-17T13:14:43.732Z",
       "source_context": "Documenting the Cogitator's rules post-retirement",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o": {
+      "type": "source",
+      "title": "Observation: decompose removed; effort inlines U and O",
+      "tags": [
+        "rationalisation",
+        "cleanup"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-decompose-removed-effort-inlines-u-and-o",
+      "relevance": "medium",
+      "observed_at": "2026-11-17T13:33:32.807Z",
+      "source_context": "Removing algebra.decompose and Decomposition",
       "created": "2026-11-17",
       "updated": "2026-11-17"
     },

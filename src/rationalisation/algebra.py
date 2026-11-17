@@ -6,7 +6,6 @@ can cite the same signature twice."""
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
 
@@ -108,21 +107,6 @@ def band(k: KLine) -> Band:
     return Band.S3
 
 
-@dataclass(frozen=True)
-class Decomposition:
-    """F, U, O — fit, underfit (signature-side), overfit (adjacency-side)."""
-
-    F: KNode
-    U: KNode
-    O: KNode
-
-
-def decompose(k: KLine) -> Decomposition:
-    a_hat = can(k.nodes)
-    f = fit(k.signature, a_hat)
-    return Decomposition(F=f, U=underfit(k.signature, a_hat), O=underfit(a_hat, k.signature))
-
-
 def significance(k: KLine) -> Fraction:
     """g(C) = μ(F)/μ(σ ∨ â) — the entropy complement."""
     a_hat = can(k.nodes)
@@ -139,6 +123,8 @@ BETA = Fraction(1, 2)
 
 def effort(k: KLine, beta: Fraction = BETA) -> Fraction:
     """E(C) = (μ(U) + β·μ(O))/μ(σ ∨ â) — entropy biased by repairability."""
-    t = decompose(k)
-    total = mu(k.signature | can(k.nodes))
-    return Fraction(mu(t.U) + beta * mu(t.O), total)
+    a_hat = can(k.nodes)
+    total = mu(k.signature | a_hat)
+    return Fraction(
+        mu(underfit(k.signature, a_hat)) + beta * mu(underfit(a_hat, k.signature)), total
+    )

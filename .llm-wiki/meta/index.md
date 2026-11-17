@@ -513,6 +513,7 @@
 - [[sources/obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses]] — Observation: Fit F now earns a frame like U and O — wdmh honestly refuses *(created: 2026-11-16)*
 - [[sources/obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig]] — Observation: Fit-side change committed (40a347d); what stall traced to c.sig != e bar *(created: 2026-11-16)*
 - [[sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop]] — Observation: Cogitator claim semantics: grounding never stops the loop *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o]] — Observation: decompose removed; effort inlines U and O *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head]] — Observation: KLine migration value-parity verified against HEAD *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline]] — Observation: rationalisation stack migrated to kalvin KLine *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem]] — Observation: ReferenceCogitator retired; instruments and witness index removed *(created: 2026-11-17)*
@@ -537,4 +538,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-17T13:14:43.817Z* | *Total pages: 519*
+*Last updated: 2026-11-17T13:33:32.914Z* | *Total pages: 520*

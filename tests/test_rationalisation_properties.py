@@ -12,13 +12,14 @@ from rationalisation import (
     KLine,
     band,
     can,
-    contained,
-    decompose,
     effort,
     entropy,
+    fit,
+    overfit,
     proposals,
     rationalise,
     significance,
+    underfit,
 )
 
 ATOMS = [1 << i for i in range(6)]
@@ -75,10 +76,13 @@ def oracle_band(k: KLine) -> Band:
     """Independent formulation: no ordered cases."""
     if not k.nodes:
         return Band.S4
-    t = decompose(k)
-    if t.U == 0 and t.O == 0:
+    a_hat = can(k.nodes)
+    f = fit(k.signature, a_hat)
+    u = underfit(k.signature, a_hat)
+    o = overfit(k.nodes, k.signature)
+    if u == 0 and o == 0:
         return Band.S1
-    if t.F == 0:
+    if f == 0:
         return Band.S3
     return Band.S2
 
@@ -88,23 +92,6 @@ def oracle_band(k: KLine) -> Band:
 def test_band_total_and_matches_oracle(k):
     assert band(k) in Band
     assert band(k) is oracle_band(k)
-
-
-# --- §4 Definition 12: decomposition ---
-
-
-@settings(deadline=None)
-@given(klines())
-def test_decomposition_laws(k):
-    t = decompose(k)
-    a_hat = can(k.nodes)
-    assert k.signature == t.F | t.U
-    assert a_hat == t.F | t.O
-    assert t.F & t.U == 0 and t.F & t.O == 0 and t.U & t.O == 0
-    # U is signature-side; O is adjacency-side
-    assert contained(t.U, k.signature) and t.U & a_hat == 0
-    assert contained(t.O, a_hat) and t.O & k.signature == 0
-    assert (band(k) is Band.S2) == (t.F != 0 and (t.U != 0 or t.O != 0))
 
 
 # --- §4 Definition 13: entropy and graded significance ---

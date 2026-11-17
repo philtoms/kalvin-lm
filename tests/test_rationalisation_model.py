@@ -12,7 +12,6 @@ from rationalisation import (
     KLine,
     band,
     can,
-    decompose,
     effort,
     entropy,
     proposals,
@@ -59,22 +58,6 @@ def test_s2_requires_overlap_short_of_canonical():
     assert band(k(AB, A, B, C)) is Band.S2
     # can(N) ⪯ σ with excess: pure underfit — still S2
     assert band(k(ABCD, AB)) is Band.S2
-
-
-# --- §4 Definition 12: decomposition ---
-
-
-def test_decomposition_partition_and_flow_sides():
-    t = decompose(k(ABC, ABD))  # â = ABD
-    assert (t.F, t.U, t.O) == (AB, C, D)
-    assert t.F | t.U == ABC  # σ = F ∨ U
-    assert t.F | t.O == ABD  # â = F ∨ O
-    assert t.F & t.U == t.F & t.O == t.U & t.O == 0
-    # U is signature-side (claimed, not supplied); O is adjacency-side
-    t2 = decompose(k(ABCD, AB))
-    assert t2.U == CD and t2.O == 0
-    t3 = decompose(k(AB, A, B, C))
-    assert t3.U == 0 and t3.O == C
 
 
 # --- §4 Definition 13: entropy and graded significance ---

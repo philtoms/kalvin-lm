@@ -1295,3 +1295,6 @@
 ## [2026-11-17T13:14:43.733Z] observe
 - slug: "obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop", title: "Cogitator claim semantics: grounding never stops the loop", relevance: "high"
 
+## [2026-11-17T13:33:32.809Z] observe
+- slug: "obs-2026-11-17-decompose-removed-effort-inlines-u-and-o", title: "decompose removed; effort inlines U and O", relevance: "medium"
+

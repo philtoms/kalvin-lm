@@ -434,6 +434,7 @@
 - [Observation: Fit F now earns a frame like U and O — wdmh honestly refuses](obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses.md)
 - [Observation: Fit-side change committed (40a347d); what stall traced to c.sig != e bar](obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig.md)
 - [Observation: Cogitator claim semantics: grounding never stops the loop](obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop.md)
+- [Observation: decompose removed; effort inlines U and O](obs-2026-11-17-decompose-removed-effort-inlines-u-and-o.md)
 - [Observation: KLine migration value-parity verified against HEAD](obs-2026-11-17-kline-migration-value-parity-verified-against-head.md)
 - [Observation: rationalisation stack migrated to kalvin KLine](obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline.md)
 - [Observation: ReferenceCogitator retired; instruments and witness index removed](obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem.md)
