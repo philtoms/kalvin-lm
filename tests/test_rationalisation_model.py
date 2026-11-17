@@ -15,7 +15,6 @@ from rationalisation import (
     can,
     effort,
     entropy,
-    proposals,
     rationalise,
     significance,
 )
@@ -167,11 +166,15 @@ def test_disjoint_candidate_asks_s4():
     assert ends and ends[0].kline == k(C) and ends[0].effort == 1
 
 
-def test_proposals_cover_every_end():
-    d = base_domain(k(AB), k(ABC, AB))
-    r = rationalise(d, k(C, C), goal=k(AB, A, B))
-    assert len(proposals(r)) == len(r.ends)  # one proposal per halt
-    assert all(p.kind in ("acquire", "connect", "continue") for p in proposals(r))
+def test_unaligned_stalls_broadcast_bare():
+    # atoms only — the C ask meets nobody but identities: both unaligned
+    # sides stall and broadcast bare at the run's end
+    d = base_domain()
+    stalls: list[KLine] = []
+    Cogitator(d, on_stall=stalls.append).rationalise(k(C, C), goal=k(AB, A, B))
+    assert sorted(int(s.signature) for s in stalls) == [AB, C]  # both sides starved
+    assert all(not s.nodes for s in stalls)  # a broadcast stall is bare — pure S4
+    assert all(effort(s) == 1 for s in stalls)  # exactly full — nothing to work with
 
 
 @pytest.mark.xfail(reason="mid-migration debt: old module-level rationalise semantics (e93c192); superseded by the Cogitator reentry - port pending", strict=False)
@@ -249,13 +252,18 @@ def test_s3_grounds_nothing_asks_instead_of_claiming():
 
 def test_the_claim_grounds_when_both_sides_resolve():
     # the ask's underfit region reenters and grounds bottom-up over the
-    # held canons; the claim broadcasts at S2 and the domain is untouched
+    # held canons; the claim broadcasts at every S2 alignment and the
+    # domain is untouched
     d = Domain([k(AB, A, B), k(BC, B, C)])
     before = set(d)
     claims: list[KLine] = []
-    r = Cogitator(d, on_claim=claims.append).rationalise(k(ABC, A, B, C), goal=k(AB, A, B))
-    assert claims == [KLine(ABC, [AB])]  # the claim left at S2 — σ_ask over σ_goal
-    assert r.ends == []
+    stalls: list[KLine] = []
+    Cogitator(d, on_claim=claims.append, on_stall=stalls.append).rationalise(
+        k(ABC, A, B, C), goal=k(AB, A, B)
+    )
+    assert claims  # at least one claim left — and every one is the claim
+    assert all(c == KLine(ABC, [AB]) for c in claims)  # σ_ask over σ_goal
+    assert stalls == []  # nothing stalled — every side aligned
     assert set(d) == before  # nothing stored — the domain is the harness's
 
 

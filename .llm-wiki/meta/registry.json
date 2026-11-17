@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-17T14:35:11.289Z",
+  "last_updated": "2026-11-17T14:55:41.779Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8057,6 +8057,23 @@
       "created": "2026-11-16",
       "updated": "2026-11-16"
     },
+    "sources/obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts": {
+      "type": "source",
+      "title": "Observation: Claim broadcast relaxed: every S2 alignment broadcasts",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "claims",
+        "streaming"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts",
+      "relevance": "high",
+      "observed_at": "2026-11-17T14:37:48.024Z",
+      "source_context": "Relaxing claim broadcast to many-per-run",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
     "sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding": {
       "type": "source",
       "title": "Observation: Claim sink: claims leave the Cogitator at grounding",
@@ -8120,6 +8137,23 @@
       "relevance": "medium",
       "observed_at": "2026-11-17T13:33:32.807Z",
       "source_context": "Removing algebra.decompose and Decomposition",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel": {
+      "type": "source",
+      "title": "Observation: Ends gone: stall sink mirrors the claim channel",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "streaming",
+        "stalls"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T14:55:41.635Z",
+      "source_context": "Removing ends; stall sink follows the claim channel",
       "created": "2026-11-17",
       "updated": "2026-11-17"
     },

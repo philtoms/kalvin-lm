@@ -19,14 +19,13 @@ from rationalisation.algebra import (
 )
 from rationalisation.cogitator import Cogitator, rationalise
 from rationalisation.domain import Domain
-from rationalisation.report import End, Event, Proposal, Rationalisation, proposals
+from rationalisation.report import Event, Proposal, Rationalisation
 
 __all__ = [
     "BETA",
     "Band",
     "Cogitator",
     "Domain",
-    "End",
     "Event",
     "KLine",
     "Proposal",
@@ -39,7 +38,6 @@ __all__ = [
     "fit",
     "mu",
     "overfit",
-    "proposals",
     "rationalise",
     "underfit",
     "significance",

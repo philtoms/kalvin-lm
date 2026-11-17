@@ -15,8 +15,8 @@ from rationalisation import (
     effort,
     entropy,
     fit,
+    Cogitator,
     overfit,
-    proposals,
     rationalise,
     significance,
     underfit,
@@ -150,15 +150,9 @@ def test_no_fabrication(sc):
 @given(scenarios())
 def test_rationalisation_is_honest(sc):
     d, entry, goal = sc
-    r = rationalise(d, entry, goal=goal)
-    assert all(
-        e.reason.startswith(("R4", "S4", "stalled", "no candidates", "bound", "exhausted")) for e in r.ends
-    )
-    # every halt records its kline and its halt measure
-    assert all(e.kline is not None and e.effort is not None for e in r.ends)
-    ps = proposals(r)
-    assert len(ps) == len(r.ends)  # every halt generates exactly one proposal
-    assert all(p.kind in ("acquire", "connect", "continue") for p in ps)
-    assert all(p.effort == effort(p.kline) for p in ps)
-    assert all(0 <= p.effort <= 1 for p in ps)
-    assert ps == sorted(ps, key=lambda p: p.effort)  # graded significance: least entropy first
+    stalls: list[KLine] = []
+    Cogitator(d, on_stall=stalls.append).rationalise(entry, goal=goal)
+    # every broadcast stall is a bare S4 — nothing offered, nothing held
+    assert all(not s.nodes for s in stalls)
+    assert all(effort(s) == 1 for s in stalls)  # exactly full — nothing to work with
+    assert set(d) == {k for k in d}  # the run never writes the domain

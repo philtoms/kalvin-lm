@@ -14,9 +14,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from kalvin.kline import KLine, KNode, KNone, is_identity
-from rationalisation.algebra import contained, fit, underfit, overfit
+from rationalisation.algebra import contained, fit, underfit, overfit, can
 from rationalisation.domain import Domain
-from rationalisation.report import End, Event, Rationalisation, effort
+from rationalisation.report import Event, Rationalisation
 
 
 @dataclass
@@ -29,31 +29,29 @@ class _Entry:
     comp: str = ""  # "F" | "U" | "O" — the component of the parent's reentry
     at: dict = field(default_factory=dict)  # component -> frame count at its last descent
 
-CNone = _Entry()
+ENone = _Entry()
 
 class Cogitator:
-    """The reentry runner: an entry's signature meets held claims, and each
+    """The reentry runner: an entry's signature meets held candidate goals, and each
     unframed component recurses into new state — its own stack copy, its own
-    frames. An entry grounds when it is S2 aligned - all three components 
+    frames. An entry is claimed when it is S2 aligned - all three components 
     F(it), U(nderfit) and O(verfit) are framed.
-
-    The Cogitator owns no state: the domain is read-only (the harness's),
-    nothing is ever stored, and the claim is broadcast at S2 through
-    ``on_claim`` — the claim sink — like the older proposal. The report is
-    history; claims are news.
     """
 
     MAX_ENTRIES = 4096
 
-    def __init__(self, d: Domain, on_claim: Callable[[KLine], None] | None = None) -> None:
+    def __init__(
+        self,
+        d: Domain,
+        on_claim: Callable[[KLine], None] | None = None,
+        on_stall: Callable[[KLine], None] | None = None,
+    ) -> None:
         self.d = d
         self.on_claim = on_claim
+        self.on_stall = on_stall
 
     def rationalise(self, ask: KLine, goal: KLine) -> Rationalisation:
-        self.ends: list[End] = []
-        self.claimed = False  # broadcast once per run — at S2
         self.entries = 0
-        self.bound = False
         self.stalled: dict[KNode, _Entry] = {}
         self.frame: list[KNode] = []
         self.events: list[Event] = []
@@ -68,30 +66,34 @@ class Cogitator:
             return not x or any(contained(x, f) for f in self.frame)
 
         def pop(entry: _Entry) -> _Entry:
-            if not entry.parent: return CNone
+            if not entry.parent: return ENone
             return entry.parent
 
         def push(A: KNode, parent: _Entry, comp: str) -> _Entry:
             cands = self._candidates(A, parent)
             return  _Entry(A, cands, parent, comp)
 
-        entry = push(ask.signature, CNone, "")
+        def fresh(comp: str) -> bool:
+            # a component reenters once per candidate — and again only
+            # when new frames arrived since its last entry
+            return comp not in entry.at or len(self.frame) > entry.at[comp]
+
+        entry = push(ask.signature, ENone, "")
         entry.cands = [goal]
         while entry.A != KNone:
             if self.entries > self.MAX_ENTRIES:
-                self._halt("bound: entry cap reached", ask)
-                break
+                break  # the entry cap — the run stops
             self.entries += 1
 
             A = entry.A
             if not entry.cands:  # S4 stalled
                 if A in self.stalled and self.stalled[A].comp != entry.comp and self.common_ancestor(entry, self.stalled[A]):
-                        frame(A) # S3 align
-                        self.events.append(Event("exchange", A, frame=A))
+                        frame(A) # S3 aligned
+                        self.events.append(Event("exchanged", A, frame=A))
                         self.stalled.pop(A)
                 else:
                     self.stalled[A] = entry
-                    self.events.append(Event("stall", A))
+                    self.events.append(Event("stalled", A))
 
                 entry = pop(entry)  # backtrack: the parent keeps its candidate
                 continue
@@ -108,22 +110,14 @@ class Cogitator:
                 o_ok = framed(O)
                 if f_ok and u_ok and o_ok:  # S2 aligned
                     frame(A)
-                    if goal.signature == C.signature:  # the claim grounds
-                        self.events.append(Event("grounded", A, C, F, U, O, frame=A))
-                        claim = KLine(ask.signature, [goal.signature])
-                        if not self.claimed:
-                            self.claimed = True
-                            if self.on_claim is not None:
-                                self.on_claim(claim)  # the claim leaves now, mid-run
+                    if goal.signature == can(C.nodes):  # the claim is made
+                        self.events.append(Event("claimed", A, C, F, U, O, frame=A))
+                        if self.on_claim is not None:
+                            self.on_claim(KLine(ask.signature, [goal.signature]))  # leaves now, mid-run
                     else:
-                        self.events.append(Event("close", A, C, F, U, O, frame=A))
+                        self.events.append(Event("resolved", A, C, F, U, O, frame=A))
                 elif not entry.at:  # the entry notes itself once — re-evaluation after
                     self.events.append(Event("entry", A, C, F, U, O)) 
-
-                def fresh(comp: str) -> bool:
-                    # a component reenters once per candidate — and again only
-                    # when new frames arrived since its last entry
-                    return comp not in entry.at or len(self.frame) > entry.at[comp]
 
                 if not u_ok and fresh("U"):
                     entry.at["U"] = len(self.frame)
@@ -146,10 +140,11 @@ class Cogitator:
             if not entry.cands:
                 entry = pop(entry)
 
-        for a in self.stalled:  # stalls that never aligned
-            self._halt("stalled at S4: no candidates", KLine(a, []))
+        for a in self.stalled:  # stalls that never aligned (S4)
+            if self.on_stall is not None:
+                self.on_stall(KLine(a, []))
 
-        return Rationalisation(self.ends, self.events)
+        return Rationalisation(self.events)
 
     def _candidates(self, sig: KNode, entry: _Entry) -> list[KLine]:
         """An ask never reenters its origin: its parent ask's and parent
@@ -165,9 +160,6 @@ class Cogitator:
         ]
         return cands
         # return list(reversed(cands))
-
-    def _halt(self, reason: str, k: KLine) -> None:
-        self.ends.append(End(reason, k, effort(k)))
 
     def ancestor(self, sig: KNode, entry: _Entry) -> bool:
         while entry.parent:

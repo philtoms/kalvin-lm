@@ -1,8 +1,9 @@
-"""The run's report — the events of a rationalisation, its halts read as
-proposals, and the Rationalisation record both engines return. Events are
-reentry events: each is one thing that happened to an entry,
-a frame minted, a stall, an exchange, a grounding. The run's trace;
-reporting only, never read by a search."""
+"""The run's report — the events of a rationalisation, and the
+Rationalisation record the runner returns. Events are reentry events:
+each is one thing that happened to an entry — a frame minted, a stall,
+an exchange, a grounding. The run's trace; reporting only, never read
+by a search. Claims and stalls are not report: they broadcast through
+the sinks while the run is live."""
 
 from __future__ import annotations
 
@@ -10,8 +11,6 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 
 from kalvin.kline import KLine, KNode, KNone
-from rationalisation.algebra import effort
-
 
 
 @dataclass(eq=False)  # an event is an occurrence, never a value
@@ -28,43 +27,16 @@ class Event:
 
 
 @dataclass(frozen=True)
-class End:
-    """A terminal arrival — with the halt measure where a kline halted."""
-
-    reason: str
-    kline: KLine | None
-    effort: Fraction | None = None
-
-
-@dataclass(frozen=True)
 class Proposal:
-    """A halted kline read as a request (§5 Definition 15)."""
+    """A stalled kline read as a request — the harness's pending shape."""
 
-    kind: str  # "acquire" | "connect" | "continue"
+    kind: str  # "connect" — fit wanted, nobody to talk to
     kline: KLine
     effort: Fraction
 
 
 @dataclass
 class Rationalisation:
-    """One run's report: its events in order, its halts."""
+    """One run's report: its events in order."""
 
-    ends: list[End]
     events: list[Event] = field(default_factory=list)
-
-
-def proposals(r: Rationalisation) -> list[Proposal]:
-    """Every halt generates one proposal (§5 Definition 15), ordered by ascending
-    effort — least entropy first, most significant next step."""
-    out = []
-    for e in r.ends:
-        if e.kline is None:
-            continue
-        if e.reason.startswith("stalled") or "no candidates" in e.reason:
-            kind = "connect"  # fit wanted, nobody to talk to — the sides starved
-        elif e.reason.startswith("bound"):
-            kind = "continue"
-        else:
-            kind = "acquire"
-        out.append(Proposal(kind, e.kline, e.effort if e.effort is not None else effort(e.kline)))
-    return sorted(out, key=lambda p: p.effort)

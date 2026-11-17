@@ -2,6 +2,8 @@
 
 ## 2026-11-17
 
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel","title":"Ends gone: stall sink mirrors the claim channel"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts","title":"Claim broadcast relaxed: every S2 alignment broadcasts"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only","title":"Cogitator storeless: claims broadcast at S2, domain read-only"}
 - **observe**: {"relevance":"critical","slug":"obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding","title":"Claim sink: claims leave the Cogitator at grounding"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-11-17-decompose-removed-effort-inlines-u-and-o","title":"decompose removed; effort inlines U and O"}

@@ -85,10 +85,12 @@ entry: an ask signature `A`, its remaining candidates, its parent,
 the component it was pushed as, and its `at` map — the frame count at
 each component's last descent), `stalled` (entries halted at S4, by
 signature — the latest per signature), `frame` (covered content, in
-mint order), and the run's `ends` and `events` (reporting only, never
-read by the search). The Cogitator owns no store: the domain is
-read-only. The claim is not run state: it leaves at S2 through the
-**claim sink** (`on_claim`), once per run.
+mint order), and the run's `events` (reporting only, never read by
+the search — the report is events alone). The Cogitator owns no
+store: the domain is read-only. The claim is not run state: it leaves
+at S2 through the **claim sink** (`on_claim`) — a run may broadcast
+many. An unaligned stall follows the same shape: it leaves at the
+run's end through the **stall sink** (`on_stall`), bare — `⟨σ, []⟩`.
 
 A **reentry** is a bare region-signature: no witness nodes travel
 with it — the child's candidates are whatever the domain holds.
@@ -102,8 +104,8 @@ and only candidate, then walks the entry chain until it unwinds or
 the entry cap is reached (a run is never goal-less). Grounding does
 not stop the loop: the run continues until the chain unwinds or the
 cap; the claim — `KLine(σ_ask, [σ_goal])` — is broadcast to the claim
-sink at first grounding. Later alignments re-trace (`grounded`
-events) and re-announce nothing.
+sink at every S2 alignment with the goal. A run may broadcast many;
+the sink receives whatever arrives.
 
 **CANDIDATES** (`_candidates`). An entry's signature `A` primes domain
 klines by overlap:
@@ -149,18 +151,21 @@ ask's, whatever entry aligned.
 filed under its signature, and backtracks — the parent keeps its
 remaining candidates. Two stalls on one signature from different
 components sharing a common ancestor witness each other: the
-signature frames, the stall resolves, nothing is stored.
+signature frames, the stall resolves, nothing is stored. A stall
+that never aligns broadcasts at the run's end through the **stall
+sink** — the claim channel's equal — as a bare `⟨σ, []⟩`; the
+harness reads it as its connect proposal.
 
-**HALT / PROPOSAL**. Terminal arrivals: the entry cap and unresolved
-stalls. Each halt becomes a proposal — `connect`, `continue`,
-`acquire` — ordered by ascending effort.
+**HALT**. The entry cap is the only other terminal arrival; it stops
+the run.
 
 ### 2.4 Invariants
 
 - The run never writes D — the domain is the harness's; frames only
   grow; the events list only appends.
-- A claim is broadcast to the sink once per run, at first grounding;
-  later alignments re-trace and re-announce nothing.
+- Claims broadcast to the sink at every S2 alignment with the goal;
+  unaligned stalls broadcast at the run's end. Neither channel
+  assumes uniqueness — the sink holds whatever arrives.
 - Every frame is a signature; every reentered region (U, O, F) is a
   signature — meets and residues of signatures. No composite — no
   `σ | can(N)` of any kline — is ever fitted, minted, or reentered.

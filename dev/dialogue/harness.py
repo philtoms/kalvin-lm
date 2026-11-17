@@ -10,10 +10,6 @@ and nothing learns into it during a run: the Cogitator reads it, stores
 nothing, and broadcasts its claims to the harness (the claim sink) at
 S2. Claims are reported; they persist nowhere, for now.
 
-Proposals persist across steps: a later presented entry discharges a
-pending proposal when its content overlaps the target (Definition 15).
-The presenter reports; it never judges.
-
 Each step's trace table prints by default; the end-of-run state (the
 held domain, the open proposals) only with ``-v``.
 
@@ -40,15 +36,13 @@ from ks.compiler import compile_source, path_resolver
 
 from rationalisation import (
     Domain,
-    End,
     Event,
     KLine,
-    Proposal,
     Rationalisation,
     Cogitator,
     band,
     can,
-    proposals,
+    effort,
 )
 
 # The appendix's content mask: the word half is content; the token half is
@@ -66,16 +60,6 @@ class Step:
     kline: KLine  # the model form
     result: Rationalisation
 
-
-@dataclass
-class Pending:
-    """A proposal awaiting an answer, and its fate."""
-
-    prop: Proposal
-    raised_at: int
-    discharged_at: int | None = None
-
-
 class Runner:
     """Compile → present → rationalise → record, over one live Domain."""
 
@@ -84,14 +68,20 @@ class Runner:
         self.signifier = NLPSignifier()
         self.domain = Domain()
         self.word_bits: dict[str, int] = {}
-        self.pending: list[Pending] = []
         self.claims: list[tuple[int, KLine]] = []  # (step, claim) — appended at grounding, mid-run
-        self._step_index = -1  # the presenting step — claims arrive before it completes
-        self.cogitator = Cogitator(self.domain, on_claim=self._claim)
+        self.stalls: list[tuple[int, KLine]] = []  # (step, stalled kline) — appended at run's end
+        self._step_index = -1  # the presenting step — claims and stalls arrive before it completes
+        self.cogitator = Cogitator(self.domain, on_claim=self._claim, on_stall=self._stall)
 
     def _claim(self, claim: KLine) -> None:
         """The claim sink — a claim lands the moment it grounds, not at return."""
         self.claims.append((self._step_index, claim))
+        # self.domain.add(claim)
+
+    def _stall(self, kline: KLine) -> None:
+        """The stall sink — an unaligned stall files itself as a connect
+        proposal: fit wanted, nobody to talk to."""
+        self.stalls.append((self._step_index, kline))
 
     def run(self, source: str, resolver=None) -> list[Step]:
         """An ask==goal run: every `==` ask with a resolvable goal is one
@@ -142,24 +132,13 @@ class Runner:
                 pairs.append((e, goal))
         return pairs
 
-    def _step(self, steps: list[Step], i: int, value: KValue, goal: KLine | None = None) -> None:
-        """Present one entry: rationalise, record, discharge, file proposals."""
+    def _step(self, steps: list[Step], i: int, value: KValue, goal: KLine) -> None:
+        """Present one entry: rationalise, record, discharge. Claims and
+        stalls arrive through the sinks while the run is live."""
         kline = _to_kline(value)
         self._step_index = i
-        result = self.cogitator.rationalise(kline, goal=goal)
+        result = self.cogitator.rationalise(kline, goal)
         steps.append(Step(i, value, kline, result))
-        self._discharge(i, kline)  # only proposals from earlier steps answer
-        for prop in proposals(result):
-            self.pending.append(Pending(prop, i))
-
-    def _discharge(self, step_index: int, entry: KLine) -> None:
-        """A presented entry overlapping a pending target discharges it —
-        proposals from earlier steps only (the raiser never answers itself)."""
-        content = entry.signature | can(entry.nodes)
-        for p in self.pending:
-            if p.raised_at < step_index and p.discharged_at is None and content & p.prop.kline.signature:
-                p.discharged_at = step_index
-
 
 def _to_kline(value: KValue) -> KLine:
     """The compiled entry as a content-space kline (appendix: cargo masked,
@@ -288,17 +267,13 @@ def _tframe(v: int, labels: dict[int, str], alloc: dict[int, str]) -> str:
     return _tlabel(v, labels, alloc)
 
 
-_EVENT_KIND = {"close": "resolved", "wait": "stalled", "known": "known",
-               "stall": "stalled", "exchange": "exchange", "pair": ""}
-
-
 def _event_line(ev: Event, labels: dict[int, str], alloc: dict[int, str]) -> list[str]:
     c = ""
     if ev.candidate is not None:
         c = _tlabel(ev.candidate.signature, labels, alloc)
         if ev.candidate.nodes and can(ev.candidate.nodes) != ev.candidate.signature:
             c += ":" + " ".join(_tlabel(n, labels, alloc) for n in ev.candidate.nodes)
-    kind = _EVENT_KIND.get(ev.kind, ev.kind)
+    kind = "" if ev.kind == "entry" else ev.kind
     return [
         _tlabel(ev.entry, labels, alloc),
         c,
@@ -335,36 +310,38 @@ def _tline(k: KLine, labels: dict[int, str], alloc: dict[int, str]) -> str:
     return f"{sig}:[{nodes}]" if k.nodes else f"{sig}:[]"
 
 
-def _render_step(step: Step, claimed: bool, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
+def _render_step(step: Step, claims: list[KLine], stalled: list[KLine], labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
     lines = [
         f"── Step {step.index + 1}  {band(step.kline).value}  "
         f"{_render(step.kline, labels, alloc, verbose)} ──"
     ]
-    if step.result.events:
-        if not claimed:
-            lines.append("      (no claim — every event below)")
-        lines.extend("      " + l for l in _render_events(step.result.events, labels, alloc))
-    by_reason: dict[str, list[End]] = {}
-    for e in step.result.ends:
-        by_reason.setdefault(e.reason, []).append(e)
-    for reason, ends in by_reason.items():
-        exemplars = [e for e in ends if e.kline is not None][:2]
-        for e in exemplars:
-            lines.append(
-                f"      halt      {reason} — {_tline(e.kline, labels, alloc)}"
-                f"  E={e.effort}"
-            )
-        rest = len(ends) - len(exemplars)
-        if rest > 0:
-            lines.append(f"      halt      {reason} ×{len(ends)} (+{rest} more)")
+    if step.result.events and not claims:
+        lines.append("      (no claim — every event below)")
+    tallies: list[tuple[KLine, int]] = []  # distinct claims, counted
+    for c in claims:
+        for i, (s, n) in enumerate(tallies):
+            if s == c:
+                tallies[i] = (s, n + 1)
+                break
+        else:
+            tallies.append((c, 1))
+    lines.extend("      " + l for l in _render_events(step.result.events, labels, alloc))
+    for c, n in tallies:
+        count = f"  ×{n}" if n > 1 else ""
+        lines.append(f"      claim     {_tline(c, labels, alloc)}{count}")
+    exemplars = stalled[:2]
+    for k in exemplars:
+        lines.append(f"      stall     S4 no candidates — {_tline(k, labels, alloc)}  E={effort(k)}")
+    if len(stalled) > len(exemplars):
+        lines.append(f"      stall     S4 no candidates ×{len(stalled)} (+{len(stalled) - len(exemplars)} more)")
     return "\n".join(lines)
 
 
 def present(
     steps: list[Step],
     domain: Domain,
-    pending: list[Pending],
     claims: list[tuple[int, KLine]],
+    stalls: list[tuple[int, KLine]],
     source: str,
     tokenizer: BPETokenizer,
     signifier: NLPSignifier,
@@ -392,32 +369,15 @@ def present(
         if annotation and annotation != last_annotation:
             print(f"\n[{annotation}]")
             last_annotation = annotation
-        claimed = any(j == step.index for j, _ in claims)
-        print(_render_step(step, claimed, labels, alloc, verbose))
+        claimed = [c for j, c in claims if j == step.index]
+        stalled = [k for j, k in stalls if j == step.index]
+        print(_render_step(step, claimed, stalled, labels, alloc, verbose))
     if not verbose:
         return
     print("\n── domain (held at end of run) ──")
     for k in sorted(domain, key=lambda x: (x.signature.bit_length(), x.signature)):
         mark = "canon " if can(k.nodes) == k.signature else "claim "
         print(f"      {mark}{_render(k, labels, alloc, verbose)}")
-    print("\n── pending proposals (open at end of run) ──")
-    open_props = [p for p in pending if p.discharged_at is None]
-    open_props.sort(key=lambda p: p.prop.effort)  # most significant first (Definition 15)
-    for p in open_props[:8]:
-        print(
-            f"      {p.prop.kind:<8} raised at step {p.raised_at + 1}  "
-            f"{_render(p.prop.kline, labels, alloc, verbose)}  E={p.prop.effort}"
-        )
-    if len(open_props) > 8:
-        print(f"      … +{len(open_props) - 8} more")
-    if not open_props:
-        print("      (none)")
-    discharged = [p for p in pending if p.discharged_at is not None]
-    if discharged:
-        print(
-            f"\n── discharged: {len(discharged)} proposals answered by later entries ──"
-        )
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run a .ks script through the rationalisation model.")
@@ -442,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"harness: {exc}", file=sys.stderr)
         return 2
     present(
-        steps, runner.domain, runner.pending, runner.claims, source, runner.tokenizer,
+        steps, runner.domain, runner.claims, runner.stalls, source, runner.tokenizer,
         runner.signifier, verbose=args.verbose, word_bits=runner.word_bits,
         resolver=path_resolver(path.parent),
     )

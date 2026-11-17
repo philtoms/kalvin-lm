@@ -1304,3 +1304,9 @@
 ## [2026-11-17T14:35:11.147Z] observe
 - slug: "obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only", title: "Cogitator storeless: claims broadcast at S2, domain read-only", relevance: "critical"
 
+## [2026-11-17T14:37:48.025Z] observe
+- slug: "obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts", title: "Claim broadcast relaxed: every S2 alignment broadcasts", relevance: "high"
+
+## [2026-11-17T14:55:41.636Z] observe
+- slug: "obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel", title: "Ends gone: stall sink mirrors the claim channel", relevance: "critical"
+
