@@ -75,7 +75,8 @@ Each scenario presents its goal alone — a canon grounds on receipt
 (S1, stored); otherwise it rationalises goal-less — then presents the
 ask with the goal attached. Scenarios run in ask order over the one
 live domain: an earlier scenario's stores are later scenarios' prior
-knowledge.
+knowledge. The harness is the **claim sink**: a claim is in its hands
+the moment it grounds — mid-run, not at the run's return.
 
 ### 2.2 The machine's state
 
@@ -84,9 +85,10 @@ entry: an ask signature `A`, its remaining candidates, its parent,
 the component it was pushed as, and its `at` map — the frame count at
 each component's last descent), `stalled` (entries halted at S4, by
 signature — the latest per signature), `frame` (covered content, in
-mint order), the run's `stores`, `ends` and `events` (reporting only,
-never read by the search), and the `claim` — set identically at every
-grounding, stored once.
+mint order), and the run's `stores`, `ends` and `events` (reporting
+only, never read by the search). The claim is not run state: it
+leaves at grounding through the **claim sink** (`on_claim`), once per
+run.
 
 A **reentry** is a bare region-signature: no witness nodes travel
 with it — the child's candidates are whatever the domain holds.
@@ -100,8 +102,9 @@ adjacency, and grounds on receipt when it is a canon (S1, stored).
 An ask run opens with the goal as the one and only candidate, then
 walks the entry chain until it unwinds or the entry cap is reached.
 Grounding does not stop the loop: the run continues until the chain
-unwinds or the cap; the claim value is always
-`KLine(σ_ask, [σ_goal])` — set identically, stored once.
+unwinds or the cap; the claim — `KLine(σ_ask, [σ_goal])` — is stored
+and announced to the claim sink at first grounding. Later alignments
+re-trace (`grounded` events) and re-announce nothing.
 
 **CANDIDATES** (`_candidates`). An entry's signature `A` primes domain
 klines by overlap:
@@ -138,8 +141,9 @@ the next candidate may re-descend every component.
 **ALIGN**. All three components framed — S2 aligned — frames `A`. If
 the candidate's signature is the goal's, the **claim** grounds:
 `KLine(σ_ask, [σ_goal])` — the ask's signature over the goal's
-signature — stored; the run's only earned store. Any entry may
-ground it — the claim is the ask's, whatever entry aligned.
+signature — stored and announced to the claim sink; the run's only
+earned store. Any entry may ground it — the claim is the ask's,
+whatever entry aligned.
 
 **STALL / EXCHANGE**. An entry with no candidates left stalls at S4,
 filed under its signature, and backtracks — the parent keeps its
@@ -154,8 +158,8 @@ cap, and unresolved stalls. Each halt becomes a proposal — `connect`,
 ### 2.4 Invariants
 
 - D only grows; frames only grow; the events list only appends.
-- The claim is set at most once per aligning pairing, always to the
-  same value; the store happens once.
+- A claim is announced to the sink once per run, at first grounding;
+  later alignments re-trace and re-announce nothing.
 - Every frame is a signature; every reentered region (U, O, F) is a
   signature — meets and residues of signatures. No composite — no
   `σ | can(N)` of any kline — is ever fitted, minted, or reentered.

@@ -47,12 +47,11 @@ class Proposal:
 
 @dataclass
 class Rationalisation:
-    """One run's report: its events in order, its halts, its stores, its claim."""
+    """One run's report: its events in order, its halts, its stores."""
 
     stores: list[KLine]
     ends: list[End]
     events: list[Event] = field(default_factory=list)
-    claim: KLine | None = None
 
 
 def proposals(r: Rationalisation) -> list[Proposal]:

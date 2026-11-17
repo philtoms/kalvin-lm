@@ -87,7 +87,13 @@ class Runner:
         self.word_bits: dict[str, int] = {}
         self.pending: list[Pending] = []
         self.stores: list[tuple[int, KLine]] = []  # (step, store)
-        self.cogitator = Cogitator(self.domain)
+        self.claims: list[tuple[int, KLine]] = []  # (step, claim) — appended at grounding, mid-run
+        self._step_index = -1  # the presenting step — claims arrive before it completes
+        self.cogitator = Cogitator(self.domain, on_claim=self._claim)
+
+    def _claim(self, claim: KLine) -> None:
+        """The claim sink — a claim lands the moment it grounds, not at return."""
+        self.claims.append((self._step_index, claim))
 
     def run(self, source: str, resolver=None) -> list[Step]:
         """An ask==goal run: every `==` ask with a resolvable goal is one
@@ -111,7 +117,7 @@ class Runner:
                 self.domain.add(_to_kline(other))  # primed — never an R1 store
         steps: list[Step] = []
         for ask, goal in pairs:
-            self._step(steps, len(steps), goal)  # the goal rationalises first — S1 grounds on receipt
+            # self._step(steps, len(steps), goal)  # the goal rationalises first — S1 grounds on receipt
             self._step(steps, len(steps), ask, goal=_to_kline(goal))  # the ask asks — the goal is its first candidate
         return steps
 
@@ -142,6 +148,7 @@ class Runner:
     def _step(self, steps: list[Step], i: int, value: KValue, goal: KLine | None = None) -> None:
         """Present one entry: rationalise, record, discharge, file proposals."""
         kline = _to_kline(value)
+        self._step_index = i
         result = self.cogitator.rationalise(kline, goal=goal)
         steps.append(Step(i, value, kline, result))
         self._discharge(i, kline)  # only proposals from earlier steps answer
@@ -333,13 +340,13 @@ def _tline(k: KLine, labels: dict[int, str], alloc: dict[int, str]) -> str:
     return f"{sig}:[{nodes}]" if k.nodes else f"{sig}:[]"
 
 
-def _render_step(step: Step, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
+def _render_step(step: Step, claimed: bool, labels: dict[int, str], alloc: dict[int, str], verbose: bool) -> str:
     lines = [
         f"── Step {step.index + 1}  {band(step.kline).value}  "
         f"{_render(step.kline, labels, alloc, verbose)} ──"
     ]
     if step.result.events:
-        if step.result.claim is None:
+        if not claimed:
             lines.append("      (no claim — every event below)")
         lines.extend("      " + l for l in _render_events(step.result.events, labels, alloc))
     for store in step.result.stores:
@@ -364,6 +371,7 @@ def present(
     steps: list[Step],
     domain: Domain,
     pending: list[Pending],
+    claims: list[tuple[int, KLine]],
     source: str,
     tokenizer: BPETokenizer,
     signifier: NLPSignifier,
@@ -391,7 +399,8 @@ def present(
         if annotation and annotation != last_annotation:
             print(f"\n[{annotation}]")
             last_annotation = annotation
-        print(_render_step(step, labels, alloc, verbose))
+        claimed = any(j == step.index for j, _ in claims)
+        print(_render_step(step, claimed, labels, alloc, verbose))
     if not verbose:
         return
     print("\n── domain (held at end of run) ──")
@@ -440,7 +449,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"harness: {exc}", file=sys.stderr)
         return 2
     present(
-        steps, runner.domain, runner.pending, source, runner.tokenizer,
+        steps, runner.domain, runner.pending, runner.claims, source, runner.tokenizer,
         runner.signifier, verbose=args.verbose, word_bits=runner.word_bits,
         resolver=path_resolver(path.parent),
     )

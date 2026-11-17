@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from kalvin.kline import KLine, KNode, KNone, is_identity
@@ -35,17 +36,21 @@ class Cogitator:
     unframed component recurses into new state — its own stack copy, its own
     frames. An entry grounds when it is S2 aligned - all three components 
     F(it), U(nderfit) and O(verfit) are framed.
+
+    A claim leaves at grounding, through ``on_claim`` — the claim sink —
+    not with the run's report. The report is history; claims are news.
     """
 
     MAX_ENTRIES = 4096
 
-    def __init__(self, d: Domain) -> None:
+    def __init__(self, d: Domain, on_claim: Callable[[KLine], None] | None = None) -> None:
         self.d = d
+        self.on_claim = on_claim
         self.stores: list[KLine] = []
 
     def rationalise(self, ask: KLine, goal: KLine | None = None) -> Rationalisation:
         self.stores, self.ends = [], []
-        self.claim: KLine | None = None
+        self.claimed = False  # announced once per run — at grounding
         self.entries = 0
         self.bound = False
         self.stalled: dict[KNode, _Entry] = {}
@@ -112,8 +117,12 @@ class Cogitator:
                     frame(A)
                     if goal.signature == C.signature:  # the claim grounds
                         self.events.append(Event("grounded", A, C, F, U, O, frame=A))
-                        self.claim = KLine(ask.signature, [goal.signature])
-                        self._ground(self.claim)
+                        claim = KLine(ask.signature, [goal.signature])
+                        self._ground(claim)
+                        if not self.claimed:
+                            self.claimed = True
+                            if self.on_claim is not None:
+                                self.on_claim(claim)  # the claim leaves now, mid-run
                     else:
                         self.events.append(Event("close", A, C, F, U, O, frame=A))
                 elif not entry.at:  # the entry notes itself once — re-evaluation after
@@ -148,7 +157,7 @@ class Cogitator:
         for a in self.stalled:  # stalls that never aligned
             self._halt("stalled at S4: no candidates", KLine(a, []))
 
-        return Rationalisation(self.stores, self.ends, self.events, claim=self.claim)
+        return Rationalisation(self.stores, self.ends, self.events)
 
     def _candidates(self, sig: KNode, entry: _Entry) -> list[KLine]:
         """An ask never reenters its origin: its parent ask's and parent

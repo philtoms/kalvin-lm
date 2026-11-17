@@ -433,6 +433,7 @@
 - [Observation: S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth](obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-.md)
 - [Observation: Fit F now earns a frame like U and O — wdmh honestly refuses](obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses.md)
 - [Observation: Fit-side change committed (40a347d); what stall traced to c.sig != e bar](obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig.md)
+- [Observation: Claim sink: claims leave the Cogitator at grounding](obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding.md)
 - [Observation: Cogitator claim semantics: grounding never stops the loop](obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop.md)
 - [Observation: decompose removed; effort inlines U and O](obs-2026-11-17-decompose-removed-effort-inlines-u-and-o.md)
 - [Observation: KLine migration value-parity verified against HEAD](obs-2026-11-17-kline-migration-value-parity-verified-against-head.md)

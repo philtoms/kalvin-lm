@@ -1298,3 +1298,6 @@
 ## [2026-11-17T13:33:32.809Z] observe
 - slug: "obs-2026-11-17-decompose-removed-effort-inlines-u-and-o", title: "decompose removed; effort inlines U and O", relevance: "medium"
 
+## [2026-11-17T13:59:04.043Z] observe
+- slug: "obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding", title: "Claim sink: claims leave the Cogitator at grounding", relevance: "critical"
+

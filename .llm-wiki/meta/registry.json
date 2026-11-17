@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-17T13:33:32.914Z",
+  "last_updated": "2026-11-17T13:59:04.129Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8056,6 +8056,24 @@
       "source_context": "Committing the fit-side rule change and the fingerprint-bar exploration",
       "created": "2026-11-16",
       "updated": "2026-11-16"
+    },
+    "sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding": {
+      "type": "source",
+      "title": "Observation: Claim sink: claims leave the Cogitator at grounding",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "interface",
+        "claims",
+        "streaming"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T13:59:04.041Z",
+      "source_context": "Claim sink interface between Cogitator and harness",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
     },
     "sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop": {
       "type": "source",
