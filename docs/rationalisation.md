@@ -94,7 +94,10 @@ child on top and suspends the parent beneath it, a departure
 backtracks to whatever resumes on top — the resumed entry
 re-evaluates its current candidate. `rationalise` pushes a
 run's root onto the stack; `cogitate` walks the stack until it is
-empty. A turn reads only the entry and its run's state, never the
+empty; `serve` is the standing walk — the same turns on a thread of
+their own, waiting on a condition when the stack is empty, with
+`stop` draining what remains. One driver walks a stack at a time.
+A turn reads only the entry and its run's state, never the
 entry's position, and a completing entry leaves the stack wherever
 it sits — so independent runs share the stack, interleaved: a sink
 may land a new run's root mid-iteration and the walk is unaffected.

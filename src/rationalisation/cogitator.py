@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -81,6 +82,8 @@ class Cogitator:
         self.on_claim = on_claim
         self.on_stall = on_stall
         self.stack: list[_Entry] = []
+        self._cond = threading.Condition(threading.RLock())  # the server waits on it when the stack is empty
+        self._stopped = False
 
     def open(self, ask: KLine, goal: KLine, finish: Callable[["_State"], None]) -> _Entry:
         """A run's root — a fresh state, the goal its one and only candidate."""
@@ -96,70 +99,96 @@ class Cogitator:
                 end_step(Rationalisation(st.events))
 
         root = self.open(ask, goal, _finish)
-        self.stack.append(root)
+        with self._cond:
+            self.stack.append(root)
+            self._cond.notify_all()
 
     def cogitate(self):
-        """The walk — the stack's top entry turns until the stack is empty."""
-        while self.stack:
-            entry = self.stack[-1]
-            st = entry.st
-            if st.entries > self.MAX_ENTRIES:
-                self._drop_run(st)  # the capped run's entries — dropped
-                st.finish(st)  # the entry cap — the run stops, the stack keeps walking
-                continue
-            st.entries += 1
+        """The synchronous walk — the stack's top entry turns until the stack
+        is empty. One driver at a time: never alongside serve."""
+        with self._cond:
+            while self.stack:
+                self._turn()
 
-            A = entry.A
-            if not entry.cands:  # S4 stalled
-                if A in st.stalled and st.stalled[A].comp != entry.comp and self.common_ancestor(entry, st.stalled[A]):
-                    entry.frame(A) # S3 aligned
-                    st.events.append(Event("exchanged", A, frame=A))
-                    st.stalled.pop(A)
-                else:
-                    st.stalled[A] = entry
-                    st.events.append(Event("stalled", A))
+    def serve(self):
+        """The standing walk — the same turns on a thread of their own,
+        waiting on the condition when the stack is empty. stop drains what
+        remains and ends the serve; one driver at a time: never alongside
+        cogitate."""
+        with self._cond:
+            while True:
+                while not self.stack and not self._stopped:
+                    self._cond.wait()
+                if not self.stack:
+                    return  # stopped, nothing left — the serve ends
+                self._turn()
 
-                self._drop(entry)  # backtrack: the parent keeps its candidate
-                continue
+    def stop(self) -> None:
+        with self._cond:
+            self._stopped = True
+            self._cond.notify_all()
 
-            C = entry.cands[-1]
-            cs = C.signature
-            F, U, O = fit(A, cs), underfit(A, cs), overfit(C.nodes, A)
-            if F == A:
-                entry.frame(F)
+    def _turn(self) -> None:
+        """One iteration of the walk — the stack's top entry."""
+        entry = self.stack[-1]
+        st = entry.st
+        if st.entries > self.MAX_ENTRIES:
+            self._drop_run(st)  # the capped run's entries — dropped
+            st.finish(st)  # the entry cap — the run stops, the stack keeps walking
+            return
+        st.entries += 1
 
-            f_ok = entry.framed(F)
-            u_ok = entry.framed(U)
-            o_ok = entry.framed(O)
-            if f_ok and u_ok and o_ok:  # S2 aligned
-                entry.frame(A)
-                if st.goal.signature == can(C.nodes):  # the claim is made
-                    st.events.append(Event("claimed", A, C, F, U, O, frame=A))
-                    if self.on_claim is not None:
-                        self.on_claim(KLine(st.ask.signature, [st.goal.signature]))  # leaves now, mid-run
-                else:
-                    st.events.append(Event("resolved", A, C, F, U, O, frame=A))
-            elif not entry.at:  # the entry notes itself once — re-evaluation after
-                st.events.append(Event("entry", A, C, F, U, O)) 
+        A = entry.A
+        if not entry.cands:  # S4 stalled
+            if A in st.stalled and st.stalled[A].comp != entry.comp and self.common_ancestor(entry, st.stalled[A]):
+                entry.frame(A) # S3 aligned
+                st.events.append(Event("exchanged", A, frame=A))
+                st.stalled.pop(A)
+            else:
+                st.stalled[A] = entry
+                st.events.append(Event("stalled", A))
 
-            if not u_ok and entry.fresh("U"):
-                self._push(U, entry, "U")
-                continue
+            self._drop(entry)  # backtrack: the parent keeps its candidate
+            return
 
-            if not o_ok and entry.fresh("O"):
-                self._push(O, entry, "O")
-                continue
+        C = entry.cands[-1]
+        cs = C.signature
+        F, U, O = fit(A, cs), underfit(A, cs), overfit(C.nodes, A)
+        if F == A:
+            entry.frame(F)
 
-            if not f_ok and entry.fresh("F"):
-                self._push(F, entry, "F")
-                continue
+        f_ok = entry.framed(F)
+        u_ok = entry.framed(U)
+        o_ok = entry.framed(O)
+        if f_ok and u_ok and o_ok:  # S2 aligned
+            entry.frame(A)
+            if st.goal.signature == can(C.nodes):  # the claim is made
+                st.events.append(Event("claimed", A, C, F, U, O, frame=A))
+                if self.on_claim is not None:
+                    self.on_claim(KLine(st.ask.signature, [st.goal.signature]))  # leaves now, mid-run
+            else:
+                st.events.append(Event("resolved", A, C, F, U, O, frame=A))
+        elif not entry.at:  # the entry notes itself once — re-evaluation after
+            st.events.append(Event("entry", A, C, F, U, O)) 
 
-            entry.cands.pop()
-            entry.at.clear()
-            if not entry.cands:
-                self._drop(entry)
-                if entry.parent is None:  # the root popped — the run is complete
-                    st.finish(st)
+        if not u_ok and entry.fresh("U"):
+            self._push(U, entry, "U")
+            return
+
+        if not o_ok and entry.fresh("O"):
+            self._push(O, entry, "O")
+            return
+
+        if not f_ok and entry.fresh("F"):
+            self._push(F, entry, "F")
+            return
+
+        entry.cands.pop()
+        entry.at.clear()
+        if not entry.cands:
+            self._drop(entry)
+            if entry.parent is None:  # the root popped — the run is complete
+                st.finish(st)
 
     def _drop(self, entry: _Entry) -> None:
         """The entry leaves the stack wherever it sits — a sink may land
