@@ -141,8 +141,11 @@ class Runner:
         stalls arrive through the sinks while the run is live."""
         kline = _to_kline(value)
         self._step_index = i
-        result = self.cogitator.rationalise(kline, goal)
-        steps.append(Step(i, value, kline, result))
+        def end_step(result: Rationalisation):
+            steps.append(Step(i, value, kline, result))
+
+        self.cogitator.rationalise(kline, goal, end_step)
+        self.cogitator.cogitate()
 
 def _to_kline(value: KValue) -> KLine:
     """The compiled entry as a content-space kline (appendix: cargo masked,

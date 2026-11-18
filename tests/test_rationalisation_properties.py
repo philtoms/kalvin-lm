@@ -151,7 +151,9 @@ def test_no_fabrication(sc):
 def test_rationalisation_is_honest(sc):
     d, entry, goal = sc
     stalls: list[KLine] = []
-    Cogitator(d, on_stall=stalls.append).rationalise(entry, goal=goal)
+    cog = Cogitator(d, on_stall=stalls.append)
+    cog.rationalise(entry, goal=goal)
+    cog.cogitate()
     # every broadcast stall is a bare S4 — nothing offered, nothing held
     assert all(not s.nodes for s in stalls)
     assert all(effort(s) == 1 for s in stalls)  # exactly full — nothing to work with

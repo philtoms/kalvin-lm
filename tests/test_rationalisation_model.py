@@ -171,7 +171,9 @@ def test_unaligned_stalls_broadcast_bare():
     # sides stall and broadcast bare at the run's end
     d = base_domain()
     stalls: list[KLine] = []
-    Cogitator(d, on_stall=stalls.append).rationalise(k(C, C), goal=k(AB, A, B))
+    cog = Cogitator(d, on_stall=stalls.append)
+    cog.rationalise(k(C, C), goal=k(AB, A, B))
+    cog.cogitate()
     assert sorted(int(s.signature) for s in stalls) == [AB, C]  # both sides starved
     assert all(not s.nodes for s in stalls)  # a broadcast stall is bare — pure S4
     assert all(effort(s) == 1 for s in stalls)  # exactly full — nothing to work with
@@ -258,9 +260,9 @@ def test_the_claim_grounds_when_both_sides_resolve():
     before = set(d)
     claims: list[KLine] = []
     stalls: list[KLine] = []
-    Cogitator(d, on_claim=claims.append, on_stall=stalls.append).rationalise(
-        k(ABC, A, B, C), goal=k(AB, A, B)
-    )
+    cog = Cogitator(d, on_claim=claims.append, on_stall=stalls.append)
+    cog.rationalise(k(ABC, A, B, C), goal=k(AB, A, B))
+    cog.cogitate()
     assert claims  # at least one claim left — and every one is the claim
     assert all(c == KLine(ABC, [AB]) for c in claims)  # σ_ask over σ_goal
     assert stalls == []  # nothing stalled — every side aligned

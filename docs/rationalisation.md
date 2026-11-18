@@ -81,17 +81,29 @@ nothing.
 
 ### 2.2 The machine's state
 
-One `Cogitator` per rationalisation: a chain of **entries** (each
-entry: an ask signature `A`, its remaining candidates, its parent,
-the component it was pushed as, and its `at` map — the frame count at
-each component's last descent), `stalled` (entries halted at S4, by
-signature — the latest per signature), `frame` (covered content, in
-mint order), and the run's `events` (reporting only, never read by
-the search — the report is events alone). The Cogitator owns no
+One `Cogitator` over a **stack** of **entries** (each entry: an ask
+signature `A`, its remaining candidates, its parent, the component
+it was pushed as, its `chain`, and its `at` map — the frame count at
+each component's last descent), each entry carrying its run's
+**state** (the ask and goal, the entry counter, `stalled` — entries
+halted at S4, by signature, the latest per signature — `frame`,
+covered content in mint order, the run's `events`, reporting only,
+never read by the search — the report is events alone — and the run's
+`finish`). The stack is real: the top entry runs, a push lands the
+child on top and suspends the parent beneath it, a departure
+backtracks to whatever resumes on top — the resumed entry
+re-evaluates its current candidate. `rationalise` pushes a
+run's root onto the stack; `cogitate` walks the stack until it is
+empty. A turn reads only the entry and its run's state, never the
+entry's position, and a completing entry leaves the stack wherever
+it sits — so independent runs share the stack, interleaved: a sink
+may land a new run's root mid-iteration and the walk is unaffected.
+The Cogitator owns no
 store: the domain is read-only. The claim is not run state: it leaves
 at S2 through the **claim sink** (`on_claim`) — a run may broadcast
 many. An unaligned stall follows the same shape: it leaves at the
-run's end through the **stall sink** (`on_stall`), bare — `⟨σ, []⟩`.
+run's end through the **stall sink** (`on_stall`), bare — `⟨σ, []⟩` —
+and the run's report leaves with it through `end_step`.
 
 A **reentry** is a bare region-signature: no witness nodes travel
 with it — the child's candidates are whatever the domain holds.
@@ -100,13 +112,18 @@ Bounds: `MAX_ENTRIES = 4096` — one counter over the whole loop.
 
 ### 2.3 The rules
 
-**WALK** (`rationalise`). An ask run opens with the goal as the one
-and only candidate, then walks the entry chain until it unwinds or
-the entry cap is reached (a run is never goal-less). Grounding does
-not stop the loop: the run continues until the chain unwinds or the
+**WALK** (`rationalise` / `cogitate`). An ask run opens with the goal
+as the one
+and only candidate — its root pushed onto the stack — then walks the
+stack until its root departs or the entry cap is reached (a run is
+never goal-less). Grounding does
+not stop the loop: the run continues until its root departs or the
 cap; the claim — `KLine(σ_ask, [σ_goal])` — is broadcast to the claim
 sink at every S2 alignment with the goal. A run may broadcast many;
-the sink receives whatever arrives.
+the sink receives whatever arrives. The run's root departing — or
+the cap — finishes the run: stalls broadcast, the report leaves
+through `end_step`, and the walk continues with whatever remains on
+the stack.
 
 **CANDIDATES** (`_candidates`). An entry's signature `A` primes domain
 klines by overlap:
@@ -136,9 +153,11 @@ claim fits, the construction offers, and nothing else is owed.
 
 **REENTER**. A component reenters when unframed and **fresh**: once
 per candidate, and again only when frames arrived since its last
-descent (the `at` map). Priority is fixed — U, then O, then F. A
-candidate that pushes nothing is consumed and its `at` map cleared;
-the next candidate may re-descend every component.
+descent (the `at` map). Priority is fixed — U, then O, then F. The
+child lands on top of the stack; the parent suspends beneath it, its
+candidate kept for the re-evaluation. A candidate that pushes nothing
+is consumed and its `at` map cleared; the next candidate may
+re-descend every component.
 
 **ALIGN**. All three components framed — S2 aligned — frames `A`. If
 the candidate's signature is the goal's, the **claim** grounds:
@@ -183,6 +202,9 @@ entries counter caps the whole loop outright.
 point is ordered (candidates list in D's insertion order and are
 consumed from the end, the component priority is fixed U then O then
 F, stalls file by signature), and the sets serve membership only.
+An entry's stack position is not an input — a turn reads only the
+entry and its run's state — so independent runs interleaved on one
+stack keep their own outcomes.
 
 ## 4. Retired instruments
 

@@ -19,24 +19,54 @@ from rationalisation.domain import Domain
 from rationalisation.report import Event, Rationalisation
 
 
+
+@dataclass
+class _State:
+    """One run's state — it rides on every entry of the run."""
+
+    ask: KLine
+    goal: KLine
+    finish: Callable[["_State"], None]
+    entries: int = 0
+    frame: list[KNode] = field(default_factory=list)
+    stalled: dict = field(default_factory=dict)  # signature -> the latest entry stalled on it
+    events: list = field(default_factory=list)
+
+
 @dataclass
 class _Entry:
     """One entry's exploration.""" 
 
+    st: _State  # the run the entry belongs to
     A: KNode = KNone # the ask
     cands: list | None = None # the candidate goals
     parent: "_Entry | None" = None  # the entry's provenance
     comp: str = ""  # "F" | "U" | "O" — the component of the parent's reentry
-    at: dict = field(default_factory=dict)  # component -> frame count at its last entry
     chain: frozenset = frozenset()  # the ask signatures of the strict parent chain
+    at: dict = field(default_factory=dict)  # component -> frame count at its last entry
 
-ENone = _Entry()
+    def frame(self, x: KNode) -> bool:
+        if x and x not in self.st.frame:
+            self.st.frame.append(x)
+            return True
+        return False
+
+    def framed(self, x: KNode) -> bool:
+        return not x or any(contained(x, f) for f in self.st.frame)
+    
+    def fresh(self, comp: str):
+        return comp not in self.at or len(self.st.frame) > self.at[comp]
 
 class Cogitator:
     """The reentry runner: an entry's signature meets held candidate goals, and each
-    unframed component recurses into new state — its own stack copy, its own
-    frames. An entry is claimed when it is S2 aligned - all three components 
-    F(it), U(nderfit) and O(verfit) are framed.
+    unframed component recurses as a new entry — its own candidates, its own chain.
+    An entry is claimed when it is S2 aligned - all three components F(it), U(nderfit)
+    and O(verfit) are framed.
+
+    The stack is real: the top entry runs, a push lands the child on top and suspends
+    the parent beneath it, a pop backtracks to whatever resumes on top. A turn reads
+    only the entry and its run's state — never the entry's position — so independent
+    runs may share one stack, interleaved.
     """
 
     MAX_ENTRIES = 4096
@@ -50,101 +80,108 @@ class Cogitator:
         self.d = d
         self.on_claim = on_claim
         self.on_stall = on_stall
+        self.stack: list[_Entry] = []
 
-    def rationalise(self, ask: KLine, goal: KLine) -> Rationalisation:
-        self.entries = 0
-        self.stalled: dict[KNode, _Entry] = {}
-        self.frame: list[KNode] = []
-        self.events: list[Event] = []
+    def open(self, ask: KLine, goal: KLine, finish: Callable[["_State"], None]) -> _Entry:
+        """A run's root — a fresh state, the goal its one and only candidate."""
+        return _Entry(_State(ask, goal, finish), ask.signature, [goal], None, "")
 
-        def frame(x: KNode) -> bool:
-            if x and x not in self.frame:
-                self.frame.append(x)
-                return True
-            return False
+    def rationalise(self, ask: KLine, goal: KLine, end_step: Callable[[Rationalisation]] | None = None):
+        def _finish(st: _State) -> None:
+            """The run's end — stalls that never aligned (S4) broadcast bare."""
+            for a in st.stalled:
+                if self.on_stall is not None:
+                    self.on_stall(KLine(a, []))
+            if end_step is not None:
+                end_step(Rationalisation(st.events))
 
-        def framed(x: KNode) -> bool:
-            return not x or any(contained(x, f) for f in self.frame)
+        root = self.open(ask, goal, _finish)
+        self.stack.append(root)
 
-        def pop(entry: _Entry) -> _Entry:
-            if not entry.parent: return ENone
-            return entry.parent
-
-        def push(A: KNode, entry: _Entry, comp: str) -> _Entry:
-            entry.at[comp] = len(self.frame)
-            cands = self._candidates(A, entry)
-            chain = (entry.chain | {entry.A}) if entry.parent else frozenset()
-            return  _Entry(A, cands, entry, comp, chain=chain)
-
-        def fresh(comp: str) -> bool:
-            # a component reenters once per candidate — and again only
-            # when new frames arrived since its last entry
-            return comp not in entry.at or len(self.frame) > entry.at[comp]
-
-        entry = push(ask.signature, ENone, "")
-        entry.cands = [goal]
-        while entry.A != KNone:
-            if self.entries > self.MAX_ENTRIES:
-                break  # the entry cap — the run stops
-            self.entries += 1
+    def cogitate(self):
+        """The walk — the stack's top entry turns until the stack is empty."""
+        while self.stack:
+            entry = self.stack[-1]
+            st = entry.st
+            if st.entries > self.MAX_ENTRIES:
+                self._drop_run(st)  # the capped run's entries — dropped
+                st.finish(st)  # the entry cap — the run stops, the stack keeps walking
+                continue
+            st.entries += 1
 
             A = entry.A
             if not entry.cands:  # S4 stalled
-                if A in self.stalled and self.stalled[A].comp != entry.comp and self.common_ancestor(entry, self.stalled[A]):
-                        frame(A) # S3 aligned
-                        self.events.append(Event("exchanged", A, frame=A))
-                        self.stalled.pop(A)
+                if A in st.stalled and st.stalled[A].comp != entry.comp and self.common_ancestor(entry, st.stalled[A]):
+                    entry.frame(A) # S3 aligned
+                    st.events.append(Event("exchanged", A, frame=A))
+                    st.stalled.pop(A)
                 else:
-                    self.stalled[A] = entry
-                    self.events.append(Event("stalled", A))
+                    st.stalled[A] = entry
+                    st.events.append(Event("stalled", A))
 
-                entry = pop(entry)  # backtrack: the parent keeps its candidate
+                self._drop(entry)  # backtrack: the parent keeps its candidate
                 continue
-                
-            else:
-                C = entry.cands[-1]
-                cs = C.signature
-                F, U, O = fit(A, cs), underfit(A, cs), overfit(C.nodes, A)
-                if F == A:
-                    frame(F)
 
-                f_ok = framed(F)
-                u_ok = framed(U)
-                o_ok = framed(O)
-                if f_ok and u_ok and o_ok:  # S2 aligned
-                    frame(A)
-                    if goal.signature == can(C.nodes):  # the claim is made
-                        self.events.append(Event("claimed", A, C, F, U, O, frame=A))
-                        if self.on_claim is not None:
-                            self.on_claim(KLine(ask.signature, [goal.signature]))  # leaves now, mid-run
-                    else:
-                        self.events.append(Event("resolved", A, C, F, U, O, frame=A))
-                elif not entry.at:  # the entry notes itself once — re-evaluation after
-                    self.events.append(Event("entry", A, C, F, U, O)) 
+            C = entry.cands[-1]
+            cs = C.signature
+            F, U, O = fit(A, cs), underfit(A, cs), overfit(C.nodes, A)
+            if F == A:
+                entry.frame(F)
 
-                if not u_ok and fresh("U"):
-                    entry = push(U, entry, "U")
-                    continue
+            f_ok = entry.framed(F)
+            u_ok = entry.framed(U)
+            o_ok = entry.framed(O)
+            if f_ok and u_ok and o_ok:  # S2 aligned
+                entry.frame(A)
+                if st.goal.signature == can(C.nodes):  # the claim is made
+                    st.events.append(Event("claimed", A, C, F, U, O, frame=A))
+                    if self.on_claim is not None:
+                        self.on_claim(KLine(st.ask.signature, [st.goal.signature]))  # leaves now, mid-run
+                else:
+                    st.events.append(Event("resolved", A, C, F, U, O, frame=A))
+            elif not entry.at:  # the entry notes itself once — re-evaluation after
+                st.events.append(Event("entry", A, C, F, U, O)) 
 
-                if not o_ok and fresh("O"):
-                    entry = push(O, entry, "O")
-                    continue
+            if not u_ok and entry.fresh("U"):
+                self._push(U, entry, "U")
+                continue
 
-                if not f_ok and fresh("F"):
-                    entry = push(F, entry, "F")
-                    continue
+            if not o_ok and entry.fresh("O"):
+                self._push(O, entry, "O")
+                continue
 
-                entry.cands.pop()
-                entry.at.clear()
+            if not f_ok and entry.fresh("F"):
+                self._push(F, entry, "F")
+                continue
 
+            entry.cands.pop()
+            entry.at.clear()
             if not entry.cands:
-                entry = pop(entry)
+                self._drop(entry)
+                if entry.parent is None:  # the root popped — the run is complete
+                    st.finish(st)
 
-        for a in self.stalled:  # stalls that never aligned (S4)
-            if self.on_stall is not None:
-                self.on_stall(KLine(a, []))
+    def _drop(self, entry: _Entry) -> None:
+        """The entry leaves the stack wherever it sits — a sink may land
+        another run's entries above it mid-iteration."""
+        for i in reversed(range(len(self.stack))):
+            if self.stack[i] is entry:
+                del self.stack[i]
+                return
 
-        return Rationalisation(self.events)
+    def _drop_run(self, st: _State) -> None:
+        """The run's entries leave the stack wherever they sit."""
+        for i in reversed(range(len(self.stack))):
+            if self.stack[i].st is st:
+                del self.stack[i]
+
+    def _push(self, A: KNode, entry: _Entry, comp: str) -> None:
+        """The component reenters — the child lands on top, the parent suspends
+        beneath it, its candidate kept for the re-evaluation."""
+        entry.at[comp] = len(entry.st.frame)
+        cands = self._candidates(A, entry)
+        chain = entry.chain | {entry.A}
+        self.stack.append(_Entry(entry.st, A, cands, entry, comp, chain))
 
     def _candidates(self, sig: KNode, entry: _Entry) -> list[KLine]:
         """An ask never reenters its origin: its parent ask's and parent
@@ -169,4 +206,8 @@ class Cogitator:
     
 def rationalise(d: Domain, ask: KLine, goal: KLine) -> Rationalisation:
     """The one-shot runner — one Cogitator, one entry."""
-    return Cogitator(d).rationalise(ask, goal)
+    out: list[Rationalisation] = []
+    cog = Cogitator(d)
+    cog.rationalise(ask, goal, out.append)
+    cog.cogitate()
+    return out[0]
