@@ -528,7 +528,16 @@
 - [[sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline]] — Observation: rationalisation stack migrated to kalvin KLine *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem]] — Observation: ReferenceCogitator retired; instruments and witness index removed *(created: 2026-11-17)*
 - [[sources/obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec]] — Observation: Word registry drives derived labels — fit/underfit/overfit decompose bits *(created: 2026-11-17)*
+- [[sources/obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs]] — Observation: Bare `==` RHS now stamps ask goal — mhall-ag.ks runs *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair]] — Observation: Bare `== SVO` RHS leaves ask goal empty — harness finds no pair *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p]] — Observation: Candidates-logic serving landed — wdmh claims restored, tests ported *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-]] — Observation: On-demand scaffolding landed — stall sink live at S4, retry by stack push *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical]] — Observation: Real-stack Cogitator verified behaviour-identical *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread]] — Observation: serve()/stop() standing walk verified on a real thread *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe]] — Observation: Shared-stack cogitate verified; sink-reentrancy pop bugs fixed *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path]] — Observation: Sketch defects: push-without-descent kills the claim path *(created: 2026-11-18)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
+- [[sources/real-stack-overlay-position-free-turns]] — Real-stack overlay: position-free turns enable interleaving *(created: 2026-11-18)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
 - [[sources/s4-backtrack-exhaustion-diagnosis]] — S4 "exhaustion" was a backtrack bookkeeping defect *(created: 2026-11-07)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
@@ -549,4 +558,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-17T16:51:06.913Z* | *Total pages: 531*
+*Last updated: 2026-11-18T18:25:14.170Z* | *Total pages: 540*

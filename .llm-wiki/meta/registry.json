@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-17T16:51:06.913Z",
+  "last_updated": "2026-11-18T18:25:14.170Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -8325,6 +8325,143 @@
       "created": "2026-11-17",
       "updated": "2026-11-17"
     },
+    "sources/obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs": {
+      "type": "source",
+      "title": "Observation: Bare `==` RHS now stamps ask goal — mhall-ag.ks runs",
+      "tags": [
+        "kscript",
+        "compiler",
+        "fix",
+        "goal",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs",
+      "relevance": "high",
+      "observed_at": "2026-11-18T17:06:08.117Z",
+      "source_context": "Compiler-side fix for bare `== SVO` RHS goal stamping",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair": {
+      "type": "source",
+      "title": "Observation: Bare `== SVO` RHS leaves ask goal empty — harness finds no pair",
+      "tags": [
+        "kscript",
+        "harness",
+        "compiler",
+        "goal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair",
+      "relevance": "high",
+      "observed_at": "2026-11-18T17:01:23.994Z",
+      "source_context": "Investigating why the dialogue harness reports no findable goal for mhall-ag.ks",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p": {
+      "type": "source",
+      "title": "Observation: Candidates-logic serving landed — wdmh claims restored, tests ported",
+      "tags": [
+        "cogitator",
+        "harness",
+        "scaffolding",
+        "candidates",
+        "stall"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p",
+      "relevance": "high",
+      "observed_at": "2026-11-18T18:25:14.062Z",
+      "source_context": "Porting tests and docs to the user's candidates-logic stall semantics",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-": {
+      "type": "source",
+      "title": "Observation: On-demand scaffolding landed — stall sink live at S4, retry by stack push",
+      "tags": [
+        "cogitator",
+        "harness",
+        "scaffolding",
+        "stall",
+        "retry"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-",
+      "relevance": "high",
+      "observed_at": "2026-11-18T17:20:53.313Z",
+      "source_context": "Implementing on-demand scaffolding: stall event, harness lookup, stack-push retry",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical": {
+      "type": "source",
+      "title": "Observation: Real-stack Cogitator verified behaviour-identical",
+      "tags": [
+        "cogitator",
+        "rationalisation",
+        "stack"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical",
+      "relevance": "critical",
+      "observed_at": "2026-11-18T15:22:38.581Z",
+      "source_context": "Overlaying the pseudo stack onto a real stack in the Cogitator",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread": {
+      "type": "source",
+      "title": "Observation: serve()/stop() standing walk verified on a real thread",
+      "tags": [
+        "cogitator",
+        "threading",
+        "serve",
+        "condition"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread",
+      "relevance": "high",
+      "observed_at": "2026-11-18T16:30:06.783Z",
+      "source_context": "Implementing while True + condition-wait serve loop on the Cogitator",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe": {
+      "type": "source",
+      "title": "Observation: Shared-stack cogitate verified; sink-reentrancy pop bugs fixed",
+      "tags": [
+        "cogitator",
+        "harness",
+        "interleaving",
+        "threading"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe",
+      "relevance": "critical",
+      "observed_at": "2026-11-18T16:19:12.855Z",
+      "source_context": "Verifying the harness-pushes-steps-onto-cogitator-stack arrangement",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path": {
+      "type": "source",
+      "title": "Observation: Sketch defects: push-without-descent kills the claim path",
+      "tags": [
+        "cogitator",
+        "debugging",
+        "stack"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path",
+      "relevance": "high",
+      "observed_at": "2026-11-18T15:22:52.878Z",
+      "source_context": "Diagnosing the user's Cogitator sketch that produced no claims",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
     "sources/pseudocode-audit-three-false-lines-recheck-invisible": {
       "type": "source",
       "title": "Pseudocode audit: three false lines, the re-run invisible; corrected in docstring",
@@ -8333,6 +8470,15 @@
       "slug": "pseudocode-audit-three-false-lines-recheck-invisible",
       "created": "2026-11-03",
       "updated": "2026-11-03"
+    },
+    "sources/real-stack-overlay-position-free-turns": {
+      "type": "source",
+      "title": "Real-stack overlay: position-free turns enable interleaving",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "real-stack-overlay-position-free-turns",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
     },
     "sources/reentry-probe-fit-gate-divergence": {
       "type": "source",

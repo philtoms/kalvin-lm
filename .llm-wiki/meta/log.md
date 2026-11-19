@@ -1331,3 +1331,30 @@
 ## [2026-11-17T16:51:06.795Z] observe
 - slug: "obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz", title: "Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s", relevance: "high"
 
+## [2026-11-18T15:22:38.584Z] observe
+- slug: "obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical", title: "Real-stack Cogitator verified behaviour-identical", relevance: "critical"
+
+## [2026-11-18T15:22:52.880Z] observe
+- slug: "obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path", title: "Sketch defects: push-without-descent kills the claim path", relevance: "high"
+
+## [2026-11-18T15:22:52.883Z] retro
+- slug: "real-stack-overlay-position-free-turns", title: "Real-stack overlay: position-free turns enable interleaving", category: "architecture"
+
+## [2026-11-18T16:19:12.858Z] observe
+- slug: "obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe", title: "Shared-stack cogitate verified; sink-reentrancy pop bugs fixed", relevance: "critical"
+
+## [2026-11-18T16:30:06.785Z] observe
+- slug: "obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread", title: "serve()/stop() standing walk verified on a real thread", relevance: "high"
+
+## [2026-11-18T17:01:23.997Z] observe
+- slug: "obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair", title: "Bare `== SVO` RHS leaves ask goal empty — harness finds no pair", relevance: "high"
+
+## [2026-11-18T17:06:08.121Z] observe
+- slug: "obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs", title: "Bare `==` RHS now stamps ask goal — mhall-ag.ks runs", relevance: "high"
+
+## [2026-11-18T17:20:53.316Z] observe
+- slug: "obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-", title: "On-demand scaffolding landed — stall sink live at S4, retry by stack push", relevance: "high"
+
+## [2026-11-18T18:25:14.064Z] observe
+- slug: "obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p", title: "Candidates-logic serving landed — wdmh claims restored, tests ported", relevance: "high"
+

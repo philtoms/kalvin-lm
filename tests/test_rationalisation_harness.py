@@ -22,6 +22,10 @@ MHALL == SVO =>
      L = O
 """
 
+_SCRIPTS = Path(__file__).resolve().parents[1] / "dev/dialogue/scripts"
+MHALL = (_SCRIPTS / "mhall.ks").read_text()
+WDMH = (_SCRIPTS / "wdmh.ks").read_text()
+
 
 def test_scripts_run_and_ask():
     # Every run is a sequence of asks: one step per ask==goal scenario.
@@ -34,8 +38,24 @@ def test_the_one_entry_is_the_ask():
     runner = Runner()
     steps = runner.run(SCRIPT)
     assert len(steps[0].kline.nodes) == 5  # the MHALL ask: the full sentence
-    # the primed klines are in the domain (they never rationalise as steps)
-    assert any(can(k.nodes) == k.signature for k in runner.domain if len(k.nodes) == 1)
+    # the other compiled klines are held as scaffolding, not primed — the
+    # domain grows only from what a stall serves, and only from what is held
+    assert all(k in set(runner.scaffolding) for k in runner.domain)
+
+
+def test_a_served_stall_supplies_scaffolding_on_demand(tmp_path):
+    # wdmh over mhall: a stall is served — the held klines that qualify as
+    # candidates for the stalled signature join the domain mid-run — and
+    # later steps read them as candidates; the unserved stalls stand
+    (tmp_path / "mhall.ks").write_text(MHALL)
+    (tmp_path / "wdmh.ks").write_text(WDMH)
+    runner = Runner()
+    steps = runner.run(WDMH, resolver=path_resolver(tmp_path))
+    assert len(steps) == 2
+    held = set(runner.scaffolding)
+    assert runner.domain  # a stall was served — scaffolding landed
+    assert all(k in held for k in runner.domain)  # only held klines ever join
+    assert runner.stalls  # the unserved stalls stand
 
 
 def test_a_script_without_an_ask_is_rejected():
@@ -66,12 +86,17 @@ def test_tlabel_prefers_the_value_s_own_label():
 def test_claimed_event_labels_decompose_mts():
     # wdmh.ks: A = WDMH against C = MHALL — fit Mary (had and have share
     # the initial but not the bit, so the fit is Mary alone; a single
-    # component stands whole), underfit WDH, overfit HALL.
+    # component stands whole), underfit WDH, overfit HALL. The claim no
+    # longer grounds (scaffolding is held, not primed — WDH starves), but
+    # the entry event carries the same decomposed labels.
     script = Path("dev/dialogue/scripts/wdmh.ks").read_text()
     steps = Runner().run(script, resolver=path_resolver(Path("dev/dialogue/scripts")))
-    claimed = [ev for s in steps for ev in s.result.events if ev.kind == "claimed"]
-    assert claimed, "no claimed event"
-    ev = claimed[-1]
+    entered = [
+        ev for s in steps for ev in s.result.events
+        if ev.kind == "entry" and ev.entry.label == "WDMH"
+    ]
+    assert entered, "no entry event"
+    ev = entered[0]
     assert ev.F.label == "Mary"
     assert ev.U.label == "WDH"
     assert ev.O.label == "HALL"

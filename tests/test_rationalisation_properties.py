@@ -151,7 +151,12 @@ def test_no_fabrication(sc):
 def test_rationalisation_is_honest(sc):
     d, entry, goal = sc
     stalls: list[KLine] = []
-    cog = Cogitator(d, on_stall=stalls.append)
+
+    def sink(k: KLine, e) -> bool:
+        stalls.append(k)
+        return False
+
+    cog = Cogitator(d, on_stall=sink)
     cog.rationalise(entry, goal=goal)
     cog.cogitate()
     # every broadcast stall is a bare S4 — nothing offered, nothing held

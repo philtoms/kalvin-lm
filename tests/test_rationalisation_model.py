@@ -10,7 +10,9 @@ from rationalisation import (
     Band,
     Cogitator,
     Domain,
+    Entry,
     KLine,
+    Rationalisation,
     band,
     can,
     effort,
@@ -168,15 +170,66 @@ def test_disjoint_candidate_asks_s4():
 
 def test_unaligned_stalls_broadcast_bare():
     # atoms only — the C ask meets nobody but identities: both unaligned
-    # sides stall and broadcast bare at the run's end
+    # sides stall and broadcast bare, live at S4
     d = base_domain()
     stalls: list[KLine] = []
-    cog = Cogitator(d, on_stall=stalls.append)
+
+    def sink(k: KLine, e: Entry) -> bool:
+        stalls.append(k)
+        return False
+
+    cog = Cogitator(d, on_stall=sink)
     cog.rationalise(k(C, C), goal=k(AB, A, B))
     cog.cogitate()
     assert sorted(int(s.signature) for s in stalls) == [AB, C]  # both sides starved
     assert all(not s.nodes for s in stalls)  # a broadcast stall is bare — pure S4
     assert all(effort(s) == 1 for s in stalls)  # exactly full — nothing to work with
+
+
+def test_a_served_stall_reenters_with_fresh_candidates():
+    # empty domain: the U region stalls at S4; the stall event reaches the
+    # sink live with its entry, the sink serves scaffolding (the harness's
+    # right — D grows mid-run) and answers True, and the stalled component
+    # re-descends from its parent with fresh candidates — the retry aligns
+    d = Domain()
+    scaffold = k(A | D, A, D)
+    stalls: list[KLine] = []
+
+    def serve(stall: KLine, entry: Entry) -> bool:
+        stalls.append(stall)
+        if int(stall.signature) == A | D:
+            d.add(scaffold)
+            return True
+        return False
+
+    cog = Cogitator(d, on_stall=serve)
+    r: list[Rationalisation] = []
+    cog.rationalise(k(ABCD, ABCD), goal=k(BC, B, C), end_step=r.append)
+    cog.cogitate()
+    assert stalls and int(stalls[0].signature) == A | D  # the stall event, live
+    assert any(
+        e.kind == "resolved" and e.candidate == scaffold for e in r[0].events
+    )  # the retried entry met the served scaffold
+    assert scaffold in d
+
+
+def test_an_unserved_stall_stands():
+    # the same run, a sink that serves nothing: the stall stands (filed,
+    # broadcast, unaligned), nothing reenters — the honest state of the system
+    d = Domain()
+    stalls: list[KLine] = []
+
+    def sink(k: KLine, e: Entry) -> bool:
+        stalls.append(k)
+        return False
+
+    cog = Cogitator(d, on_stall=sink)
+    r: list[Rationalisation] = []
+    cog.rationalise(k(ABCD, ABCD), goal=k(BC, B, C), end_step=r.append)
+    cog.cogitate()
+    assert sorted(int(s.signature) for s in stalls) == [BC, A | D]  # both regions starve
+    assert not any(e.kind == "resolved" for e in r[0].events)  # no retry, no alignment
+    assert not any(k for k in d)  # the domain never grew
 
 
 @pytest.mark.xfail(reason="mid-migration debt: old module-level rationalise semantics (e93c192); superseded by the Cogitator reentry - port pending", strict=False)

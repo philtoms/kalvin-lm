@@ -17,7 +17,7 @@ from rationalisation.algebra import (
     underfit,
     significance,
 )
-from rationalisation.cogitator import Cogitator, rationalise
+from rationalisation.cogitator import Cogitator, rationalise, Entry, candidates
 from rationalisation.domain import Domain
 from rationalisation.report import Event, Proposal, Rationalisation
 
@@ -28,6 +28,7 @@ __all__ = [
     "Domain",
     "Event",
     "KLine",
+    "Entry",
     "Proposal",
     "Rationalisation",
     "band",
@@ -41,4 +42,5 @@ __all__ = [
     "rationalise",
     "underfit",
     "significance",
+    "candidates"
 ]

@@ -4,11 +4,14 @@ A minimal, synchronous, non-judging loop. Compiles a KScript source and
 runs it as a sequence of ask==goal scenarios: every `==` ask whose named
 goal resolves to a kline entry is one scenario — the ask presented once,
 the goal handed to it directly, never presented and never stored. Every
-other kline primes the domain; scenarios run in ask order over the one
-live domain. Priming is a harness fact — the harness owns the domain,
-and nothing learns into it during a run: the Cogitator reads it, stores
-nothing, and broadcasts its claims to the harness (the claim sink) at
-S2. Claims are reported; they persist nowhere, for now.
+other kline is held as scaffolding, not primed: the domain starts empty,
+and a stall demands — the harness applies the candidates logic to what
+it holds, from the stalled entry's seat, adds what qualifies to the
+domain, and the model retries (the stalled component pushed back on
+the stack). Scenarios run in ask order over the one live domain. Priming is a harness fact — the harness owns the
+domain, and nothing learns into it during a run: the Cogitator reads it,
+stores nothing, and broadcasts its claims to the harness (the claim sink)
+at S2. Claims are reported; they persist nowhere, for now.
 
 Each step's trace table prints by default; the end-of-run state (the
 held domain, the open proposals) only with ``-v``.
@@ -38,11 +41,13 @@ from rationalisation import (
     Domain,
     Event,
     KLine,
+    Entry,
     Rationalisation,
     Cogitator,
     band,
     can,
     effort,
+    candidates
 )
 
 # The appendix's content mask: the word half is content; the token half is
@@ -67,6 +72,7 @@ class Runner:
         self.tokenizer = tokenizer or BPETokenizer()
         self.signifier = NLPSignifier()
         self.domain = Domain()
+        self.scaffolding = Domain()  # held klines, served on demand at a stall
         self.word_bits: dict[str, int] = {}
         self.claims: list[tuple[int, KLine]] = []  # (step, claim) — appended at grounding, mid-run
         self.stalls: list[tuple[int, KLine]] = []  # (step, stalled kline) — appended at run's end
@@ -78,12 +84,21 @@ class Runner:
         self.claims.append((self._step_index, claim))
         # self.domain.add(claim)
 
-    def _stall(self, kline: KLine) -> None:
-        """The stall sink — an unaligned stall files itself as a connect
-        proposal: fit wanted, nobody to talk to."""
-        self.stalls.append((self._step_index, kline))
+    def _stall(self, kline: KLine, entry: Entry) -> bool:
+        """The stall sink — an S4 stall demands scaffolding: the held klines
+        that qualify as candidates for the stalled signature, from the
+        entry's own seat (the same logic the model reads D with), join the
+        domain and the model retries; an unserved stall files itself as a
+        connect proposal: fit wanted, nobody to talk to."""
+        cands = candidates(kline.signature, entry, self.scaffolding)
+        if not cands:
+            self.stalls.append((self._step_index, kline))
+            return False
+        for k in cands:
+            self.domain.add(k)
+        return True
 
-    def run(self, source: str, resolver=None) -> list[Step]:
+    def run(self, source: str, resolver=None, scaffold=False) -> list[Step]:
         """An ask==goal run: every `==` ask with a resolvable goal is one
         scenario — the ask presented once, the goal handed to it directly
         (never presented, never stored). Everything else primes the domain;
@@ -106,7 +121,11 @@ class Runner:
         with using_word_labels(words):
             for other in entries:
                 if id(other) not in paired:
-                    self.domain.add(_to_kline(other))  # primed — never an R1 store
+                    k = _to_kline(other)
+                    if scaffold:
+                        self.scaffolding.add(k)  # held, never an R1 store
+                    else:
+                        self.domain.add(k)  # held, never an R1 store
             steps: list[Step] = []
             for ask, goal in pairs:
                 self._step(steps, len(steps), ask, goal=_to_kline(goal))
@@ -385,6 +404,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Show the end-of-run state (held domain, open proposals) and hex "
              "signatures alongside labels.",
     )
+    parser.add_argument(
+        "-s", "--scaffold", action="store_true",
+        help="Hold scaffolding prior to run",
+    )
     args = parser.parse_args(argv)
 
     path = Path(args.source)
@@ -395,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     runner = Runner()
     try:
-        steps = runner.run(source, resolver=path_resolver(path.parent))
+        steps = runner.run(source, resolver=path_resolver(path.parent), scaffold=args.scaffold)
     except ValueError as exc:
         print(f"harness: {exc}", file=sys.stderr)
         return 2

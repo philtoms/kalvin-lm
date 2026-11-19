@@ -72,12 +72,15 @@ A script compiles to entries. The harness (`dev/dialogue/harness.py`)
 builds **ask==goal scenarios**: every `==` ask with a resolvable goal
 is one scenario — the ask presented once, the goal handed to it
 directly, never presented and never stored. Every other entry is
-**primed** into D verbatim (a harness fact). The harness owns the
-domain; nothing learns into it during a run. Scenarios run in ask
-order over the one live domain. The harness is the **claim sink**: a
-claim is in its hands the moment it grounds — mid-run, not at the
-run's return. For now the harness reports claims; it persists
-nothing.
+**held** as scaffolding, not primed: D starts empty, and a stall
+demands — the harness applies the candidates logic (§2.3 CANDIDATES)
+to what it holds, from the stalled entry's seat, and adds what
+qualifies to D (a harness fact; the domain only grows, now mid-run). Scenarios run in ask order over the one live domain.
+The harness owns the domain; the model never writes it — nothing
+learns into D during a run but the harness's own hand. The harness is
+the **claim sink**: a claim is in its hands the moment it grounds —
+mid-run, not at the run's return. For now the harness reports claims;
+it persists nothing.
 
 ### 2.2 The machine's state
 
@@ -104,9 +107,10 @@ may land a new run's root mid-iteration and the walk is unaffected.
 The Cogitator owns no
 store: the domain is read-only. The claim is not run state: it leaves
 at S2 through the **claim sink** (`on_claim`) — a run may broadcast
-many. An unaligned stall follows the same shape: it leaves at the
-run's end through the **stall sink** (`on_stall`), bare — `⟨σ, []⟩` —
-and the run's report leaves with it through `end_step`.
+many. A stall leaves the same way: at S4, live, through the **stall
+sink** (`on_stall`) — the bare `⟨σ, []⟩` and the entry that stalled —
+and the sink answers, served or not; the run's report leaves at the
+run's end through `end_step`.
 
 A **reentry** is a bare region-signature: no witness nodes travel
 with it — the child's candidates are whatever the domain holds.
@@ -172,12 +176,17 @@ ask's, whatever entry aligned.
 
 **STALL / EXCHANGE**. An entry with no candidates left stalls at S4,
 filed under its signature, and backtracks — the parent keeps its
-remaining candidates. Two stalls on one signature from different
-components sharing a common ancestor witness each other: the
-signature frames, the stall resolves, nothing is stored. A stall
-that never aligns broadcasts at the run's end through the **stall
-sink** — the claim channel's equal — as a bare `⟨σ, []⟩`; the
-harness reads it as its connect proposal.
+remaining candidates. The stall leaves at once, live, through the
+stall sink with its entry — the harness reads it as its demand for
+scaffolding: it applies the candidates logic to what it holds, from
+the stalled entry's seat, and may answer **served**, adding what
+qualifies to D (its own hand). Served, the stalled component
+**reenters** — pushed back on the stack through the same push as any
+component, its candidates recomputed from the grown D. The retry is a
+push, never a block; unanswered, the stall stands, filed and
+broadcast. Two stalls on one signature from different components
+sharing a common ancestor witness each other: the signature frames,
+the stall resolves, nothing is stored.
 
 **HALT**. The entry cap is the only other terminal arrival; it stops
 the run.
@@ -187,8 +196,8 @@ the run.
 - The run never writes D — the domain is the harness's; frames only
   grow; the events list only appends.
 - Claims broadcast to the sink at every S2 alignment with the goal;
-  unaligned stalls broadcast at the run's end. Neither channel
-  assumes uniqueness — the sink holds whatever arrives.
+  stalls broadcast at S4, live. Neither channel assumes uniqueness —
+  the sink holds whatever arrives.
 - Every frame is a signature; every reentered region (U, O, F) is a
   signature — meets and residues of signatures. No composite — no
   `σ | can(N)` of any kline — is ever fitted, minted, or reentered.
@@ -201,13 +210,15 @@ consumes a candidate, pushes one child entry, or backtracks one link;
 a component re-descends only on new frames (the `at` map), and the
 entries counter caps the whole loop outright.
 
-**T2.** The outcome is a function of `(D₀, ask, goal)`: every choice
-point is ordered (candidates list in D's insertion order and are
-consumed from the end, the component priority is fixed U then O then
-F, stalls file by signature), and the sets serve membership only.
-An entry's stack position is not an input — a turn reads only the
-entry and its run's state — so independent runs interleaved on one
-stack keep their own outcomes.
+**T2.** The outcome is a function of `(D₀, the stall answers, ask,
+goal)`: every choice point is ordered (candidates list in D's
+insertion order and are consumed from the end, the component priority
+is fixed U then O then F, stalls file by signature), and the sets serve
+membership only. The stall answers — what the sink adds to D at a
+stall — are the harness's, and deterministic in kind. An entry's
+stack position is not an input — a turn reads only the entry and its
+run's state — so independent runs interleaved on one stack keep their
+own outcomes.
 
 ## 4. Retired instruments
 

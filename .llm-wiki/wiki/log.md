@@ -1,5 +1,17 @@
 # Wiki Update Log
 
+## 2026-11-18
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p","title":"Candidates-logic serving landed — wdmh claims restored, tests ported"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-","title":"On-demand scaffolding landed — stall sink live at S4, retry by stack push"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs","title":"Bare `==` RHS now stamps ask goal — mhall-ag.ks runs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair","title":"Bare `== SVO` RHS leaves ask goal empty — harness finds no pair"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread","title":"serve()/stop() standing walk verified on a real thread"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe","title":"Shared-stack cogitate verified; sink-reentrancy pop bugs fixed"}
+- **retro**: {"category":"architecture","slug":"real-stack-overlay-position-free-turns","title":"Real-stack overlay: position-free turns enable interleaving"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path","title":"Sketch defects: push-without-descent kills the claim path"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical","title":"Real-stack Cogitator verified behaviour-identical"}
+
 ## 2026-11-17
 
 - **observe**: {"relevance":"high","slug":"obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz","title":"Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s"}
