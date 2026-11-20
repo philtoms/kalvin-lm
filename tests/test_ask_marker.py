@@ -39,6 +39,17 @@ def test_countersigns_ask_carries_marker_and_canon_nodes(tokenizer):
     assert ask.kline.dbg.goal == "MHALL"
 
 
+def test_countersigns_bare_rhs_stamps_the_goal(tokenizer):
+    # `== B` with no `=>` body: the RHS signature names the goal — the
+    # compound's own canon is the goal kline.
+    entries = compile_source(
+        "(what did Mary have)\nWDMH == MHALL\n",
+        tokenizer=tokenizer, signifier=NLPSignifier(), dev=True,
+    )
+    (ask,) = _asks(entries)
+    assert ask.kline.dbg.goal == "MHALL"
+
+
 def test_ask_is_never_its_canon(tokenizer):
     # A `==` ask suppresses its own fresh expansion canon: the ask is the
     # sole stored form of the sig — the question, never the answer.

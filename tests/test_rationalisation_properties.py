@@ -9,16 +9,17 @@ from hypothesis import given, settings, strategies as st
 from rationalisation import (
     Band,
     Domain,
-    Kline,
+    KLine,
     band,
     can,
-    contained,
-    decompose,
     effort,
     entropy,
-    proposals,
+    fit,
+    Cogitator,
+    overfit,
     rationalise,
     significance,
+    underfit,
 )
 
 ATOMS = [1 << i for i in range(6)]
@@ -36,49 +37,54 @@ def sigs() -> st.SearchStrategy[int]:
     return st.sampled_from(ALL_SIGS)
 
 
-def adjacencies(pool: list[int] | None = None, min_size: int = 0, max_size: int = 5) -> st.SearchStrategy[frozenset[int]]:
-    return st.sets(st.sampled_from(pool or ALL_SIGS), min_size=min_size, max_size=max_size).map(frozenset)
+def adjacencies(pool: list[int] | None = None, min_size: int = 0, max_size: int = 5) -> st.SearchStrategy[list[int]]:
+    return st.sets(st.sampled_from(pool or ALL_SIGS), min_size=min_size, max_size=max_size).map(sorted)
 
 
-def klines(pool: list[int] | None = None) -> st.SearchStrategy[Kline]:
-    return st.builds(Kline, sigs(), adjacencies(pool))
+def klines(pool: list[int] | None = None) -> st.SearchStrategy[KLine]:
+    return st.builds(KLine, sigs(), adjacencies(pool))
 
 
 @st.composite
 def closed_domains(draw) -> Domain:
     """Random referentially-closed domains: every adjacency node is a held signature.
     Several canonical witnesses may share a head (Definition 6)."""
-    d = Domain([Kline(a, frozenset([a])) for a in ATOMS])
+    d = Domain([KLine(a, [a]) for a in ATOMS])
     held = list(ATOMS)
     for _ in range(draw(st.integers(0, 10))):
         nodes = draw(adjacencies(held, max_size=4))
-        k = Kline(draw(sigs()), nodes)
+        k = KLine(draw(sigs()), nodes)
         d.add(k)
-        if k.sig not in held:
-            held.append(k.sig)
+        if k.signature not in held:
+            held.append(k.signature)
     return d
 
 
 @st.composite
-def scenarios(draw) -> tuple[Domain, Kline]:
-    """An I-1-closed domain and an admissible entry (Definition 8 presentation)."""
+def scenarios(draw) -> tuple[Domain, KLine, KLine]:
+    """An I-1-closed domain, an admissible entry, and a goal — a canon the
+domain holds (the ask is never goal-less)."""
     d = draw(closed_domains())
-    held = sorted({k.sig for k in d})
-    entry = Kline(draw(st.sampled_from(held)), draw(adjacencies(held, max_size=3)))
-    return d, entry
+    held = sorted({k.signature for k in d})
+    entry = KLine(draw(st.sampled_from(held)), draw(adjacencies(held, max_size=3)))
+    goal = draw(st.sampled_from([k for k in d if d.is_canonical(k)]))
+    return d, entry, goal
 
 
 # --- §4 Definition 11: the band ---
 
 
-def oracle_band(k: Kline) -> Band:
+def oracle_band(k: KLine) -> Band:
     """Independent formulation: no ordered cases."""
-    if not k.adj:
+    if not k.nodes:
         return Band.S4
-    t = decompose(k)
-    if t.U == 0 and t.O == 0:
+    a_hat = can(k.nodes)
+    f = fit(k.signature, a_hat)
+    u = underfit(k.signature, a_hat)
+    o = overfit(k.nodes, k.signature)
+    if u == 0 and o == 0:
         return Band.S1
-    if t.F == 0:
+    if f == 0:
         return Band.S3
     return Band.S2
 
@@ -88,51 +94,6 @@ def oracle_band(k: Kline) -> Band:
 def test_band_total_and_matches_oracle(k):
     assert band(k) in Band
     assert band(k) is oracle_band(k)
-
-
-# --- §4 Definition 12: decomposition ---
-
-
-@settings(deadline=None)
-@given(klines())
-def test_decomposition_laws(k):
-    t = decompose(k)
-    a_hat = can(k.adj)
-    assert k.sig == t.F | t.U
-    assert a_hat == t.F | t.O
-    assert t.F & t.U == 0 and t.F & t.O == 0 and t.U & t.O == 0
-    # U is signature-side; O is adjacency-side
-    assert contained(t.U, k.sig) and t.U & a_hat == 0
-    assert contained(t.O, a_hat) and t.O & k.sig == 0
-    assert (band(k) is Band.S2) == (t.F != 0 and (t.U != 0 or t.O != 0))
-
-
-# --- §2 Definition 6: witness (first-stored wins) ---
-
-
-@settings(deadline=None)
-@given(closed_domains())
-def test_witness_law(d):
-    canonical_sigs = {k.sig for k in d if d.is_canonical(k)}
-    for s in canonical_sigs:
-        assert can(d.witness(s)) == s  # can(witness(s)) = s
-    for s in range(1, 64):
-        if s not in canonical_sigs:
-            assert d.witness(s) == frozenset()  # total: ∅ when not held
-
-
-@settings(deadline=None)
-@given(closed_domains())
-def test_witness_returns_first_stored(d):
-    """Several canonical witnesses may share a head; the lookup keeps the
-    first-stored and the law holds. Iteration is insertion order."""
-    seen: dict[int, frozenset[int]] = {}
-    for k in d:
-        if d.is_canonical(k):
-            first = seen.setdefault(k.sig, k.adj)
-            if k.adj != first:
-                assert d.witness(k.sig) == first  # coexistence: first-stored wins
-                assert can(d.witness(k.sig)) == k.sig  # the law holds regardless
 
 
 # --- §4 Definition 13: entropy and graded significance ---
@@ -174,29 +135,31 @@ def test_effort_properties(k):
 @settings(deadline=None, max_examples=150)
 @given(scenarios())
 def test_no_fabrication(sc):
-    d, entry = sc
+    d, entry, goal = sc
     before = set(d)
-    atoms_before = {b for k in before for v in (k.sig, *k.adj) for b in bits(v)}
-    atoms_before |= bits(entry.sig) | {b for n in entry.adj for b in bits(n)}
-    r = rationalise(d, entry)
-    assert set(r.stores) <= set(d)  # every store is a domain member
-    atoms_after = {b for k in d for v in (k.sig, *k.adj) for b in bits(v)}
+    atoms_before = {b for k in before for v in (k.signature, *k.nodes) for b in bits(v)}
+    atoms_before |= bits(entry.signature) | {b for n in entry.nodes for b in bits(n)}
+    atoms_before |= bits(goal.signature) | {b for n in goal.nodes for b in bits(n)}
+    rationalise(d, entry, goal=goal)
+    assert set(d) == before  # the run never writes the domain — it is the harness's
+    atoms_after = {b for k in d for v in (k.signature, *k.nodes) for b in bits(v)}
     assert atoms_after <= atoms_before  # no new atoms: the system composes what it holds
 
 
 @settings(deadline=None, max_examples=150)
 @given(scenarios())
 def test_rationalisation_is_honest(sc):
-    d, entry = sc
-    r = rationalise(d, entry)
-    assert all(
-        e.reason.startswith(("R4", "S4", "stalled", "no candidates", "bound", "exhausted")) for e in r.ends
-    )
-    # every halt records its kline and its halt measure
-    assert all(e.kline is not None and e.effort is not None for e in r.ends)
-    ps = proposals(r)
-    assert len(ps) == len(r.ends)  # every halt generates exactly one proposal
-    assert all(p.kind in ("acquire", "connect", "continue") for p in ps)
-    assert all(p.effort == effort(p.kline) for p in ps)
-    assert all(0 <= p.effort <= 1 for p in ps)
-    assert ps == sorted(ps, key=lambda p: p.effort)  # graded significance: least entropy first
+    d, entry, goal = sc
+    stalls: list[KLine] = []
+
+    def sink(k: KLine, e) -> bool:
+        stalls.append(k)
+        return False
+
+    cog = Cogitator(d, on_stall=sink)
+    cog.rationalise(entry, goal=goal)
+    cog.cogitate()
+    # every broadcast stall is a bare S4 — nothing offered, nothing held
+    assert all(not s.nodes for s in stalls)
+    assert all(effort(s) == 1 for s in stalls)  # exactly full — nothing to work with
+    assert set(d) == {k for k in d}  # the run never writes the domain

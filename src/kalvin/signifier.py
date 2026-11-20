@@ -66,9 +66,9 @@ class NLPSignifier(KSignifier):
         Every node contributes its entire 64-bit value; the result
         accumulates the word words of all nodes. Lossy of order and
         multiplicity (``{A, B}`` and ``{A, A, B}`` reduce identically).
-        The returned KNode's label composes the component labels with
-        ``|`` (the :meth:`KNode.merge` convention): order-preserving union
-        of their parts, empties dropped.
+        The returned KNode's label composes the component labels in MTS
+        form (the :meth:`KNode.merge` convention): a single label stands
+        whole, a compound takes one uppercased character per component.
         """
         sig = KNode(0)
         for node in nodes:

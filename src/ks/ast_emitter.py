@@ -401,13 +401,22 @@ class ASTEmitter:
 
         goal = ""
         if op == "COUNTERSIGNS":
+            # The goal is the nested `B =>` scope's id, or — bare RHS — the
+            # signature's own id (its compound canon is the goal kline).
             goal = next(
                 (
                     self._resolve_inline_or_scope(item.sig.id, item.inline_annotation)
                     for item in scope.items
                     if isinstance(item, OperatorScope)
                 ),
-                "",
+                next(
+                    (
+                        self._resolve_inline_or_scope(item.id, item.inline_annotation)
+                        for item in scope.items
+                        if isinstance(item, Signature)
+                    ),
+                    "",
+                ),
             )
         self._emit_operator_entries(
             sig_resolved, resolved_nodes, op,

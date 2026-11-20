@@ -1,8 +1,9 @@
 """KNode.merge — idempotent label composition.
 
-``A.merge(A)`` keeps label ``A``; composite labels union their ``|``-parts
-with order preserved (R2 accumulation merges repeatedly, so ``A|B`` merged
-with ``B`` must not re-emit ``B``).
+``A.merge(A)`` keeps label ``A``; distinct labels compose in the MTS
+uppercase-character notation (Mary + Subject -> MS). The composition is
+associative under the fold (can / signature_of): an accumulated compound
+label is all-upper, so it stands whole as the next part.
 """
 
 from __future__ import annotations
@@ -16,8 +17,20 @@ def test_self_merge_keeps_label():
     assert a.merge(a).label == "A"
 
 
-def test_composite_parts_union():
-    assert KNode(5, "A|B").merge(KNode(5, "B|C")).label == "A|B|C"
+def test_distinct_labels_compose_initials():
+    assert KNode(5, "Mary").merge(KNode(5, "Subject")).label == "MS"
+    assert KNode(5, "had").merge(KNode(5, "Verb")).label == "HV"
+
+
+def test_abbreviation_part_stands_whole():
+    assert KNode(5, "SVO").merge(KNode(5, "Mary")).label == "SVOM"
+
+
+def test_composition_folds_associatively():
+    out = KNode(0)
+    for n in (KNode(1, "Mary"), KNode(2, "Subject"), KNode(4, "Object")):
+        out = out.merge(n)
+    assert out.label == "MSO"
 
 
 def test_plain_int_side_keeps_own_label():

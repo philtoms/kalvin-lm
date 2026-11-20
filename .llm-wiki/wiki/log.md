@@ -1,5 +1,54 @@
 # Wiki Update Log
 
+## 2026-11-20
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-aligned-exception-removed-one-carry-mechanism-selection-is-r","title":"Aligned exception removed — one carry mechanism, selection is read-time"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-events-ride-the-handovers-reports-become-pruned-candidate-pa","title":"Events ride the handovers — reports become pruned candidate paths"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover","title":"wdmh exchange fixed — frame travels with each stack handover"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di","title":"Frame isolation breaks the wdmh exchange — WDH never framed, diagnosis complete"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish","title":"Session committed as 810f645f — seen rotation, S2 finish"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green","title":"Ungrounded runs report nothing — tests fixed, suite green"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo","title":"Simplified finish: root S2 departure only — claim precedes report by construction"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required","title":"live is independent of claim filtering — both guards required"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set","title":"Claim channel now first-past-the-post via run claim set"}
+
+## 2026-11-19
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness","title":"wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish"}
+- **retro**: {"category":"architecture","slug":"cogitator-reentry-redesign-departure-paths","title":"Reentry redesigns break on departure paths"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects","title":"Cogitator seen-rotation redesign: five departure-path defects fixed"}
+
+## 2026-11-18
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p","title":"Candidates-logic serving landed — wdmh claims restored, tests ported"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-","title":"On-demand scaffolding landed — stall sink live at S4, retry by stack push"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs","title":"Bare `==` RHS now stamps ask goal — mhall-ag.ks runs"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair","title":"Bare `== SVO` RHS leaves ask goal empty — harness finds no pair"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread","title":"serve()/stop() standing walk verified on a real thread"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe","title":"Shared-stack cogitate verified; sink-reentrancy pop bugs fixed"}
+- **retro**: {"category":"architecture","slug":"real-stack-overlay-position-free-turns","title":"Real-stack overlay: position-free turns enable interleaving"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path","title":"Sketch defects: push-without-descent kills the claim path"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical","title":"Real-stack Cogitator verified behaviour-identical"}
+
+## 2026-11-17
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz","title":"Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-17-mts-initials-expands-single-components-to-whole-words","title":"mts_initials expands single components to whole words"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-","title":"Derived labels read bits, not strings; _tlabel names values by their own labels"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec","title":"Word registry drives derived labels — fit/underfit/overfit decompose bits"}
+- **observe**: {"relevance":"low","slug":"obs-2026-11-17-mts-label-change-committed-1cc55fd0","title":"MTS label change committed (1cc55fd0)"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting","title":"Algebra label-token arithmetic removed; harness re-formatting retired"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired","title":"KNode.merge mints MTS labels; bar notation retired"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel","title":"Ends gone: stall sink mirrors the claim channel"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts","title":"Claim broadcast relaxed: every S2 alignment broadcasts"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only","title":"Cogitator storeless: claims broadcast at S2, domain read-only"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding","title":"Claim sink: claims leave the Cogitator at grounding"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-17-decompose-removed-effort-inlines-u-and-o","title":"decompose removed; effort inlines U and O"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop","title":"Cogitator claim semantics: grounding never stops the loop"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem","title":"ReferenceCogitator retired; instruments and witness index removed"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-17-kline-migration-value-parity-verified-against-head","title":"KLine migration value-parity verified against HEAD"}
+- **observe**: {"relevance":"critical","slug":"obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline","title":"rationalisation stack migrated to kalvin KLine"}
+
 ## 2026-11-16
 
 - **observe**: {"relevance":"high","slug":"obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig","title":"Fit-side change committed (40a347d); what stall traced to c.sig != e bar"}

@@ -85,6 +85,7 @@
 ## Sources
 
 - [[sources/break-starves-exchange-stalls-must-wait]] — Reentry probe: break starves the exchange; stalls must wait *(created: 2026-11-02)*
+- [[sources/cogitator-reentry-redesign-departure-paths]] — Reentry redesigns break on departure paths *(created: 2026-11-19)*
 - [[sources/cogitator-trace-table-alignment]] — Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo *(created: 2026-10-30)*
 - [[sources/compound-label-mts-initials-notation]] — Compound KNode labels: MTS initials, joined identifier stays registry key *(created: 2026-10-30)*
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
@@ -512,7 +513,43 @@
 - [[sources/obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-]] — Observation: S4 backtrack fix: stall-return keeps candidate, re-descent on frame growth *(created: 2026-11-07)*
 - [[sources/obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses]] — Observation: Fit F now earns a frame like U and O — wdmh honestly refuses *(created: 2026-11-16)*
 - [[sources/obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig]] — Observation: Fit-side change committed (40a347d); what stall traced to c.sig != e bar *(created: 2026-11-16)*
+- [[sources/obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting]] — Observation: Algebra label-token arithmetic removed; harness re-formatting retired *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts]] — Observation: Claim broadcast relaxed: every S2 alignment broadcasts *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding]] — Observation: Claim sink: claims leave the Cogitator at grounding *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz]] — Observation: Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop]] — Observation: Cogitator claim semantics: grounding never stops the loop *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only]] — Observation: Cogitator storeless: claims broadcast at S2, domain read-only *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o]] — Observation: decompose removed; effort inlines U and O *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-]] — Observation: Derived labels read bits, not strings; _tlabel names values by their own labels *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel]] — Observation: Ends gone: stall sink mirrors the claim channel *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head]] — Observation: KLine migration value-parity verified against HEAD *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired]] — Observation: KNode.merge mints MTS labels; bar notation retired *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-mts-initials-expands-single-components-to-whole-words]] — Observation: mts_initials expands single components to whole words *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-mts-label-change-committed-1cc55fd0]] — Observation: MTS label change committed (1cc55fd0) *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline]] — Observation: rationalisation stack migrated to kalvin KLine *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem]] — Observation: ReferenceCogitator retired; instruments and witness index removed *(created: 2026-11-17)*
+- [[sources/obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec]] — Observation: Word registry drives derived labels — fit/underfit/overfit decompose bits *(created: 2026-11-17)*
+- [[sources/obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs]] — Observation: Bare `==` RHS now stamps ask goal — mhall-ag.ks runs *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair]] — Observation: Bare `== SVO` RHS leaves ask goal empty — harness finds no pair *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p]] — Observation: Candidates-logic serving landed — wdmh claims restored, tests ported *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-]] — Observation: On-demand scaffolding landed — stall sink live at S4, retry by stack push *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical]] — Observation: Real-stack Cogitator verified behaviour-identical *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread]] — Observation: serve()/stop() standing walk verified on a real thread *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe]] — Observation: Shared-stack cogitate verified; sink-reentrancy pop bugs fixed *(created: 2026-11-18)*
+- [[sources/obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path]] — Observation: Sketch defects: push-without-descent kills the claim path *(created: 2026-11-18)*
+- [[sources/obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects]] — Observation: Cogitator seen-rotation redesign: five departure-path defects fixed *(created: 2026-11-19)*
+- [[sources/obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness]] — Observation: wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish *(created: 2026-11-19)*
+- [[sources/obs-2026-11-20-aligned-exception-removed-one-carry-mechanism-selection-is-r]] — Observation: Aligned exception removed — one carry mechanism, selection is read-time *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set]] — Observation: Claim channel now first-past-the-post via run claim set *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-events-ride-the-handovers-reports-become-pruned-candidate-pa]] — Observation: Events ride the handovers — reports become pruned candidate paths *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di]] — Observation: Frame isolation breaks the wdmh exchange — WDH never framed, diagnosis complete *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required]] — Observation: live is independent of claim filtering — both guards required *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish]] — Observation: Session committed as 810f645f — seen rotation, S2 finish *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo]] — Observation: Simplified finish: root S2 departure only — claim precedes report by construction *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green]] — Observation: Ungrounded runs report nothing — tests fixed, suite green *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover]] — Observation: wdmh exchange fixed — frame travels with each stack handover *(created: 2026-11-20)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
+- [[sources/real-stack-overlay-position-free-turns]] — Real-stack overlay: position-free turns enable interleaving *(created: 2026-11-18)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
 - [[sources/s4-backtrack-exhaustion-diagnosis]] — S4 "exhaustion" was a backtrack bookkeeping defect *(created: 2026-11-07)*
 - [[sources/shape-swap-vs-name-swap-operator-semantics]] — Operator semantics swaps: move shapes or move names — the countersign test decides *(created: 2026-09-15)*
@@ -533,4 +570,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-16T18:57:38.243Z* | *Total pages: 515*
+*Last updated: 2026-11-20T10:53:32.549Z* | *Total pages: 552*

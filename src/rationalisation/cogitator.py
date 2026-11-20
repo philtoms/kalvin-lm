@@ -1,4 +1,4 @@
-"""The Cogitator — the model's default runner.
+"""The Cogitator — the model's runner
 
     Rationalise to significance:
         S1 - entry held exactly
@@ -10,182 +10,238 @@
 
 from __future__ import annotations
 
+from copy import deepcopy, copy
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from kalvin.kline import KNode, KNone
-from rationalisation.algebra import Kline, contained, fit, underfit, overfit
+from kalvin.kline import KLine, KNode, KNone, is_identity
+from rationalisation.algebra import contained, fit, underfit, overfit, can
 from rationalisation.domain import Domain
-from rationalisation.report import End, Event, Rationalisation, effort
+from rationalisation.report import Event, Rationalisation
+
 
 
 @dataclass
-class _Entry:
-    """One entry's exploration.""" 
+class _Run:
+    """One run's state — it rides on every entry of the run."""
 
-    A: KNode = KNone # the ask
-    cands: list | None = None # the candidate goals
-    parent: "_Entry | None" = None  # the entry's provenance
+    ask: KLine
+    goal: KLine
+    finish: Callable[["Entry"], None]
+    entries: int = 0
+    stalled: dict = field(default_factory=dict)  # signature -> the latest entry stalled on it
+
+
+@dataclass
+class Entry:
+    """One entry's exploration."""
+
+    run: _Run  # the run the entry belongs to
+    A: KNode = KNone # the ask
+    C: KLine | None = None # the candidate goal
+    parent: "Entry | None" = None  # the entry's provenance
     comp: str = ""  # "F" | "U" | "O" — the component of the parent's reentry
-    at: dict = field(default_factory=dict)  # component -> frame count at its last descent
+    chain: frozenset = frozenset()  # the ask signatures of the strict parent chain
+    seen: dict = field(default_factory=dict)  # the ask's seen candidates — the empty probe (KNone) counts
 
-CNone = _Entry()
+    _frame: list[KNode] = field(default_factory=list)
+    events: list = field(default_factory=list)  # the path's story — carried with the frame
+    
+    def frame(self, x: KNode) -> bool:
+        if x and x not in self._frame:
+            self._frame.append(x)
+            return True
+        return False
+
+    def framed(self, x: KNode) -> bool:
+        return not x or any(contained(x, f) for f in self._frame)
+
+    def carry(self, e: Entry):
+        """Adopt e's carried state — the frame and the story. The push
+        handover: the child sets out with everything the parent holds."""
+        self._frame = e._frame.copy()
+        self.events = e.events.copy()
 
 class Cogitator:
-    """The reentry runner: an entry's signature meets held claims, and each
-    unframed component recurses into new state — its own stack copy, its own
-    frames. An entry grounds when it is S2 aligned - all three components 
-    F(it), U(nderfit) and O(verfit) are framed.
+    """The reentry runner: an entry's signature meets held candidate goals, and each
+    unframed component recurses as a new entry — its own candidates, its own chain.
+    An entry is claimed when it is S2 aligned - all three components F(it), U(nderfit)
+    and O(verfit) are framed.
+
+    The stack is real: the top entry runs, a push lands the child on top and suspends
+    the parent beneath it, a pop backtracks to whatever resumes on top. A turn reads
+    only the entry and its run's state — never the entry's position — so independent
+    runs may share one stack, interleaved.
     """
 
     MAX_ENTRIES = 4096
 
-    def __init__(self, d: Domain) -> None:
+    def __init__(
+        self,
+        d: Domain,
+        on_claim: Callable[[KLine], None] | None = None,
+        on_stall: Callable[[KLine, Entry], bool] | None = None,
+    ) -> None:
         self.d = d
-        self.stores: list[Kline] = []
+        self.on_claim = on_claim
+        self.on_stall = on_stall
+        self.stack: list[Entry] = []
+        self._cond = threading.Condition(threading.RLock())  # the server waits on it when the stack is empty
+        self._stopped = False
 
-    def rationalise(self, ask: Kline, goal: Kline | None = None) -> Rationalisation:
-        self.stores, self.ends = [], []
-        self.claim: Kline | None = None
-        self.entries = 0
-        self.bound = False
-        self.stalled: dict[KNode, _Entry] = {}
-        self.frame: list[KNode] = []
-        self.events: list[Event] = []
+    def open(self, ask: KLine, goal: KLine, finish: Callable[["Entry"], None]) -> Entry:
+        """A run's root — a fresh state, the goal its one and only candidate."""
+        return Entry(_Run(ask, goal, finish), ask.signature, goal, None, "")
 
-        if goal is None:
-            if not ask.adj:
-                self._halt("R4: entry kline with no adjacency", ask)
-                return Rationalisation(self.stores, self.ends, [])
-            if ask.identity():
-                self._ground(ask)  # S1 grounds on receipt
-                return Rationalisation(self.stores, self.ends, [])
+    def rationalise(self, ask: KLine, goal: KLine, end_step: Callable[[Rationalisation]] | None = None, stop = True):
+        def _finish(entry: Entry) -> None:
+            """The run's end — the report leaves; stalls left at S4."""
+            if end_step is not None:
+                end_step(Rationalisation(entry.events))
 
-        def frame(x: KNode) -> bool:
-            if x and x not in self.frame:
-                self.frame.append(x)
-                return True
-            return False
+        root = self.open(ask, goal, _finish)
+        with self._cond:
+            self.stack.append(root)
+            self._cond.notify_all()
+        if stop:
+            self.stop()
 
-        def framed(x: KNode) -> bool:
-            return not x or any(contained(x, f) for f in self.frame)
+    def cogitate(self):
+        """Continue to cogitate until signalled to stop. Synchronous operation is achieved
+        by presetting self._stopped (see rationalise)"""
+        with self._cond:
+            while True:
+                entry = self.stack.pop()
+                if entry:
+                    self._turn(entry)
+                while not self.stack:
+                    if self._stopped: return
+                    self._cond.wait()
 
-        def pop(entry: _Entry) -> _Entry:
-            if not entry.parent: return CNone
-            return entry.parent
+    def stop(self) -> None:
+        with self._cond:
+            self._stopped = True
+            self._cond.notify_all()
 
-        def push(A: KNode, parent: _Entry, comp: str) -> _Entry:
-            cands = self._candidates(A, parent)
-            return  _Entry(A, cands, parent, comp)
+    def _turn(self, entry: Entry) -> None:
+        run = entry.run
+        if run.entries > self.MAX_ENTRIES:
+            run.finish(entry)  # the entry cap — the run stops, the stack keeps walking
+            return
+        run.entries += 1
 
-        entry = push(ask.sig, CNone, "")
-        entry.cands = [goal]
-        while entry.A != KNone:
-            if self.entries > self.MAX_ENTRIES:
-                self._halt("bound: entry cap reached", ask)
-                break
-            self.entries += 1
+        A = entry.A
+        C = entry.C
+        if not C:  # S4 stalled
+            if A in run.stalled and run.stalled[A].comp != entry.comp and common_ancestor(entry, run.stalled[A]):
+                witness = run.stalled.pop(A)
+                entry.frame(A) # S3 aligned
+                entry.events.append(Event("exchanged", A, frame=A))
+                if witness.parent:
+                    self._pop(witness.parent, entry) # the witness's side learns — its component framed
+            elif self.on_stall is not None and self.on_stall(KLine(A, []), entry):
+                if self._push(A, entry.parent, entry.comp): # served — the ask re-derives from the grown domain
+                    return
+            run.stalled[A] = entry
+            entry.events.append(Event("stalled", A))
+            self._pop(entry.parent, entry) # the parent resumes — candidate kept, components re-read
+            return
 
-            A = entry.A
-            if not entry.cands:  # S4 stalled
-                if A in self.stalled and self.stalled[A].comp != entry.comp and self.common_ancestor(entry, self.stalled[A]):
-                        frame(A) # S3 align
-                        self.events.append(Event("exchange", A, frame=A))
-                        self.stalled.pop(A)
-                else:
-                    self.stalled[A] = entry
-                    self.events.append(Event("stall", A))
+        cs = C.signature
+        F, U, O = fit(A, cs), underfit(A, cs), overfit(C.nodes, A)
+        if F == A:
+            entry.frame(F)
 
-                entry = pop(entry)  # backtrack: the parent keeps its candidate
-                continue
-                
+        f_ok = entry.framed(F)
+        u_ok = entry.framed(U)
+        o_ok = entry.framed(O)
+        if f_ok and u_ok and o_ok:  # S2 aligned
+            entry.frame(A)
+            claim = KLine(run.ask.signature, [run.goal.signature])
+            if run.goal.signature == can(C.nodes):
+                # the claim is made
+                entry.events.append(Event("claimed", A, C, F, U, O, frame=A))
+                if self.on_claim is not None:
+                    self.on_claim(claim)
+                run.finish(entry)
+                return
             else:
-                C = entry.cands[-1]
-                cs = C.sig
-                F, U, O = fit(A, cs), underfit(A, cs), overfit(C.adj, A)
-                if F == A:
-                    frame(F)
+                entry.events.append(Event("framed", A, C, F, U, O, frame=A))
+        else:
+            entry.events.append(Event("entry", A, C, F, U, O))
 
-                f_ok = framed(F)
-                u_ok = framed(U)
-                o_ok = framed(O)
-                if f_ok and u_ok and o_ok:  # S2 aligned
-                    frame(A)
-                    if goal.sig == C.sig:  # the claim grounds
-                        self.events.append(Event("grounded", A, C, F, U, O, frame=A))
-                        self.claim = Kline(ask.sig, frozenset([goal.sig]))
-                        self._ground(self.claim)
-                    else:
-                        self.events.append(Event("close", A, C, F, U, O, frame=A))
-                elif not entry.at:  # the entry notes itself once — re-evaluation after
-                    self.events.append(Event("entry", A, C, F, U, O)) 
+        if not u_ok:
+            if self._push(U, entry, "U"): return
 
-                def fresh(comp: str) -> bool:
-                    # a component reenters once per candidate — and again only
-                    # when new frames arrived since its last entry
-                    return comp not in entry.at or len(self.frame) > entry.at[comp]
+        if not o_ok:
+            if self._push(O, entry, "O"): return
 
-                if not u_ok and fresh("U"):
-                    entry.at["U"] = len(self.frame)
-                    entry = push(U, entry, "U")
-                    continue
+        if not f_ok:
+            if self._push(F, entry, "F"): return
 
-                if not o_ok and fresh("O"):
-                    entry.at["O"] = len(self.frame)
-                    entry = push(O, entry, "O")
-                    continue
+        self._pop(entry.parent, entry) # the parent resumes — its next turn rotates
 
-                if not f_ok and fresh("F"):
-                    entry.at["F"] = len(self.frame)
-                    entry = push(F, entry, "F")
-                    continue
 
-                entry.cands.pop()
-                entry.at.clear()
+    def _pop(self, parent: Entry, entry: Entry):
+        """The departure handover: whoever resumes adopts the departing
+        entry's frame and story — one mechanism, no exceptions. The story
+        is the carrying lineage's account: a branch join (the exchange's
+        witness) replaces, not merges — selection is a read-time concern."""
+        parent = copy(parent)
+        if parent:
+            parent.carry(entry)
+            self.stack.append(parent)
 
-            if not entry.cands:
-                entry = pop(entry)
-
-        for a in self.stalled:  # stalls that never aligned
-            self._halt("stalled at S4: no candidates", Kline(a, frozenset()))
-
-        return Rationalisation(self.stores, self.ends, self.events, claim=self.claim)
-
-    def _candidates(self, sig: KNode, entry: _Entry) -> list[Kline]:
-        """An ask never reenters its origin: its parent ask's and parent
-        candidate's signatures are barred — the residual would re-derive
-        the decomposition the parent entry already performed."""
-        cands = [
-            c
-            for c in self.d
-            if c.sig & sig  # overlap — no-neighbours never reenters
-            and c.adj  # a bare signature offers no construction
-            and c.adj != frozenset([c.sig])  # an identity is not a candidate
-            and not self.ancestor(c.sig, entry)
-        ]
-        return cands
-        # return list(reversed(cands))
-
-    def _halt(self, reason: str, k: Kline) -> None:
-        self.ends.append(End(reason, k, effort(k)))
-
-    def _ground(self, k: Kline) -> None:
-        self.d.add(k)
-        if k not in self.stores:
-            self.stores.append(k)
-
-    def ancestor(self, sig: KNode, entry: _Entry) -> bool:
-        while entry.parent:
-            entry = entry.parent
-            if entry.A == sig: return True
-        return False
-    
-    def common_ancestor(self, l: _Entry, r: _Entry) -> bool:
-        while l.parent:
-            l = l.parent
-            if self.ancestor(l.A, r.parent):
+    def _push(self, A: KNode, parent: Entry, comp: str) -> bool:
+        """The component reenters — the child lands on top, the parent suspends
+        beneath it, its candidate kept for the re-evaluation. A candidate seen
+        for the ask does not return; the empty probe — the stall child —
+        counts as seen and fires once."""
+        if parent:
+            if not A in parent.seen: parent.seen[A] = frozenset()
+            chain = parent.chain | {parent.A}
+            cands = candidates(A, self.d, parent.seen[A])
+            if cands:
+                C = cands.pop()
+                parent.seen[A] |= {C.signature}
+                entry = Entry(parent.run, A, C, parent, comp, chain)
+                entry.carry(parent)
+                self.stack.append(entry)
                 return True
+
+            if not parent.seen[A]:
+                parent.seen[A] = frozenset({KNone}) # the probe is the ask's last candidate
+                entry = Entry(parent.run, A, None, parent, comp, chain)
+                entry.carry(parent)
+                self.stack.append(entry)
+                return True
+
         return False
-    
-def rationalise(d: Domain, ask: Kline, goal: Kline | None = None) -> Rationalisation:
-    """The one-shot runner — one Cogitator, one entry."""
-    return Cogitator(d).rationalise(ask, goal=goal)
+
+def candidates(sig: KNode, d: Domain, chain: frozenset[KNode]) -> list[KLine]:
+    """An ask never reenters its origin: its parent ask's and parent
+    candidate's signatures are barred — the residual would re-derive
+    the decomposition the parent entry already performed."""
+    cands = [
+        c
+        for c in d
+        if c.signature & sig  # overlap — no-neighbours never reenters
+        and c.nodes  # a bare signature offers no construction
+        and not is_identity(c)  # an identity is not a candidate
+        and c.signature not in chain
+    ]
+    return cands
+    # return list(reversed(cands))
+
+def common_ancestor(l: Entry, r: Entry) -> bool:
+    return bool(l.chain & r.parent.chain) if r.parent else False
+
+def rationalise(d: Domain, ask: KLine, goal: KLine) -> Rationalisation | None:
+    """The one-shot runner — one Cogitator, one entry. None: the ungrounded
+    run reports nothing."""
+    out: list[Rationalisation] = []
+    cog = Cogitator(d)
+    cog.rationalise(ask, goal, out.append)
+    cog.cogitate()
+    return out[0] if out else None

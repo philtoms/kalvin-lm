@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-16T18:57:38.243Z",
+  "last_updated": "2026-11-20T10:53:32.549Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -552,6 +552,15 @@
       "slug": "break-starves-exchange-stalls-must-wait",
       "created": "2026-11-02",
       "updated": "2026-11-02"
+    },
+    "sources/cogitator-reentry-redesign-departure-paths": {
+      "type": "source",
+      "title": "Reentry redesigns break on departure paths",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "cogitator-reentry-redesign-departure-paths",
+      "created": "2026-11-19",
+      "updated": "2026-11-19"
     },
     "sources/cogitator-trace-table-alignment": {
       "type": "source",
@@ -8057,6 +8066,599 @@
       "created": "2026-11-16",
       "updated": "2026-11-16"
     },
+    "sources/obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting": {
+      "type": "source",
+      "title": "Observation: Algebra label-token arithmetic removed; harness re-formatting retired",
+      "tags": [
+        "algebra",
+        "labels",
+        "mts",
+        "harness",
+        "rationalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting",
+      "relevance": "high",
+      "observed_at": "2026-11-17T16:14:21.171Z",
+      "source_context": "Removing the harness's label re-formatting responsibility",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts": {
+      "type": "source",
+      "title": "Observation: Claim broadcast relaxed: every S2 alignment broadcasts",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "claims",
+        "streaming"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts",
+      "relevance": "high",
+      "observed_at": "2026-11-17T14:37:48.024Z",
+      "source_context": "Relaxing claim broadcast to many-per-run",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding": {
+      "type": "source",
+      "title": "Observation: Claim sink: claims leave the Cogitator at grounding",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "interface",
+        "claims",
+        "streaming"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T13:59:04.041Z",
+      "source_context": "Claim sink interface between Cogitator and harness",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz": {
+      "type": "source",
+      "title": "Observation: Cogitator ancestor walk was O(depth) per candidate — chain frozenset fixed 116s→3.5s",
+      "tags": [
+        "performance",
+        "cogitator",
+        "tests"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz",
+      "relevance": "high",
+      "observed_at": "2026-11-17T16:51:06.794Z",
+      "source_context": "Diagnosing slow property tests",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop": {
+      "type": "source",
+      "title": "Observation: Cogitator claim semantics: grounding never stops the loop",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop",
+      "relevance": "high",
+      "observed_at": "2026-11-17T13:14:43.732Z",
+      "source_context": "Documenting the Cogitator's rules post-retirement",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only": {
+      "type": "source",
+      "title": "Observation: Cogitator storeless: claims broadcast at S2, domain read-only",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "streaming",
+        "state"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T14:35:11.146Z",
+      "source_context": "Storeless Cogitator: broadcast at S2, harness owns state",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o": {
+      "type": "source",
+      "title": "Observation: decompose removed; effort inlines U and O",
+      "tags": [
+        "rationalisation",
+        "cleanup"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-decompose-removed-effort-inlines-u-and-o",
+      "relevance": "medium",
+      "observed_at": "2026-11-17T13:33:32.807Z",
+      "source_context": "Removing algebra.decompose and Decomposition",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-": {
+      "type": "source",
+      "title": "Observation: Derived labels read bits, not strings; _tlabel names values by their own labels",
+      "tags": [
+        "algebra",
+        "labels",
+        "mts",
+        "harness",
+        "bit-accuracy"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-",
+      "relevance": "high",
+      "observed_at": "2026-11-17T16:41:57.473Z",
+      "source_context": "Making _provenance usable — meaningful derived labels",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel": {
+      "type": "source",
+      "title": "Observation: Ends gone: stall sink mirrors the claim channel",
+      "tags": [
+        "rationalisation",
+        "cogitator",
+        "streaming",
+        "stalls"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T14:55:41.635Z",
+      "source_context": "Removing ends; stall sink follows the claim channel",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head": {
+      "type": "source",
+      "title": "Observation: KLine migration value-parity verified against HEAD",
+      "tags": [
+        "rationalisation",
+        "parity",
+        "verification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-kline-migration-value-parity-verified-against-head",
+      "relevance": "high",
+      "observed_at": "2026-11-17T09:00:15.503Z",
+      "source_context": "KLine type migration verification",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired": {
+      "type": "source",
+      "title": "Observation: KNode.merge mints MTS labels; bar notation retired",
+      "tags": [
+        "knode",
+        "labels",
+        "mts",
+        "notation",
+        "merge"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired",
+      "relevance": "high",
+      "observed_at": "2026-11-17T16:14:15.851Z",
+      "source_context": "Replacing bar notation in KNode.merge with MTS notation",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-mts-initials-expands-single-components-to-whole-words": {
+      "type": "source",
+      "title": "Observation: mts_initials expands single components to whole words",
+      "tags": [
+        "mts",
+        "labels",
+        "readability"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-mts-initials-expands-single-components-to-whole-words",
+      "relevance": "medium",
+      "observed_at": "2026-11-17T16:45:35.729Z",
+      "source_context": "Expanding single-character derived tokens back to words",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-mts-label-change-committed-1cc55fd0": {
+      "type": "source",
+      "title": "Observation: MTS label change committed (1cc55fd0)",
+      "tags": [
+        "commit",
+        "mts",
+        "labels"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-mts-label-change-committed-1cc55fd0",
+      "relevance": "low",
+      "observed_at": "2026-11-17T16:17:02.042Z",
+      "source_context": "Committing the MTS label notation change",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline": {
+      "type": "source",
+      "title": "Observation: rationalisation stack migrated to kalvin KLine",
+      "tags": [
+        "rationalisation",
+        "types",
+        "migration"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T09:00:05.161Z",
+      "source_context": "KLine type migration across the rationalisation stack",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem": {
+      "type": "source",
+      "title": "Observation: ReferenceCogitator retired; instruments and witness index removed",
+      "tags": [
+        "rationalisation",
+        "cleanup",
+        "retirement"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem",
+      "relevance": "critical",
+      "observed_at": "2026-11-17T13:14:34.483Z",
+      "source_context": "Retiring the ReferenceCogitator baseline",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec": {
+      "type": "source",
+      "title": "Observation: Word registry drives derived labels — fit/underfit/overfit decompose bits",
+      "tags": [
+        "algebra",
+        "labels",
+        "mts",
+        "word-registry",
+        "rationalisation"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec",
+      "relevance": "high",
+      "observed_at": "2026-11-17T16:41:48.194Z",
+      "source_context": "Making _provenance usable — meaningful derived labels",
+      "created": "2026-11-17",
+      "updated": "2026-11-17"
+    },
+    "sources/obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs": {
+      "type": "source",
+      "title": "Observation: Bare `==` RHS now stamps ask goal — mhall-ag.ks runs",
+      "tags": [
+        "kscript",
+        "compiler",
+        "fix",
+        "goal",
+        "harness"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs",
+      "relevance": "high",
+      "observed_at": "2026-11-18T17:06:08.117Z",
+      "source_context": "Compiler-side fix for bare `== SVO` RHS goal stamping",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair": {
+      "type": "source",
+      "title": "Observation: Bare `== SVO` RHS leaves ask goal empty — harness finds no pair",
+      "tags": [
+        "kscript",
+        "harness",
+        "compiler",
+        "goal"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair",
+      "relevance": "high",
+      "observed_at": "2026-11-18T17:01:23.994Z",
+      "source_context": "Investigating why the dialogue harness reports no findable goal for mhall-ag.ks",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p": {
+      "type": "source",
+      "title": "Observation: Candidates-logic serving landed — wdmh claims restored, tests ported",
+      "tags": [
+        "cogitator",
+        "harness",
+        "scaffolding",
+        "candidates",
+        "stall"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p",
+      "relevance": "high",
+      "observed_at": "2026-11-18T18:25:14.062Z",
+      "source_context": "Porting tests and docs to the user's candidates-logic stall semantics",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-": {
+      "type": "source",
+      "title": "Observation: On-demand scaffolding landed — stall sink live at S4, retry by stack push",
+      "tags": [
+        "cogitator",
+        "harness",
+        "scaffolding",
+        "stall",
+        "retry"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-",
+      "relevance": "high",
+      "observed_at": "2026-11-18T17:20:53.313Z",
+      "source_context": "Implementing on-demand scaffolding: stall event, harness lookup, stack-push retry",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical": {
+      "type": "source",
+      "title": "Observation: Real-stack Cogitator verified behaviour-identical",
+      "tags": [
+        "cogitator",
+        "rationalisation",
+        "stack"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical",
+      "relevance": "critical",
+      "observed_at": "2026-11-18T15:22:38.581Z",
+      "source_context": "Overlaying the pseudo stack onto a real stack in the Cogitator",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread": {
+      "type": "source",
+      "title": "Observation: serve()/stop() standing walk verified on a real thread",
+      "tags": [
+        "cogitator",
+        "threading",
+        "serve",
+        "condition"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread",
+      "relevance": "high",
+      "observed_at": "2026-11-18T16:30:06.783Z",
+      "source_context": "Implementing while True + condition-wait serve loop on the Cogitator",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe": {
+      "type": "source",
+      "title": "Observation: Shared-stack cogitate verified; sink-reentrancy pop bugs fixed",
+      "tags": [
+        "cogitator",
+        "harness",
+        "interleaving",
+        "threading"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe",
+      "relevance": "critical",
+      "observed_at": "2026-11-18T16:19:12.855Z",
+      "source_context": "Verifying the harness-pushes-steps-onto-cogitator-stack arrangement",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path": {
+      "type": "source",
+      "title": "Observation: Sketch defects: push-without-descent kills the claim path",
+      "tags": [
+        "cogitator",
+        "debugging",
+        "stack"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path",
+      "relevance": "high",
+      "observed_at": "2026-11-18T15:22:52.878Z",
+      "source_context": "Diagnosing the user's Cogitator sketch that produced no claims",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects": {
+      "type": "source",
+      "title": "Observation: Cogitator seen-rotation redesign: five departure-path defects fixed",
+      "tags": [
+        "cogitator",
+        "reentry",
+        "rationalisation",
+        "bugfix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects",
+      "relevance": "high",
+      "observed_at": "2026-11-19T17:05:14.914Z",
+      "source_context": "Fixing wdmh completing only step 1 after the push-semantics redesign",
+      "created": "2026-11-19",
+      "updated": "2026-11-19"
+    },
+    "sources/obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness": {
+      "type": "source",
+      "title": "Observation: wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish",
+      "tags": [
+        "cogitator",
+        "reentry",
+        "exchange",
+        "grounding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness",
+      "relevance": "high",
+      "observed_at": "2026-11-19T22:12:01.643Z",
+      "source_context": "Restoring wdmh grounding under the seen-rotation redesign",
+      "created": "2026-11-19",
+      "updated": "2026-11-19"
+    },
+    "sources/obs-2026-11-20-aligned-exception-removed-one-carry-mechanism-selection-is-r": {
+      "type": "source",
+      "title": "Observation: Aligned exception removed — one carry mechanism, selection is read-time",
+      "tags": [
+        "cogitator",
+        "events",
+        "handover",
+        "design-principle",
+        "path-energy"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-aligned-exception-removed-one-carry-mechanism-selection-is-r",
+      "relevance": "high",
+      "observed_at": "2026-11-20T10:53:32.373Z",
+      "source_context": "Removing the aligned exception after empirical comparison",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set": {
+      "type": "source",
+      "title": "Observation: Claim channel now first-past-the-post via run claim set",
+      "tags": [
+        "cogitator",
+        "claims",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set",
+      "relevance": "medium",
+      "observed_at": "2026-11-20T07:36:49.985Z",
+      "source_context": "Adding first-claim-past-the-post filtering to the claim channel",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-events-ride-the-handovers-reports-become-pruned-candidate-pa": {
+      "type": "source",
+      "title": "Observation: Events ride the handovers — reports become pruned candidate paths",
+      "tags": [
+        "cogitator",
+        "events",
+        "framing",
+        "path-energy",
+        "report"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-events-ride-the-handovers-reports-become-pruned-candidate-pa",
+      "relevance": "high",
+      "observed_at": "2026-11-20T10:15:09.273Z",
+      "source_context": "Events into entry — pruned candidate-path reports",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di": {
+      "type": "source",
+      "title": "Observation: Frame isolation breaks the wdmh exchange — WDH never framed, diagnosis complete",
+      "tags": [
+        "cogitator",
+        "framing",
+        "exchange",
+        "frame-isolation",
+        "wdmh"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di",
+      "relevance": "high",
+      "observed_at": "2026-11-20T09:39:18.257Z",
+      "source_context": "Frame isolation exploration — wdmh exchange never frames WDH",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required": {
+      "type": "source",
+      "title": "Observation: live is independent of claim filtering — both guards required",
+      "tags": [
+        "cogitator",
+        "live",
+        "finish",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required",
+      "relevance": "medium",
+      "observed_at": "2026-11-20T07:40:01.568Z",
+      "source_context": "Questioning whether the live counter is still needed after claim filtering",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish": {
+      "type": "source",
+      "title": "Observation: Session committed as 810f645f — seen rotation, S2 finish",
+      "tags": [
+        "commit",
+        "cogitator"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish",
+      "relevance": "medium",
+      "observed_at": "2026-11-20T08:44:02.342Z",
+      "source_context": "Committing the session's cogitator work",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo": {
+      "type": "source",
+      "title": "Observation: Simplified finish: root S2 departure only — claim precedes report by construction",
+      "tags": [
+        "cogitator",
+        "finish",
+        "claims",
+        "simplification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo",
+      "relevance": "high",
+      "observed_at": "2026-11-20T08:06:14.586Z",
+      "source_context": "User simplified the mechanism after removing live and the claim filter",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green": {
+      "type": "source",
+      "title": "Observation: Ungrounded runs report nothing — tests fixed, suite green",
+      "tags": [
+        "cogitator",
+        "tests",
+        "ruling",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green",
+      "relevance": "high",
+      "observed_at": "2026-11-20T08:18:25.008Z",
+      "source_context": "Fixing tests and docs after the ungrounded-runs-report-nothing ruling",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover": {
+      "type": "source",
+      "title": "Observation: wdmh exchange fixed — frame travels with each stack handover",
+      "tags": [
+        "cogitator",
+        "framing",
+        "exchange",
+        "frame-isolation",
+        "wdmh"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover",
+      "relevance": "high",
+      "observed_at": "2026-11-20T09:56:16.814Z",
+      "source_context": "Verifying and cleaning up the frame-isolation exchange fix",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
     "sources/pseudocode-audit-three-false-lines-recheck-invisible": {
       "type": "source",
       "title": "Pseudocode audit: three false lines, the re-run invisible; corrected in docstring",
@@ -8065,6 +8667,15 @@
       "slug": "pseudocode-audit-three-false-lines-recheck-invisible",
       "created": "2026-11-03",
       "updated": "2026-11-03"
+    },
+    "sources/real-stack-overlay-position-free-turns": {
+      "type": "source",
+      "title": "Real-stack overlay: position-free turns enable interleaving",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "real-stack-overlay-position-free-turns",
+      "created": "2026-11-18",
+      "updated": "2026-11-18"
     },
     "sources/reentry-probe-fit-gate-divergence": {
       "type": "source",

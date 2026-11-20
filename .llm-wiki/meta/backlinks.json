@@ -753,6 +753,7 @@
     "entities/marys-world"
   ],
   "sources/break-starves-exchange-stalls-must-wait": [],
+  "sources/cogitator-reentry-redesign-departure-paths": [],
   "sources/cogitator-trace-table-alignment": [
     "syntheses/rationalisation-rules"
   ],
@@ -1164,7 +1165,9 @@
     "sources/knode-label-conventions-content-vs-identifier"
   ],
   "sources/obs-2026-10-28-all-non-s1-admit-stores-come-from-the-sides-resolved-branch": [],
-  "sources/obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry": [],
+  "sources/obs-2026-10-30-cogitator-rationalise-rewritten-as-frame-propagating-reentry": [
+    "sources/cogitator-reentry-redesign-departure-paths"
+  ],
   "sources/obs-2026-10-30-compound-knode-labels-switched-to-mts-uppercase-initial-nota": [
     "sources/compound-label-mts-initials-notation"
   ],
@@ -1231,12 +1234,52 @@
   "sources/obs-2026-11-03-s2-across-candidates-works-earned-sig-registry-row-scoped-me": [],
   "sources/obs-2026-11-03-trace-elision-removed-every-reentry-logged-grounding-path-pr": [],
   "sources/obs-2026-11-03-user-recode-verified-drains-whole-stack-copy-grounds-both-sc": [],
-  "sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio": [],
+  "sources/obs-2026-11-03-wdmh-step-4-trace-5-hlal-rows-one-reentry-11-pairings-elisio": [
+    "sources/cogitator-reentry-redesign-departure-paths"
+  ],
   "sources/obs-2026-11-07-event-log-made-append-only-pair-notes-once-closes-no-longer-": [],
   "sources/obs-2026-11-07-s4-backtrack-fix-stall-return-keeps-candidate-re-descent-on-": [],
   "sources/obs-2026-11-16-fit-f-now-earns-a-frame-like-u-and-o-wdmh-honestly-refuses": [],
   "sources/obs-2026-11-16-fit-side-change-committed-40a347d-what-stall-traced-to-c-sig": [],
+  "sources/obs-2026-11-17-algebra-label-token-arithmetic-removed-harness-re-formatting": [],
+  "sources/obs-2026-11-17-claim-broadcast-relaxed-every-s2-alignment-broadcasts": [],
+  "sources/obs-2026-11-17-claim-sink-claims-leave-the-cogitator-at-grounding": [],
+  "sources/obs-2026-11-17-cogitator-ancestor-walk-was-o-depth-per-candidate-chain-froz": [],
+  "sources/obs-2026-11-17-cogitator-claim-semantics-grounding-never-stops-the-loop": [],
+  "sources/obs-2026-11-17-cogitator-storeless-claims-broadcast-at-s2-domain-read-only": [],
+  "sources/obs-2026-11-17-decompose-removed-effort-inlines-u-and-o": [],
+  "sources/obs-2026-11-17-derived-labels-read-bits-not-strings-tlabel-names-values-by-": [],
+  "sources/obs-2026-11-17-ends-gone-stall-sink-mirrors-the-claim-channel": [],
+  "sources/obs-2026-11-17-kline-migration-value-parity-verified-against-head": [],
+  "sources/obs-2026-11-17-knode-merge-mints-mts-labels-bar-notation-retired": [],
+  "sources/obs-2026-11-17-mts-initials-expands-single-components-to-whole-words": [],
+  "sources/obs-2026-11-17-mts-label-change-committed-1cc55fd0": [],
+  "sources/obs-2026-11-17-rationalisation-stack-migrated-to-kalvin-kline": [],
+  "sources/obs-2026-11-17-referencecogitator-retired-instruments-and-witness-index-rem": [],
+  "sources/obs-2026-11-17-word-registry-drives-derived-labels-fit-underfit-overfit-dec": [],
+  "sources/obs-2026-11-18-bare-rhs-now-stamps-ask-goal-mhall-ag-ks-runs": [],
+  "sources/obs-2026-11-18-bare-svo-rhs-leaves-ask-goal-empty-harness-finds-no-pair": [],
+  "sources/obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p": [],
+  "sources/obs-2026-11-18-on-demand-scaffolding-landed-stall-sink-live-at-s4-retry-by-": [],
+  "sources/obs-2026-11-18-real-stack-cogitator-verified-behaviour-identical": [
+    "sources/real-stack-overlay-position-free-turns"
+  ],
+  "sources/obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread": [],
+  "sources/obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe": [],
+  "sources/obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path": [],
+  "sources/obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects": [],
+  "sources/obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness": [],
+  "sources/obs-2026-11-20-aligned-exception-removed-one-carry-mechanism-selection-is-r": [],
+  "sources/obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set": [],
+  "sources/obs-2026-11-20-events-ride-the-handovers-reports-become-pruned-candidate-pa": [],
+  "sources/obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di": [],
+  "sources/obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required": [],
+  "sources/obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish": [],
+  "sources/obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo": [],
+  "sources/obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green": [],
+  "sources/obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover": [],
   "sources/pseudocode-audit-three-false-lines-recheck-invisible": [],
+  "sources/real-stack-overlay-position-free-turns": [],
   "sources/reentry-probe-fit-gate-divergence": [],
   "sources/s4-backtrack-exhaustion-diagnosis": [],
   "sources/shape-swap-vs-name-swap-operator-semantics": [],

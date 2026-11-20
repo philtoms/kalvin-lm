@@ -1,51 +1,46 @@
 """The rationalisation model (docs/rationalisation.md): the shared algebra
 (algebra.py), the domain (domain.py), the report vocabulary (report.py),
-and two runners — the Cogitator (cogitator.py, the default) and the
-ReferenceCogitator (model.py, the retained baseline)."""
+and the runner — the Cogitator (cogitator.py)."""
 
+from kalvin.kline import KLine
 from rationalisation.algebra import (
     BETA,
     Band,
-    Decomposition,
-    Kline,
     band,
     can,
     contained,
-    decompose,
     effort,
     entropy,
     fit,
     mu,
+    overfit,
     underfit,
     significance,
 )
-from rationalisation.cogitator import Cogitator, rationalise
+from rationalisation.cogitator import Cogitator, rationalise, Entry, candidates
 from rationalisation.domain import Domain
-from rationalisation.model import ReferenceCogitator
-from rationalisation.report import End, Event, Proposal, Rationalisation, proposals
+from rationalisation.report import Event, Proposal, Rationalisation
 
 __all__ = [
     "BETA",
     "Band",
     "Cogitator",
-    "Decomposition",
     "Domain",
-    "End",
     "Event",
-    "Kline",
+    "KLine",
+    "Entry",
     "Proposal",
     "Rationalisation",
-    "ReferenceCogitator",
     "band",
     "can",
     "contained",
-    "decompose",
     "effort",
     "entropy",
     "fit",
     "mu",
-    "proposals",
+    "overfit",
     "rationalise",
     "underfit",
     "significance",
+    "candidates"
 ]
