@@ -89,12 +89,11 @@ it persists nothing.
 One `Cogitator` over a **stack** of **entries** (each entry: an ask
 signature `A`, its one candidate `C`, its parent, the component
 it was pushed as, its `chain`, its `seen` map — the candidates
-the ask has already met, the empty probe counting as one — and its
-`frame`, the covered content it holds), each entry carrying its run's
+the ask has already met, the empty probe counting as one — its
+`frame`, the covered content it holds, and its `events`, the path's
+story), each entry carrying its run's
 **state** (the ask and goal, the entry counter, `stalled` — entries
-halted at S4, by signature, the latest per signature — the run's
-`events`, reporting only,
-never read by the search — the report is events alone — and the run's
+halted at S4, by signature, the latest per signature — and the run's
 `finish`). The stack is real: the top entry runs, a push lands the
 child on top and suspends the parent beneath it, and a child's
 departure continues the walk — framed, stalled, or exhausted, it
@@ -106,7 +105,14 @@ forward pass — a push hands the parent's frame to the child, a
 departure hands the departing entry's frame to whoever resumes (an
 exchange hands the current entry's frame to the witness's parent) —
 and no turn ever reads a suspended instance's frame; frames travel
-with the walk, they are never read back. A run finishes only through its root's S2 departure — the
+with the walk, they are never read back. The **story** — the entry's
+`events`, the path's trace — rides the same forward passes with one
+refinement: a departure hands its story forward only when it
+**aligned** (an S2 framing, a claim, an exchange). A rival candidate's
+rows leave with its entry — they neither interfere with nor support
+the path — so the report is one pruned candidate path: the graph
+traversal the claim actually rode, rival branches dropped at their
+departures. A run finishes only through its root's S2 departure — the
 root's tail departure pushes nothing, and the run lives on through
 whatever of it the walk still holds; the report therefore never
 precedes a grounding the run makes.
@@ -124,8 +130,8 @@ store: the domain is read-only. The claim is not run state: it leaves
 at S2 through the **claim sink** (`on_claim`) — a run may broadcast
 many. A stall leaves the same way: at S4, live, through the **stall
 sink** (`on_stall`) — the bare `⟨σ, []⟩` and the entry that stalled —
-and the sink answers, served or not; the run's report leaves at the
-run's end through `end_step`.
+and the sink answers, served or not; the path's report leaves at
+the run's end through `end_step`.
 
 A **reentry** is a bare region-signature: no witness nodes travel
 with it — the child's candidates are whatever the domain holds.
@@ -212,7 +218,9 @@ sharing a common ancestor witness each other: the signature frames,
 the stall resolves, nothing is stored — and the witness's parent
 resumes with the current entry's frame, its component framed: the
 common ancestor guarantees that frame already holds the witness
-side's knowledge, so the exchange arrives as one forward pass.
+side's knowledge, so the exchange arrives as one forward pass. The
+exchange is an alignment — the story it hands forward is the current
+side's path, the witness side's rival exploration left behind.
 
 **HALT**. The entry cap is the only other terminal arrival; it stops
 the run.
@@ -220,7 +228,8 @@ the run.
 ### 2.4 Invariants
 
 - The run never writes D — the domain is the harness's; frames only
-  grow; the events list only appends.
+  grow; an entry's events list only appends, and a story only grows
+  along the handovers that carry it.
 - Claims broadcast to the sink at every S2 alignment with the goal;
   stalls broadcast at S4, live. Neither channel assumes uniqueness —
   the sink holds whatever arrives.
@@ -234,7 +243,9 @@ the run.
 **T1.** Every rationalisation halts: each push consumes an unseen
 candidate or the ask's one empty probe, each departure continues one
 suspension of the run (an exchange two), and the entries counter
-caps the whole loop outright.
+caps the whole loop outright. The report is the claiming path's
+events — the story the finishing entry carries; an ungrounded run's
+lineages all depart unaligned, and their stories leave with them.
 
 **T2.** The outcome is a function of `(D₀, the stall answers, ask,
 goal)`: every choice point is ordered (candidates list in D's

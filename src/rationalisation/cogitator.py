@@ -28,10 +28,9 @@ class _Run:
 
     ask: KLine
     goal: KLine
-    finish: Callable[["_Run"], None]
+    finish: Callable[["Entry"], None]
     entries: int = 0
     stalled: dict = field(default_factory=dict)  # signature -> the latest entry stalled on it
-    events: list = field(default_factory=list)
 
 
 @dataclass
@@ -47,6 +46,8 @@ class Entry:
     seen: dict = field(default_factory=dict)  # the ask's seen candidates — the empty probe (KNone) counts
 
     _frame: list[KNode] = field(default_factory=list)
+    events: list = field(default_factory=list)  # the path's story — carried with the frame
+    aligned: bool = False  # the entry's departure handed its story forward
     
     def frame(self, x: KNode) -> bool:
         if x and x not in self._frame:
@@ -57,8 +58,11 @@ class Entry:
     def framed(self, x: KNode) -> bool:
         return not x or any(contained(x, f) for f in self._frame)
 
-    def reframe(self, e: Entry):
+    def carry(self, e: Entry):
+        """Adopt e's carried state — the frame and the story. The push
+        handover: the child sets out with everything the parent holds."""
         self._frame = e._frame.copy()
+        self.events = e.events.copy()
 
 class Cogitator:
     """The reentry runner: an entry's signature meets held candidate goals, and each
@@ -87,15 +91,15 @@ class Cogitator:
         self._cond = threading.Condition(threading.RLock())  # the server waits on it when the stack is empty
         self._stopped = False
 
-    def open(self, ask: KLine, goal: KLine, finish: Callable[["_Run"], None]) -> Entry:
+    def open(self, ask: KLine, goal: KLine, finish: Callable[["Entry"], None]) -> Entry:
         """A run's root — a fresh state, the goal its one and only candidate."""
         return Entry(_Run(ask, goal, finish), ask.signature, goal, None, "")
 
     def rationalise(self, ask: KLine, goal: KLine, end_step: Callable[[Rationalisation]] | None = None, stop = True):
-        def _finish(run: _Run) -> None:
+        def _finish(entry: Entry) -> None:
             """The run's end — the report leaves; stalls left at S4."""
             if end_step is not None:
-                end_step(Rationalisation(run.events))
+                end_step(Rationalisation(entry.events))
 
         root = self.open(ask, goal, _finish)
         with self._cond:
@@ -124,7 +128,7 @@ class Cogitator:
     def _turn(self, entry: Entry) -> None:
         run = entry.run
         if run.entries > self.MAX_ENTRIES:
-            run.finish(run)  # the entry cap — the run stops, the stack keeps walking
+            run.finish(entry)  # the entry cap — the run stops, the stack keeps walking
             return
         run.entries += 1
 
@@ -134,14 +138,15 @@ class Cogitator:
             if A in run.stalled and run.stalled[A].comp != entry.comp and common_ancestor(entry, run.stalled[A]):
                 witness = run.stalled.pop(A)
                 entry.frame(A) # S3 aligned
-                run.events.append(Event("exchanged", A, frame=A))
+                entry.aligned = True
+                entry.events.append(Event("exchanged", A, frame=A))
                 if witness.parent:
                     self._pop(witness.parent, entry) # the witness's side learns — its component framed
             elif self.on_stall is not None and self.on_stall(KLine(A, []), entry):
                 if self._push(A, entry.parent, entry.comp): # served — the ask re-derives from the grown domain
                     return
             run.stalled[A] = entry
-            run.events.append(Event("stalled", A))
+            entry.events.append(Event("stalled", A))
             self._pop(entry.parent, entry) # the parent resumes — candidate kept, components re-read
             return
 
@@ -155,18 +160,19 @@ class Cogitator:
         o_ok = entry.framed(O)
         if f_ok and u_ok and o_ok:  # S2 aligned
             entry.frame(A)
+            entry.aligned = True
             claim = KLine(run.ask.signature, [run.goal.signature])
             if run.goal.signature == can(C.nodes):
                 # the claim is made
-                run.events.append(Event("claimed", A, C, F, U, O, frame=A))
+                entry.events.append(Event("claimed", A, C, F, U, O, frame=A))
                 if self.on_claim is not None:
                     self.on_claim(claim)
-                run.finish(run)
+                run.finish(entry)
                 return
             else:
-                run.events.append(Event("framed", A, C, F, U, O, frame=A))
+                entry.events.append(Event("framed", A, C, F, U, O, frame=A))
         else:
-            run.events.append(Event("entry", A, C, F, U, O))
+            entry.events.append(Event("entry", A, C, F, U, O))
 
         if not u_ok:
             if self._push(U, entry, "U"): return
@@ -181,9 +187,14 @@ class Cogitator:
 
 
     def _pop(self, parent: Entry, entry: Entry):
+        """The departure handover: whoever resumes adopts the departing
+        entry's frame — always, the walk's frame only grows — and its story
+        only when the departure aligned. A rival candidate's rows leave
+        with its entry: they neither interfere with nor support the path."""
         parent = copy(parent)
         if parent:
-            parent.reframe(entry)
+            parent._frame = entry._frame.copy()
+            parent.events = (entry.events if entry.aligned else parent.events).copy()
             self.stack.append(parent)
 
     def _push(self, A: KNode, parent: Entry, comp: str) -> bool:
@@ -199,14 +210,14 @@ class Cogitator:
                 C = cands.pop()
                 parent.seen[A] |= {C.signature}
                 entry = Entry(parent.run, A, C, parent, comp, chain)
-                entry.reframe(parent)
+                entry.carry(parent)
                 self.stack.append(entry)
                 return True
 
             if not parent.seen[A]:
                 parent.seen[A] = frozenset({KNone}) # the probe is the ask's last candidate
                 entry = Entry(parent.run, A, None, parent, comp, chain)
-                entry.reframe(parent)
+                entry.carry(parent)
                 self.stack.append(entry)
                 return True
 

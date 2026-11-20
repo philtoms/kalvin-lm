@@ -1,9 +1,9 @@
-"""The run's report — the events of a rationalisation, and the
+"""The path's report — the events of a rationalisation, and the
 Rationalisation record the runner returns. Events are reentry events:
 each is one thing that happened to an entry — a frame minted, a stall,
-an exchange, a grounding. The run's trace; reporting only, never read
-by a search. Claims and stalls are not report: they broadcast through
-the sinks while the run is live."""
+an exchange, a grounding. The claiming path's trace; reporting only,
+never read by a search. Claims and stalls are not report: they broadcast
+through the sinks while the run is live."""
 
 from __future__ import annotations
 
@@ -37,6 +37,7 @@ class Proposal:
 
 @dataclass
 class Rationalisation:
-    """One run's report: its events in order."""
+    """One path's report: its events in order — the story the claiming
+    entry carried forward, rivals pruned at their departures."""
 
     events: list[Event] = field(default_factory=list)
