@@ -539,7 +539,9 @@
 - [[sources/obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path]] — Observation: Sketch defects: push-without-descent kills the claim path *(created: 2026-11-18)*
 - [[sources/obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects]] — Observation: Cogitator seen-rotation redesign: five departure-path defects fixed *(created: 2026-11-19)*
 - [[sources/obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness]] — Observation: wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish *(created: 2026-11-19)*
+- [[sources/obs-2026-11-20-aligned-exception-removed-one-carry-mechanism-selection-is-r]] — Observation: Aligned exception removed — one carry mechanism, selection is read-time *(created: 2026-11-20)*
 - [[sources/obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set]] — Observation: Claim channel now first-past-the-post via run claim set *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-events-ride-the-handovers-reports-become-pruned-candidate-pa]] — Observation: Events ride the handovers — reports become pruned candidate paths *(created: 2026-11-20)*
 - [[sources/obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di]] — Observation: Frame isolation breaks the wdmh exchange — WDH never framed, diagnosis complete *(created: 2026-11-20)*
 - [[sources/obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required]] — Observation: live is independent of claim filtering — both guards required *(created: 2026-11-20)*
 - [[sources/obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish]] — Observation: Session committed as 810f645f — seen rotation, S2 finish *(created: 2026-11-20)*
@@ -568,4 +570,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-20T09:56:16.983Z* | *Total pages: 550*
+*Last updated: 2026-11-20T10:53:32.549Z* | *Total pages: 552*

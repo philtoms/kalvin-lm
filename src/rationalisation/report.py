@@ -37,7 +37,7 @@ class Proposal:
 
 @dataclass
 class Rationalisation:
-    """One path's report: its events in order — the story the claiming
-    entry carried forward, rivals pruned at their departures."""
+    """One path's report: its events in order — the story the finishing
+    entry carried forward, the carrying lineage's account."""
 
     events: list[Event] = field(default_factory=list)

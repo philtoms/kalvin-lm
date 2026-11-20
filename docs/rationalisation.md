@@ -106,13 +106,16 @@ departure hands the departing entry's frame to whoever resumes (an
 exchange hands the current entry's frame to the witness's parent) —
 and no turn ever reads a suspended instance's frame; frames travel
 with the walk, they are never read back. The **story** — the entry's
-`events`, the path's trace — rides the same forward passes with one
-refinement: a departure hands its story forward only when it
-**aligned** (an S2 framing, a claim, an exchange). A rival candidate's
-rows leave with its entry — they neither interfere with nor support
-the path — so the report is one pruned candidate path: the graph
-traversal the claim actually rode, rival branches dropped at their
-departures. A run finishes only through its root's S2 departure — the
+`events`, the path's trace — rides the very same forward passes,
+unconditionally: one mechanism carries both, and it serves any path,
+aligned or stalled — a stalled entry's story is complete in its own
+hands, ready to be rationalised through the sink. The story is the
+carrying lineage's account, not a global log: where branches join
+(an exchange's witness departing into an ancestor) the handover
+replaces rather than merges, so rows of a superseded branch leave
+with it. Which rows a reader wants — a pruned candidate path, a
+derivation with provenance — is selection at read time, never the
+carry's business. A run finishes only through its root's S2 departure — the
 root's tail departure pushes nothing, and the run lives on through
 whatever of it the walk still holds; the report therefore never
 precedes a grounding the run makes.
@@ -218,9 +221,9 @@ sharing a common ancestor witness each other: the signature frames,
 the stall resolves, nothing is stored — and the witness's parent
 resumes with the current entry's frame, its component framed: the
 common ancestor guarantees that frame already holds the witness
-side's knowledge, so the exchange arrives as one forward pass. The
-exchange is an alignment — the story it hands forward is the current
-side's path, the witness side's rival exploration left behind.
+side's knowledge, so the exchange arrives as one forward pass — the
+story travels with it, the witness side's account continuing from
+the current side's.
 
 **HALT**. The entry cap is the only other terminal arrival; it stops
 the run.
@@ -228,8 +231,8 @@ the run.
 ### 2.4 Invariants
 
 - The run never writes D — the domain is the harness's; frames only
-  grow; an entry's events list only appends, and a story only grows
-  along the handovers that carry it.
+  grow; an entry's events list only appends, and a story changes
+  hands only by the forward passes that carry it.
 - Claims broadcast to the sink at every S2 alignment with the goal;
   stalls broadcast at S4, live. Neither channel assumes uniqueness —
   the sink holds whatever arrives.
@@ -243,9 +246,9 @@ the run.
 **T1.** Every rationalisation halts: each push consumes an unseen
 candidate or the ask's one empty probe, each departure continues one
 suspension of the run (an exchange two), and the entries counter
-caps the whole loop outright. The report is the claiming path's
-events — the story the finishing entry carries; an ungrounded run's
-lineages all depart unaligned, and their stories leave with them.
+caps the whole loop outright. The report is the finishing entry's
+carried story; an ungrounded run leaves no report — its stalls leave
+at S4 through the sink, each stalled entry carrying its path's story.
 
 **T2.** The outcome is a function of `(D₀, the stall answers, ask,
 goal)`: every choice point is ordered (candidates list in D's

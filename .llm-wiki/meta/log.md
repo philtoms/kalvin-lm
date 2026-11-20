@@ -1388,3 +1388,9 @@
 ## [2026-11-20T09:56:16.817Z] observe
 - slug: "obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover", title: "wdmh exchange fixed — frame travels with each stack handover", relevance: "high"
 
+## [2026-11-20T10:15:09.276Z] observe
+- slug: "obs-2026-11-20-events-ride-the-handovers-reports-become-pruned-candidate-pa", title: "Events ride the handovers — reports become pruned candidate paths", relevance: "high"
+
+## [2026-11-20T10:53:32.375Z] observe
+- slug: "obs-2026-11-20-aligned-exception-removed-one-carry-mechanism-selection-is-r", title: "Aligned exception removed — one carry mechanism, selection is read-time", relevance: "high"
+

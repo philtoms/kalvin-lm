@@ -47,7 +47,6 @@ class Entry:
 
     _frame: list[KNode] = field(default_factory=list)
     events: list = field(default_factory=list)  # the path's story — carried with the frame
-    aligned: bool = False  # the entry's departure handed its story forward
     
     def frame(self, x: KNode) -> bool:
         if x and x not in self._frame:
@@ -138,7 +137,6 @@ class Cogitator:
             if A in run.stalled and run.stalled[A].comp != entry.comp and common_ancestor(entry, run.stalled[A]):
                 witness = run.stalled.pop(A)
                 entry.frame(A) # S3 aligned
-                entry.aligned = True
                 entry.events.append(Event("exchanged", A, frame=A))
                 if witness.parent:
                     self._pop(witness.parent, entry) # the witness's side learns — its component framed
@@ -160,7 +158,6 @@ class Cogitator:
         o_ok = entry.framed(O)
         if f_ok and u_ok and o_ok:  # S2 aligned
             entry.frame(A)
-            entry.aligned = True
             claim = KLine(run.ask.signature, [run.goal.signature])
             if run.goal.signature == can(C.nodes):
                 # the claim is made
@@ -188,13 +185,12 @@ class Cogitator:
 
     def _pop(self, parent: Entry, entry: Entry):
         """The departure handover: whoever resumes adopts the departing
-        entry's frame — always, the walk's frame only grows — and its story
-        only when the departure aligned. A rival candidate's rows leave
-        with its entry: they neither interfere with nor support the path."""
+        entry's frame and story — one mechanism, no exceptions. The story
+        is the carrying lineage's account: a branch join (the exchange's
+        witness) replaces, not merges — selection is a read-time concern."""
         parent = copy(parent)
         if parent:
-            parent._frame = entry._frame.copy()
-            parent.events = (entry.events if entry.aligned else parent.events).copy()
+            parent.carry(entry)
             self.stack.append(parent)
 
     def _push(self, A: KNode, parent: Entry, comp: str) -> bool:

@@ -2,6 +2,8 @@
 
 ## 2026-11-20
 
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-aligned-exception-removed-one-carry-mechanism-selection-is-r","title":"Aligned exception removed — one carry mechanism, selection is read-time"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-events-ride-the-handovers-reports-become-pruned-candidate-pa","title":"Events ride the handovers — reports become pruned candidate paths"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover","title":"wdmh exchange fixed — frame travels with each stack handover"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di","title":"Frame isolation breaks the wdmh exchange — WDH never framed, diagnosis complete"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish","title":"Session committed as 810f645f — seen rotation, S2 finish"}
