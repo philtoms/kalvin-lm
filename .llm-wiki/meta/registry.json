@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-11-18T18:25:14.170Z",
+  "last_updated": "2026-11-20T08:18:25.118Z",
   "pages": {
     "concepts/agent": {
       "type": "concept",
@@ -552,6 +552,15 @@
       "slug": "break-starves-exchange-stalls-must-wait",
       "created": "2026-11-02",
       "updated": "2026-11-02"
+    },
+    "sources/cogitator-reentry-redesign-departure-paths": {
+      "type": "source",
+      "title": "Reentry redesigns break on departure paths",
+      "category": "architecture",
+      "status": "insight",
+      "slug": "cogitator-reentry-redesign-departure-paths",
+      "created": "2026-11-19",
+      "updated": "2026-11-19"
     },
     "sources/cogitator-trace-table-alignment": {
       "type": "source",
@@ -8461,6 +8470,107 @@
       "source_context": "Diagnosing the user's Cogitator sketch that produced no claims",
       "created": "2026-11-18",
       "updated": "2026-11-18"
+    },
+    "sources/obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects": {
+      "type": "source",
+      "title": "Observation: Cogitator seen-rotation redesign: five departure-path defects fixed",
+      "tags": [
+        "cogitator",
+        "reentry",
+        "rationalisation",
+        "bugfix"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects",
+      "relevance": "high",
+      "observed_at": "2026-11-19T17:05:14.914Z",
+      "source_context": "Fixing wdmh completing only step 1 after the push-semantics redesign",
+      "created": "2026-11-19",
+      "updated": "2026-11-19"
+    },
+    "sources/obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness": {
+      "type": "source",
+      "title": "Observation: wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish",
+      "tags": [
+        "cogitator",
+        "reentry",
+        "exchange",
+        "grounding"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness",
+      "relevance": "high",
+      "observed_at": "2026-11-19T22:12:01.643Z",
+      "source_context": "Restoring wdmh grounding under the seen-rotation redesign",
+      "created": "2026-11-19",
+      "updated": "2026-11-19"
+    },
+    "sources/obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set": {
+      "type": "source",
+      "title": "Observation: Claim channel now first-past-the-post via run claim set",
+      "tags": [
+        "cogitator",
+        "claims",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set",
+      "relevance": "medium",
+      "observed_at": "2026-11-20T07:36:49.985Z",
+      "source_context": "Adding first-claim-past-the-post filtering to the claim channel",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required": {
+      "type": "source",
+      "title": "Observation: live is independent of claim filtering — both guards required",
+      "tags": [
+        "cogitator",
+        "live",
+        "finish",
+        "semantics"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required",
+      "relevance": "medium",
+      "observed_at": "2026-11-20T07:40:01.568Z",
+      "source_context": "Questioning whether the live counter is still needed after claim filtering",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo": {
+      "type": "source",
+      "title": "Observation: Simplified finish: root S2 departure only — claim precedes report by construction",
+      "tags": [
+        "cogitator",
+        "finish",
+        "claims",
+        "simplification"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo",
+      "relevance": "high",
+      "observed_at": "2026-11-20T08:06:14.586Z",
+      "source_context": "User simplified the mechanism after removing live and the claim filter",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
+    },
+    "sources/obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green": {
+      "type": "source",
+      "title": "Observation: Ungrounded runs report nothing — tests fixed, suite green",
+      "tags": [
+        "cogitator",
+        "tests",
+        "ruling",
+        "docs"
+      ],
+      "status": "observation",
+      "slug": "obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green",
+      "relevance": "high",
+      "observed_at": "2026-11-20T08:18:25.008Z",
+      "source_context": "Fixing tests and docs after the ungrounded-runs-report-nothing ruling",
+      "created": "2026-11-20",
+      "updated": "2026-11-20"
     },
     "sources/pseudocode-audit-three-false-lines-recheck-invisible": {
       "type": "source",

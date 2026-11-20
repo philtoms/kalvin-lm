@@ -104,6 +104,9 @@ def entropy(k: KLine) -> Fraction:
     return 1 - significance(k)
 
 
+def fingerprint(k: KLine) -> int:
+    return k.signature | can(k.nodes)
+
 BETA = Fraction(1, 2)
 
 

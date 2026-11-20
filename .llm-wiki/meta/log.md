@@ -1358,3 +1358,24 @@
 ## [2026-11-18T18:25:14.064Z] observe
 - slug: "obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p", title: "Candidates-logic serving landed — wdmh claims restored, tests ported", relevance: "high"
 
+## [2026-11-19T17:05:14.917Z] observe
+- slug: "obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects", title: "Cogitator seen-rotation redesign: five departure-path defects fixed", relevance: "high"
+
+## [2026-11-19T17:05:22.797Z] retro
+- slug: "cogitator-reentry-redesign-departure-paths", title: "Reentry redesigns break on departure paths", category: "architecture"
+
+## [2026-11-19T22:12:01.644Z] observe
+- slug: "obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness", title: "wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish", relevance: "high"
+
+## [2026-11-20T07:36:49.988Z] observe
+- slug: "obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set", title: "Claim channel now first-past-the-post via run claim set", relevance: "medium"
+
+## [2026-11-20T07:40:01.569Z] observe
+- slug: "obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required", title: "live is independent of claim filtering — both guards required", relevance: "medium"
+
+## [2026-11-20T08:06:14.588Z] observe
+- slug: "obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo", title: "Simplified finish: root S2 departure only — claim precedes report by construction", relevance: "high"
+
+## [2026-11-20T08:18:25.010Z] observe
+- slug: "obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green", title: "Ungrounded runs report nothing — tests fixed, suite green", relevance: "high"
+

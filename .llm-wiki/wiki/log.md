@@ -1,5 +1,18 @@
 # Wiki Update Log
 
+## 2026-11-20
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green","title":"Ungrounded runs report nothing — tests fixed, suite green"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo","title":"Simplified finish: root S2 departure only — claim precedes report by construction"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required","title":"live is independent of claim filtering — both guards required"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set","title":"Claim channel now first-past-the-post via run claim set"}
+
+## 2026-11-19
+
+- **observe**: {"relevance":"high","slug":"obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness","title":"wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish"}
+- **retro**: {"category":"architecture","slug":"cogitator-reentry-redesign-departure-paths","title":"Reentry redesigns break on departure paths"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects","title":"Cogitator seen-rotation redesign: five departure-path defects fixed"}
+
 ## 2026-11-18
 
 - **observe**: {"relevance":"high","slug":"obs-2026-11-18-candidates-logic-serving-landed-wdmh-claims-restored-tests-p","title":"Candidates-logic serving landed — wdmh claims restored, tests ported"}

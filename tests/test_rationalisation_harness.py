@@ -36,7 +36,7 @@ def test_scripts_run_and_ask():
 
 def test_the_one_entry_is_the_ask():
     runner = Runner()
-    steps = runner.run(SCRIPT)
+    steps = runner.run(SCRIPT, scaffold=True)
     assert len(steps[0].kline.nodes) == 5  # the MHALL ask: the full sentence
     # the other compiled klines are held as scaffolding, not primed — the
     # domain grows only from what a stall serves, and only from what is held
@@ -50,7 +50,7 @@ def test_a_served_stall_supplies_scaffolding_on_demand(tmp_path):
     (tmp_path / "mhall.ks").write_text(MHALL)
     (tmp_path / "wdmh.ks").write_text(WDMH)
     runner = Runner()
-    steps = runner.run(WDMH, resolver=path_resolver(tmp_path))
+    steps = runner.run(WDMH, resolver=path_resolver(tmp_path), scaffold=True)
     assert len(steps) == 2
     held = set(runner.scaffolding)
     assert runner.domain  # a stall was served — scaffolding landed

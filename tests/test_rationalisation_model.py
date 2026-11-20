@@ -187,35 +187,37 @@ def test_unaligned_stalls_broadcast_bare():
 
 
 def test_a_served_stall_reenters_with_fresh_candidates():
-    # empty domain: the U region stalls at S4; the stall event reaches the
-    # sink live with its entry, the sink serves scaffolding (the harness's
-    # right — D grows mid-run) and answers True, and the stalled component
-    # re-descends from its parent with fresh candidates — the retry aligns
+    # empty domain: the regions stall at S4; the stall reaches the sink live,
+    # the sink serves scaffolding (the harness's right — D grows mid-run) and
+    # answers True, and each stalled ask re-derives from its parent with fresh
+    # candidates — the retried pairings frame, the run grounds
     d = Domain()
-    scaffold = k(A | D, A, D)
+    scaffold_U = k(BC, B, C)
+    scaffold_F = k(A | D, A, D)
     stalls: list[KLine] = []
 
     def serve(stall: KLine, entry: Entry) -> bool:
         stalls.append(stall)
-        if int(stall.signature) == A | D:
-            d.add(scaffold)
-            return True
+        for scaffold in (scaffold_U, scaffold_F):
+            if int(stall.signature) == scaffold.signature:
+                d.add(scaffold)
+                return True
         return False
 
-    cog = Cogitator(d, on_stall=serve)
+    claims: list[KLine] = []
     r: list[Rationalisation] = []
-    cog.rationalise(k(ABCD, ABCD), goal=k(BC, B, C), end_step=r.append)
+    cog = Cogitator(d, on_claim=claims.append, on_stall=serve)
+    cog.rationalise(k(ABCD, ABCD), goal=k(A | D, A, D), end_step=r.append)
     cog.cogitate()
-    assert stalls and int(stalls[0].signature) == A | D  # the stall event, live
-    assert any(
-        e.kind == "resolved" and e.candidate == scaffold for e in r[0].events
-    )  # the retried entry met the served scaffold
-    assert scaffold in d
+    assert sorted(int(s.signature) for s in stalls) == [BC, A | D]  # both stalls, live
+    met = {e.candidate for e in r[0].events if e.kind in ("framed", "claimed")}
+    assert scaffold_U in met and scaffold_F in met  # the retries met the served scaffolds
+    assert claims and int(claims[0].signature) == ABCD  # the run grounds through the serves
 
 
-def test_an_unserved_stall_stands():
-    # the same run, a sink that serves nothing: the stall stands (filed,
-    # broadcast, unaligned), nothing reenters — the honest state of the system
+def test_an_unserved_stall_stands_silent():
+    # a sink that serves nothing: the stalls stand (filed, broadcast live),
+    # the root never aligns — an ungrounded run reports nothing
     d = Domain()
     stalls: list[KLine] = []
 
@@ -228,7 +230,7 @@ def test_an_unserved_stall_stands():
     cog.rationalise(k(ABCD, ABCD), goal=k(BC, B, C), end_step=r.append)
     cog.cogitate()
     assert sorted(int(s.signature) for s in stalls) == [BC, A | D]  # both regions starve
-    assert not any(e.kind == "resolved" for e in r[0].events)  # no retry, no alignment
+    assert r == []  # the ungrounded run reports nothing
     assert not any(k for k in d)  # the domain never grew
 
 

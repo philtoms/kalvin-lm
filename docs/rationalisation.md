@@ -13,7 +13,9 @@ decompositions, until the run halts.**
 
 The scripts are the only guarantee that an ask can be framed as a
 goal. If a script does not ground, that is the honest state of the
-system; the model creates no contrivance to force a resolution.
+system; the model creates no contrivance to force a resolution. An
+ungrounded run is normal and expected — it reports nothing: the
+stalls leave at S4, live, through the sink, and no report follows.
 
 ## 1. Klines, and what they are made of
 
@@ -85,17 +87,25 @@ it persists nothing.
 ### 2.2 The machine's state
 
 One `Cogitator` over a **stack** of **entries** (each entry: an ask
-signature `A`, its remaining candidates, its parent, the component
-it was pushed as, its `chain`, and its `at` map — the frame count at
-each component's last descent), each entry carrying its run's
+signature `A`, its one candidate `C`, its parent, the component
+it was pushed as, its `chain`, and its `seen` map — the candidates
+the ask has already met, the empty probe counting as one — with its
+`at` map gating the entry's noting itself once), each entry carrying its run's
 **state** (the ask and goal, the entry counter, `stalled` — entries
 halted at S4, by signature, the latest per signature — `frame`,
 covered content in mint order, the run's `events`, reporting only,
 never read by the search — the report is events alone — and the run's
 `finish`). The stack is real: the top entry runs, a push lands the
-child on top and suspends the parent beneath it, a departure
-backtracks to whatever resumes on top — the resumed entry
-re-evaluates its current candidate. `rationalise` pushes a
+child on top and suspends the parent beneath it, and a child's
+departure continues the walk — framed, stalled, or exhausted, it
+resumes its parent in place (an exchange resumes the witness's
+parent too), the parent's next turn re-reading its candidate against
+the grown frame and rotating through the seen map's next unseen
+candidate. A run finishes only through its root's S2 departure — the
+root's tail departure pushes nothing, and the run lives on through
+whatever of it the walk still holds; the report therefore never
+precedes a grounding the run makes.
+`rationalise` pushes a
 run's root onto the stack; `cogitate` walks the stack until it is
 empty; `serve` is the standing walk — the same turns on a thread of
 their own, waiting on a condition when the stack is empty, with
@@ -127,10 +137,12 @@ never goal-less). Grounding does
 not stop the loop: the run continues until its root departs or the
 cap; the claim — `KLine(σ_ask, [σ_goal])` — is broadcast to the claim
 sink at every S2 alignment with the goal. A run may broadcast many;
-the sink receives whatever arrives. The run's root departing — or
-the cap — finishes the run: stalls broadcast, the report leaves
+the sink receives whatever arrives. The root departing through S2 —
+its rotation exhausted — or the cap finishes the run: stalls
+broadcast, the report leaves
 through `end_step`, and the walk continues with whatever remains on
-the stack.
+the stack. A root that never aligns never finishes — an ungrounded
+run leaves no report; its stalls left at S4, live, through the sink.
 
 **CANDIDATES** (`_candidates`). An entry's signature `A` primes domain
 klines by overlap:
@@ -158,13 +170,18 @@ The claim's own extension (`σ & ~A`) is not the entry's business: the
 claim fits, the construction offers, and nothing else is owed.
 `F == A` — the claim covers the entry — frames `F` at once.
 
-**REENTER**. A component reenters when unframed and **fresh**: once
-per candidate, and again only when frames arrived since its last
-descent (the `at` map). Priority is fixed — U, then O, then F. The
-child lands on top of the stack; the parent suspends beneath it, its
-candidate kept for the re-evaluation. A candidate that pushes nothing
-is consumed and its `at` map cleared; the next candidate may
-re-descend every component.
+**REENTER**. A component reenters when unframed — one candidate at
+a time, the seen map barring each candidate's return; an ask with
+no candidates sends the empty probe — the stall child — once.
+Priority is fixed — U, then O, then F, each tried in turn however
+the last one failed. The child lands on top of the stack; the
+parent suspends beneath it, its candidate kept for the
+re-evaluation. Every child departure — framed, stalled, or
+exhausted — resumes the parent in place: the re-evaluation against
+the grown frame, rotation through the next unseen candidate. An
+aligned entry is no stopping point — the ask rotates on, grounding
+does not stop the loop — and the parent resumes when the rotation
+exhausts.
 
 **ALIGN**. All three components framed — S2 aligned — frames `A`. If
 the candidate's signature is the goal's, the **claim** grounds:
@@ -172,11 +189,12 @@ the candidate's signature is the goal's, the **claim** grounds:
 signature — **broadcast at S2** through the claim sink, the older
 proposal's equal: nothing is stored, the domain is not the
 Cogitator's to write. Any entry may ground it — the claim is the
-ask's, whatever entry aligned.
+ask's, whatever entry
+aligned.
 
 **STALL / EXCHANGE**. An entry with no candidates left stalls at S4,
 filed under its signature, and backtracks — the parent keeps its
-remaining candidates. The stall leaves at once, live, through the
+candidate, its components re-read. The stall leaves at once, live, through the
 stall sink with its entry — the harness reads it as its demand for
 scaffolding: it applies the candidates logic to what it holds, from
 the stalled entry's seat, and may answer **served**, adding what
@@ -186,7 +204,8 @@ component, its candidates recomputed from the grown D. The retry is a
 push, never a block; unanswered, the stall stands, filed and
 broadcast. Two stalls on one signature from different components
 sharing a common ancestor witness each other: the signature frames,
-the stall resolves, nothing is stored.
+the stall resolves, nothing is stored — and the witness's parent
+resumes, its component framed.
 
 **HALT**. The entry cap is the only other terminal arrival; it stops
 the run.
@@ -205,10 +224,10 @@ the run.
 
 ## 3. Termination and determinism
 
-**T1.** Every rationalisation halts: each loop iteration either
-consumes a candidate, pushes one child entry, or backtracks one link;
-a component re-descends only on new frames (the `at` map), and the
-entries counter caps the whole loop outright.
+**T1.** Every rationalisation halts: each push consumes an unseen
+candidate or the ask's one empty probe, each departure continues one
+suspension of the run (an exchange two), and the entries counter
+caps the whole loop outright.
 
 **T2.** The outcome is a function of `(D₀, the stall answers, ask,
 goal)`: every choice point is ordered (candidates list in D's

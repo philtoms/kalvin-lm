@@ -85,6 +85,7 @@
 ## Sources
 
 - [[sources/break-starves-exchange-stalls-must-wait]] — Reentry probe: break starves the exchange; stalls must wait *(created: 2026-11-02)*
+- [[sources/cogitator-reentry-redesign-departure-paths]] — Reentry redesigns break on departure paths *(created: 2026-11-19)*
 - [[sources/cogitator-trace-table-alignment]] — Cogitator trace tables aligned: closers-first, row-owned frames, per-reentry memo *(created: 2026-10-30)*
 - [[sources/compound-label-mts-initials-notation]] — Compound KNode labels: MTS initials, joined identifier stays registry key *(created: 2026-10-30)*
 - [[sources/compound-word-identity-label-and-dedup]] — Compound-word identity labels and MTS dedup *(created: 2026-08-27)*
@@ -536,6 +537,12 @@
 - [[sources/obs-2026-11-18-serve-stop-standing-walk-verified-on-a-real-thread]] — Observation: serve()/stop() standing walk verified on a real thread *(created: 2026-11-18)*
 - [[sources/obs-2026-11-18-shared-stack-cogitate-verified-sink-reentrancy-pop-bugs-fixe]] — Observation: Shared-stack cogitate verified; sink-reentrancy pop bugs fixed *(created: 2026-11-18)*
 - [[sources/obs-2026-11-18-sketch-defects-push-without-descent-kills-the-claim-path]] — Observation: Sketch defects: push-without-descent kills the claim path *(created: 2026-11-18)*
+- [[sources/obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects]] — Observation: Cogitator seen-rotation redesign: five departure-path defects fixed *(created: 2026-11-19)*
+- [[sources/obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness]] — Observation: wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish *(created: 2026-11-19)*
+- [[sources/obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set]] — Observation: Claim channel now first-past-the-post via run claim set *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required]] — Observation: live is independent of claim filtering — both guards required *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo]] — Observation: Simplified finish: root S2 departure only — claim precedes report by construction *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green]] — Observation: Ungrounded runs report nothing — tests fixed, suite green *(created: 2026-11-20)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
 - [[sources/real-stack-overlay-position-free-turns]] — Real-stack overlay: position-free turns enable interleaving *(created: 2026-11-18)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
@@ -558,4 +565,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-18T18:25:14.170Z* | *Total pages: 540*
+*Last updated: 2026-11-20T08:18:25.118Z* | *Total pages: 547*

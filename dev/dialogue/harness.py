@@ -90,7 +90,7 @@ class Runner:
         entry's own seat (the same logic the model reads D with), join the
         domain and the model retries; an unserved stall files itself as a
         connect proposal: fit wanted, nobody to talk to."""
-        cands = candidates(kline.signature, entry, self.scaffolding)
+        cands = candidates(kline.signature, self.scaffolding, chain = frozenset())
         if not cands:
             self.stalls.append((self._step_index, kline))
             return False
