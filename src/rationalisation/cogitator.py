@@ -10,12 +10,13 @@
 
 from __future__ import annotations
 
+from copy import deepcopy, copy
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from kalvin.kline import KLine, KNode, KNone, is_identity
-from rationalisation.algebra import contained, fit, underfit, overfit, can, fingerprint
+from rationalisation.algebra import contained, fit, underfit, overfit, can
 from rationalisation.domain import Domain
 from rationalisation.report import Event, Rationalisation
 
@@ -29,7 +30,6 @@ class _Run:
     goal: KLine
     finish: Callable[["_Run"], None]
     entries: int = 0
-    frame: list[KNode] = field(default_factory=list)
     stalled: dict = field(default_factory=dict)  # signature -> the latest entry stalled on it
     events: list = field(default_factory=list)
 
@@ -46,14 +46,19 @@ class Entry:
     chain: frozenset = frozenset()  # the ask signatures of the strict parent chain
     seen: dict = field(default_factory=dict)  # the ask's seen candidates — the empty probe (KNone) counts
 
+    _frame: list[KNode] = field(default_factory=list)
+    
     def frame(self, x: KNode) -> bool:
-        if x and x not in self.run.frame:
-            self.run.frame.append(x)
+        if x and x not in self._frame:
+            self._frame.append(x)
             return True
         return False
 
     def framed(self, x: KNode) -> bool:
-        return not x or any(contained(x, f) for f in self.run.frame)
+        return not x or any(contained(x, f) for f in self._frame)
+
+    def reframe(self, e: Entry):
+        self._frame = e._frame.copy()
 
 class Cogitator:
     """The reentry runner: an entry's signature meets held candidate goals, and each
@@ -125,21 +130,19 @@ class Cogitator:
 
         A = entry.A
         C = entry.C
-        # while True:
         if not C:  # S4 stalled
             if A in run.stalled and run.stalled[A].comp != entry.comp and common_ancestor(entry, run.stalled[A]):
                 witness = run.stalled.pop(A)
                 entry.frame(A) # S3 aligned
                 run.events.append(Event("exchanged", A, frame=A))
                 if witness.parent:
-                    self.stack.append(witness.parent) # the witness's side learns — its component framed
+                    self._pop(witness.parent, entry) # the witness's side learns — its component framed
             elif self.on_stall is not None and self.on_stall(KLine(A, []), entry):
                 if self._push(A, entry.parent, entry.comp): # served — the ask re-derives from the grown domain
                     return
-            else:
-                run.stalled[A] = entry
-                run.events.append(Event("stalled", A))
-            self.stack.append(entry.parent) # the parent resumes — candidate kept, components re-read
+            run.stalled[A] = entry
+            run.events.append(Event("stalled", A))
+            self._pop(entry.parent, entry) # the parent resumes — candidate kept, components re-read
             return
 
         cs = C.signature
@@ -174,26 +177,37 @@ class Cogitator:
         if not f_ok:
             if self._push(F, entry, "F"): return
 
-        self.stack.append(entry.parent) # the parent resumes — its next turn rotates
+        self._pop(entry.parent, entry) # the parent resumes — its next turn rotates
 
-    def _push(self, A: KNode, entry: Entry, comp: str) -> bool:
+
+    def _pop(self, parent: Entry, entry: Entry):
+        parent = copy(parent)
+        if parent:
+            parent.reframe(entry)
+            self.stack.append(parent)
+
+    def _push(self, A: KNode, parent: Entry, comp: str) -> bool:
         """The component reenters — the child lands on top, the parent suspends
         beneath it, its candidate kept for the re-evaluation. A candidate seen
         for the ask does not return; the empty probe — the stall child —
         counts as seen and fires once."""
-        if entry:
-            if not A in entry.seen: entry.seen[A] = frozenset()
-            chain = entry.chain | {entry.A}
-            cands = candidates(A, self.d, entry.seen[A])
+        if parent:
+            if not A in parent.seen: parent.seen[A] = frozenset()
+            chain = parent.chain | {parent.A}
+            cands = candidates(A, self.d, parent.seen[A])
             if cands:
                 C = cands.pop()
-                entry.seen[A] |= {C.signature}
-                self.stack.append(Entry(entry.run, A, C, entry, comp, chain))
+                parent.seen[A] |= {C.signature}
+                entry = Entry(parent.run, A, C, parent, comp, chain)
+                entry.reframe(parent)
+                self.stack.append(entry)
                 return True
 
-            if not entry.seen[A]:
-                entry.seen[A] = frozenset({KNone}) # the probe is the ask's last candidate
-                self.stack.append(Entry(entry.run, A, None, entry, comp, chain))
+            if not parent.seen[A]:
+                parent.seen[A] = frozenset({KNone}) # the probe is the ask's last candidate
+                entry = Entry(parent.run, A, None, parent, comp, chain)
+                entry.reframe(parent)
+                self.stack.append(entry)
                 return True
 
         return False

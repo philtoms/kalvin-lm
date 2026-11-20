@@ -540,9 +540,12 @@
 - [[sources/obs-2026-11-19-cogitator-seen-rotation-redesign-five-departure-path-defects]] — Observation: Cogitator seen-rotation redesign: five departure-path defects fixed *(created: 2026-11-19)*
 - [[sources/obs-2026-11-19-wdmh-grounding-restored-s2-rotates-exchange-notifies-witness]] — Observation: wdmh grounding restored: S2 rotates, exchange notifies witness, live gates finish *(created: 2026-11-19)*
 - [[sources/obs-2026-11-20-claim-channel-now-first-past-the-post-via-run-claim-set]] — Observation: Claim channel now first-past-the-post via run claim set *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di]] — Observation: Frame isolation breaks the wdmh exchange — WDH never framed, diagnosis complete *(created: 2026-11-20)*
 - [[sources/obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required]] — Observation: live is independent of claim filtering — both guards required *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish]] — Observation: Session committed as 810f645f — seen rotation, S2 finish *(created: 2026-11-20)*
 - [[sources/obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo]] — Observation: Simplified finish: root S2 departure only — claim precedes report by construction *(created: 2026-11-20)*
 - [[sources/obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green]] — Observation: Ungrounded runs report nothing — tests fixed, suite green *(created: 2026-11-20)*
+- [[sources/obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover]] — Observation: wdmh exchange fixed — frame travels with each stack handover *(created: 2026-11-20)*
 - [[sources/pseudocode-audit-three-false-lines-recheck-invisible]] — Pseudocode audit: three false lines, the re-run invisible; corrected in docstring *(created: 2026-11-03)*
 - [[sources/real-stack-overlay-position-free-turns]] — Real-stack overlay: position-free turns enable interleaving *(created: 2026-11-18)*
 - [[sources/reentry-probe-fit-gate-divergence]] — Reentry probe: pseudocode grounds all but the fit gate *(created: 2026-11-02)*
@@ -565,4 +568,4 @@
 - [[trajectories/TRJ-2026-11-02-001]] — Pseudocode reentry probe vs reference Cogitator *(created: 2026-11-02)*
 
 ---
-*Last updated: 2026-11-20T08:18:25.118Z* | *Total pages: 547*
+*Last updated: 2026-11-20T09:56:16.983Z* | *Total pages: 550*

@@ -2,6 +2,9 @@
 
 ## 2026-11-20
 
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover","title":"wdmh exchange fixed — frame travels with each stack handover"}
+- **observe**: {"relevance":"high","slug":"obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di","title":"Frame isolation breaks the wdmh exchange — WDH never framed, diagnosis complete"}
+- **observe**: {"relevance":"medium","slug":"obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish","title":"Session committed as 810f645f — seen rotation, S2 finish"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green","title":"Ungrounded runs report nothing — tests fixed, suite green"}
 - **observe**: {"relevance":"high","slug":"obs-2026-11-20-simplified-finish-root-s2-departure-only-claim-precedes-repo","title":"Simplified finish: root S2 departure only — claim precedes report by construction"}
 - **observe**: {"relevance":"medium","slug":"obs-2026-11-20-live-is-independent-of-claim-filtering-both-guards-required","title":"live is independent of claim filtering — both guards required"}

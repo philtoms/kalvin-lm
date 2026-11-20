@@ -88,20 +88,25 @@ it persists nothing.
 
 One `Cogitator` over a **stack** of **entries** (each entry: an ask
 signature `A`, its one candidate `C`, its parent, the component
-it was pushed as, its `chain`, and its `seen` map — the candidates
-the ask has already met, the empty probe counting as one — with its
-`at` map gating the entry's noting itself once), each entry carrying its run's
+it was pushed as, its `chain`, its `seen` map — the candidates
+the ask has already met, the empty probe counting as one — and its
+`frame`, the covered content it holds), each entry carrying its run's
 **state** (the ask and goal, the entry counter, `stalled` — entries
-halted at S4, by signature, the latest per signature — `frame`,
-covered content in mint order, the run's `events`, reporting only,
+halted at S4, by signature, the latest per signature — the run's
+`events`, reporting only,
 never read by the search — the report is events alone — and the run's
 `finish`). The stack is real: the top entry runs, a push lands the
 child on top and suspends the parent beneath it, and a child's
 departure continues the walk — framed, stalled, or exhausted, it
 resumes its parent in place (an exchange resumes the witness's
 parent too), the parent's next turn re-reading its candidate against
-the grown frame and rotating through the seen map's next unseen
-candidate. A run finishes only through its root's S2 departure — the
+the handed-over frame and rotating through the seen map's next unseen
+candidate. The frame is isolation's unit: each stack operation is a
+forward pass — a push hands the parent's frame to the child, a
+departure hands the departing entry's frame to whoever resumes (an
+exchange hands the current entry's frame to the witness's parent) —
+and no turn ever reads a suspended instance's frame; frames travel
+with the walk, they are never read back. A run finishes only through its root's S2 departure — the
 root's tail departure pushes nothing, and the run lives on through
 whatever of it the walk still holds; the report therefore never
 precedes a grounding the run makes.
@@ -205,7 +210,9 @@ push, never a block; unanswered, the stall stands, filed and
 broadcast. Two stalls on one signature from different components
 sharing a common ancestor witness each other: the signature frames,
 the stall resolves, nothing is stored — and the witness's parent
-resumes, its component framed.
+resumes with the current entry's frame, its component framed: the
+common ancestor guarantees that frame already holds the witness
+side's knowledge, so the exchange arrives as one forward pass.
 
 **HALT**. The entry cap is the only other terminal arrival; it stops
 the run.

@@ -1379,3 +1379,12 @@
 ## [2026-11-20T08:18:25.010Z] observe
 - slug: "obs-2026-11-20-ungrounded-runs-report-nothing-tests-fixed-suite-green", title: "Ungrounded runs report nothing — tests fixed, suite green", relevance: "high"
 
+## [2026-11-20T08:44:02.343Z] observe
+- slug: "obs-2026-11-20-session-committed-as-810f645f-seen-rotation-s2-finish", title: "Session committed as 810f645f — seen rotation, S2 finish", relevance: "medium"
+
+## [2026-11-20T09:39:18.260Z] observe
+- slug: "obs-2026-11-20-frame-isolation-breaks-the-wdmh-exchange-wdh-never-framed-di", title: "Frame isolation breaks the wdmh exchange — WDH never framed, diagnosis complete", relevance: "high"
+
+## [2026-11-20T09:56:16.817Z] observe
+- slug: "obs-2026-11-20-wdmh-exchange-fixed-frame-travels-with-each-stack-handover", title: "wdmh exchange fixed — frame travels with each stack handover", relevance: "high"
+
